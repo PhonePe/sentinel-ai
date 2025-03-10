@@ -31,10 +31,7 @@ import java.util.Map;
 @Slf4j
 class AgentTest {
 
-    public record OutputObject(
-            String username,
-
-            String message) {
+    public record OutputObject(String username, String message) {
     }
 
     @JsonClassDescription("Parameter to be passed to get salutation for a user")
@@ -110,7 +107,7 @@ class AgentTest {
     }
 
     /**
-     *
+     * A toolbox of extra utilities for the agent
      */
     @Value
     public static class TestToolBox implements ToolBox {

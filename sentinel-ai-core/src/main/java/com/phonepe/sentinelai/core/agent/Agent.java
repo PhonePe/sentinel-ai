@@ -144,6 +144,7 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
 
     /**
      * Execute the agent asynchronously. A full reply is returned as a future.
+     *
      * @param request       Request object
      * @param model         Model to use. If set to null, the model from the setup will be used. If none are supplied
      *                      an error will be thrown.

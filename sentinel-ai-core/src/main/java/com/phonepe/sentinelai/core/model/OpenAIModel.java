@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Predicates;
 import com.google.common.base.Strings;
-import com.google.common.primitives.Primitives;
 import com.openai.client.OpenAIClient;
 import com.openai.core.JsonValue;
 import com.openai.models.*;
@@ -23,7 +22,6 @@ import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.tools.CallableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
-import lombok.SneakyThrows;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -31,7 +29,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
@@ -340,29 +337,6 @@ public class OpenAIModel implements Model {
                 });
             }
         });
-    }
-
-
-
-    @SneakyThrows //TODO
-    private String toStringContent(CallableTool tool, Object result) {
-        if (tool.getReturnType().equals(Void.TYPE)) {
-            return "success";
-        }
-        else {
-            if (tool.getReturnType().isAssignableFrom(String.class) || Primitives.isWrapperType(tool.getReturnType())) {
-                return Objects.toString(result);
-            }
-        }
-        return mapper.writeValueAsString(result);
-    }
-
-    @SneakyThrows //TODO
-    private <U> String toStringContent(U object) {
-        if (object.getClass().isAssignableFrom(String.class) || Primitives.isWrapperType(object.getClass())) {
-            return Objects.toString(object);
-        }
-        return mapper.writeValueAsString(object);
     }
 
     private <T> T convertToResponse(Class<T> responseType, String content) throws JsonProcessingException {
