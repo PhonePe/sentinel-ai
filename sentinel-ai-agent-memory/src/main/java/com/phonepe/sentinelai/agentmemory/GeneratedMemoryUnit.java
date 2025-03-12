@@ -1,4 +1,4 @@
-package com.phonepe.sentinelai.core.agentmemory;
+package com.phonepe.sentinelai.agentmemory;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;

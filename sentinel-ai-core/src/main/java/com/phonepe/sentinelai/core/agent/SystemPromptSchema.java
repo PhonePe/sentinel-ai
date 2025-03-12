@@ -7,7 +7,7 @@ import lombok.Value;
 import java.util.List;
 
 /**
- *
+ * Schema for system prompts.
  */
 @Value
 public class SystemPromptSchema {
@@ -19,13 +19,15 @@ public class SystemPromptSchema {
 
     @Value
     public static class PrimaryTask {
-        String prompt;
+        Object prompt;
         List<ToolSummary> tools;
     }
 
     @Value
     public static class SecondaryTask {
-        String prompt;
+        String taskDescription;
+        Object prompt;
+        List<ToolSummary> tools;
     }
 
     PrimaryTask primaryTask;

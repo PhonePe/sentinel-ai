@@ -1,4 +1,4 @@
-package com.phonepe.sentinelai.core.agentmemory;
+package com.phonepe.sentinelai.agentmemory;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -26,16 +26,6 @@ public interface AgentMemoryStore {
         return findMemories(userId, MemoryScope.ENTITY, EnumSet.of(MemoryType.SEMANTIC), query, topics, count);
     }
 
-    default Optional<AgentMemory> saveMemoryAboutUser(String userId, String content, List<String> topics) {
-        return createOrUpdate(AgentMemory.builder()
-                                      .memoryType(MemoryType.SEMANTIC)
-                                      .scope(MemoryScope.ENTITY)
-                                      .scopeId(userId)
-                                      .content(content)
-                                      .topics(topics)
-                                      .build());
-    }
-
     default Optional<AgentMemory> sessionSummary(String sessionId) {
         return findMemories(sessionId,
                             MemoryScope.SESSION,
@@ -47,15 +37,6 @@ public interface AgentMemoryStore {
                 .findAny();
     }
 
-    default Optional<AgentMemory> updateSessionSummary(String sessionId, String content, List<String> topics) {
-        return createOrUpdate(AgentMemory.builder()
-                                      .memoryType(MemoryType.EPISODIC)
-                                      .scope(MemoryScope.SESSION)
-                                      .scopeId(sessionId)
-                                      .content(content)
-                                      .topics(topics)
-                                      .build());
-    }
 
     Optional<AgentMemory> createOrUpdate(AgentMemory agentMemory);
 

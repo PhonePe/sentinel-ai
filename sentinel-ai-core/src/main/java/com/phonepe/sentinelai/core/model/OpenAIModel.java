@@ -47,7 +47,7 @@ public class OpenAIModel implements Model {
     ObjectMapper mapper;
 
     @Override
-    public <R, T, D> CompletableFuture<AgentOutput<T>> exchange_messages(
+    public <R, D, T, A extends Agent<R, D, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
             ModelSettings modelSettings,
             AgentRunContext<D, R> context,
             Class<T> responseType,
@@ -55,7 +55,8 @@ public class OpenAIModel implements Model {
             List<AgentMessage> oldMessages,
             ExecutorService executorService,
             Agent.ToolRunner toolRunner,
-            List<AgentExtension> extensions) {
+            List<AgentExtension> extensions,
+            A agent) {
         final var openAiMessages = new ArrayList<>(convertToOpenAIMessages(oldMessages));
         final var allMessages = new ArrayList<>(oldMessages);
         final var newMessages = new ArrayList<AgentMessage>();
@@ -127,7 +128,7 @@ public class OpenAIModel implements Model {
                             allMessages.add(newMessage);
                             newMessages.add(newMessage);
                             try {
-                                yield AgentOutput.success(convertToResponse(responseType, content, extensions),
+                                yield AgentOutput.success(convertToResponse(responseType, content, extensions, agent),
                                                           newMessages,
                                                           allMessages,
                                                           stats);
@@ -368,44 +369,43 @@ public class OpenAIModel implements Model {
 
                     @Override
                     public ChatCompletionMessageParam visit(ToolCall toolCall) {
-                        return ChatCompletionMessageParam.ofAssistant(ChatCompletionAssistantMessageParam.builder()
-                                                                              .addToolCall(
-                                                                                      ChatCompletionMessageToolCall.builder()
-                                                                                              .id(toolCall.getToolCallId())
-                                                                                              .type(JsonValue.from(
-                                                                                                      "function"))
-                                                                                              .function(
-                                                                                                      ChatCompletionMessageToolCall.Function.builder()
-                                                                                                              .name(toolCall.getToolName())
-                                                                                                              .arguments(
-                                                                                                                      toolCall.getArguments())
-                                                                                                              .build())
-                                                                                              .build())
-                                                                              .build());
+                        return ChatCompletionMessageParam.ofAssistant(
+                                ChatCompletionAssistantMessageParam.builder()
+                                        .addToolCall(ChatCompletionMessageToolCall.builder()
+                                                             .id(toolCall.getToolCallId())
+                                                             .type(JsonValue.from("function"))
+                                                             .function(ChatCompletionMessageToolCall.Function.builder()
+                                                                               .name(toolCall.getToolName())
+                                                                               .arguments(toolCall.getArguments())
+                                                                               .build())
+                                                             .build())
+                                        .build());
                     }
                 });
             }
         });
     }
 
-    private <T> T convertToResponse(
+    private <R, D, T, A extends Agent<R, D, T, A>>  T convertToResponse(
             Class<T> responseType, String content,
-            List<AgentExtension> extensions) throws JsonProcessingException {
+            List<AgentExtension> extensions, A agent) throws JsonProcessingException {
 //        if (responseType.equals(String.class)) {
 //            return responseType.cast(content);
 //        }
         final var outputNode = mapper.readTree(content);
-        extensions.stream()
-                .filter(extension -> !Strings.isNullOrEmpty(extension.outputKey()))
-                .forEach(extension -> {
-                    if (!outputNode.has(extension.outputKey())) {
-                        log.error("Model output does not have required key: {}", extension.outputKey());
-                        return; //TODO THROW
-                    }
-                    else {
-                        extension.consume(outputNode.get(extension.outputKey()));
-                    }
-                });
+        extensions.forEach(extension -> {
+            final var outputDef = extension.outputSchema().orElse(null);
+            if (null == outputDef) {
+                log.debug("No output required for extension: {}", extension.name());
+                return;
+            }
+            final var dataKey = outputDef.getKey();
+            if (!outputNode.has(dataKey)) {
+                log.error("Model output does not have required key '{}' for extension: {}", dataKey, extension.name());
+                return;
+            }
+            extension.consume(outputNode.get(dataKey), agent);
+        });
         return mapper.treeToValue(outputNode.get(OUTPUT_VARIABLE_NAME), responseType);
     }
 
@@ -426,8 +426,7 @@ public class OpenAIModel implements Model {
                                                       .putAdditionalProperty("properties", JsonValue.from(params))
                                                       .putAdditionalProperty("additionalProperties",
                                                                              JsonValue.from(false))
-                                                      .putAdditionalProperty("required",
-                                                                             JsonValue.from(params.keySet()))
+                                                      .putAdditionalProperty("required", JsonValue.from(params.keySet()))
                                                       .build())
                                   .strict(true)
                                   .build())
@@ -448,15 +447,19 @@ public class OpenAIModel implements Model {
         fields.add(OUTPUT_VARIABLE_NAME);
         propertiesNode.set(OUTPUT_VARIABLE_NAME, schema(clazz));
         extensions.forEach(extension -> {
-            fields.add(extension.outputKey());
-            propertiesNode.set(extension.outputKey(), extension.outputSchema());
+            final var outputDefinition = extension.outputSchema().orElse(null);
+            if (null == outputDefinition) {
+                log.debug("No output expected by extension: {}", extension.name());
+                return;
+            }
+            fields.add(outputDefinition.getKey());
+            propertiesNode.set(outputDefinition.getKey(), outputDefinition.getSchema());
         });
         return ResponseFormatJsonSchema.builder()
                 .jsonSchema(ResponseFormatJsonSchema.JsonSchema.builder()
                                     .name("model_output")
                                     .strict(true)
                                     .putAdditionalProperty("schema", JsonValue.fromJsonNode(schema))
-//                                    .putAdditionalProperty("schema", JsonValue.fromJsonNode(JsonUtils.schema(clazz)))
                                     .build())
                 .build();
     }

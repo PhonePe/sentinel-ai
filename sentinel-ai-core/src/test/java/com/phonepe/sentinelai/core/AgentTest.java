@@ -9,7 +9,6 @@ import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
-import com.phonepe.sentinelai.core.agentmemory.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OpenAIModel;
 import com.phonepe.sentinelai.core.tools.CallableTool;
@@ -26,9 +25,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.UnaryOperator;
 
 /**
  * Tests out basic functionality for the agent framework
@@ -50,10 +46,11 @@ class AgentTest {
     public record Salutation(List<String> salutation) {
     }
 
-    public static class SimpleAgent extends Agent<UserInput, Void, OutputObject, SimpleAgent> {
+//    public static class SimpleAgent extends Agent<UserInput, Void, OutputObject, SimpleAgent> {
+    public static class SimpleAgent extends Agent<UserInput, Void, String, SimpleAgent> {
         @Builder
         public SimpleAgent(AgentSetup setup, Map<String, CallableTool> tools) {
-            super(OutputObject.class, "greet the user", setup, tools);
+            super(String.class, "greet the user", setup, tools);
         }
 
         @Tool("Get name of user")
@@ -74,34 +71,6 @@ class AgentTest {
         }
     }
 
-    class InMemoryMemStore implements AgentMemoryStore {
-
-        @Override
-        public List<AgentMemory> findMemories(
-                String scopeId,
-                MemoryScope scope,
-                Set<MemoryType> memoryTypes,
-                String query,
-                List<String> topics,
-                int count) {
-            return List.of();
-        }
-
-        @Override
-        public Optional<AgentMemory> createOrUpdate(AgentMemory agentMemory) {
-            log.info("recevied memory: {}", agentMemory);
-            return Optional.empty();
-        }
-
-        @Override
-        public Optional<AgentMemory> updateMemory(
-                MemoryScope scope,
-                String scopeId,
-                String name,
-                UnaryOperator<AgentMemory> updater) {
-            return Optional.empty();
-        }
-    }
     @Test
     @SneakyThrows
     void test() {
@@ -124,15 +93,6 @@ class AgentTest {
                                .mapper(objectMapper)
                                .model(model)
                                .modelSettings(ModelSettings.builder().temperature(0.1f).build())
-                               .extensions(List.of(MemoryExtension.builder()
-                                                           .objectMapper(objectMapper)
-                                                           .options(AgentMemoryOptions.builder()
-                                                                            .memoryStore(new InMemoryMemStore())
-                                                                            .numMessagesForSummarization(3)
-                                                                            .saveMemoryAfterSessionEnd(true)
-                                                                            .updateSessionSummary(true)
-                                                                            .build())
-                                                           .build()))
                                .build())
                 .build()
                 .registerToolbox(toolbox);
@@ -148,7 +108,7 @@ class AgentTest {
                                            null,
                                            null,
                                            List.of());
-        log.info("Agent response: {}", response.getData().message());
+        log.info("Agent response: {}", response.getData());
 
 
         final var response2 = agent.execute(

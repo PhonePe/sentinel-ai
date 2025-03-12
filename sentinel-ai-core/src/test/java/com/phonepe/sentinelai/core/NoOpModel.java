@@ -18,15 +18,19 @@ import java.util.concurrent.ExecutorService;
  * A model that does absolutely nothing.
  */
 public class NoOpModel implements Model {
+
+
     @Override
-    public <R, T, D> CompletableFuture<AgentOutput<T>> exchange_messages(
+    public <R, D, T, A extends Agent<R, D, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
             ModelSettings modelSettings,
             AgentRunContext<D, R> context,
             Class<T> responseType,
             Map<String, CallableTool> tools,
             List<AgentMessage> oldMessages,
             ExecutorService executorService,
-            Agent.ToolRunner toolRunner, List<AgentExtension> extensions) {
+            Agent.ToolRunner toolRunner,
+            List<AgentExtension> extensions,
+            A agent) {
         throw new UnsupportedOperationException("NoOpModel does not support completions");
     }
 }

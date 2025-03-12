@@ -178,7 +178,7 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                                                       new ModelUsageStats());
         final var messages = new ArrayList<>(Objects.requireNonNullElse(oldMessages, List.of()));
 
-        final var systemPrompt =
+        final var finalSystemPrompt =
                 """
                             Your primary task is to answer the user query as provided in user prompt in the `user_input`
                              tag according to the prompt below:
@@ -189,6 +189,7 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                             You can use the following tools to achieve your task:
                             %s
                         
+                            User available facts and memories about the user and the session to provide a better response.
                         # ADDITIONAL TASKS:
                         
                             %s
@@ -204,13 +205,14 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                                       Joiner.on("\n")
                                               .join(setup.getExtensions()
                                                             .stream()
-                                                            .flatMap(agentExtension -> agentExtension.systemPrompts(
+                                                            .flatMap(agentExtension -> agentExtension.additionalSystemPrompts(
                                                                             request,
-                                                                            requestMetadata)
+                                                                            requestMetadata,
+                                                                            (A)this)
                                                                     .stream())
                                                             .toList()));
-        log.debug("Final system prompt: {}", systemPrompt);
-        messages.add(new SystemPrompt(systemPrompt, false, null)); //TODO::DYNAMIC, MEMORY ETC
+        log.info("Final system prompt: {}", finalSystemPrompt);
+        messages.add(new SystemPrompt(finalSystemPrompt, false, null));
         messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
         return resolvedModel.exchange_messages(modelSettings,
                                                context,
@@ -219,7 +221,8 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                                                messages,
                                                setup.getExecutorService(),
                                                this::runTool,
-                                               setup.getExtensions());
+                                               setup.getExtensions(),
+                                               (A)this);
     }
 
     private <R, D> ToolCallResponse runTool(
@@ -237,6 +240,7 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                 args.addAll(params(tool, toolCall.getArguments()));
                 final var callable = tool.getCallable();
                 callable.setAccessible(true);
+                log.info("Calling tool: {} Tool call ID: {}", toolCall.getToolName(), toolCall.getToolCallId());
                 var resultObject = callable.invoke(tool.getInstance(), args.toArray());
                 return new ToolCallResponse(toolCall.getToolCallId(),
                                             toolCall.getToolName(),

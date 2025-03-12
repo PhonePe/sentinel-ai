@@ -23,12 +23,14 @@ public interface Model {
 //            String systemPrompt,
 //            Map<String, CallableTool> tools);
 
-    <R, T, D> CompletableFuture<AgentOutput<T>> exchange_messages(
+    <R, D, T, A extends Agent<R, D, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
             ModelSettings modelSettings,
             AgentRunContext<D, R> context,
             Class<T> responseType,
             Map<String, CallableTool> tools,
             List<AgentMessage> oldMessages,
             ExecutorService executorService,
-            Agent.ToolRunner toolRunner, List<AgentExtension> extensions);
+            Agent.ToolRunner toolRunner,
+            List<AgentExtension> extensions,
+            A agent);
 }
