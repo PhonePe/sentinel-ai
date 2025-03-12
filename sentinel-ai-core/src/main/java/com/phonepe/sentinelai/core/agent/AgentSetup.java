@@ -5,8 +5,10 @@ import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
+import lombok.Singular;
 import lombok.Value;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,14 +43,18 @@ public class AgentSetup {
      */
     ExecutorService executorService;
 
+    List<AgentExtension> extensions;
+
     public AgentSetup(
             ObjectMapper mapper,
             Model model,
             ModelSettings modelSettings,
-            ExecutorService executorService) {
+            ExecutorService executorService,
+            @Singular List<AgentExtension> extensions) {
         this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
         this.model = model;
         this.modelSettings = modelSettings;
         this.executorService = Objects.requireNonNullElseGet(executorService, Executors::newCachedThreadPool);
+        this.extensions = Objects.requireNonNullElseGet(extensions, List::of);
     }
 }

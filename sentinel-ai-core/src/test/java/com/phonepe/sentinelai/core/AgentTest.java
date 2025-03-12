@@ -6,8 +6,10 @@ import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.azure.credential.AzureApiKeyCredential;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agentmemory.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OpenAIModel;
 import com.phonepe.sentinelai.core.tools.CallableTool;
@@ -24,6 +26,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.UnaryOperator;
 
 /**
  * Tests out basic functionality for the agent framework
@@ -62,9 +67,41 @@ class AgentTest {
                 @NonNull SalutationParams params) {
             return new Salutation(List.of("Mr", "Dr", "Prof"));
         }
+
+        @Override
+        public String name() {
+            return "simple-agent";
+        }
     }
 
+    class InMemoryMemStore implements AgentMemoryStore {
 
+        @Override
+        public List<AgentMemory> findMemories(
+                String scopeId,
+                MemoryScope scope,
+                Set<MemoryType> memoryTypes,
+                String query,
+                List<String> topics,
+                int count) {
+            return List.of();
+        }
+
+        @Override
+        public Optional<AgentMemory> createOrUpdate(AgentMemory agentMemory) {
+            log.info("recevied memory: {}", agentMemory);
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<AgentMemory> updateMemory(
+                MemoryScope scope,
+                String scopeId,
+                String name,
+                UnaryOperator<AgentMemory> updater) {
+            return Optional.empty();
+        }
+    }
     @Test
     @SneakyThrows
     void test() {
@@ -87,22 +124,41 @@ class AgentTest {
                                .mapper(objectMapper)
                                .model(model)
                                .modelSettings(ModelSettings.builder().temperature(0.1f).build())
+                               .extensions(List.of(MemoryExtension.builder()
+                                                           .objectMapper(objectMapper)
+                                                           .options(AgentMemoryOptions.builder()
+                                                                            .memoryStore(new InMemoryMemStore())
+                                                                            .numMessagesForSummarization(3)
+                                                                            .saveMemoryAfterSessionEnd(true)
+                                                                            .updateSessionSummary(true)
+                                                                            .build())
+                                                           .build()))
                                .build())
                 .build()
                 .registerToolbox(toolbox);
 
 
         final var modelSettings = ModelSettings.builder().temperature(0.1f).build();
-        final var response = agent.execute(new UserInput("Hi"), null, null, List.of());
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
+        final var response = agent.execute(new UserInput("Hi"),
+                                           requestMetadata,
+                                           null,
+                                           null,
+                                           List.of());
         log.info("Agent response: {}", response.getData().message());
 
 
-        final var response2 = agent.execute(new UserInput("How is the weather at user's location?"),
-                                       model,
-                                       modelSettings,
-                                       response.getAllMessages());
+        final var response2 = agent.execute(
+                new UserInput("How is the weather at user's location?"),
+                requestMetadata,
+                model,
+                modelSettings,
+                response.getAllMessages());
         log.info("Second call: {}", response2.getData());
-        log.info("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
+        log.debug("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(response2.getAllMessages()));
     }
 

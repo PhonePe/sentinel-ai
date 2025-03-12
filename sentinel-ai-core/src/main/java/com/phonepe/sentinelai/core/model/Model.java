@@ -1,6 +1,7 @@
 package com.phonepe.sentinelai.core.model;
 
 import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.tools.CallableTool;
@@ -29,5 +30,5 @@ public interface Model {
             Map<String, CallableTool> tools,
             List<AgentMessage> oldMessages,
             ExecutorService executorService,
-            Agent.ToolRunner toolRunner);
+            Agent.ToolRunner toolRunner, List<AgentExtension> extensions);
 }

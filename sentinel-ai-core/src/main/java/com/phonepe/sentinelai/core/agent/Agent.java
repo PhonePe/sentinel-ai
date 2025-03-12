@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Primitives;
@@ -72,6 +73,8 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
         registerTools(knownTools);
     }
 
+    public abstract String name();
+
     /**
      * Register toolboxes with the agent
      *
@@ -132,31 +135,34 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
 
     /**
      * Execute the agent synchronously.
-     * See {@link Agent#executeAsync(Object, Model, ModelSettings, List)} for parameters.
+     * See {@link Agent#executeAsync(Object, AgentRequestMetadata, Model, ModelSettings, List)} for parameters.
      */
     public final AgentOutput<T> execute(
             R request,
+            AgentRequestMetadata requestMetadata,
             Model model,
             ModelSettings modelSettings,
             List<AgentMessage> oldMessages) {
-        return executeAsync(request, model, modelSettings, oldMessages).join();
+        return executeAsync(request, requestMetadata, model, modelSettings, oldMessages).join();
     }
 
     /**
      * Execute the agent asynchronously. A full reply is returned as a future.
      *
-     * @param request       Request object
-     * @param model         Model to use. If set to null, the model from the setup will be used. If none are supplied
-     *                      an error will be thrown.
-     * @param modelSettings Model settings to use for this run. If set to null, the model settings from the setup
-     *                      will be used. If none are supplied, whatever is the default for the model provider will
-     *                      be used.
-     * @param oldMessages   Old messages. List of old messages to be sent to the LLM for this run. If set to null,
-     *                      messages are generated and consumed by the agent in this session.
+     * @param request         Request object
+     * @param requestMetadata
+     * @param model           Model to use. If set to null, the model from the setup will be used. If none are supplied
+     *                        an error will be thrown.
+     * @param modelSettings   Model settings to use for this run. If set to null, the model settings from the setup
+     *                        will be used. If none are supplied, whatever is the default for the model provider will
+     *                        be used.
+     * @param oldMessages     Old messages. List of old messages to be sent to the LLM for this run. If set to null,
+     *                        messages are generated and consumed by the agent in this session.
      * @return Agent output. Please see {@link AgentOutput} for details.
      */
     public final CompletableFuture<AgentOutput<T>> executeAsync(
             R request,
+            AgentRequestMetadata requestMetadata,
             Model model,
             ModelSettings modelSettings,
             List<AgentMessage> oldMessages) {
@@ -171,6 +177,39 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                                                       request,
                                                       new ModelUsageStats());
         final var messages = new ArrayList<>(Objects.requireNonNullElse(oldMessages, List.of()));
+
+        final var systemPrompt =
+                """
+                            Your primary task is to answer the user query as provided in user prompt in the `user_input`
+                             tag according to the prompt below:
+                        
+                         # PRIMARY TASK:
+                            %s
+                        
+                            You can use the following tools to achieve your task:
+                            %s
+                        
+                        # ADDITIONAL TASKS:
+                        
+                            %s
+                        """.formatted(this.systemPrompt,
+                                      Joiner.on("\n")
+                                              .join(knownTools.values()
+                                                            .stream()
+                                                            .map(tool -> " - `%s`: %s".formatted(tool.getToolDefinition()
+                                                                                                         .getName(),
+                                                                                                 tool.getToolDefinition()
+                                                                                                         .getDescription()))
+                                                            .toList()),
+                                      Joiner.on("\n")
+                                              .join(setup.getExtensions()
+                                                            .stream()
+                                                            .flatMap(agentExtension -> agentExtension.systemPrompts(
+                                                                            request,
+                                                                            requestMetadata)
+                                                                    .stream())
+                                                            .toList()));
+        log.debug("Final system prompt: {}", systemPrompt);
         messages.add(new SystemPrompt(systemPrompt, false, null)); //TODO::DYNAMIC, MEMORY ETC
         messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
         return resolvedModel.exchange_messages(modelSettings,
@@ -179,7 +218,8 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                                                knownTools,
                                                messages,
                                                setup.getExecutorService(),
-                                               this::runTool);
+                                               this::runTool,
+                                               setup.getExtensions());
     }
 
     private <R, D> ToolCallResponse runTool(

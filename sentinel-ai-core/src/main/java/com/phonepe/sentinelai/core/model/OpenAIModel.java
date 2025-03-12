@@ -8,6 +8,7 @@ import com.openai.client.OpenAIClient;
 import com.openai.core.JsonValue;
 import com.openai.models.*;
 import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agentmessages.*;
@@ -20,7 +21,6 @@ import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.tools.CallableTool;
-import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -40,6 +41,7 @@ import static java.util.stream.Collectors.toMap;
 @Value
 @Slf4j
 public class OpenAIModel implements Model {
+    private static final String OUTPUT_VARIABLE_NAME = "output";
     String modelName;
     OpenAIClient client;
     ObjectMapper mapper;
@@ -52,18 +54,13 @@ public class OpenAIModel implements Model {
             Map<String, CallableTool> tools,
             List<AgentMessage> oldMessages,
             ExecutorService executorService,
-            Agent.ToolRunner toolRunner) {
+            Agent.ToolRunner toolRunner,
+            List<AgentExtension> extensions) {
         final var openAiMessages = new ArrayList<>(convertToOpenAIMessages(oldMessages));
         final var allMessages = new ArrayList<>(oldMessages);
         final var newMessages = new ArrayList<AgentMessage>();
         final var stats = new ModelUsageStats();
-        //Setup the system and user prompts for this run
-//        messages.add(ChatCompletionMessageParam.ofSystem(ChatCompletionSystemMessageParam.builder()
-//                                                                 .content(systemPrompt)
-//                                                                 .build()));
-//        messages.add(ChatCompletionMessageParam.ofUser(ChatCompletionUserMessageParam.builder()
-//                                                               .content(toStringContent(request))
-//                                                               .build()));
+
         try {
             log.trace("Messages: " + mapper.writerWithDefaultPrettyPrinter().writeValueAsString(openAiMessages));
         }
@@ -80,18 +77,25 @@ public class OpenAIModel implements Model {
                 applyModelSettings(modelSettings, builder);
                 if (!tools.isEmpty()) {
                     builder.tools(tools.values().stream().map(OpenAIModel::functionCallSpec).toList());
+//                            .toolChoice(ChatCompletionToolChoiceOption.Auto.REQUIRED);
                 }
 
-                if (!responseType.equals(String.class)) {
-                    builder.responseFormat(structuredOutput(responseType));
-                }
-                else {
-                    builder.responseFormat(ResponseFormatText.builder().build());
-                }
+//                if (!responseType.equals(String.class)) {
+                final var jsonSchema = structuredOutputSchema(responseType, extensions);
+//                try {
+//                    System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonSchema));
+//                }
+//                catch (JsonProcessingException e) {
+//                    log.error("Error:", e);
+//                }
+                builder.responseFormat(jsonSchema);
+//                }
+//                else {
+//                    builder.responseFormat(ResponseFormatText.builder().build());
+//                }
 
-                final var completionCall = builder
-                        .build();
-                log.debug("Completion call: {}", completionCall);
+                final var completionCall = builder.build();
+//                log.info("Completion call: {}", completionCall);
                 final var completionResponse = client.chat()
                         .completions()
                         .create(completionCall);
@@ -123,7 +127,7 @@ public class OpenAIModel implements Model {
                             allMessages.add(newMessage);
                             newMessages.add(newMessage);
                             try {
-                                yield AgentOutput.success(convertToResponse(responseType, content),
+                                yield AgentOutput.success(convertToResponse(responseType, content, extensions),
                                                           newMessages,
                                                           allMessages,
                                                           stats);
@@ -134,46 +138,40 @@ public class OpenAIModel implements Model {
                                                         SentinelError.error(ErrorType.JSON_ERROR, e));
                             }
                         }
+                        final var toolCalls =
+                                message.toolCalls().orElse(List.<ChatCompletionMessageToolCall>of());
+                        if (!toolCalls.isEmpty()) {
+                            yield handleTooCalls(context,
+                                                 tools,
+                                                 oldMessages,
+                                                 executorService,
+                                                 toolRunner,
+                                                 toolCalls,
+                                                 openAiMessages,
+                                                 allMessages,
+                                                 newMessages,
+                                                 stats);
+                        }
                         yield AgentOutput.error(oldMessages, stats, SentinelError.error(ErrorType.NO_RESPONSE));
 
                     }
                     case FUNCTION_CALL, TOOL_CALLS -> {
                         final var toolCalls =
                                 message.toolCalls().orElse(List.<ChatCompletionMessageToolCall>of());
-                        final var jobs = toolCalls.stream()
-                                .map(toolCall -> CompletableFuture.supplyAsync(
-                                        () -> {
-                                            final var toolCallMessage = new ToolCall(toolCall.id(),
-                                                                                     toolCall.function().name(),
-                                                                                     toolCall.function().arguments());
-                                            final var toolCallResponse = toolRunner.runTool(context, tools, toolCallMessage);
-                                            return Pair.of(toolCallMessage, toolCallResponse);
-                                        }, executorService))
-                                .toList();
-                        final var failedCalls = jobs.stream()
-                                .map(CompletableFuture::join)
-                                .map(pair -> {
-                                    final var toolCallMessage = pair.getFirst();
-                                    final var toolCallResponse = pair.getSecond();
-                                    openAiMessages.add(convertIndividualMessageToOpenIDFormat(toolCallMessage));
-                                    openAiMessages.add(convertIndividualMessageToOpenIDFormat(toolCallResponse));
-                                    allMessages.add(toolCallMessage);
-                                    newMessages.add(toolCallMessage);
-                                    allMessages.add(toolCallResponse);
-                                    newMessages.add(toolCallResponse);
-                                    return toolCallResponse;
-                                })
-                                .filter(Predicates.not(ToolCallResponse::isSuccess))
-                                .toList();
-
-                        if (!failedCalls.isEmpty()) {
-                            //TODO::DETERMINE IF CALLS HAVE FAILED PERMANENTLY
-                            yield AgentOutput.error(oldMessages,
-                                                    stats,
-                                                    SentinelError.error(ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                                                        failedCalls.stream()
-                                                                                .map(ToolCallResponse::getToolName)
-                                                                                .toList()));
+                        if (!toolCalls.isEmpty()) {
+                            final AgentOutput<T> toolCallResponse = handleTooCalls(context,
+                                                                                   tools,
+                                                                                   oldMessages,
+                                                                                   executorService,
+                                                                                   toolRunner,
+                                                                                   toolCalls,
+                                                                                   openAiMessages,
+                                                                                   allMessages,
+                                                                                   newMessages,
+                                                                                   stats);
+                            if (toolCallResponse != null) {
+                                yield toolCallResponse;
+                            }
                         }
                         yield null;
                     }
@@ -190,6 +188,57 @@ public class OpenAIModel implements Model {
             } while (output == null || output.getData() == null);
             return output;
         }, executorService);
+    }
+
+    private static <R, T, D> AgentOutput<T> handleTooCalls(
+            AgentRunContext<D, R> context,
+            Map<String, CallableTool> tools,
+            List<AgentMessage> oldMessages,
+            ExecutorService executorService,
+            Agent.ToolRunner toolRunner,
+            List<ChatCompletionMessageToolCall> toolCalls,
+            ArrayList<ChatCompletionMessageParam> openAiMessages,
+            ArrayList<AgentMessage> allMessages,
+            ArrayList<AgentMessage> newMessages,
+            ModelUsageStats stats) {
+        final var jobs = toolCalls.stream()
+                .map(toolCall -> CompletableFuture.supplyAsync(
+                        () -> {
+                            final var toolCallMessage = new ToolCall(toolCall.id(),
+                                                                     toolCall.function().name(),
+                                                                     toolCall.function().arguments());
+                            final var toolCallResponse = toolRunner.runTool(context,
+                                                                            tools,
+                                                                            toolCallMessage);
+                            return Pair.of(toolCallMessage, toolCallResponse);
+                        }, executorService))
+                .toList();
+        final var failedCalls = jobs.stream()
+                .map(CompletableFuture::join)
+                .map(pair -> {
+                    final var toolCallMessage = pair.getFirst();
+                    final var toolCallResponse = pair.getSecond();
+                    openAiMessages.add(convertIndividualMessageToOpenIDFormat(toolCallMessage));
+                    openAiMessages.add(convertIndividualMessageToOpenIDFormat(toolCallResponse));
+                    allMessages.add(toolCallMessage);
+                    newMessages.add(toolCallMessage);
+                    allMessages.add(toolCallResponse);
+                    newMessages.add(toolCallResponse);
+                    return toolCallResponse;
+                })
+                .filter(Predicates.not(ToolCallResponse::isSuccess))
+                .toList();
+
+        if (!failedCalls.isEmpty()) {
+            //TODO::DETERMINE IF CALLS HAVE FAILED PERMANENTLY
+            return AgentOutput.error(oldMessages,
+                                     stats,
+                                     SentinelError.error(ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                                         failedCalls.stream()
+                                                                 .map(ToolCallResponse::getToolName)
+                                                                 .toList()));
+        }
+        return null;
     }
 
     private static void applyModelSettings(ModelSettings modelSettings, ChatCompletionCreateParams.Builder builder) {
@@ -339,11 +388,25 @@ public class OpenAIModel implements Model {
         });
     }
 
-    private <T> T convertToResponse(Class<T> responseType, String content) throws JsonProcessingException {
-        if (responseType.equals(String.class)) {
-            return responseType.cast(content);
-        }
-        return mapper.readValue(content, responseType);
+    private <T> T convertToResponse(
+            Class<T> responseType, String content,
+            List<AgentExtension> extensions) throws JsonProcessingException {
+//        if (responseType.equals(String.class)) {
+//            return responseType.cast(content);
+//        }
+        final var outputNode = mapper.readTree(content);
+        extensions.stream()
+                .filter(extension -> !Strings.isNullOrEmpty(extension.outputKey()))
+                .forEach(extension -> {
+                    if (!outputNode.has(extension.outputKey())) {
+                        log.error("Model output does not have required key: {}", extension.outputKey());
+                        return; //TODO THROW
+                    }
+                    else {
+                        extension.consume(outputNode.get(extension.outputKey()));
+                    }
+                });
+        return mapper.treeToValue(outputNode.get(OUTPUT_VARIABLE_NAME), responseType);
     }
 
     private static ChatCompletionTool functionCallSpec(final CallableTool tool) {
@@ -352,7 +415,7 @@ public class OpenAIModel implements Model {
                 .values()
                 .stream()
                 .map(param -> Pair.of(param.getName(),
-                                      JsonUtils.schema(param.getType().getRawClass())))
+                                      schema(param.getType().getRawClass())))
                 .collect(toMap(Pair::getFirst, Pair::getSecond));
         return ChatCompletionTool.builder()
                 .function(FunctionDefinition.builder()
@@ -363,7 +426,8 @@ public class OpenAIModel implements Model {
                                                       .putAdditionalProperty("properties", JsonValue.from(params))
                                                       .putAdditionalProperty("additionalProperties",
                                                                              JsonValue.from(false))
-                                                      .putAdditionalProperty("required", JsonValue.from(params.keySet()))
+                                                      .putAdditionalProperty("required",
+                                                                             JsonValue.from(params.keySet()))
                                                       .build())
                                   .strict(true)
                                   .build())
@@ -371,12 +435,28 @@ public class OpenAIModel implements Model {
 
     }
 
-    private static ResponseFormatJsonSchema structuredOutput(final Class<?> clazz) {
+
+    private ResponseFormatJsonSchema structuredOutputSchema(final Class<?> clazz, List<AgentExtension> extensions) {
+        final var schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        schema.put("additionalProperties", false);
+        final var fields = mapper.createArrayNode();
+        schema.set("required", fields);
+        final var propertiesNode = mapper.createObjectNode();
+        schema.set("properties", propertiesNode);
+
+        fields.add(OUTPUT_VARIABLE_NAME);
+        propertiesNode.set(OUTPUT_VARIABLE_NAME, schema(clazz));
+        extensions.forEach(extension -> {
+            fields.add(extension.outputKey());
+            propertiesNode.set(extension.outputKey(), extension.outputSchema());
+        });
         return ResponseFormatJsonSchema.builder()
                 .jsonSchema(ResponseFormatJsonSchema.JsonSchema.builder()
-                                    .name(clazz.getSimpleName())
+                                    .name("model_output")
                                     .strict(true)
-                                    .putAdditionalProperty("schema", JsonValue.fromJsonNode(JsonUtils.schema(clazz)))
+                                    .putAdditionalProperty("schema", JsonValue.fromJsonNode(schema))
+//                                    .putAdditionalProperty("schema", JsonValue.fromJsonNode(JsonUtils.schema(clazz)))
                                     .build())
                 .build();
     }

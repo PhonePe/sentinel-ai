@@ -54,11 +54,13 @@ public class JsonUtils {
 
     public static JsonNode schema(final Class<?> clazz) {
         final var configBuilder = new SchemaGeneratorConfigBuilder(SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON);
-        final var config = configBuilder.with(Option.EXTRA_OPEN_API_FORMAT_VALUES)
+        final var config = configBuilder
+                .without(Option.EXTRA_OPEN_API_FORMAT_VALUES)
                 .without(Option.FLATTENED_ENUMS_FROM_TOSTRING)
                 .without(Option.SCHEMA_VERSION_INDICATOR)
                 .with(Option.FORBIDDEN_ADDITIONAL_PROPERTIES_BY_DEFAULT)
                 .with(Option.STRICT_TYPE_INFO)
+                .with(Option.INLINE_ALL_SCHEMAS)
                 .with(new JacksonTitleModule())
                 .build();
         final var generator = new SchemaGenerator(config);

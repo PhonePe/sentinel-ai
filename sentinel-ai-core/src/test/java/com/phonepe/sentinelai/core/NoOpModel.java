@@ -1,6 +1,7 @@
 package com.phonepe.sentinelai.core;
 
 import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
@@ -25,7 +26,7 @@ public class NoOpModel implements Model {
             Map<String, CallableTool> tools,
             List<AgentMessage> oldMessages,
             ExecutorService executorService,
-            Agent.ToolRunner toolRunner) {
+            Agent.ToolRunner toolRunner, List<AgentExtension> extensions) {
         throw new UnsupportedOperationException("NoOpModel does not support completions");
     }
 }
