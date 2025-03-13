@@ -37,6 +37,4 @@ public class MemoryOutput {
             "to personalize conversations to the session. These are contextual to the user and the session.")
     List<GeneratedMemoryUnit> sessionMemories;
 
-    @JsonPropertyDescription("A summary for the session based on the latest few messages")
-    SessionSummary sessionSummary;
 }

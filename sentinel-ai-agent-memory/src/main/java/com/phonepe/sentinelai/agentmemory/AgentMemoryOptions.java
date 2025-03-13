@@ -9,9 +9,6 @@ import lombok.Value;
 @Value
 @Builder
 public class AgentMemoryOptions {
-    boolean saveMemoryAfterSessionEnd;
-    boolean updateSessionSummary;
-    int numMessagesForSummarization;
-    AgentMemoryStore memoryStore;
+
 
 }

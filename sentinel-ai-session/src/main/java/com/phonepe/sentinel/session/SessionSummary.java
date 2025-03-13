@@ -1,4 +1,4 @@
-package com.phonepe.sentinelai.agentmemory;
+package com.phonepe.sentinel.session;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
@@ -12,6 +12,9 @@ import java.util.List;
 @Value
 @JsonClassDescription("A summary for the session based on the latest few messages")
 public class SessionSummary {
+    @JsonPropertyDescription("Session id for this session")
+    String sessionId;
+
     @JsonPropertyDescription("A short summary of the conversation thus far between the user and the agent")
     String summary;
 

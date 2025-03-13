@@ -31,7 +31,7 @@ import java.util.function.UnaryOperator;
  *
  */
 @Slf4j
-class MemoryExtensionTest {
+class AgentMemoryExtensionTest {
     public record OutputObject(String username, String message) {
     }
 
@@ -124,17 +124,12 @@ class MemoryExtensionTest {
                         .build(),
                 objectMapper
         );
-        final var memoryOptions = AgentMemoryOptions.builder()
-                .memoryStore(new InMemoryMemStore())
-                .numMessagesForSummarization(3)
-                .saveMemoryAfterSessionEnd(true)
-                .updateSessionSummary(true)
-                .build();
         final var modelSettings = ModelSettings.builder().temperature(0.1f).build();
         final var requestMetadata = AgentRequestMetadata.builder()
                 .sessionId("s1")
                 .userId("ss")
                 .build();
+        final var memoryStore = new InMemoryMemStore();
         {
 
             final var agent = SimpleAgent.builder()
@@ -142,9 +137,11 @@ class MemoryExtensionTest {
                                    .mapper(objectMapper)
                                    .model(model)
                                    .modelSettings(ModelSettings.builder().temperature(0.1f).build())
-                                   .extensions(List.of(MemoryExtension.builder()
+                                   .extensions(List.of(AgentMemoryExtension.builder()
                                                                .objectMapper(objectMapper)
-                                                               .options(memoryOptions)
+                                                               .memoryStore(memoryStore)
+                                                               .numMessagesForSummarization(3)
+                                                               .saveMemoryAfterSessionEnd(true)
                                                                .build()))
                                    .build())
                     .build()
@@ -164,9 +161,11 @@ class MemoryExtensionTest {
                                    .mapper(objectMapper)
                                    .model(model)
                                    .modelSettings(ModelSettings.builder().temperature(0.1f).build())
-                                   .extensions(List.of(MemoryExtension.builder()
+                                   .extensions(List.of(AgentMemoryExtension.builder()
                                                                .objectMapper(objectMapper)
-                                                               .options(memoryOptions)
+                                                               .memoryStore(memoryStore)
+                                                               .numMessagesForSummarization(3)
+                                                               .saveMemoryAfterSessionEnd(true)
                                                                .build()))
                                    .build())
                     .build()

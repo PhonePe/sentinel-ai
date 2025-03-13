@@ -20,7 +20,6 @@ import java.util.concurrent.Executors;
  * Tools have been kept out of this so that same setup can be used with multiple agents each with their own tools.
  */
 @Value
-@Builder
 public class AgentSetup {
     /**
      * The object mapper to use for serialization/deserialization. If not provided, a default one will be created.
@@ -45,6 +44,7 @@ public class AgentSetup {
 
     List<AgentExtension> extensions;
 
+    @Builder
     public AgentSetup(
             ObjectMapper mapper,
             Model model,

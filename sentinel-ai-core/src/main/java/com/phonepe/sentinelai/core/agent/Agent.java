@@ -178,7 +178,7 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                                                       new ModelUsageStats());
         final var messages = new ArrayList<>(Objects.requireNonNullElse(oldMessages, List.of()));
 
-        final var finalSystemPrompt =
+        var finalSystemPrompt =
                 """
                             Your primary task is to answer the user query as provided in user prompt in the `user_input`
                              tag according to the prompt below:
@@ -211,6 +211,15 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                                                                             (A)this)
                                                                     .stream())
                                                             .toList()));
+        if (null != requestMetadata) {
+            finalSystemPrompt += "### SOME MORE IMPORTANT INFORMATION ABOUT THIS REQUEST:\n";
+            if(!Strings.isNullOrEmpty(requestMetadata.getUserId())) {
+                finalSystemPrompt += " - User ID: " + requestMetadata.getUserId() + "\n";
+            }
+            if(!Strings.isNullOrEmpty(requestMetadata.getSessionId())) {
+                finalSystemPrompt += " - Session ID: " + requestMetadata.getSessionId() + "\n";
+            }
+        }
         log.info("Final system prompt: {}", finalSystemPrompt);
         messages.add(new SystemPrompt(finalSystemPrompt, false, null));
         messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));

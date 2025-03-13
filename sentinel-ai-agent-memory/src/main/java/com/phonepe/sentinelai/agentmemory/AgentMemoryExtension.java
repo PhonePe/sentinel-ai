@@ -2,13 +2,14 @@ package com.phonepe.sentinelai.agentmemory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
+import lombok.NonNull;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -22,16 +23,25 @@ import java.util.Optional;
  * If output has memory store it. No tools are needed.
  */
 @Slf4j
+@Value
 @Builder
-public class MemoryExtension implements AgentExtension {
+public class AgentMemoryExtension implements AgentExtension {
     private static final String OUTPUT_KEY = "memoryOutput";
 
-    private final AgentMemoryOptions options;
-    private final ObjectMapper objectMapper;
+    boolean saveMemoryAfterSessionEnd;
+    int numMessagesForSummarization;
+    AgentMemoryStore memoryStore;
+    ObjectMapper objectMapper;
 
-    public MemoryExtension(AgentMemoryOptions options, ObjectMapper objectMapper) {
-        this.options = options;
-        this.objectMapper = objectMapper;
+    public AgentMemoryExtension(
+            boolean saveMemoryAfterSessionEnd,
+            int numMessagesForSummarization,
+            @NonNull AgentMemoryStore memoryStore,
+            ObjectMapper objectMapper) {
+        this.saveMemoryAfterSessionEnd = saveMemoryAfterSessionEnd;
+        this.numMessagesForSummarization = numMessagesForSummarization;
+        this.memoryStore = memoryStore;
+        this.objectMapper = Objects.requireNonNullElseGet(objectMapper, JsonUtils::createMapper);
     }
 
 
@@ -45,54 +55,51 @@ public class MemoryExtension implements AgentExtension {
             R request,
             AgentRequestMetadata metadata,
             A agent) {
-        if (options == null || !options.isSaveMemoryAfterSessionEnd()) {
-            log.info("Memory is not enabled");
-            return List.of();
-        }
         final var prompts = new ArrayList<String>();
         //TODO::IF ID IS EXPOSED IN MEMORY, WILL WE BE ABLE TO UPDATE THEM?
-        prompts.add("""
-                    ## MEMORY EXTRACTION
-                    Please extract different memories from messages and populate the field `memoryOutput` with the extracted memories
-                    
-                    Use the following rules for memory extraction:
-                    - SEMANTIC: Extract fact about the session or user or any other subject
-                    - EPISODIC: Extract a specific event or episode from the conversation
-                    - PROCEDURAL: Extract a procedure as a list of steps or a sequence of actions that you can use later
-                    
-                    IMPORTANT INSTRUCTION FOR MEMORY EXTRACTION:
-                    - Do not include non-reusable information as memories.
-                    - Extract as many useful memories as possible
-                    """);
-
-        if (options.isUpdateSessionSummary()) {
+        if(saveMemoryAfterSessionEnd) {
+            //Add extract prompt only if extraction is needed
             prompts.add("""
-                        ## UPDATE SESSION SUMMARY
-                         Generate session summary and a list of topics being discussed in the session based on the last few messages.
-                        """);
+                            ## MEMORY EXTRACTION
+                            Please extract different memories from messages and populate the field `memoryOutput` with the extracted memories
+                            
+                            Use the following rules for memory extraction:
+                            - SEMANTIC: Extract fact about the session or user or any other subject
+                            - EPISODIC: Extract a specific event or episode from the conversation
+                            - PROCEDURAL: Extract a procedure as a list of steps or a sequence of actions that you can use later
+                            
+                            IMPORTANT INSTRUCTION FOR MEMORY EXTRACTION:
+                            - Do not include non-reusable information as memories.
+                            - Extract as many useful memories as possible
+                            """);
+
         }
-        if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
-            prompts.add("#### FACTS ABOUT THE CURRENT CONVERSATION SESSION:");
-            prompts.add(" - Current session ID is: " + metadata.getSessionId());
-            options.getMemoryStore().sessionSummary(metadata.getSessionId())
-                    .ifPresent(sessionMemory -> {
-                        prompts.add(" - Summary of discussions in current session: " + sessionMemory.getContent());
-                        prompts.add(" - Topics being discussed in session: "
-                                            + Joiner.on(",").join(sessionMemory.getTopics()));
-                    });
-        }
+
+        //Add relevant existing memories to the prompt
         if (!Strings.isNullOrEmpty(metadata.getUserId())) {
-            prompts.add("### FACTS ABOUT THE USER");
-            prompts.add(" - User's user ID is: " + metadata.getUserId());
-            final var memoriesAboutUser = options.getMemoryStore()
+            final var memoriesAboutUser = memoryStore
                     .findMemoriesAboutUser(metadata.getUserId(), null, null, 5);
             if (!memoriesAboutUser.isEmpty()) {
+                prompts.add("### FACTS ABOUT THE USER");
                 prompts.add("Here are some memories about the user:");
                 memoriesAboutUser.forEach(memory -> prompts.add(" - Memory: [%s] : %s"
                                                                         .formatted(memory.getName(),
                                                                                    memory.getContent())));
             }
         }
+
+        if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
+            final var memoriesAboutUser = memoryStore
+                    .findMemories(metadata.getSessionId(), MemoryScope.ENTITY, null, "", List.of(), 5);
+            if (!memoriesAboutUser.isEmpty()) {
+                prompts.add("Here are some memories about the current session:");
+                memoriesAboutUser.forEach(memory -> prompts.add(" - Memory: [%s] : %s"
+                                                                        .formatted(memory.getName(),
+                                                                                   memory.getContent())));
+            }
+        }
+
+    prompts.add("IMPORTANT INSTRUCTION: USE MEMORY ABOUT USER AND SESSION WHEREVER APPLICABLE");
 
         return prompts;
     }
@@ -112,7 +119,6 @@ public class MemoryExtension implements AgentExtension {
             saveMemories(memoryOutput.getGlobalMemory(), MemoryScope.AGENT, agent.name(), agent);
             saveMemories(memoryOutput.getSessionMemories(), MemoryScope.SESSION, memoryOutput.getSessionId(), agent);
             saveMemories(memoryOutput.getUserMemories(), MemoryScope.ENTITY, memoryOutput.getUserId(), agent);
-            log.info("Session summary: {}", memoryOutput.getSessionSummary());
         }
         catch (Exception e) {
             log.error("Error converting json node to memory output. Error: %s Json: %s".formatted(e.getMessage(),
@@ -127,7 +133,7 @@ public class MemoryExtension implements AgentExtension {
             String scopeId,
             A agent) {
         Objects.requireNonNullElseGet(memories, List::<GeneratedMemoryUnit>of)
-                .forEach(memoryUnit -> options.getMemoryStore().createOrUpdate(
+                .forEach(memoryUnit -> memoryStore.createOrUpdate(
                         AgentMemory.builder()
                                 .scope(scope)
                                 .scopeId(scopeId)
