@@ -104,11 +104,15 @@ class AgentSessionExtensionTest {
                 objectMapper
         );
 
+
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
                                .mapper(objectMapper)
                                .model(model)
-                               .modelSettings(ModelSettings.builder().temperature(0.1f).build())
+                               .modelSettings(ModelSettings.builder()
+                                                      .temperature(0.1f)
+                                                      .seed(1)
+                                                      .build())
                                .extension(AgentSessionExtension.builder()
                                                   .sessionStore(new InMemorySessionStore())
                                                   .updateSummaryAfterSession(true)

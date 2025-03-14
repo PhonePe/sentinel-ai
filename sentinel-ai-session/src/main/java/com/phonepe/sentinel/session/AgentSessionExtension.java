@@ -3,11 +3,11 @@ package com.phonepe.sentinel.session;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
+import com.phonepe.sentinelai.core.agent.SystemPromptSchema;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
 import lombok.NonNull;
@@ -15,7 +15,6 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -31,9 +30,10 @@ public class AgentSessionExtension implements AgentExtension {
     SessionStore sessionStore;
     boolean updateSummaryAfterSession;
 
-    public AgentSessionExtension(ObjectMapper mapper,
-                                 @NonNull SessionStore sessionStore,
-                                 boolean updateSummaryAfterSession) {
+    public AgentSessionExtension(
+            ObjectMapper mapper,
+            @NonNull SessionStore sessionStore,
+            boolean updateSummaryAfterSession) {
         this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
         this.sessionStore = sessionStore;
         this.updateSummaryAfterSession = updateSummaryAfterSession;
@@ -45,33 +45,43 @@ public class AgentSessionExtension implements AgentExtension {
     }
 
     @Override
-    public <R, D, T, A extends Agent<R, D, T, A>> List<String> additionalSystemPrompts(
+    public <R, D, T, A extends Agent<R, D, T, A>> ExtensionPromptSchema additionalSystemPrompts(
             R request,
             AgentRequestMetadata metadata,
             A agent) {
-        final var prompts = new ArrayList<String>();
-        if(updateSummaryAfterSession) {
-            prompts.add("""
-                        ## UPDATE SESSION SUMMARY
-                         Generate session summary and a list of topics being discussed in the session based on the last few messages.
-                        """);
+        final var prompts = new ArrayList<SystemPromptSchema.SecondaryTask>();
+        if (updateSummaryAfterSession) {
+            final var prompt = new SystemPromptSchema.SecondaryTask()
+                    .setObjective("UPDATE SESSION SUMMARY")
+                    .setOutputField(OUTPUT_KEY)
+                    .setInstructions(
+                            "Generate session summary and a list of topics being discussed in the session based on " +
+                                    "the last few messages.");
+            final var tools = this.tools();
+            if(!tools.isEmpty()) {
+                prompt.setTools(tools.values()
+                                        .stream()
+                                        .map(tool -> new SystemPromptSchema.ToolSummary()
+                                                .setName(tool.getToolDefinition().getName())
+                                                .setDescription(tool.getToolDefinition().getDescription()))
+                                        .toList());
+
+            }
+            prompts.add(prompt);
         }
 
+        final var hints = new ArrayList<>();
         if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
-            prompts.add("### SUMMARY OF THE CURRENT SESSION:");
+            hints.add("USE SESSION INFORMATION TO CONTEXTUALIZE RESPONSES");
             sessionStore.session(metadata.getSessionId())
-                    .ifPresent(session -> {
-                        prompts.add(" - Summary of discussions in current session: " + session.getSummary());
-                        prompts.add(" - Topics being discussed in session: "
-                                            + Joiner.on(",").join(session.getTopics()));
-                    });
+                    .ifPresent(hints::add);
         }
-        return prompts;
+        return new ExtensionPromptSchema(prompts, hints);
     }
 
     @Override
     public Optional<AgentExtensionOutputDefinition> outputSchema() {
-        if(updateSummaryAfterSession) {
+        if (updateSummaryAfterSession) {
             return Optional.of(new AgentExtensionOutputDefinition(
                     OUTPUT_KEY,
                     "Schema summary for this session",
@@ -82,7 +92,7 @@ public class AgentSessionExtension implements AgentExtension {
 
     @Override
     public <R, D, T, A extends Agent<R, D, T, A>> void consume(JsonNode output, A agent) {
-        if(!updateSummaryAfterSession) {
+        if (!updateSummaryAfterSession) {
             return;
         }
         try {

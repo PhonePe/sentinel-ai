@@ -1,37 +1,49 @@
 package com.phonepe.sentinelai.core.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import lombok.SneakyThrows;
-import lombok.Value;
 
 import java.util.List;
 
 /**
  * Schema for system prompts.
  */
-@Value
+@Data
 public class SystemPromptSchema {
-    @Value
+    @Data
     public static class ToolSummary {
-        String name;
-        String description;
+        private String name;
+        private String description;
     }
 
-    @Value
+    @Data
     public static class PrimaryTask {
-        Object prompt;
-        List<ToolSummary> tools;
+        private Object prompt;
+        private List<ToolSummary> tools;
     }
 
-    @Value
+    @Data
     public static class SecondaryTask {
-        String taskDescription;
-        Object prompt;
-        List<ToolSummary> tools;
+        private String objective;
+        private String outputField;
+        private Object instructions;
+        private Object additionalInstructions;
+        private List<ToolSummary> tools;
     }
 
-    PrimaryTask primaryTask;
-    List<SecondaryTask> secondaryTasks; //Come from extensions
+    @Data
+    public static class AdditionalData {
+        private String sessionId;
+        private String userId;
+    }
+
+
+    private String coreInstructions;
+    private PrimaryTask primaryTask;
+    private List<SecondaryTask> secondaryTasks; //Come from extensions
+    private AdditionalData additionalData;
+    private List<Object> hints;
 
     @SneakyThrows
     public static String convert(SystemPromptSchema prompt, ObjectMapper xmlMapper) {

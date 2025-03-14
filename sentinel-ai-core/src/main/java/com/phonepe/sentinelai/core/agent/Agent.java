@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Primitives;
@@ -177,21 +176,40 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                                                       request,
                                                       new ModelUsageStats());
         final var messages = new ArrayList<>(Objects.requireNonNullElse(oldMessages, List.of()));
-
-        var finalSystemPrompt =
+        final var prompt = new SystemPromptSchema()
+                .setCoreInstructions("Your main job is to answer the user query as provided in user prompt in the `user_input` tag. ")
+                .setPrimaryTask(new SystemPromptSchema.PrimaryTask()
+                                      .setPrompt(systemPrompt)
+                                      .setTools(this.knownTools.values()
+                                                        .stream()
+                                                        .map(tool -> new SystemPromptSchema.ToolSummary()
+                                                                .setName(tool.getToolDefinition().getName())
+                                                                .setDescription(tool.getToolDefinition().getDescription()))
+                                                        .toList()))
+                .setSecondaryTasks(this.setup.getExtensions()
+                                           .stream()
+                                           .map(extension -> new SystemPromptSchema.SecondaryTask()
+                                                   .setInstructions(extension.additionalSystemPrompts(request, requestMetadata, (A)this)))
+                                           .toList());
+        if(null != requestMetadata) {
+            prompt.setAdditionalData(new SystemPromptSchema.AdditionalData()
+                                              .setSessionId(requestMetadata.getSessionId())
+                                              .setUserId(requestMetadata.getUserId()));
+        }
+/*        var finalSystemPrompt =
                 """
                             Your primary task is to answer the user query as provided in user prompt in the `user_input`
                              tag according to the prompt below:
-                        
+
                          # PRIMARY TASK:
                             %s
-                        
+
                             You can use the following tools to achieve your task:
                             %s
-                        
+
                             User available facts and memories about the user and the session to provide a better response.
                         # ADDITIONAL TASKS:
-                        
+
                             %s
                         """.formatted(this.systemPrompt,
                                       Joiner.on("\n")
@@ -219,6 +237,15 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
             if(!Strings.isNullOrEmpty(requestMetadata.getSessionId())) {
                 finalSystemPrompt += " - Session ID: " + requestMetadata.getSessionId() + "\n";
             }
+        }*/
+
+        final String finalSystemPrompt;
+        try {
+            finalSystemPrompt = xmlMapper.writerWithDefaultPrettyPrinter()
+                            .writeValueAsString(prompt);
+        }
+        catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
         log.info("Final system prompt: {}", finalSystemPrompt);
         messages.add(new SystemPrompt(finalSystemPrompt, false, null));

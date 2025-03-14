@@ -13,13 +13,21 @@ import java.util.Optional;
 public interface AgentExtension extends ToolBox {
 
     @Value
+    class ExtensionPromptSchema {
+        List<SystemPromptSchema.SecondaryTask> tasks;
+        List<Object> hints;
+    }
+
+    @Value
     class AgentExtensionOutputDefinition {
         String key;
         String description;
         JsonNode schema;
     }
+
+
     String name();
-    <R, D, T, A extends Agent<R, D, T, A>> List<String> additionalSystemPrompts(R request, AgentRequestMetadata metadata, A agent);
+    <R, D, T, A extends Agent<R, D, T, A>> ExtensionPromptSchema additionalSystemPrompts(R request, AgentRequestMetadata metadata, A agent);
     Optional<AgentExtensionOutputDefinition> outputSchema();
     <R, D, T, A extends Agent<R, D, T, A>> void consume(final JsonNode output, A agent);
 }
