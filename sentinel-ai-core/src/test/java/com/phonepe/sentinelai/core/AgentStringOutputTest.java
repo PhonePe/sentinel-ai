@@ -1,17 +1,19 @@
-package com.phonepe.sentinel.session;
+package com.phonepe.sentinelai.core;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.azure.credential.AzureApiKeyCredential;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OpenAIModel;
 import com.phonepe.sentinelai.core.tools.CallableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
-import com.phonepe.sentinelai.core.utils.EnvLoader;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
 import lombok.NonNull;
@@ -22,14 +24,16 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- *
+ * Tests out basic functionality for the agent framework
  */
 @Slf4j
-class AgentSessionExtensionTest {
+@WireMockTest
+class AgentStringOutputTest {
+
     public record OutputObject(String username, String message) {
     }
 
@@ -44,22 +48,6 @@ class AgentSessionExtensionTest {
     public record Salutation(List<String> salutation) {
     }
 
-    private static final class InMemorySessionStore implements SessionStore {
-        private final Map<String, SessionSummary> sessionData = new ConcurrentHashMap<>();
-
-        @Override
-        public Optional<SessionSummary> session(String sessionId) {
-            return Optional.ofNullable(sessionData.get(sessionId));
-        }
-
-        @Override
-        public Optional<SessionSummary> saveSession(SessionSummary sessionSummary) {
-            sessionData.put(sessionSummary.getSessionId(), sessionSummary);
-            return session(sessionSummary.getSessionId());
-        }
-    }
-
-    //    public static class SimpleAgent extends Agent<UserInput, Void, OutputObject, SimpleAgent> {
     public static class SimpleAgent extends Agent<UserInput, Void, String, SimpleAgent> {
         @Builder
         public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, CallableTool> tools) {
@@ -68,6 +56,12 @@ class AgentSessionExtensionTest {
 
         @Tool("Get name of user")
         public String getName() {
+            try {
+                Thread.sleep(1000);
+            }
+            catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             return "Santanu";
         }
 
@@ -75,6 +69,12 @@ class AgentSessionExtensionTest {
         public Salutation getSalutation(
                 AgentRunContext<Void, SalutationParams> context,
                 @NonNull SalutationParams params) {
+            try {
+                Thread.sleep(1000);
+            }
+            catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             return new Salutation(List.of("Mr", "Dr", "Prof"));
         }
 
@@ -86,21 +86,22 @@ class AgentSessionExtensionTest {
 
     @Test
     @SneakyThrows
-    void test() {
+    void test(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(6, "agent-test", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var model = new OpenAIModel(
                 "gpt-4o",
                 OpenAIOkHttpClient.builder()
-                        .credential(AzureApiKeyCredential.create(EnvLoader.readEnv("AZURE_API_KEY")))
-                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+                        .credential(AzureApiKeyCredential.create("WHATEVER"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
                         .azureServiceVersion(AzureOpenAIServiceVersion.getV2024_10_21())
                         .putAllQueryParams(Map.of("api-version", List.of("2024-10-21")))
                         .jsonMapper(objectMapper)
                         .build(),
                 objectMapper
         );
-
+        final var eventBus = new EventBus();
 
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
@@ -108,14 +109,10 @@ class AgentSessionExtensionTest {
                                .model(model)
                                .modelSettings(ModelSettings.builder()
                                                       .temperature(0.1f)
-                                                      .seed(1)
+                                                      .seed(42)
                                                       .build())
+                               .eventBus(eventBus)
                                .build())
-                .extensions(List.of(AgentSessionExtension.builder()
-                                            .sessionStore(new InMemorySessionStore())
-                                            .updateSummaryAfterSession(true)
-                                            .mapper(objectMapper)
-                                            .build()))
                 .build()
                 .registerToolbox(toolbox);
 
@@ -139,6 +136,7 @@ class AgentSessionExtensionTest {
         log.info("Second call: {}", response2.getData());
         log.debug("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(response2.getAllMessages()));
+        assertTrue(response2.getData().contains("sunny"));
     }
 
     /**
@@ -150,11 +148,23 @@ class AgentSessionExtensionTest {
 
         @Tool("Get weather today")
         public String getWeatherToday(@JsonPropertyDescription("Name of user") final String location) {
+            try {
+                Thread.sleep(1000);
+            }
+            catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             return location.equalsIgnoreCase("bangalore") ? "Sunny" : "unknown";
         }
 
         @Tool("Get  location for user")
         public String getLocationForUser(@JsonPropertyDescription("Name of user") final String name) {
+            try {
+                Thread.sleep(1000);
+            }
+            catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             return name.equalsIgnoreCase("Santanu") ? "Bangalore" : "unknown";
         }
     }

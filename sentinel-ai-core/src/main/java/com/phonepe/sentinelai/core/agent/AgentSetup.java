@@ -1,17 +1,13 @@
 package com.phonepe.sentinelai.core.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
-import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
-import lombok.Singular;
 import lombok.Value;
 
-import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Details to setup an agent.
@@ -20,6 +16,7 @@ import java.util.concurrent.Executors;
  * Tools have been kept out of this so that same setup can be used with multiple agents each with their own tools.
  */
 @Value
+@Builder
 public class AgentSetup {
     /**
      * The object mapper to use for serialization/deserialization. If not provided, a default one will be created.
@@ -42,19 +39,25 @@ public class AgentSetup {
      */
     ExecutorService executorService;
 
-    List<AgentExtension> extensions;
 
-    @Builder
-    public AgentSetup(
-            ObjectMapper mapper,
-            Model model,
-            ModelSettings modelSettings,
-            ExecutorService executorService,
-            @Singular List<AgentExtension> extensions) {
-        this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
-        this.model = model;
-        this.modelSettings = modelSettings;
-        this.executorService = Objects.requireNonNullElseGet(executorService, Executors::newCachedThreadPool);
-        this.extensions = Objects.requireNonNullElseGet(extensions, List::of);
-    }
+    /**
+     * EventBus to be used for the agent. Ifn ot provided a default event bus is created.
+     */
+    EventBus eventBus;
+
+//    @Builder
+//    public AgentSetup(
+//            ObjectMapper mapper,
+//            Model model,
+//            ModelSettings modelSettings,
+//            ExecutorService executorService,
+//            @Singular List<AgentExtension> extensions,
+//            EventBus eventBus) {
+//        this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
+//        this.model = model;
+//        this.modelSettings = modelSettings;
+//        this.executorService = Objects.requireNonNullElseGet(executorService, Executors::newCachedThreadPool);
+//        this.extensions = Objects.requireNonNullElseGet(extensions, List::of);
+//        this.eventBus = eventBus;
+//    }
 }

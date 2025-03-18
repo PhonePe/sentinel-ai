@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Primitives;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
@@ -14,21 +15,27 @@ import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
-import com.phonepe.sentinelai.core.model.Model;
-import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.events.EventBus;
+import com.phonepe.sentinelai.core.events.ToolCallCompletedAgentEvent;
+import com.phonepe.sentinelai.core.events.ToolCalledAgentEvent;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.CallableTool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolReader;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.toMap;
@@ -51,6 +58,7 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
     private final Class<T> outputType;
     private final String systemPrompt;
     private final AgentSetup setup;
+    private final List<AgentExtension> extensions;
     private final Map<String, CallableTool> knownTools = new ConcurrentHashMap<>();
     private final XmlMapper xmlMapper = new XmlMapper();
 
@@ -59,12 +67,14 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
             @NonNull Class<T> outputType,
             @NonNull String systemPrompt,
             @NonNull AgentSetup setup,
+            List<AgentExtension> extensions,
             Map<String, CallableTool> knownTools) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(systemPrompt), "Please provide a valid system prompt");
 
         this.outputType = outputType;
         this.systemPrompt = systemPrompt;
         this.setup = setup;
+        this.extensions = Objects.requireNonNullElseGet(extensions, List::of);
 
         xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
         xmlMapper.configure(ToXmlGenerator.Feature.WRITE_XML_DECLARATION, true);
@@ -134,115 +144,74 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
 
     /**
      * Execute the agent synchronously.
-     * See {@link Agent#executeAsync(Object, AgentRequestMetadata, Model, ModelSettings, List)} for parameters.
+     * See {@link Agent#executeAsync(Object, AgentRequestMetadata, List, AgentSetup)} for parameters.
      */
     public final AgentOutput<T> execute(
             R request,
             AgentRequestMetadata requestMetadata,
-            Model model,
-            ModelSettings modelSettings,
-            List<AgentMessage> oldMessages) {
-        return executeAsync(request, requestMetadata, model, modelSettings, oldMessages).join();
+            List<AgentMessage> oldMessages,
+            AgentSetup agentSetup) {
+        return executeAsync(request, requestMetadata, oldMessages, agentSetup).join();
     }
 
     /**
      * Execute the agent asynchronously. A full reply is returned as a future.
      *
      * @param request         Request object
-     * @param requestMetadata
-     * @param model           Model to use. If set to null, the model from the setup will be used. If none are supplied
-     *                        an error will be thrown.
-     * @param modelSettings   Model settings to use for this run. If set to null, the model settings from the setup
-     *                        will be used. If none are supplied, whatever is the default for the model provider will
-     *                        be used.
+     * @param requestMetadata Metadata for the request
      * @param oldMessages     Old messages. List of old messages to be sent to the LLM for this run. If set to null,
      *                        messages are generated and consumed by the agent in this session.
+     * @param agentSetup      Setup for the agent. This is an override at runtime. If set to null, the setup provided
+     *                        will be used. Whatever fields are provided are merged with the setup provided during
+     *                        agent creation. If same fields are provided in both places, the ones provided at
+     *                        runtime will get precedence.
      * @return Agent output. Please see {@link AgentOutput} for details.
      */
     public final CompletableFuture<AgentOutput<T>> executeAsync(
             R request,
             AgentRequestMetadata requestMetadata,
-            Model model,
-            ModelSettings modelSettings,
-            List<AgentMessage> oldMessages) {
-        final var resolvedModel = Objects.requireNonNull(Objects.requireNonNullElse(model, this.setup.getModel()),
-                                                         "Could not resolve model");
-        final var context = new AgentRunContext<D, R>(UUID.randomUUID().toString(),
-                                                      null,
-                                                      resolvedModel,
-                                                      modelSettings != null ? modelSettings
-                                                                            : this.setup.getModelSettings(),
-                                                      Objects.requireNonNullElse(oldMessages, List.of()),
-                                                      request,
-                                                      new ModelUsageStats());
+            List<AgentMessage> oldMessages,
+            AgentSetup agentSetup) {
+        final var mergedAgentSetup = merge(agentSetup, this.setup);
         final var messages = new ArrayList<>(Objects.requireNonNullElse(oldMessages, List.of()));
+        final var runId = UUID.randomUUID().toString();
+        final var context = new AgentRunContext<D, R>(runId,
+                                                      request,
+                                                      requestMetadata,
+                                                      mergedAgentSetup,
+                                                      null,
+                                                      messages,
+                                                      new ModelUsageStats());
         final var prompt = new SystemPromptSchema()
-                .setCoreInstructions("Your main job is to answer the user query as provided in user prompt in the `user_input` tag. ")
+                .setCoreInstructions(
+                        "Your main job is to answer the user query as provided in user prompt in the `user_input` tag. "
+                                    + (!messages.isEmpty() ? "Use the provided old messages for extra context and information." : ""))
                 .setPrimaryTask(new SystemPromptSchema.PrimaryTask()
-                                      .setPrompt(systemPrompt)
-                                      .setTools(this.knownTools.values()
-                                                        .stream()
-                                                        .map(tool -> new SystemPromptSchema.ToolSummary()
-                                                                .setName(tool.getToolDefinition().getName())
-                                                                .setDescription(tool.getToolDefinition().getDescription()))
-                                                        .toList()))
-                .setSecondaryTasks(this.setup.getExtensions()
+                                        .setPrompt(systemPrompt)
+                                        .setTools(this.knownTools.values()
+                                                          .stream()
+                                                          .map(tool -> new SystemPromptSchema.ToolSummary()
+                                                                  .setName(tool.getToolDefinition().getName())
+                                                                  .setDescription(tool.getToolDefinition()
+                                                                                          .getDescription()))
+                                                          .toList()))
+                .setSecondaryTasks(this.extensions
                                            .stream()
                                            .map(extension -> new SystemPromptSchema.SecondaryTask()
-                                                   .setInstructions(extension.additionalSystemPrompts(request, requestMetadata, (A)this)))
+                                                   .setInstructions(extension.additionalSystemPrompts(request,
+                                                                                                      requestMetadata,
+                                                                                                      (A) this)))
                                            .toList());
-        if(null != requestMetadata) {
-            prompt.setAdditionalData(new SystemPromptSchema.AdditionalData()
-                                              .setSessionId(requestMetadata.getSessionId())
-                                              .setUserId(requestMetadata.getUserId()));
-        }
-/*        var finalSystemPrompt =
-                """
-                            Your primary task is to answer the user query as provided in user prompt in the `user_input`
-                             tag according to the prompt below:
-
-                         # PRIMARY TASK:
-                            %s
-
-                            You can use the following tools to achieve your task:
-                            %s
-
-                            User available facts and memories about the user and the session to provide a better response.
-                        # ADDITIONAL TASKS:
-
-                            %s
-                        """.formatted(this.systemPrompt,
-                                      Joiner.on("\n")
-                                              .join(knownTools.values()
-                                                            .stream()
-                                                            .map(tool -> " - `%s`: %s".formatted(tool.getToolDefinition()
-                                                                                                         .getName(),
-                                                                                                 tool.getToolDefinition()
-                                                                                                         .getDescription()))
-                                                            .toList()),
-                                      Joiner.on("\n")
-                                              .join(setup.getExtensions()
-                                                            .stream()
-                                                            .flatMap(agentExtension -> agentExtension.additionalSystemPrompts(
-                                                                            request,
-                                                                            requestMetadata,
-                                                                            (A)this)
-                                                                    .stream())
-                                                            .toList()));
         if (null != requestMetadata) {
-            finalSystemPrompt += "### SOME MORE IMPORTANT INFORMATION ABOUT THIS REQUEST:\n";
-            if(!Strings.isNullOrEmpty(requestMetadata.getUserId())) {
-                finalSystemPrompt += " - User ID: " + requestMetadata.getUserId() + "\n";
-            }
-            if(!Strings.isNullOrEmpty(requestMetadata.getSessionId())) {
-                finalSystemPrompt += " - Session ID: " + requestMetadata.getSessionId() + "\n";
-            }
-        }*/
+            prompt.setAdditionalData(new SystemPromptSchema.AdditionalData()
+                                             .setSessionId(requestMetadata.getSessionId())
+                                             .setUserId(requestMetadata.getUserId()));
+        }
 
         final String finalSystemPrompt;
         try {
             finalSystemPrompt = xmlMapper.writerWithDefaultPrettyPrinter()
-                            .writeValueAsString(prompt);
+                    .writeValueAsString(prompt);
         }
         catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -250,15 +219,61 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
         log.info("Final system prompt: {}", finalSystemPrompt);
         messages.add(new SystemPrompt(finalSystemPrompt, false, null));
         messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
-        return resolvedModel.exchange_messages(modelSettings,
-                                               context,
-                                               outputType,
-                                               knownTools,
-                                               messages,
-                                               setup.getExecutorService(),
-                                               this::runTool,
-                                               setup.getExtensions(),
-                                               (A)this);
+        return mergedAgentSetup.getModel()
+                .exchange_messages(
+                        context,
+                                   outputType,
+                                   knownTools,
+                        this::runToolObserved,
+                                   this.extensions,
+                                   (A) this);
+    }
+
+    private static AgentSetup merge(final AgentSetup lhs, final AgentSetup rhs) {
+        return AgentSetup.builder()
+                .model(Objects.requireNonNull(value(lhs, rhs, AgentSetup::getModel), "Model is required"))
+                .modelSettings(value(lhs, rhs, AgentSetup::getModelSettings))
+                .mapper(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getMapper), JsonUtils::createMapper))
+                .executorService(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getExecutorService),
+                                                               Executors::newCachedThreadPool))
+                .eventBus(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getEventBus), EventBus::new))
+                .build();
+    }
+
+    private static <T, R> R value(final T lhs, final T rhs, Function<T, R> mapper) {
+        final var obj = lhs == null ? rhs : lhs;
+        if (null != obj) {
+            return mapper.apply(obj);
+        }
+        return null;
+    }
+
+    private <R, D> ToolCallResponse runToolObserved(
+            AgentRunContext<D, R> context,
+            Map<String, CallableTool> tools,
+            ToolCall toolCall) {
+        context.getAgentSetup()
+                .getEventBus()
+                .notify(new ToolCalledAgentEvent(name(),
+                                                 context.getRunId(),
+                                                 AgentUtils.sessionId(context),
+                                                 AgentUtils.userId(context),
+                                                 toolCall.getToolCallId(),
+                                                 toolCall.getToolName()));
+        final var stopwatch = Stopwatch.createStarted();
+        final var response = runTool(context, tools, toolCall);
+        context.getAgentSetup()
+                .getEventBus()
+                .notify(new ToolCallCompletedAgentEvent(name(),
+                                                        context.getRunId(),
+                                                        AgentUtils.sessionId(context),
+                                                        AgentUtils.userId(context),
+                                                        toolCall.getToolCallId(),
+                                                        toolCall.getToolName(),
+                                                        response.isSuccess(),
+                                                        response.getResponse(),
+                                                        Duration.ofMillis(stopwatch.elapsed(TimeUnit.MILLISECONDS))));
+        return response;
     }
 
     private <R, D> ToolCallResponse runTool(
@@ -284,18 +299,18 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                                             toStringContent(tool, resultObject),
                                             LocalDateTime.now());
             }
-            catch (IllegalAccessException e) {
-                return new ToolCallResponse(toolCall.getToolCallId(),
-                                            toolCall.getToolName(),
-                                            false,
-                                            "Tool call failed. Threw exception: %s".formatted(e.getMessage()),
-                                            LocalDateTime.now());
-            }
             catch (InvocationTargetException e) {
                 return new ToolCallResponse(toolCall.getToolCallId(),
                                             toolCall.getToolName(),
                                             false,
                                             "Tool call local failure: %s".formatted(e.getMessage()),
+                                            LocalDateTime.now());
+            }
+            catch (Exception e) {
+                return new ToolCallResponse(toolCall.getToolCallId(),
+                                            toolCall.getToolName(),
+                                            false,
+                                            "Tool call failed. Threw exception: %s".formatted(e.getMessage()),
                                             LocalDateTime.now());
             }
         }

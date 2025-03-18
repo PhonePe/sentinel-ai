@@ -1,0 +1,32 @@
+{
+  "id" : "chatcmpl-BCHxVhc0l8ctrz3husIzMwrAwAwuU",
+  "choices" : [ {
+    "finish_reason" : "stop",
+    "index" : 0,
+    "logprobs" : null,
+    "message" : {
+      "content" : "{\"output\":{\"message\":\"Your name is Santanu.\",\"username\":\"Santanu\"}}",
+      "refusal" : null,
+      "role" : "assistant"
+    }
+  } ],
+  "created" : 1742268669,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "object" : "chat.completion",
+  "system_fingerprint" : "fp_ded0d14823",
+  "usage" : {
+    "completion_tokens" : 21,
+    "prompt_tokens" : 501,
+    "total_tokens" : 522,
+    "completion_tokens_details" : {
+      "accepted_prediction_tokens" : 0,
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0,
+      "rejected_prediction_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+}

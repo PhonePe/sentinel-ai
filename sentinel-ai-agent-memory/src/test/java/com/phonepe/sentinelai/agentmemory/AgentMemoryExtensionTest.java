@@ -5,10 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.azure.credential.AzureApiKeyCredential;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
-import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OpenAIModel;
 import com.phonepe.sentinelai.core.tools.CallableTool;
@@ -48,8 +45,8 @@ class AgentMemoryExtensionTest {
 
     public static class SimpleAgent extends Agent<UserInput, Void, OutputObject, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, Map<String, CallableTool> tools) {
-            super(OutputObject.class, "greet the user", setup, tools);
+        public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, CallableTool> tools) {
+            super(OutputObject.class, "greet the user", setup, extensions, tools);
         }
 
         @Tool("Get name of user")
@@ -137,20 +134,19 @@ class AgentMemoryExtensionTest {
                                    .mapper(objectMapper)
                                    .model(model)
                                    .modelSettings(ModelSettings.builder().temperature(0.1f).build())
-                                   .extensions(List.of(AgentMemoryExtension.builder()
-                                                               .objectMapper(objectMapper)
-                                                               .memoryStore(memoryStore)
-                                                               .numMessagesForSummarization(3)
-                                                               .saveMemoryAfterSessionEnd(true)
-                                                               .build()))
                                    .build())
+                    .extensions(List.of(AgentMemoryExtension.builder()
+                                                .objectMapper(objectMapper)
+                                                .memoryStore(memoryStore)
+                                                .numMessagesForSummarization(3)
+                                                .saveMemoryAfterSessionEnd(true)
+                                                .build()))
                     .build()
                     .registerToolbox(toolbox);
             final var response = agent.execute(new UserInput("Hi"),
                                                requestMetadata,
                                                null,
-                                               null,
-                                               List.of());
+                                               null);
             log.info("Agent response: {}", response.getData().message());
         }
 
@@ -161,21 +157,20 @@ class AgentMemoryExtensionTest {
                                    .mapper(objectMapper)
                                    .model(model)
                                    .modelSettings(ModelSettings.builder().temperature(0.1f).build())
-                                   .extensions(List.of(AgentMemoryExtension.builder()
-                                                               .objectMapper(objectMapper)
-                                                               .memoryStore(memoryStore)
-                                                               .numMessagesForSummarization(3)
-                                                               .saveMemoryAfterSessionEnd(true)
-                                                               .build()))
                                    .build())
+                    .extensions(List.of(AgentMemoryExtension.builder()
+                                                .objectMapper(objectMapper)
+                                                .memoryStore(memoryStore)
+                                                .numMessagesForSummarization(3)
+                                                .saveMemoryAfterSessionEnd(true)
+                                                .build()))
                     .build()
                     .registerToolbox(toolbox);
             final var response2 = agent.execute(
                     new UserInput("How is the weather here?"),
                     requestMetadata,
-                    model,
-                    modelSettings,
-                    List.of());
+                    List.of(),
+                    null);
             log.info("Second call: {}", response2.getData());
             log.debug("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
                     .writeValueAsString(response2.getAllMessages()));
