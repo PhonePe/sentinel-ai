@@ -12,6 +12,7 @@
         <module>sentinel-ai-core</module>
         <module>sentinel-ai-agent-memory</module>
         <module>sentinel-ai-session</module>
+        <module>sentinel-ai-embedding</module>
     </modules>
 
     <properties>
