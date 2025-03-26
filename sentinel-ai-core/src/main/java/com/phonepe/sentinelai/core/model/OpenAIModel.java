@@ -185,7 +185,7 @@ public class OpenAIModel implements Model {
         }, context.getAgentSetup().getExecutorService());
     }
 
-    private static <R, D, T, A extends Agent<R, D, T, A>> void raiseMessageReceivedEvent(
+    public static <R, D, T, A extends Agent<R, D, T, A>> void raiseMessageReceivedEvent(
             AgentRunContext<D, R> context,
             A agent,
             AgentResponse newMessage,
@@ -200,7 +200,7 @@ public class OpenAIModel implements Model {
                                                       Duration.ofMillis(stopwatch.elapsed(TimeUnit.MILLISECONDS))));
     }
 
-    private static <R, D, T, A extends Agent<R, D, T, A>> void raiseMessageSentEvent(
+    public static <R, D, T, A extends Agent<R, D, T, A>> void raiseMessageSentEvent(
             AgentRunContext<D, R> context,
             A agent,
             List<AgentMessage> oldMessages) {
