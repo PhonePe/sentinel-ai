@@ -2,6 +2,8 @@ package com.phonepe.sentinelai.agentmemory;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.azure.credential.AzureApiKeyCredential;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
@@ -11,8 +13,8 @@ import com.phonepe.sentinelai.core.model.OpenAIModel;
 import com.phonepe.sentinelai.core.tools.CallableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
-import com.phonepe.sentinelai.core.utils.EnvLoader;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.core.utils.TestUtils;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -22,12 +24,14 @@ import org.junit.jupiter.api.Test;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.UnaryOperator;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- *
+ * Tests for {@link AgentMemoryExtension}
  */
 @Slf4j
+@WireMockTest
 class AgentMemoryExtensionTest {
     public record OutputObject(String username, String message) {
     }
@@ -80,13 +84,12 @@ class AgentMemoryExtensionTest {
                 MemoryScope scope,
                 Set<MemoryType> memoryTypes,
                 String query,
-                List<String> topics,
                 int count) {
             return memories.getOrDefault(new Key(scope, scopeId), List.of());
         }
 
         @Override
-        public Optional<AgentMemory> createOrUpdate(AgentMemory agentMemory) {
+        public Optional<AgentMemory> save(AgentMemory agentMemory) {
             log.info("recevied memory: {}", agentMemory);
             final var key = new Key(agentMemory.getScope(), agentMemory.getScopeId());
             final var memsInScope = memories.computeIfAbsent(key,
@@ -95,33 +98,27 @@ class AgentMemoryExtensionTest {
             return Optional.of(agentMemory);
         }
 
-        @Override
-        public Optional<AgentMemory> updateMemory(
-                MemoryScope scope,
-                String scopeId,
-                String name,
-                UnaryOperator<AgentMemory> updater) {
-            return Optional.empty();
-        }
     }
 
     @Test
     @SneakyThrows
-    void test() {
+    void test(final WireMockRuntimeInfo wm) {
+        TestUtils.setupMocks(6, "me", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var model = new OpenAIModel(
                 "gpt-4o",
                 OpenAIOkHttpClient.builder()
-                        .credential(AzureApiKeyCredential.create(EnvLoader.readEnv("AZURE_API_KEY")))
-                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .credential(AzureApiKeyCredential.create(EnvLoader.readEnv("AZURE_API_KEY")))
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+                        .credential(AzureApiKeyCredential.create("BLAH"))
+                        .baseUrl(wm.getHttpBaseUrl())
                         .azureServiceVersion(AzureOpenAIServiceVersion.getV2024_10_21())
                         .putAllQueryParams(Map.of("api-version", List.of("2024-10-21")))
                         .jsonMapper(objectMapper)
                         .build(),
                 objectMapper
         );
-        final var modelSettings = ModelSettings.builder().temperature(0.1f).build();
         final var requestMetadata = AgentRequestMetadata.builder()
                 .sessionId("s1")
                 .userId("ss")
@@ -133,7 +130,7 @@ class AgentMemoryExtensionTest {
                     .setup(AgentSetup.builder()
                                    .mapper(objectMapper)
                                    .model(model)
-                                   .modelSettings(ModelSettings.builder().temperature(0.1f).build())
+                                   .modelSettings(ModelSettings.builder().temperature(0.1f).seed(42).build())
                                    .build())
                     .extensions(List.of(AgentMemoryExtension.builder()
                                                 .objectMapper(objectMapper)
@@ -172,8 +169,11 @@ class AgentMemoryExtensionTest {
                     List.of(),
                     null);
             log.info("Second call: {}", response2.getData());
-            log.debug("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(response2.getAllMessages()));
+            if(log.isTraceEnabled()) {
+                log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
+                        .writeValueAsString(response2.getAllMessages()));
+            }
+            assertTrue(response2.getData().message().contains("sunny"));
         }
 
     }

@@ -1,4 +1,4 @@
-package com.phonepe.sentinelai.core;
+package com.phonepe.sentinelai.core.utils;
 
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;

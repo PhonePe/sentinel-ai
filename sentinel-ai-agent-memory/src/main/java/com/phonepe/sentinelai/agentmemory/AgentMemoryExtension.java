@@ -1,5 +1,6 @@
 package com.phonepe.sentinelai.agentmemory;
 
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
@@ -7,9 +8,9 @@ import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.SystemPromptSchema;
+import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
-import lombok.Data;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -30,10 +31,16 @@ import java.util.Optional;
 public class AgentMemoryExtension implements AgentExtension {
     private static final String OUTPUT_KEY = "memoryOutput";
 
-    @Data
-    private static final class Fact {
-        private String name;
-        private String content;
+    @Value
+    public static class Fact {
+        String name;
+        String content;
+    }
+
+    @Value
+    public static class FactList {
+        String description;
+        List<Fact> facts;
     }
 
 
@@ -65,6 +72,39 @@ public class AgentMemoryExtension implements AgentExtension {
             AgentRequestMetadata metadata,
             A agent) {
         final var prompts = new ArrayList<SystemPromptSchema.SecondaryTask>();
+        final var memories = new ArrayList<FactList>();
+//        //Add relevant existing memories to the prompt
+        if (!Strings.isNullOrEmpty(metadata.getUserId())) {
+
+            final var memoriesAboutUser = memoryStore
+                    .findMemoriesAboutUser(metadata.getUserId(), null, 5);
+            if (!memoriesAboutUser.isEmpty()) {
+                final var factList = new FactList("Memories about user", memoriesAboutUser.stream()
+                        .map(agentMemory -> new Fact(agentMemory.getName(), agentMemory.getContent()))
+                        .toList());
+                memories.add(factList);
+            }
+        }
+
+        if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
+            final var memoriesAboutSession = memoryStore
+                    .findMemories(metadata.getSessionId(), MemoryScope.ENTITY, null, "", 5);
+            if (!memoriesAboutSession.isEmpty()) {
+                final var factList = new FactList("Memories about current session", memoriesAboutSession.stream()
+                        .map(agentMemory -> new Fact(agentMemory.getName(), agentMemory.getContent()))
+                        .toList());
+                memories.add(factList);
+            }
+        }
+
+        if (!memories.isEmpty()) {
+            final var memUsagePrompt = new SystemPromptSchema.SecondaryTask()
+                    .setObjective("USE MEMORY ABOUT USER, SESSION AND YOURSELF WHEREVER APPLICABLE")
+                    .setInstructions("Use facts provided in the factlist section below to enhance the conversation and eliminate redundant tool calls")
+                    .setAdditionalInstructions(memories);
+            prompts.add(memUsagePrompt);
+        }
+
         //TODO::IF ID IS EXPOSED IN MEMORY, WILL WE BE ABLE TO UPDATE THEM?
         if (saveMemoryAfterSessionEnd) {
             //Add extract prompt only if extraction is needed
@@ -95,27 +135,10 @@ public class AgentMemoryExtension implements AgentExtension {
             prompts.add(prompt);
         }
 
-        final var memories = new ArrayList<AgentMemory>();
-//        //Add relevant existing memories to the prompt
-        if (!Strings.isNullOrEmpty(metadata.getUserId())) {
 
-            final var memoriesAboutUser = memoryStore
-                    .findMemoriesAboutUser(metadata.getUserId(), null, null, 5);
-            if (!memoriesAboutUser.isEmpty()) {
-                memories.addAll(memoriesAboutUser);
-            }
-        }
 
-        if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
-            final var memoriesAboutSession = memoryStore
-                    .findMemories(metadata.getSessionId(), MemoryScope.ENTITY, null, "", List.of(), 5);
-            if (!memoriesAboutSession.isEmpty()) {
-                memories.addAll(memoriesAboutSession);
-            }
-        }
 
-        return new ExtensionPromptSchema(prompts, List.of("IMPORTANT INSTRUCTION: USE MEMORY ABOUT USER, SESSION AND YOURSELF WHEREVER APPLICABLE",
-                                                          memories));
+        return new ExtensionPromptSchema(prompts, List.of());
     }
 
     @Override
@@ -141,13 +164,21 @@ public class AgentMemoryExtension implements AgentExtension {
 
     }
 
+    @Tool("Find procedural memory about any topic from the store")
+    public List<Fact> findProceduralMemory(@JsonPropertyDescription("keywords to find relevant procedural memory") final String query) {
+        return memoryStore.findProcessMemory(query)
+                .stream()
+                .map(agentMemory -> new Fact(agentMemory.getName(), agentMemory.getContent()))
+                .toList();
+    }
+
     private <R, D, T, A extends Agent<R, D, T, A>> void saveMemories(
             List<GeneratedMemoryUnit> memories,
             MemoryScope scope,
             String scopeId,
             A agent) {
         Objects.requireNonNullElseGet(memories, List::<GeneratedMemoryUnit>of)
-                .forEach(memoryUnit -> memoryStore.createOrUpdate(
+                .forEach(memoryUnit -> memoryStore.save(
                         AgentMemory.builder()
                                 .scope(scope)
                                 .scopeId(scopeId)

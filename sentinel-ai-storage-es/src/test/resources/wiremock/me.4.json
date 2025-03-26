@@ -1,0 +1,32 @@
+{
+  "id" : "chatcmpl-BEcrTfjEQNJICROWfGXRUYJ40Y4Lf",
+  "choices" : [ {
+    "finish_reason" : "stop",
+    "index" : 0,
+    "logprobs" : null,
+    "message" : {
+      "content" : "{\"output\":{\"message\":\"Hello Mr. Santanu! How can I assist you today?\",\"username\":\"Santanu\"},\"memoryOutput\":{\"globalMemory\":[],\"sessionId\":\"s1\",\"sessionMemories\":[],\"userId\":\"ss\",\"userMemories\":[{\"content\":\"User's name is Santanu.\",\"name\":\"UserName\",\"reusabilityScore\":10,\"topics\":[\"User Information\"],\"type\":\"SEMANTIC\"},{\"content\":\"User is located in Bangalore.\",\"name\":\"UserLocation\",\"reusabilityScore\":10,\"topics\":[\"User Information\"],\"type\":\"SEMANTIC\"}]}}",
+      "refusal" : null,
+      "role" : "assistant"
+    }
+  } ],
+  "created" : 1742825675,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "object" : "chat.completion",
+  "system_fingerprint" : "fp_ded0d14823",
+  "usage" : {
+    "completion_tokens" : 126,
+    "prompt_tokens" : 1581,
+    "total_tokens" : 1707,
+    "completion_tokens_details" : {
+      "accepted_prediction_tokens" : 0,
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0,
+      "rejected_prediction_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+}

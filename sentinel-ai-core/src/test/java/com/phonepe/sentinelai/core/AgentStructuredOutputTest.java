@@ -17,6 +17,7 @@ import com.phonepe.sentinelai.core.model.OpenAIModel;
 import com.phonepe.sentinelai.core.tools.CallableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.core.utils.TestUtils;
 import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -80,9 +81,9 @@ class AgentStructuredOutputTest {
                 "gpt-4o",
                 OpenAIOkHttpClient.builder()
                         .credential(AzureApiKeyCredential.create("BLAH"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
 //                        .credential(AzureApiKeyCredential.create(EnvLoader.readEnv("AZURE_API_KEY")))
 //                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
                         .azureServiceVersion(AzureOpenAIServiceVersion.getV2024_10_21())
                         .putAllQueryParams(Map.of("api-version", List.of("2024-10-21")))
                         .jsonMapper(objectMapper)

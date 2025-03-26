@@ -1,4 +1,4 @@
-package com.phonepe.sentinel.session;
+package com.phonepe.sentinelai.storage;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
@@ -7,6 +7,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.azure.credential.AzureApiKeyCredential;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.phonepe.sentinelai.agentmemory.AgentMemoryExtension;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OpenAIModel;
@@ -15,6 +16,8 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
+import com.phonepe.sentinelai.embedding.HuggingfaceEmbeddingModel;
+import com.phonepe.sentinelai.storage.memory.ESAgentMemoryStorage;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -24,15 +27,15 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- *
+ * Integration test for memory extension with persistence
  */
 @Slf4j
 @WireMockTest
-class AgentSessionExtensionTest {
+public class AgentIntegrationTest extends ESIntegrationTestBase {
     public record OutputObject(String username, String message) {
     }
 
@@ -47,26 +50,10 @@ class AgentSessionExtensionTest {
     public record Salutation(List<String> salutation) {
     }
 
-    private static final class InMemorySessionStore implements SessionStore {
-        private final Map<String, SessionSummary> sessionData = new ConcurrentHashMap<>();
-
-        @Override
-        public Optional<SessionSummary> session(String sessionId) {
-            return Optional.ofNullable(sessionData.get(sessionId));
-        }
-
-        @Override
-        public Optional<SessionSummary> saveSession(SessionSummary sessionSummary) {
-            sessionData.put(sessionSummary.getSessionId(), sessionSummary);
-            return session(sessionSummary.getSessionId());
-        }
-    }
-
-    //    public static class SimpleAgent extends Agent<UserInput, Void, OutputObject, SimpleAgent> {
-    public static class SimpleAgent extends Agent<UserInput, Void, String, SimpleAgent> {
+    public static class SimpleAgent extends Agent<UserInput, Void, OutputObject, SimpleAgent> {
         @Builder
         public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, CallableTool> tools) {
-            super(String.class, "greet the user", setup, extensions, tools);
+            super(OutputObject.class, "greet the user", setup, extensions, tools);
         }
 
         @Tool("Get name of user")
@@ -90,9 +77,10 @@ class AgentSessionExtensionTest {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wm) {
-        TestUtils.setupMocks(5, "se", getClass());
+        TestUtils.setupMocks(6, "me", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
+
         final var model = new OpenAIModel(
                 "gpt-4o",
                 OpenAIOkHttpClient.builder()
@@ -103,49 +91,70 @@ class AgentSessionExtensionTest {
                         .azureServiceVersion(AzureOpenAIServiceVersion.getV2024_10_21())
                         .putAllQueryParams(Map.of("api-version", List.of("2024-10-21")))
                         .jsonMapper(objectMapper)
+
                         .build(),
                 objectMapper
         );
-
-
-        final var agent = SimpleAgent.builder()
-                .setup(AgentSetup.builder()
-                               .mapper(objectMapper)
-                               .model(model)
-                               .modelSettings(ModelSettings.builder()
-                                                      .temperature(0.1f)
-                                                      .seed(1)
-                                                      .build())
-                               .build())
-                .extensions(List.of(AgentSessionExtension.builder()
-                                            .sessionStore(new InMemorySessionStore())
-                                            .updateSummaryAfterSession(true)
-                                            .mapper(objectMapper)
-                                            .build()))
-                .build()
-                .registerToolbox(toolbox);
-
-
         final var requestMetadata = AgentRequestMetadata.builder()
                 .sessionId("s1")
                 .userId("ss")
                 .build();
-        final var response = agent.execute(new UserInput("Hi"),
-                                           requestMetadata,
-                                           null,
-                                           null);
-        log.info("Agent response: {}", response.getData());
+        final var client = ESClient.builder()
+                .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
+                .apiKey("test")
+                .build();
+
+        final var storage = new ESAgentMemoryStorage(client, new HuggingfaceEmbeddingModel(), indexPrefix(this));
+        {
+
+            final var agent = SimpleAgent.builder()
+                    .setup(AgentSetup.builder()
+                                   .mapper(objectMapper)
+                                   .model(model)
+                                   .modelSettings(ModelSettings.builder().temperature(0.1f).build())
+                                   .build())
+                    .extensions(List.of(AgentMemoryExtension.builder()
+                                                .objectMapper(objectMapper)
+                                                .memoryStore(storage)
+                                                .numMessagesForSummarization(3)
+                                                .saveMemoryAfterSessionEnd(true)
+                                                .build()))
+                    .build()
+                    .registerToolbox(toolbox);
+            final var response = agent.execute(new UserInput("Hi"),
+                                               requestMetadata,
+                                               null,
+                                               null);
+            log.debug("Agent response: {}", response.getData().message());
+        }
 
 
-        final var response2 = agent.execute(
-                new UserInput("How is the weather at user's location?"),
-                requestMetadata,
-                response.getAllMessages(),
-                null);
-        log.info("Second call: {}", response2.getData());
-        if(log.isTraceEnabled()) {
-            log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(response2.getAllMessages()));
+        {
+            final var agent = SimpleAgent.builder()
+                    .setup(AgentSetup.builder()
+                                   .mapper(objectMapper)
+                                   .model(model)
+                                   .modelSettings(ModelSettings.builder().temperature(0.1f).build())
+                                   .build())
+                    .extensions(List.of(AgentMemoryExtension.builder()
+                                                .objectMapper(objectMapper)
+                                                .memoryStore(storage)
+                                                .numMessagesForSummarization(3)
+                                                .saveMemoryAfterSessionEnd(true)
+                                                .build()))
+                    .build()
+                    .registerToolbox(toolbox);
+            final var response2 = agent.execute(
+                    new UserInput("How is the weather here?"),
+                    requestMetadata,
+                    List.of(),
+                    null);
+            log.info("Second call: {}", response2.getData());
+            if(log.isTraceEnabled()) {
+                log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
+                        .writeValueAsString(response2.getAllMessages()));
+            }
+            assertTrue(response2.getData().message().contains("sunny"));
         }
     }
 

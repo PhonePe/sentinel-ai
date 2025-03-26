@@ -15,6 +15,7 @@ import com.phonepe.sentinelai.core.tools.CallableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.core.utils.TestUtils;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -95,6 +96,8 @@ class AgentStringOutputTest {
                 OpenAIOkHttpClient.builder()
                         .credential(AzureApiKeyCredential.create("WHATEVER"))
                         .baseUrl(wiremock.getHttpBaseUrl())
+//                        .credential(AzureApiKeyCredential.create(EnvLoader.readEnv("AZURE_API_KEY")))
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
                         .azureServiceVersion(AzureOpenAIServiceVersion.getV2024_10_21())
                         .putAllQueryParams(Map.of("api-version", List.of("2024-10-21")))
                         .jsonMapper(objectMapper)

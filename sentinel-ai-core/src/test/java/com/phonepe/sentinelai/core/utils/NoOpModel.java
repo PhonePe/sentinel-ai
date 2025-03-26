@@ -1,4 +1,4 @@
-package com.phonepe.sentinelai.core;
+package com.phonepe.sentinelai.core.utils;
 
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;

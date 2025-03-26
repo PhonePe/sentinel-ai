@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
@@ -75,7 +76,7 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
         this.systemPrompt = systemPrompt;
         this.setup = setup;
         this.extensions = Objects.requireNonNullElseGet(extensions, List::of);
-
+        xmlMapper.registerModule(new JavaTimeModule());
         xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
         xmlMapper.configure(ToXmlGenerator.Feature.WRITE_XML_DECLARATION, true);
         xmlMapper.configure(ToXmlGenerator.Feature.WRITE_XML_1_1, true);
@@ -216,7 +217,7 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
         catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        log.info("Final system prompt: {}", finalSystemPrompt);
+        log.debug("Final system prompt: {}", finalSystemPrompt);
         messages.add(new SystemPrompt(finalSystemPrompt, false, null));
         messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
         return mergedAgentSetup.getModel()

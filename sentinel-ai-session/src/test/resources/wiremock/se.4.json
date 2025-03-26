@@ -1,0 +1,40 @@
+{
+  "id" : "chatcmpl-BFEVB3piO15br9yr3wWY89rTFHqUC",
+  "choices" : [ {
+    "finish_reason" : "tool_calls",
+    "index" : 0,
+    "logprobs" : null,
+    "message" : {
+      "content" : null,
+      "refusal" : null,
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_P3yzxTW6J1zypeiH5QGsxpiL",
+        "function" : {
+          "arguments" : "{\"location\":\"Bangalore\"}",
+          "name" : "getWeatherToday"
+        },
+        "type" : "function"
+      } ]
+    }
+  } ],
+  "created" : 1742970365,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "object" : "chat.completion",
+  "system_fingerprint" : "fp_ded0d14823",
+  "usage" : {
+    "completion_tokens" : 17,
+    "prompt_tokens" : 1264,
+    "total_tokens" : 1281,
+    "completion_tokens_details" : {
+      "accepted_prediction_tokens" : 0,
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0,
+      "rejected_prediction_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+}

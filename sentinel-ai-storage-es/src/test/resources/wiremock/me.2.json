@@ -1,0 +1,40 @@
+{
+  "id" : "chatcmpl-BEcrPs5QfAghnbDRt3g5tDANd4R9N",
+  "choices" : [ {
+    "finish_reason" : "tool_calls",
+    "index" : 0,
+    "logprobs" : null,
+    "message" : {
+      "content" : null,
+      "refusal" : null,
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_reycw2iHXXk18xBmhM5AbcXK",
+        "function" : {
+          "arguments" : "{\"name\":\"Santanu\"}",
+          "name" : "getLocationForUser"
+        },
+        "type" : "function"
+      } ]
+    }
+  } ],
+  "created" : 1742825671,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "object" : "chat.completion",
+  "system_fingerprint" : "fp_ded0d14823",
+  "usage" : {
+    "completion_tokens" : 18,
+    "prompt_tokens" : 1485,
+    "total_tokens" : 1503,
+    "completion_tokens_details" : {
+      "accepted_prediction_tokens" : 0,
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0,
+      "rejected_prediction_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+}

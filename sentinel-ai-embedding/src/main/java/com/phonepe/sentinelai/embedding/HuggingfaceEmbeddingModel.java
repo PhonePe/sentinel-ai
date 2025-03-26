@@ -30,6 +30,10 @@ public class HuggingfaceEmbeddingModel implements EmbeddingModel, AutoCloseable 
     // The pool is needed as predictor is not threadsafe
     private final GenericObjectPool<Predictor<String, float[]>> predictors;
 
+    public HuggingfaceEmbeddingModel() {
+        this(null, MAX_LENGTH);
+    }
+
     @Builder
     @SneakyThrows
     public HuggingfaceEmbeddingModel(String modelUrl, int maxLength) {
