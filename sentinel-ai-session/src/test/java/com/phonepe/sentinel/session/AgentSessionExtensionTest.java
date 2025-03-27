@@ -63,7 +63,7 @@ class AgentSessionExtensionTest {
     }
 
     //    public static class SimpleAgent extends Agent<UserInput, Void, OutputObject, SimpleAgent> {
-    public static class SimpleAgent extends Agent<UserInput, Void, String, SimpleAgent> {
+    public static class SimpleAgent extends Agent<UserInput, String, SimpleAgent> {
         @Builder
         public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, CallableTool> tools) {
             super(String.class, "greet the user", setup, extensions, tools);
@@ -76,7 +76,7 @@ class AgentSessionExtensionTest {
 
         @Tool("Get salutation for user")
         public Salutation getSalutation(
-                AgentRunContext<Void, SalutationParams> context,
+                AgentRunContext<SalutationParams> context,
                 @NonNull SalutationParams params) {
             return new Salutation(List.of("Mr", "Dr", "Prof"));
         }

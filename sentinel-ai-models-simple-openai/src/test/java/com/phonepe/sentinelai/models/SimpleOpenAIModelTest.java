@@ -47,7 +47,7 @@ class SimpleOpenAIModelTest {
     public record Salutation(List<String> salutation) {
     }
 
-    public static class SimpleAgent extends Agent<UserInput, Void, OutputObject, SimpleAgent> {
+    public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
         public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, CallableTool> tools) {
             super(OutputObject.class, "greet the user", setup, extensions, tools);

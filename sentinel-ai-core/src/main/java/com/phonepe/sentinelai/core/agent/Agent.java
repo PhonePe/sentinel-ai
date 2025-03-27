@@ -16,6 +16,8 @@ import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.events.ToolCallCompletedAgentEvent;
 import com.phonepe.sentinelai.core.events.ToolCalledAgentEvent;
@@ -45,15 +47,15 @@ import static java.util.stream.Collectors.toMap;
  * Base class for all agents. Derive this to create own agents.
  *
  * @param <R> Request type
- * @param <D> dependencies for the agent
  * @param <T> Response type
+ * @param <A> Agent type reference of the subclass using this as base class
  */
 @Slf4j
-public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
+public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     @FunctionalInterface
-    public interface ToolRunner {
-        ToolCallResponse runTool(AgentRunContext<?, ?> context, Map<String, CallableTool> tool, ToolCall toolCall);
+    public interface ToolRunner<S> {
+        ToolCallResponse runTool(AgentRunContext<S> context, Map<String, CallableTool> tool, ToolCall toolCall);
     }
 
     private final Class<T> outputType;
@@ -168,6 +170,7 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
      *                        runtime will get precedence.
      * @return Agent output. Please see {@link AgentOutput} for details.
      */
+    @SuppressWarnings("unchecked")
     public final CompletableFuture<AgentOutput<T>> executeAsync(
             R request,
             AgentRequestMetadata requestMetadata,
@@ -176,17 +179,18 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
         final var mergedAgentSetup = merge(agentSetup, this.setup);
         final var messages = new ArrayList<>(Objects.requireNonNullElse(oldMessages, List.of()));
         final var runId = UUID.randomUUID().toString();
-        final var context = new AgentRunContext<D, R>(runId,
-                                                      request,
-                                                      requestMetadata,
-                                                      mergedAgentSetup,
-                                                      null,
-                                                      messages,
-                                                      new ModelUsageStats());
+        final var context = new AgentRunContext<>(runId,
+                                                  request,
+                                                  requestMetadata,
+                                                  mergedAgentSetup,
+                                                  null,
+                                                  messages,
+                                                  new ModelUsageStats());
         final var prompt = new SystemPromptSchema()
                 .setCoreInstructions(
                         "Your main job is to answer the user query as provided in user prompt in the `user_input` tag. "
-                                    + (!messages.isEmpty() ? "Use the provided old messages for extra context and information." : ""))
+                                + (!messages.isEmpty()
+                                   ? "Use the provided old messages for extra context and information." : ""))
                 .setPrimaryTask(new SystemPromptSchema.PrimaryTask()
                                         .setPrompt(systemPrompt)
                                         .setTools(this.knownTools.values()
@@ -215,7 +219,11 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
                     .writeValueAsString(prompt);
         }
         catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            log.error("Error serializing system prompt", e);
+            return CompletableFuture.completedFuture(AgentOutput.error(messages,
+                                                                       context.getModelUsageStats(),
+                                                                       SentinelError.error(ErrorType.SERIALIZATION_ERROR,
+                                                                                           e)));
         }
         log.debug("Final system prompt: {}", finalSystemPrompt);
         messages.add(new SystemPrompt(finalSystemPrompt, false, null));
@@ -223,11 +231,11 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
         return mergedAgentSetup.getModel()
                 .exchange_messages(
                         context,
-                                   outputType,
-                                   knownTools,
+                        outputType,
+                        knownTools,
                         this::runToolObserved,
-                                   this.extensions,
-                                   (A) this);
+                        this.extensions,
+                        (A) this);
     }
 
     private static AgentSetup merge(final AgentSetup lhs, final AgentSetup rhs) {
@@ -249,8 +257,8 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
         return null;
     }
 
-    private <R, D> ToolCallResponse runToolObserved(
-            AgentRunContext<D, R> context,
+    private ToolCallResponse runToolObserved(
+            AgentRunContext<R> context,
             Map<String, CallableTool> tools,
             ToolCall toolCall) {
         context.getAgentSetup()
@@ -277,8 +285,9 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
         return response;
     }
 
-    private <R, D> ToolCallResponse runTool(
-            AgentRunContext<D, R> context,
+    @SuppressWarnings("java:S3011")
+    private ToolCallResponse runTool(
+            AgentRunContext<R> context,
             Map<String, CallableTool> tools,
             ToolCall toolCall) {
         //TODO::RETRY LOGIC
@@ -347,7 +356,7 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
     @SneakyThrows //TODO::Handle this better
     private String toStringContent(CallableTool tool, Object result) {
         if (tool.getReturnType().equals(Void.TYPE)) {
-            return "success";
+            return "success"; //This is recommended by OpenAI
         }
         else {
             if (tool.getReturnType().isAssignableFrom(String.class) || Primitives.isWrapperType(tool.getReturnType())) {
@@ -366,20 +375,10 @@ public abstract class Agent<R, D, T, A extends Agent<R, D, T, A>> {
         return xml;
     }
 
-    private <U> JsonNode toXmlNode(U object) throws JsonProcessingException {
+    private <U> JsonNode toXmlNode(U object) {
         if (object.getClass().isAssignableFrom(String.class) || Primitives.isWrapperType(object.getClass())) {
             return xmlMapper.createObjectNode().put("data", Objects.toString(object));
         }
         return xmlMapper.valueToTree(object);
     }
-
-    @SneakyThrows
-    private <U> String toJsonString(U object) {
-        if (object.getClass().isAssignableFrom(String.class) || Primitives.isWrapperType(object.getClass())) {
-            return Objects.toString(object);
-        }
-        return setup.getMapper().writerWithDefaultPrettyPrinter().writeValueAsString(object);
-    }
-
-
 }

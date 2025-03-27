@@ -60,8 +60,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     ObjectMapper mapper;
 
     @Override
-    public <R, D, T, A extends Agent<R, D, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
-            AgentRunContext<D, R> context,
+    public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+            AgentRunContext<R> context,
             Class<T> responseType,
             Map<String, CallableTool> tools,
             Agent.ToolRunner toolRunner,
@@ -199,8 +199,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }, context.getAgentSetup().getExecutorService());
     }
 
-    private static <R, T, D, A extends Agent<R,D,T,A>> AgentOutput<T> handleToolCalls(
-            AgentRunContext<D, R> context,
+    private static <R, T, A extends Agent<R, T,A>> AgentOutput<T> handleToolCalls(
+            AgentRunContext<R> context,
             Map<String, CallableTool> tools,
             List<AgentMessage> oldMessages,
             ExecutorService executorService,
@@ -253,7 +253,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         return null;
     }
 
-    private <R, D, T, A extends Agent<R, D, T, A>>  T convertToResponse(
+    private <R, T, A extends Agent<R, T, A>>  T convertToResponse(
             Class<T> responseType, String content,
             List<AgentExtension> extensions, A agent) throws JsonProcessingException {
         final var outputNode = mapper.readTree(content);
@@ -311,7 +311,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             return;
         }
         if (modelSettings.getMaxTokens() != null) {
-            builder.maxTokens(modelSettings.getMaxTokens());
+            builder.maxCompletionTokens(modelSettings.getMaxTokens());
         }
         if (modelSettings.getTemperature() != null) {
             builder.temperature(Double.valueOf(modelSettings.getTemperature()));

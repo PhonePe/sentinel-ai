@@ -27,7 +27,7 @@ public interface AgentExtension extends ToolBox {
 
 
     String name();
-    <R, D, T, A extends Agent<R, D, T, A>> ExtensionPromptSchema additionalSystemPrompts(R request, AgentRequestMetadata metadata, A agent);
+    <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(R request, AgentRequestMetadata metadata, A agent);
     Optional<AgentExtensionOutputDefinition> outputSchema();
-    <R, D, T, A extends Agent<R, D, T, A>> void consume(final JsonNode output, A agent);
+    <R, T, A extends Agent<R, T, A>> void consume(final JsonNode output, A agent);
 }

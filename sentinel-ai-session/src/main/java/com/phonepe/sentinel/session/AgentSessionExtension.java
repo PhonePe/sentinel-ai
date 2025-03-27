@@ -45,7 +45,7 @@ public class AgentSessionExtension implements AgentExtension {
     }
 
     @Override
-    public <R, D, T, A extends Agent<R, D, T, A>> ExtensionPromptSchema additionalSystemPrompts(
+    public <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
             R request,
             AgentRequestMetadata metadata,
             A agent) {
@@ -91,7 +91,7 @@ public class AgentSessionExtension implements AgentExtension {
     }
 
     @Override
-    public <R, D, T, A extends Agent<R, D, T, A>> void consume(JsonNode output, A agent) {
+    public <R, T, A extends Agent<R, T, A>> void consume(JsonNode output, A agent) {
         if (!updateSummaryAfterSession) {
             return;
         }

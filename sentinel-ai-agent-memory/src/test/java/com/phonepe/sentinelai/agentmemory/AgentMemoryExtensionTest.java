@@ -47,7 +47,7 @@ class AgentMemoryExtensionTest {
     public record Salutation(List<String> salutation) {
     }
 
-    public static class SimpleAgent extends Agent<UserInput, Void, OutputObject, SimpleAgent> {
+    public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
         public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, CallableTool> tools) {
             super(OutputObject.class, "greet the user", setup, extensions, tools);
@@ -60,7 +60,7 @@ class AgentMemoryExtensionTest {
 
         @Tool("Get salutation for user")
         public Salutation getSalutation(
-                AgentRunContext<Void, SalutationParams> context,
+                AgentRunContext<SalutationParams> context,
                 @NonNull SalutationParams params) {
             return new Salutation(List.of("Mr", "Dr", "Prof"));
         }

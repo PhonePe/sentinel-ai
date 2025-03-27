@@ -54,8 +54,8 @@ public class OpenAIModel implements Model {
     ObjectMapper mapper;
 
     @Override
-    public <R, D, T, A extends Agent<R, D, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
-            AgentRunContext<D, R> context,
+    public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+            AgentRunContext<R> context,
             Class<T> responseType,
             Map<String, CallableTool> tools,
             Agent.ToolRunner toolRunner,
@@ -185,8 +185,8 @@ public class OpenAIModel implements Model {
         }, context.getAgentSetup().getExecutorService());
     }
 
-    public static <R, D, T, A extends Agent<R, D, T, A>> void raiseMessageReceivedEvent(
-            AgentRunContext<D, R> context,
+    public static <R, T, A extends Agent<R, T, A>> void raiseMessageReceivedEvent(
+            AgentRunContext<R> context,
             A agent,
             AgentResponse newMessage,
             Stopwatch stopwatch) {
@@ -200,8 +200,8 @@ public class OpenAIModel implements Model {
                                                       Duration.ofMillis(stopwatch.elapsed(TimeUnit.MILLISECONDS))));
     }
 
-    public static <R, D, T, A extends Agent<R, D, T, A>> void raiseMessageSentEvent(
-            AgentRunContext<D, R> context,
+    public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(
+            AgentRunContext<R> context,
             A agent,
             List<AgentMessage> oldMessages) {
         context.getAgentSetup()
@@ -218,8 +218,8 @@ public class OpenAIModel implements Model {
         log.trace("Messages: {}", mapper.writerWithDefaultPrettyPrinter().writeValueAsString(object));
     }
 
-    private static <R, T, D, A extends Agent<R,D,T,A>> AgentOutput<T> handleToolCalls(
-            AgentRunContext<D, R> context,
+    private static <R, T, A extends Agent<R, T, A>> AgentOutput<T> handleToolCalls(
+            AgentRunContext<R> context,
             Map<String, CallableTool> tools,
             List<AgentMessage> oldMessages,
             ExecutorService executorService,
@@ -380,7 +380,7 @@ public class OpenAIModel implements Model {
         });
     }
 
-    private <R, D, T, A extends Agent<R, D, T, A>>  T convertToResponse(
+    private <R, T, A extends Agent<R, T, A>>  T convertToResponse(
             Class<T> responseType, String content,
             List<AgentExtension> extensions, A agent) throws JsonProcessingException {
         final var outputNode = mapper.readTree(content);

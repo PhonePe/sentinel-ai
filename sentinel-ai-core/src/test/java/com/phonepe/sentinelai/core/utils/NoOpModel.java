@@ -18,8 +18,8 @@ public class NoOpModel implements Model {
 
 
     @Override
-    public <R, D, T, A extends Agent<R, D, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
-            AgentRunContext<D, R> context,
+    public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+            AgentRunContext<R> context,
             Class<T> responseType,
             Map<String, CallableTool> tools,
             Agent.ToolRunner toolRunner,

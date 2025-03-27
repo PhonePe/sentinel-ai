@@ -21,8 +21,8 @@ public interface Model {
 //            String systemPrompt,
 //            Map<String, CallableTool> tools);
 
-    <R, D, T, A extends Agent<R, D, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
-            AgentRunContext<D, R> context,
+    <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+            AgentRunContext<R> context,
             Class<T> responseType,
             Map<String, CallableTool> tools,
             Agent.ToolRunner toolRunner,

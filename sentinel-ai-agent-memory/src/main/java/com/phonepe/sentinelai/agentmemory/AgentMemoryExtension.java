@@ -67,7 +67,7 @@ public class AgentMemoryExtension implements AgentExtension {
     }
 
     @Override
-    public <R, D, T, A extends Agent<R, D, T, A>> ExtensionPromptSchema additionalSystemPrompts(
+    public <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
             R request,
             AgentRequestMetadata metadata,
             A agent) {
@@ -149,7 +149,7 @@ public class AgentMemoryExtension implements AgentExtension {
     }
 
     @Override
-    public <R, D, T, A extends Agent<R, D, T, A>> void consume(JsonNode output, A agent) {
+    public <R, T, A extends Agent<R, T, A>> void consume(JsonNode output, A agent) {
         try {
             final var memoryOutput = objectMapper.treeToValue(output, MemoryOutput.class);
 
@@ -172,7 +172,7 @@ public class AgentMemoryExtension implements AgentExtension {
                 .toList();
     }
 
-    private <R, D, T, A extends Agent<R, D, T, A>> void saveMemories(
+    private <R, T, A extends Agent<R, T, A>> void saveMemories(
             List<GeneratedMemoryUnit> memories,
             MemoryScope scope,
             String scopeId,

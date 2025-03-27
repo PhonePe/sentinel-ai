@@ -12,7 +12,7 @@ import java.util.List;
  */
 @Value
 @With
-public class AgentRunContext<D, R> {
+public class AgentRunContext<R> {
     /**
      * An id for this particular run. This is used to track the run in logs and events
      */
@@ -35,7 +35,7 @@ public class AgentRunContext<D, R> {
     /**
      * Dependencies for the agent
      */
-    D dependencies;
+    Object dependencies;
 
     /**
      * old messages

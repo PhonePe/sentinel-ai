@@ -16,6 +16,7 @@ public enum ErrorType {
     LENGTH_EXCEEDED("Content length exceeded"),
     TOOL_CALL_PERMANENT_FAILURE("Tool call failed permanently for tools: %s"),
     JSON_ERROR("Error parsing JSON. Error: %s"),
+    SERIALIZATION_ERROR("Error serializing object to JSON. Error: %s"),
     UNKNOWN("Unknown response"),
     ;
 

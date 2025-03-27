@@ -8,13 +8,13 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public class AgentUtils {
-    public static <R, D> String userId(AgentRunContext<D, R> context) {
+    public static <R, D> String userId(AgentRunContext<R> context) {
         return context.getRequestMetadata() != null
                ? context.getRequestMetadata().getUserId()
                : null;
     }
 
-    public static <R, D> String sessionId(AgentRunContext<D, R> context) {
+    public static <R, D> String sessionId(AgentRunContext<R> context) {
         return context.getRequestMetadata() != null
                ? context.getRequestMetadata().getSessionId()
                : null;
