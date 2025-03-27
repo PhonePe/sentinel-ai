@@ -4,25 +4,25 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
-import com.openai.azure.AzureOpenAIServiceVersion;
-import com.openai.azure.credential.AzureApiKeyCredential;
-import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.phonepe.sentinelai.agentmemory.AgentMemoryExtension;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
-import com.phonepe.sentinelai.core.model.OpenAIModel;
 import com.phonepe.sentinelai.core.tools.CallableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.embedding.HuggingfaceEmbeddingModel;
+import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import com.phonepe.sentinelai.storage.memory.ESAgentMemoryStorage;
+import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
+import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -76,22 +76,21 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
 
     @Test
     @SneakyThrows
-    void test(final WireMockRuntimeInfo wm) {
+    void test(final WireMockRuntimeInfo wiremock) {
         TestUtils.setupMocks(6, "me", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
-        final var model = new OpenAIModel(
+        final var model = new SimpleOpenAIModel(
                 "gpt-4o",
-                OpenAIOkHttpClient.builder()
-//                        .credential(AzureApiKeyCredential.create(EnvLoader.readEnv("AZURE_API_KEY")))
+                SimpleOpenAIAzure.builder()
 //                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-                        .credential(AzureApiKeyCredential.create("BLAH"))
-                        .baseUrl(wm.getHttpBaseUrl())
-                        .azureServiceVersion(AzureOpenAIServiceVersion.getV2024_10_21())
-                        .putAllQueryParams(Map.of("api-version", List.of("2024-10-21")))
-                        .jsonMapper(objectMapper)
-
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(objectMapper)
+                        .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder().build()))
                         .build(),
                 objectMapper
         );

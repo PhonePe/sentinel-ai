@@ -22,7 +22,7 @@ public class NoOpModel implements Model {
             AgentRunContext<R> context,
             Class<T> responseType,
             Map<String, CallableTool> tools,
-            Agent.ToolRunner toolRunner,
+            Agent.ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent) {
         throw new UnsupportedOperationException("NoOpModel does not support completions");

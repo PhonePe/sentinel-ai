@@ -27,6 +27,11 @@
         </dependency>
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-models-simple-openai</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-agent-memory</artifactId>
             <version>${project.version}</version>
         </dependency>

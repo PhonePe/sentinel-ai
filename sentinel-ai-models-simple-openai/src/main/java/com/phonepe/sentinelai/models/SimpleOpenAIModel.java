@@ -40,8 +40,8 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-import static com.phonepe.sentinelai.core.model.OpenAIModel.raiseMessageReceivedEvent;
-import static com.phonepe.sentinelai.core.model.OpenAIModel.raiseMessageSentEvent;
+import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageReceivedEvent;
+import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageSentEvent;
 import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 
 /**
@@ -64,7 +64,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             AgentRunContext<R> context,
             Class<T> responseType,
             Map<String, CallableTool> tools,
-            Agent.ToolRunner toolRunner,
+            Agent.ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent) {
         final var oldMessages = context.getOldMessages();

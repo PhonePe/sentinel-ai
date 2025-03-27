@@ -21,23 +21,19 @@ import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
-import com.phonepe.sentinelai.core.events.MessageReceivedAgentEvent;
-import com.phonepe.sentinelai.core.events.MessageSentAgentEvent;
 import com.phonepe.sentinelai.core.tools.CallableTool;
-import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.core.utils.EventUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
 import lombok.SneakyThrows;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 import static java.util.stream.Collectors.toMap;
@@ -58,7 +54,7 @@ public class OpenAIModel implements Model {
             AgentRunContext<R> context,
             Class<T> responseType,
             Map<String, CallableTool> tools,
-            Agent.ToolRunner toolRunner,
+            Agent.ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent) {
         final var oldMessages = context.getOldMessages();
@@ -72,21 +68,15 @@ public class OpenAIModel implements Model {
         return CompletableFuture.supplyAsync(() -> {
             AgentOutput<T> output = null;
             do {
-                final var builder = ChatCompletionCreateParams.builder()
-                        .model(ChatModel.of(modelName))
-                        .messages(openAiMessages)
-                        .n(1);
-                applyModelSettings(modelSettings, builder);
-                if (!tools.isEmpty()) {
-                    builder.tools(tools.values().stream().map(OpenAIModel::functionCallSpec).toList());
-//                            .toolChoice(ChatCompletionToolChoiceOption.Auto.REQUIRED);
-                }
-
-                final var jsonSchema = structuredOutputSchema(responseType, extensions);
-                builder.responseFormat(jsonSchema);
-                raiseMessageSentEvent(context, agent, oldMessages);
+                final var completionCall = buildCompletionRequest(context,
+                                                                         responseType,
+                                                                         tools,
+                                                                         extensions,
+                                                                         agent,
+                                                                         openAiMessages,
+                                                                         modelSettings,
+                                                                         oldMessages);
                 final var stopwatch = Stopwatch.createStarted();
-                final var completionCall = builder.build();
                 final var completionResponse = client.chat()
                         .completions()
                         .create(completionCall);
@@ -116,7 +106,7 @@ public class OpenAIModel implements Model {
                             final var newMessage = new StructuredOutput(content);
                             allMessages.add(newMessage);
                             newMessages.add(newMessage);
-                            raiseMessageReceivedEvent(context, agent, newMessage, stopwatch);
+                            EventUtils.raiseMessageReceivedEvent(context, agent, newMessage, stopwatch);
                             try {
                                 yield AgentOutput.success(convertToResponse(responseType, content, extensions, agent),
                                                           newMessages,
@@ -185,32 +175,28 @@ public class OpenAIModel implements Model {
         }, context.getAgentSetup().getExecutorService());
     }
 
-    public static <R, T, A extends Agent<R, T, A>> void raiseMessageReceivedEvent(
+    private <R, T, A extends Agent<R, T, A>> ChatCompletionCreateParams buildCompletionRequest(
             AgentRunContext<R> context,
+            Class<T> responseType,
+            Map<String, CallableTool> tools,
+            List<AgentExtension> extensions,
             A agent,
-            AgentResponse newMessage,
-            Stopwatch stopwatch) {
-        context.getAgentSetup()
-                .getEventBus()
-                .notify(new MessageReceivedAgentEvent(agent.name(),
-                                                      context.getRunId(),
-                                                      AgentUtils.sessionId(context),
-                                                      AgentUtils.userId(context),
-                                                      newMessage,
-                                                      Duration.ofMillis(stopwatch.elapsed(TimeUnit.MILLISECONDS))));
-    }
-
-    public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(
-            AgentRunContext<R> context,
-            A agent,
+            ArrayList<ChatCompletionMessageParam> openAiMessages,
+            ModelSettings modelSettings,
             List<AgentMessage> oldMessages) {
-        context.getAgentSetup()
-                .getEventBus()
-                .notify(new MessageSentAgentEvent(agent.name(),
-                                                  context.getRunId(),
-                                                  AgentUtils.sessionId(context),
-                                                  AgentUtils.userId(context),
-                                                  List.copyOf(oldMessages)));
+        final var builder = ChatCompletionCreateParams.builder()
+                .model(ChatModel.of(modelName))
+                .messages(openAiMessages)
+                .n(1);
+        applyModelSettings(modelSettings, builder);
+        if (!tools.isEmpty()) {
+            builder.tools(tools.values().stream().map(OpenAIModel::functionCallSpec).toList());
+        }
+
+        final var jsonSchema = structuredOutputSchema(responseType, extensions);
+        builder.responseFormat(jsonSchema);
+        EventUtils.raiseMessageSentEvent(context, agent, oldMessages);
+        return builder.build();
     }
 
     @SneakyThrows
@@ -252,7 +238,7 @@ public class OpenAIModel implements Model {
                     openAiMessages.add(convertIndividualMessageToOpenIDFormat(toolCallResponse));
                     allMessages.add(toolCallMessage);
                     newMessages.add(toolCallMessage);
-                    raiseMessageReceivedEvent(context, agent, toolCallMessage, stopwatch);
+                    EventUtils.raiseMessageReceivedEvent(context, agent, toolCallMessage, stopwatch);
                     allMessages.add(toolCallResponse);
                     newMessages.add(toolCallResponse);
                     return toolCallResponse;
