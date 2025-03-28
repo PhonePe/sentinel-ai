@@ -81,5 +81,6 @@ class SimpleOpenAIModelTextIOTest {
                       null,
                       null);
         assertTrue(response.getData().contains("Santanu"));
+        assertTrue(response.getUsage().getTotalTokens() > 1);
     }
 }

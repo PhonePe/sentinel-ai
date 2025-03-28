@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
 import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageReceivedEvent;
 import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageSentEvent;
 import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
@@ -105,7 +106,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 builder.responseFormat(ResponseFormat.jsonSchema(structuredOutputSchema(responseType, extensions)));
                 raiseMessageSentEvent(context, agent, oldMessages);
                 final var stopwatch = Stopwatch.createStarted();
-
+                stats.incrementRequestsForRun();
                 final var completionResponse = openAIProvider.chatCompletions()
                         .create(builder.build())
                         .join();
@@ -117,8 +118,23 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                         log.error("Error serializing response: ", e);
                     }
                 }
-                if (null != completionResponse.getUsage()) {
-                    //TODO UPDATE CONTEXT USAGE
+                final var usage = completionResponse.getUsage();
+                if (null != usage) {
+                    stats.incrementRequestTokens(safeGetInt(usage::getPromptTokens))
+                            .incrementResponseTokens(safeGetInt(usage::getCompletionTokens))
+                            .incrementTotalTokens(safeGetInt(usage::getTotalTokens));
+                    final var promptTokensDetails = usage.getPromptTokensDetails();
+                    if(promptTokensDetails != null) {
+                        stats.getRequestTokenDetails()
+                                .incrementAudioTokens(safeGetInt(promptTokensDetails::getAudioTokens))
+                                .incrementCachedTokens(safeGetInt(promptTokensDetails::getCachedTokens));
+                    }
+                    final var completionTokensDetails = usage.getCompletionTokensDetails();
+                    if(completionTokensDetails != null) {
+                        stats.getResponseTokenDetails()
+                                .incrementAudioTokens(safeGetInt(completionTokensDetails::getAudioTokens))
+                                .incrementReasoningTokens(safeGetInt(completionTokensDetails::getReasoningTokens));
+                    }
                 }
                 final var response = completionResponse
                         .getChoices()
@@ -226,9 +242,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             final var toolCallMessage = new ToolCall(toolCall.getId(),
                                                                      toolCall.getFunction().getName(),
                                                                      toolCall.getFunction().getArguments());
-                            final var toolCallResponse = toolRunner.runTool(context,
-                                                                            tools,
-                                                                            toolCallMessage);
+                            final var toolCallResponse = toolRunner.runTool(context, tools, toolCallMessage);
                             return Pair.of(toolCallMessage, toolCallResponse);
                         }, executorService))
                 .toList();
@@ -244,6 +258,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     raiseMessageReceivedEvent(context, agent, toolCallMessage, stopwatch);
                     allMessages.add(toolCallResponse);
                     newMessages.add(toolCallResponse);
+                    stats.incrementToolCallsForRun();
                     return toolCallResponse;
                 })
                 .filter(Predicates.not(ToolCallResponse::isSuccess))

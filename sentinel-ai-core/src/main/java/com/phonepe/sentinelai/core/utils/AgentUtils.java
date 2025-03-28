@@ -3,6 +3,9 @@ package com.phonepe.sentinelai.core.utils;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import lombok.experimental.UtilityClass;
 
+import java.util.Objects;
+import java.util.function.Supplier;
+
 /**
  * Various small utilities for agent to perform tasks.
  */
@@ -26,5 +29,17 @@ public class AgentUtils {
             cause = cause.getCause();
         }
         return cause;
+    }
+
+    public static <T> T safeGet(Supplier<T> supplier, T defaultValue) {
+        return Objects.requireNonNullElse(supplier.get(), defaultValue);
+    }
+
+    public static int safeGetInt(Supplier<Integer> supplier, int defaultValue) {
+        return safeGet(supplier, defaultValue);
+    }
+
+    public static int safeGetInt(Supplier<Integer> supplier) {
+        return safeGetInt(supplier, 0);
     }
 }
