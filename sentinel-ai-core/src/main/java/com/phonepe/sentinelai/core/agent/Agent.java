@@ -1,7 +1,6 @@
 package com.phonepe.sentinelai.core.agent;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
@@ -310,17 +309,21 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                             LocalDateTime.now());
             }
             catch (InvocationTargetException e) {
+                log.info("Local error making tool call " + toolCall.getToolCallId(), e);
+                final var rootCause = AgentUtils.rootCause(e);
                 return new ToolCallResponse(toolCall.getToolCallId(),
                                             toolCall.getToolName(),
                                             false,
-                                            "Tool call local failure: %s".formatted(e.getMessage()),
+                                            "Tool call local failure: %s".formatted(rootCause.getMessage()),
                                             LocalDateTime.now());
             }
             catch (Exception e) {
+                log.info("Error making tool call " + toolCall.getToolCallId(), e);
+                final var rootCause = AgentUtils.rootCause(e);
                 return new ToolCallResponse(toolCall.getToolCallId(),
                                             toolCall.getToolName(),
                                             false,
-                                            "Tool call failed. Threw exception: %s".formatted(e.getMessage()),
+                                            "Tool call failed. Threw exception: %s".formatted(rootCause.getMessage()),
                                             LocalDateTime.now());
             }
         }
@@ -332,9 +335,14 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     }
 
-    @SneakyThrows //TODO
+    /**
+     * Convert parameters string received from LLM to actual parameters for tool call
+     * @param tool Actual tool to be called
+     * @param params Parameters string to be converted
+     * @return List of parameters to be passed to the tool/function
+     */
+    @SneakyThrows
     private List<Object> params(CallableTool tool, String params) {
-
         final var paramNodes = setup.getMapper().readTree(params);
         return tool.getToolDefinition()
                 .getParameters()
@@ -344,16 +352,18 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     final var paramName = entry.getKey();
                     final var paramType = entry.getValue().getType();
                     final var paramNode = paramNodes.get(paramName);
-                    return jsonToObject(paramNode, paramType);
+                    return setup.getMapper().convertValue(paramNode, paramType);
                 })
                 .toList();
     }
 
-    private Object jsonToObject(JsonNode node, JavaType clazz) {
-        return setup.getMapper().convertValue(node, clazz);
-    }
-
-    @SneakyThrows //TODO::Handle this better
+    /**
+     * Convert tool response to string to send to LLM. For void return type a fixed success string is sent to LLM.
+     * @param tool Tool being called, we use this to derive the return type
+     * @param result Actual result from the tool
+     * @return JSON serialized result
+     */
+    @SneakyThrows
     private String toStringContent(CallableTool tool, Object result) {
         if (tool.getReturnType().equals(Void.TYPE)) {
             return "success"; //This is recommended by OpenAI

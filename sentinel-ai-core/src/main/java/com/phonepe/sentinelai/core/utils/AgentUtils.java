@@ -19,4 +19,12 @@ public class AgentUtils {
                ? context.getRequestMetadata().getSessionId()
                : null;
     }
+
+    public static Throwable rootCause(final Throwable leaf) {
+        Throwable cause = leaf;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        return cause;
+    }
 }

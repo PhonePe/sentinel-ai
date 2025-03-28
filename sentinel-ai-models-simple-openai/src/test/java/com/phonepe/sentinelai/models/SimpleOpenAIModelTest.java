@@ -28,7 +28,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- *
+ * Tests {@link SimpleOpenAIModel}
  */
 @Slf4j
 @WireMockTest

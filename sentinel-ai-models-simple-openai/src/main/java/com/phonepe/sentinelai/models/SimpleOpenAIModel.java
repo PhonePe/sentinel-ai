@@ -109,6 +109,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var completionResponse = openAIProvider.chatCompletions()
                         .create(builder.build())
                         .join();
+                if (log.isTraceEnabled()) {
+                    try {
+                        log.trace("Response from model: {}", mapper.writerWithDefaultPrettyPrinter().writeValueAsString(completionResponse));
+                    }
+                    catch (JsonProcessingException e) {
+                        log.error("Error serializing response: ", e);
+                    }
+                }
                 if (null != completionResponse.getUsage()) {
                     //TODO UPDATE CONTEXT USAGE
                 }
@@ -168,7 +176,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                         final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(), List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
 
                         if (!toolCalls.isEmpty()) {
-                            final AgentOutput<T> toolCallResponse = handleToolCalls(context,
+                            final var toolCallResponse = handleToolCalls(context,
                                                                                     tools,
                                                                                     oldMessages,
                                                                                     context.getAgentSetup().getExecutorService(),
@@ -180,7 +188,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                     stats,
                                                                                     agent,
                                                                                     stopwatch);
-                            if (toolCallResponse != null) {
+                            if (toolCallResponse != null) { //This is non-null only in case of errors
                                 yield toolCallResponse;
                             }
                         }

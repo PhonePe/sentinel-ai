@@ -15,6 +15,7 @@
         <module>sentinel-ai-session</module>
         <module>sentinel-ai-embedding</module>
         <module>sentinel-ai-storage-es</module>
+        <module>sentinel-ai-aggregate-coverage</module>
     </modules>
 
     <properties>
@@ -178,7 +179,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.7</version>
+                <version>0.8.8</version>
                 <executions>
                     <execution>
                         <goals>
@@ -193,15 +194,6 @@
                         </goals>
                     </execution>
                 </executions>
-                <configuration>
-                    <excludes>
-                        <exclude>**/model/**</exclude>
-                        <exclude>**/models/**</exclude>
-                        <exclude>**/*Log*Stream.class</exclude>
-                        <exclude>com/phonepe/drove/controller/*.class</exclude>
-                        <exclude>com/phonepe/drove/controller/ui/*.class</exclude>
-                    </excludes>
-                </configuration>
             </plugin>
 
         </plugins>

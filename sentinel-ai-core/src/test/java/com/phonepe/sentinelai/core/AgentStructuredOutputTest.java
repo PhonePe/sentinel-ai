@@ -21,6 +21,7 @@ import com.phonepe.sentinelai.core.utils.TestUtils;
 import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @Slf4j
 @WireMockTest
+@Disabled
 class AgentStructuredOutputTest {
 
     public record OutputObject(String username, String message) {

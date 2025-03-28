@@ -11,7 +11,7 @@ import java.util.Map;
 @Data
 @Builder
 public class AgentRequestMetadata {
-    String sessionId;
-    String userId;
-    Map<String, Object> optionalParams;
+    private String sessionId;
+    private String userId;
+    private Map<String, Object> optionalParams;
 }
