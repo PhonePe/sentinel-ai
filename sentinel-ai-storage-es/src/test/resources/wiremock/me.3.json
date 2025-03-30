@@ -1,43 +1,31 @@
 {
-  "id" : "chatcmpl-BEcrRa0nExv29Min36VQ9aLt5AXtD",
+  "id" : "chatcmpl-BGokRNsifl40p9SNP24464dVFa1a0",
+  "object" : "chat.completion",
+  "created" : 1743348023,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_ded0d14823",
   "choices" : [ {
-    "finish_reason" : "tool_calls",
     "index" : 0,
-    "logprobs" : null,
     "message" : {
-      "content" : null,
-      "refusal" : null,
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_2ovQecDuXQj45LuL30x6azsh",
+        "id" : "call_dooxYkbDQ8Ekaj7JtfszVahL",
+        "type" : "function",
         "function" : {
-          "arguments" : "{\"params\": {\"name\": \"Santanu\"}}",
-          "name" : "getSalutation"
-        },
-        "type" : "function"
-      }, {
-        "id" : "call_vcuKhiFrSvGKXSpNvQObh1Iq",
-        "function" : {
-          "arguments" : "{\"name\": \"Santanu\"}",
-          "name" : "getLocationForUser"
-        },
-        "type" : "function"
+          "name" : "getLocationForUser",
+          "arguments" : "{\"name\":\"Santanu\"}"
+        }
       } ]
-    }
+    },
+    "finish_reason" : "tool_calls"
   } ],
-  "created" : 1742825673,
-  "model" : "gpt-4o-mini-2024-07-18",
-  "object" : "chat.completion",
-  "system_fingerprint" : "fp_ded0d14823",
   "usage" : {
-    "completion_tokens" : 52,
-    "prompt_tokens" : 1514,
-    "total_tokens" : 1566,
+    "prompt_tokens" : 1812,
+    "completion_tokens" : 18,
+    "total_tokens" : 1830,
     "completion_tokens_details" : {
-      "accepted_prediction_tokens" : 0,
       "audio_tokens" : 0,
-      "reasoning_tokens" : 0,
-      "rejected_prediction_tokens" : 0
+      "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,

@@ -1,7 +1,5 @@
-package com.phonepe.sentinelai.storage.memory;
+package com.phonepe.sentinelai.storage.session;
 
-import com.phonepe.sentinelai.agentmemory.MemoryScope;
-import com.phonepe.sentinelai.agentmemory.MemoryType;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.FieldNameConstants;
@@ -15,26 +13,14 @@ import java.util.List;
 @Value
 @FieldNameConstants
 @Builder
-public class ESAgentMemoryDocument {
-    String id;
+public class ESSessionDocument {
+    String sessionId;
 
     String agentName;
 
-    MemoryScope scope;
-
-    String scopeId;
-
-    MemoryType memoryType;
-
-    String name;
-
-    String content;
-
-    float[] contentVector;
+    String summary;
 
     List<String> topics;
-
-    int reusabilityScore;
 
     LocalDateTime createdAt;
 

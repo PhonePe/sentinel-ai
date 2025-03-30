@@ -56,7 +56,12 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public Optional<SessionSummary> saveSession(SessionSummary sessionSummary) {
+        public List<SessionSummary> sessions(String agentName) {
+            return List.copyOf(sessionData.values());
+        }
+
+        @Override
+        public Optional<SessionSummary> saveSession(String agentName, SessionSummary sessionSummary) {
             sessionData.put(sessionSummary.getSessionId(), sessionSummary);
             return session(sessionSummary.getSessionId());
         }

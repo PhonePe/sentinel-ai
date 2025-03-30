@@ -11,9 +11,9 @@ import java.util.List;
 /**
  * Representation of a memory for an agent
  */
-@Builder
 @Value
 @JsonClassDescription("memory to be used by AI Agents to learn new constructs and personalize conversations with users")
+@Builder
 public class AgentMemory {
     @JsonPropertyDescription("Agent for whom this memory is relevant")
     String agentName;

@@ -1,36 +1,24 @@
 {
-  "id" : "chatcmpl-BEcrhaaEe7EkxaESmJEf2p5YIOJ1F",
-  "choices" : [ {
-    "finish_reason" : "tool_calls",
-    "index" : 0,
-    "logprobs" : null,
-    "message" : {
-      "content" : null,
-      "refusal" : null,
-      "role" : "assistant",
-      "tool_calls" : [ {
-        "id" : "call_cSy9kzhV1oEu3Yoy4X7Coz85",
-        "function" : {
-          "arguments" : "{\"location\":\"Bangalore\"}",
-          "name" : "getWeatherToday"
-        },
-        "type" : "function"
-      } ]
-    }
-  } ],
-  "created" : 1742825689,
-  "model" : "gpt-4o-mini-2024-07-18",
+  "id" : "chatcmpl-BGokrR12guksKsQzJbhgMaJM6MP11",
   "object" : "chat.completion",
+  "created" : 1743348049,
+  "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_ded0d14823",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "{\"output\":{\"message\":\"The weather in Bangalore is sunny today!\",\"username\":\"Santanu\"},\"memoryOutput\":{\"globalMemory\":[],\"sessionId\":\"s1\",\"sessionMemories\":[],\"userId\":\"ss\",\"userMemories\":[]},\"sessionOutput\":{\"sessionId\":\"s1\",\"summary\":\"User asked about the weather.\",\"topics\":[\"weather\"]}}"
+    },
+    "finish_reason" : "stop"
+  } ],
   "usage" : {
-    "completion_tokens" : 17,
-    "prompt_tokens" : 1575,
-    "total_tokens" : 1592,
+    "prompt_tokens" : 1867,
+    "completion_tokens" : 76,
+    "total_tokens" : 1943,
     "completion_tokens_details" : {
-      "accepted_prediction_tokens" : 0,
       "audio_tokens" : 0,
-      "reasoning_tokens" : 0,
-      "rejected_prediction_tokens" : 0
+      "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,

@@ -2,6 +2,7 @@ package com.phonepe.sentinel.session;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import lombok.Builder;
 import lombok.Value;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
  */
 @Value
 @JsonClassDescription("A summary for the session based on the latest few messages")
+@Builder
 public class SessionSummary {
     @JsonPropertyDescription("Session id for this session")
     String sessionId;

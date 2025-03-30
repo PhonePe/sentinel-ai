@@ -254,8 +254,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                   new ModelUsageStats());
         var finalSystemPrompt = "";
         try {
-            finalSystemPrompt = xmlMapper.writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(systemPrompt(request, requestMetadata, messages));
+            finalSystemPrompt = systemPrompt(request, requestMetadata, messages);
         }
         catch (JsonProcessingException e) {
             log.error("Error serializing system prompt", e);

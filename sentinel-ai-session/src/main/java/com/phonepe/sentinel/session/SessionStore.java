@@ -1,5 +1,6 @@
 package com.phonepe.sentinel.session;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -7,5 +8,8 @@ import java.util.Optional;
  */
 public interface SessionStore {
     Optional<SessionSummary> session(String sessionId);
-    Optional<SessionSummary> saveSession(SessionSummary sessionSummary);
+
+    List<SessionSummary> sessions(String agentName);
+
+    Optional<SessionSummary> saveSession(String agentName, SessionSummary sessionSummary);
 }

@@ -97,7 +97,7 @@ public class AgentSessionExtension implements AgentExtension {
         }
         try {
             final var session = mapper.treeToValue(output, SessionSummary.class);
-            final var updated = sessionStore.saveSession(session).orElse(null);
+            final var updated = sessionStore.saveSession(agent.name(), session).orElse(null);
             log.info("Session summary: {}", updated);
         }
         catch (JsonProcessingException e) {

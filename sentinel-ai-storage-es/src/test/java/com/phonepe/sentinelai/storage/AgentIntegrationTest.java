@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.phonepe.sentinel.session.AgentSessionExtension;
 import com.phonepe.sentinelai.agentmemory.AgentMemoryExtension;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
@@ -15,6 +16,7 @@ import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.embedding.HuggingfaceEmbeddingModel;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import com.phonepe.sentinelai.storage.memory.ESAgentMemoryStorage;
+import com.phonepe.sentinelai.storage.session.ESSessionStore;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import lombok.Builder;
@@ -25,10 +27,11 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Integration test for memory extension with persistence
@@ -77,7 +80,7 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(6, "me", getClass());
+        TestUtils.setupMocks(5, "me", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
@@ -90,7 +93,12 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
                         .apiKey("BLAH")
                         .apiVersion("2024-10-21")
                         .objectMapper(objectMapper)
-                        .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder().build()))
+                        .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
+                                                                       .callTimeout(Duration.ofSeconds(180))
+                                                                       .connectTimeout(Duration.ofSeconds(120))
+                                                                       .readTimeout(Duration.ofSeconds(180))
+                                                                       .writeTimeout(Duration.ofSeconds(120))
+                                                                       .build()))
                         .build(),
                 objectMapper
         );
@@ -103,21 +111,26 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
                 .apiKey("test")
                 .build();
 
-        final var storage = new ESAgentMemoryStorage(client, new HuggingfaceEmbeddingModel(), indexPrefix(this));
+        final var memoryStorage = new ESAgentMemoryStorage(client, new HuggingfaceEmbeddingModel(), indexPrefix(this));
+        final var sessionStorage = new ESSessionStore(client, indexPrefix(this), IndexSettings.DEFAULT);
+        final var extensions = List.of(AgentMemoryExtension.builder()
+                                               .objectMapper(objectMapper)
+                                               .memoryStore(memoryStorage)
+                                               .numMessagesForSummarization(3)
+                                               .saveMemoryAfterSessionEnd(true)
+                                               .build(),
+                                       AgentSessionExtension.builder()
+                                               .sessionStore(sessionStorage)
+                                               .updateSummaryAfterSession(true)
+                                               .build());
         {
-
             final var agent = SimpleAgent.builder()
                     .setup(AgentSetup.builder()
                                    .mapper(objectMapper)
                                    .model(model)
                                    .modelSettings(ModelSettings.builder().temperature(0.1f).build())
                                    .build())
-                    .extensions(List.of(AgentMemoryExtension.builder()
-                                                .objectMapper(objectMapper)
-                                                .memoryStore(storage)
-                                                .numMessagesForSummarization(3)
-                                                .saveMemoryAfterSessionEnd(true)
-                                                .build()))
+                    .extensions(extensions)
                     .build()
                     .registerToolbox(toolbox);
             final var response = agent.execute(new UserInput("Hi"),
@@ -127,7 +140,6 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
             log.debug("Agent response: {}", response.getData().message());
         }
 
-
         {
             final var agent = SimpleAgent.builder()
                     .setup(AgentSetup.builder()
@@ -135,12 +147,7 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
                                    .model(model)
                                    .modelSettings(ModelSettings.builder().temperature(0.1f).build())
                                    .build())
-                    .extensions(List.of(AgentMemoryExtension.builder()
-                                                .objectMapper(objectMapper)
-                                                .memoryStore(storage)
-                                                .numMessagesForSummarization(3)
-                                                .saveMemoryAfterSessionEnd(true)
-                                                .build()))
+                    .extensions(extensions)
                     .build()
                     .registerToolbox(toolbox);
             final var response2 = agent.execute(
@@ -149,12 +156,18 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
                     List.of(),
                     null);
             log.info("Second call: {}", response2.getData());
-            if(log.isTraceEnabled()) {
+            if (log.isTraceEnabled()) {
                 log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
                         .writeValueAsString(response2.getAllMessages()));
             }
             assertTrue(response2.getData().message().contains("sunny"));
         }
+        final var mems = memoryStorage.findMemoriesAboutUser("ss", null, 5);
+        log.info("Memories: {}", mems);
+        assertFalse(mems.isEmpty());
+        final var session = sessionStorage.session("s1");
+        log.info("Session: {}", session);
+        assertTrue(session.isPresent());
     }
 
     /**

@@ -152,7 +152,7 @@ public class AgentMemoryExtension implements AgentExtension {
     public <R, T, A extends Agent<R, T, A>> void consume(JsonNode output, A agent) {
         try {
             final var memoryOutput = objectMapper.treeToValue(output, MemoryOutput.class);
-
+            log.debug("Memories extracted: {}", memoryOutput);
             saveMemories(memoryOutput.getGlobalMemory(), MemoryScope.AGENT, agent.name(), agent);
             saveMemories(memoryOutput.getSessionMemories(), MemoryScope.SESSION, memoryOutput.getSessionId(), agent);
             saveMemories(memoryOutput.getUserMemories(), MemoryScope.ENTITY, memoryOutput.getUserId(), agent);
