@@ -19,7 +19,7 @@ public class SystemPromptSchema {
 
     @Data
     public static class PrimaryTask {
-        private Object prompt;
+        private Object role;
         private List<ToolSummary> tools;
     }
 

@@ -1,5 +1,6 @@
 package com.phonepe.sentinelai.core.agent;
 
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import lombok.Builder;
 import lombok.Data;
 
@@ -14,4 +15,5 @@ public class AgentRequestMetadata {
     private String sessionId;
     private String userId;
     private Map<String, Object> optionalParams;
+    private ModelUsageStats usageStats;
 }

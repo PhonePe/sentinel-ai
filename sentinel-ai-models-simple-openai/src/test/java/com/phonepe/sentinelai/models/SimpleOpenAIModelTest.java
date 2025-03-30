@@ -123,8 +123,10 @@ class SimpleOpenAIModelTest {
                 response.getAllMessages(),
                 null);
         log.info("Second call: {}", response2.getData());
-        log.debug("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
-                .writeValueAsString(response2.getAllMessages()));
+        if(log.isTraceEnabled()) {
+            log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
+                    .writeValueAsString(response2.getAllMessages()));
+        }
         assertTrue(response2.getData().message().contains("Santanu"));
     }
 }

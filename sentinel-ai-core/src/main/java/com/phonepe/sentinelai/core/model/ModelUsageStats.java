@@ -145,4 +145,20 @@ public class ModelUsageStats {
         this.totalTokens += value;
         return this;
     }
+
+    //Merge details from another usage object
+    public ModelUsageStats merge(final ModelUsageStats other) {
+        this.incrementRequestsForRun(other.requestsForRun);
+        this.incrementToolCallsForRun(other.toolCallsForRun);
+        this.incrementRequestTokens(other.requestTokens);
+        this.incrementResponseTokens(other.responseTokens);
+        this.incrementTotalTokens(other.totalTokens);
+        this.requestTokenDetails.incrementCachedTokens(other.requestTokenDetails.cachedTokens);
+        this.requestTokenDetails.incrementAudioTokens(other.requestTokenDetails.audioTokens);
+        this.responseTokenDetails.incrementReasoningTokens(other.responseTokenDetails.reasoningTokens);
+        this.responseTokenDetails.incrementAcceptedPredictionTokens(other.responseTokenDetails.acceptedPredictionTokens);
+        this.responseTokenDetails.incrementRejectedPredictionTokens(other.responseTokenDetails.rejectedPredictionTokens);
+        this.responseTokenDetails.incrementAudioTokens(other.responseTokenDetails.audioTokens);
+        return this;
+    }
 }

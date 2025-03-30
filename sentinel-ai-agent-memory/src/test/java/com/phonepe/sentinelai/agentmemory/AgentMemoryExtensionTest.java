@@ -141,10 +141,7 @@ class AgentMemoryExtensionTest {
                                                 .build()))
                     .build()
                     .registerToolbox(toolbox);
-            final var response = agent.execute(new UserInput("Hi"),
-                                               requestMetadata,
-                                               null,
-                                               null);
+            final var response = agent.execute(new UserInput("Hi"), requestMetadata);
             log.info("Agent response: {}", response.getData().message());
         }
 
@@ -165,12 +162,9 @@ class AgentMemoryExtensionTest {
                     .build()
                     .registerToolbox(toolbox);
             final var response2 = agent.execute(
-                    new UserInput("How is the weather here?"),
-                    requestMetadata,
-                    List.of(),
-                    null);
+                    new UserInput("How is the weather here?"), requestMetadata);
             log.info("Second call: {}", response2.getData());
-            if(log.isTraceEnabled()) {
+            if (log.isTraceEnabled()) {
                 log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
                         .writeValueAsString(response2.getAllMessages()));
             }

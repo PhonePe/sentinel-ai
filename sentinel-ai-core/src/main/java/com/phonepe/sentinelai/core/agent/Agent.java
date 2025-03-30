@@ -11,6 +11,7 @@ import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Primitives;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
@@ -38,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.toMap;
@@ -146,7 +148,43 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     /**
      * Execute the agent synchronously.
-     * See {@link Agent#executeAsync(Object, AgentRequestMetadata, List, AgentSetup)} for parameters.
+     *
+     * @param request         Request object
+     * @param requestMetadata Metadata for the request
+     * @return Agent output. Please see {@link AgentOutput} for details.
+     */
+    public final AgentOutput<T> execute(
+            R request,
+            AgentRequestMetadata requestMetadata) {
+        return execute(request, requestMetadata, null);
+    }
+
+    /**
+     * Execute the agent synchronously.
+     *
+     * @param request         Request object
+     * @param requestMetadata Metadata for the request
+     * @param oldMessages     Old messages. List of old messages to be sent to the LLM for this run. If set to null,
+     *                        messages are generated and consumed by the agent in this session.
+     * @return Agent output. Please see {@link AgentOutput} for details.
+     */
+    public final AgentOutput<T> execute(
+            R request,
+            AgentRequestMetadata requestMetadata,
+            List<AgentMessage> oldMessages) {
+        return execute(request, requestMetadata, oldMessages, null);
+    }
+
+    /**
+     * Execute the agent synchronously.
+     *
+     * @param request         Request object
+     * @param requestMetadata Metadata for the request
+     * @param oldMessages     Old messages. List of old messages to be sent to the LLM for this run. If set to null,
+     *                        messages are generated and consumed by the agent in this session.
+     * @param agentSetup      Setup for the agent. This is an override at runtime. If set to null, the setup provided
+     *                        will be used. Whatever fields are provided are merged with the setup provided during
+     * @return Agent output. Please see {@link AgentOutput} for details.
      */
     public final AgentOutput<T> execute(
             R request,
@@ -154,6 +192,35 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             List<AgentMessage> oldMessages,
             AgentSetup agentSetup) {
         return executeAsync(request, requestMetadata, oldMessages, agentSetup).join();
+    }
+
+    /**
+     * Execute the agent asynchronously. A full reply is returned as a future.
+     *
+     * @param request         Request object
+     * @param requestMetadata Metadata for the request
+     * @return Agent output. Please see {@link AgentOutput} for details.
+     */
+    public final CompletableFuture<AgentOutput<T>> executeAsync(
+            R request,
+            AgentRequestMetadata requestMetadata) {
+        return executeAsync(request, requestMetadata, null);
+    }
+
+    /**
+     * Execute the agent asynchronously. A full reply is returned as a future.
+     *
+     * @param request         Request object
+     * @param requestMetadata Metadata for the request
+     * @param oldMessages     Old messages. List of old messages to be sent to the LLM for this run. If set to null,
+     *                        messages are generated and consumed by the agent in this session.
+     * @return Agent output. Please see {@link AgentOutput} for details.
+     */
+    public final CompletableFuture<AgentOutput<T>> executeAsync(
+            R request,
+            AgentRequestMetadata requestMetadata,
+            List<AgentMessage> oldMessages) {
+        return executeAsync(request, requestMetadata, oldMessages, null);
     }
 
     /**
@@ -185,13 +252,143 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                   null,
                                                   messages,
                                                   new ModelUsageStats());
+        var finalSystemPrompt = "";
+        try {
+            finalSystemPrompt = xmlMapper.writerWithDefaultPrettyPrinter()
+                    .writeValueAsString(systemPrompt(request, requestMetadata, messages));
+        }
+        catch (JsonProcessingException e) {
+            log.error("Error serializing system prompt", e);
+            return CompletableFuture.completedFuture(AgentOutput.error(messages,
+                                                                       context.getModelUsageStats(),
+                                                                       SentinelError.error(ErrorType.SERIALIZATION_ERROR,
+                                                                                           e)));
+        }
+        log.debug("Final system prompt: {}", finalSystemPrompt);
+        messages.add(new SystemPrompt(finalSystemPrompt, false, null));
+        messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
+        return mergedAgentSetup.getModel()
+                .exchange_messages(
+                        context,
+                        outputType,
+                        knownTools,
+                        this::runToolObserved,
+                        this.extensions,
+                        (A) this)
+                .thenApplyAsync(response -> {
+                    if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
+                        requestMetadata.getUsageStats().merge(response.getUsage());
+                    }
+                    return response;
+                });
+    }
+
+    /**
+     * Streaming execution. This should be used for text streaming applications like chat etc.
+     *
+     * @param request         Request object
+     * @param requestMetadata Metadata for the request
+     * @param streamHandler   Stream handler for the response
+     * @return The response to be consumed by the client
+     */
+    public final CompletableFuture<AgentOutput<byte[]>> executeAsyncStreaming(
+            R request,
+            AgentRequestMetadata requestMetadata,
+            Consumer<byte[]> streamHandler) {
+        return executeAsyncStreaming(request, requestMetadata, streamHandler, null);
+    }
+
+    /**
+     * Streaming execution. This should be used for text streaming applications like chat etc.
+     *
+     * @param request         Request object
+     * @param requestMetadata Metadata for the request
+     * @param streamHandler   Stream handler for the response
+     * @param oldMessages     Old messages. List of old messages to be sent to the LLM for this run. If set to null,
+     *                        messages are generated and consumed by the agent in this session.
+     * @return The response to be consumed by the client
+     */
+    public final CompletableFuture<AgentOutput<byte[]>> executeAsyncStreaming(
+            R request,
+            AgentRequestMetadata requestMetadata,
+            Consumer<byte[]> streamHandler, List<AgentMessage> oldMessages) {
+        return executeAsyncStreaming(request, requestMetadata, streamHandler, oldMessages, null);
+    }
+
+
+    /**
+     * Streaming execution. This should be used for text streaming applications like chat etc.
+     *
+     * @param request         Request object
+     * @param requestMetadata Metadata for the request
+     * @param streamHandler   Stream handler for the response
+     * @param oldMessages     Old messages. List of old messages to be sent to the LLM for this run. If set to null,
+     *                        messages are generated and consumed by the agent in this session.
+     * @param agentSetup      Setup for the agent. This is an override at runtime. If set to null, the setup provided
+     * @return The response to be consumed by the client
+     */
+    @SuppressWarnings("unchecked")
+    public final CompletableFuture<AgentOutput<byte[]>> executeAsyncStreaming(
+            R request,
+            AgentRequestMetadata requestMetadata,
+            Consumer<byte[]> streamHandler, List<AgentMessage> oldMessages,
+            AgentSetup agentSetup) {
+        final var mergedAgentSetup = merge(agentSetup, this.setup);
+        final var messages = new ArrayList<>(Objects.requireNonNullElse(oldMessages, List.<AgentMessage>of())
+                                                     .stream()
+                                                     .filter(message -> !message.getMessageType()
+                                                             .equals(AgentMessageType.SYSTEM_PROMPT_REQUEST))
+                                                     .toList());
+        final var runId = UUID.randomUUID().toString();
+        final var context = new AgentRunContext<>(runId,
+                                                  request,
+                                                  requestMetadata,
+                                                  mergedAgentSetup,
+                                                  null,
+                                                  messages,
+                                                  new ModelUsageStats());
+        var finalSystemPrompt = "";
+        try {
+            finalSystemPrompt = xmlMapper.writerWithDefaultPrettyPrinter()
+                    .writeValueAsString(systemPrompt(request, requestMetadata, messages));
+        }
+        catch (JsonProcessingException e) {
+            log.error("Error serializing system prompt", e);
+            return CompletableFuture.completedFuture(AgentOutput.error(messages,
+                                                                       context.getModelUsageStats(),
+                                                                       SentinelError.error(ErrorType.SERIALIZATION_ERROR,
+                                                                                           e)));
+        }
+        log.debug("Final system prompt: {}", finalSystemPrompt);
+        messages.add(new SystemPrompt(finalSystemPrompt, false, null));
+        messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
+        return mergedAgentSetup.getModel()
+                .exchange_messages_streaming(
+                        context,
+                        knownTools,
+                        this::runToolObserved,
+                        this.extensions,
+                        (A) this,
+                        streamHandler)
+                .thenApply(response -> {
+                    if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
+                        requestMetadata.getUsageStats().merge(response.getUsage());
+                    }
+                    return response;
+                });
+    }
+
+    private String systemPrompt(
+            R request,
+            final AgentRequestMetadata requestMetadata,
+            List<AgentMessage> messages) throws JsonProcessingException {
         final var prompt = new SystemPromptSchema()
                 .setCoreInstructions(
                         "Your main job is to answer the user query as provided in user prompt in the `user_input` tag. "
                                 + (!messages.isEmpty()
                                    ? "Use the provided old messages for extra context and information." : ""))
                 .setPrimaryTask(new SystemPromptSchema.PrimaryTask()
-                                        .setPrompt(systemPrompt)
+                                        .setRole(systemPrompt)
                                         .setTools(this.knownTools.values()
                                                           .stream()
                                                           .map(tool -> new SystemPromptSchema.ToolSummary()
@@ -211,30 +408,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                              .setSessionId(requestMetadata.getSessionId())
                                              .setUserId(requestMetadata.getUserId()));
         }
+        return xmlMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(prompt);
 
-        final String finalSystemPrompt;
-        try {
-            finalSystemPrompt = xmlMapper.writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(prompt);
-        }
-        catch (JsonProcessingException e) {
-            log.error("Error serializing system prompt", e);
-            return CompletableFuture.completedFuture(AgentOutput.error(messages,
-                                                                       context.getModelUsageStats(),
-                                                                       SentinelError.error(ErrorType.SERIALIZATION_ERROR,
-                                                                                           e)));
-        }
-        log.debug("Final system prompt: {}", finalSystemPrompt);
-        messages.add(new SystemPrompt(finalSystemPrompt, false, null));
-        messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
-        return mergedAgentSetup.getModel()
-                .exchange_messages(
-                        context,
-                        outputType,
-                        knownTools,
-                        this::runToolObserved,
-                        this.extensions,
-                        (A) this);
     }
 
     private static AgentSetup merge(final AgentSetup lhs, final AgentSetup rhs) {
@@ -337,7 +513,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     /**
      * Convert parameters string received from LLM to actual parameters for tool call
-     * @param tool Actual tool to be called
+     *
+     * @param tool   Actual tool to be called
      * @param params Parameters string to be converted
      * @return List of parameters to be passed to the tool/function
      */
@@ -359,7 +536,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     /**
      * Convert tool response to string to send to LLM. For void return type a fixed success string is sent to LLM.
-     * @param tool Tool being called, we use this to derive the return type
+     *
+     * @param tool   Tool being called, we use this to derive the return type
      * @param result Actual result from the tool
      * @return JSON serialized result
      */

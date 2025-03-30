@@ -23,14 +23,14 @@ public class TestUtils {
                                     .inScenario("model-test")
                                     .whenScenarioStateIs(i == 1 ? STARTED : Objects.toString(i))
                                     .willReturn(okForContentType("application/json",
-                                                                 readFile(i, prefix, clazz)))
+                                                                 readStubFile(i, prefix, clazz)))
                                     .willSetStateTo(Objects.toString(i + 1)));
 
                 });
     }
 
     @SneakyThrows
-    private static String readFile(int i, String prefix, Class<?> clazz) {
+    public static String readStubFile(int i, String prefix, Class<?> clazz) {
         return Files.readString(Path.of(Objects.requireNonNull(clazz.getResource(
                 "/wiremock/%s.%d.json".formatted(prefix, i))).toURI()));
     }
