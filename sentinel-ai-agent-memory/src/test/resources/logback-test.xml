@@ -26,6 +26,9 @@
 <!--        <level value="DEBUG" />-->
 <!--    </logger>-->
 
+        <logger name="com.phonepe.sentinelai">
+            <level value="TRACE" />
+        </logger>
     <root>
         <level value="INFO" />
         <appender-ref ref="CONSOLE" />

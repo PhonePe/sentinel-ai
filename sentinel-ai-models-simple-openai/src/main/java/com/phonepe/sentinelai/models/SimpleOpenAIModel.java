@@ -542,8 +542,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             builder.topP(Double.valueOf(modelSettings.getTopP()));
         }
         if (modelSettings.getParallelToolCalls() != null) {
-//            builder.parallelToolCalls(Boolean.TRUE.equals(modelSettings.getParallelToolCalls()));
-            log.warn("Parallel tool calls not supported by SimpleOpenAI");
+            builder.parallelToolCalls(modelSettings.getParallelToolCalls());
+        }
+        if (modelSettings.getSeed() != null) {
+            builder.seed(modelSettings.getSeed());
         }
         if (modelSettings.getFrequencyPenalty() != null) {
             builder.frequencyPenalty(Double.valueOf(modelSettings.getFrequencyPenalty()));

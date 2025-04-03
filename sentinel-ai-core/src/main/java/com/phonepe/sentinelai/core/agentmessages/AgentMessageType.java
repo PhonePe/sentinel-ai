@@ -7,7 +7,7 @@ public enum AgentMessageType {
     //Request types as sent by agent
     SYSTEM_PROMPT_REQUEST,
     USER_PROMPT_REQUEST,
-    TOOL_CALL_RESPONSE_REQUEST,
+    TOOL_CALL_REQUEST,
     RETRY_REQUEST_REQUEST, //TODO
 
 

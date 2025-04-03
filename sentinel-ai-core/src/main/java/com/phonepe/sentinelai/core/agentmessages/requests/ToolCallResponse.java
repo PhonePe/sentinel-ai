@@ -50,7 +50,7 @@ public class ToolCallResponse extends AgentRequest {
             boolean success,
             @NonNull String response,
             LocalDateTime sentAt) {
-        super(AgentMessageType.TOOL_CALL_RESPONSE_REQUEST);
+        super(AgentMessageType.TOOL_CALL_RESPONSE);
         this.toolCallId = toolCallId;
         this.toolName = toolName;
         this.success = success;

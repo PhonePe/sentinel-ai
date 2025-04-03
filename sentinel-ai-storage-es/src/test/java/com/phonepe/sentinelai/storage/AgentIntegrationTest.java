@@ -1,6 +1,7 @@
 package com.phonepe.sentinelai.storage;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
@@ -31,7 +32,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Integration test for memory extension with persistence
@@ -43,7 +45,7 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
     }
 
     @JsonClassDescription("Parameter to be passed to get salutation for a user")
-    public record SalutationParams(@JsonPropertyDescription("Name of the user") String name) {
+    public record SalutationParams(@JsonPropertyDescription("Name of the user") @JsonProperty(required = true) String name) {
     }
 
     @JsonClassDescription("User input")
@@ -80,7 +82,7 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(5, "me", getClass());
+        TestUtils.setupMocks(8, "me", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
@@ -123,38 +125,26 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
                                                .sessionStore(sessionStorage)
                                                .updateSummaryAfterSession(true)
                                                .build());
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                               .mapper(objectMapper)
+                               .model(model)
+                               .modelSettings(ModelSettings.builder()
+                                                      .temperature(0f)
+                                                      .seed(0)
+                                                      .parallelToolCalls(false)
+                                                      .build())
+                               .build())
+                .extensions(extensions)
+                .build()
+                .registerToolbox(toolbox);
         {
-            final var agent = SimpleAgent.builder()
-                    .setup(AgentSetup.builder()
-                                   .mapper(objectMapper)
-                                   .model(model)
-                                   .modelSettings(ModelSettings.builder().temperature(0.1f).build())
-                                   .build())
-                    .extensions(extensions)
-                    .build()
-                    .registerToolbox(toolbox);
-            final var response = agent.execute(new UserInput("Hi"),
-                                               requestMetadata,
-                                               null,
-                                               null);
+            final var response = agent.execute(new UserInput("Hi"), requestMetadata);
             log.debug("Agent response: {}", response.getData().message());
         }
-
         {
-            final var agent = SimpleAgent.builder()
-                    .setup(AgentSetup.builder()
-                                   .mapper(objectMapper)
-                                   .model(model)
-                                   .modelSettings(ModelSettings.builder().temperature(0.1f).build())
-                                   .build())
-                    .extensions(extensions)
-                    .build()
-                    .registerToolbox(toolbox);
             final var response2 = agent.execute(
-                    new UserInput("How is the weather here?"),
-                    requestMetadata,
-                    List.of(),
-                    null);
+                    new UserInput("How is the weather here?"), requestMetadata);
             log.info("Second call: {}", response2.getData());
             if (log.isTraceEnabled()) {
                 log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()

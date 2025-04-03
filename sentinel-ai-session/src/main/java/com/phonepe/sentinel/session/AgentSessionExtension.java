@@ -7,7 +7,7 @@ import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
-import com.phonepe.sentinelai.core.agent.SystemPromptSchema;
+import com.phonepe.sentinelai.core.agent.SystemPrompt;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
 import lombok.NonNull;
@@ -15,6 +15,7 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -45,26 +46,43 @@ public class AgentSessionExtension implements AgentExtension {
     }
 
     @Override
+    public <R, T, A extends Agent<R, T, A>> List<SystemPrompt.FactList> facts(
+            R request,
+            AgentRequestMetadata metadata,
+            A agent) {
+        if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
+            return sessionStore.session(metadata.getSessionId())
+                    .map(sessionSummary -> List.of(
+                            new SystemPrompt.FactList("Information about session %s".formatted(metadata.getSessionId()),
+                                                      List.of(new SystemPrompt.Fact(
+                                                              "Session Summary", sessionSummary.toString())))))
+                    .orElse(List.of());
+        }
+        return List.of();
+    }
+
+    @Override
     public <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
             R request,
             AgentRequestMetadata metadata,
             A agent) {
-        final var prompts = new ArrayList<SystemPromptSchema.SecondaryTask>();
+        final var prompts = new ArrayList<SystemPrompt.SecondaryTask>();
         if (updateSummaryAfterSession) {
-            final var prompt = new SystemPromptSchema.SecondaryTask()
+            final var prompt = new SystemPrompt.SecondaryTask()
                     .setObjective("UPDATE SESSION SUMMARY")
                     .setOutputField(OUTPUT_KEY)
                     .setInstructions(
                             "Generate session summary and a list of topics being discussed in the session based on " +
                                     "the last few messages.");
             final var tools = this.tools();
-            if(!tools.isEmpty()) {
-                prompt.setTools(tools.values()
-                                        .stream()
-                                        .map(tool -> new SystemPromptSchema.ToolSummary()
-                                                .setName(tool.getToolDefinition().getName())
-                                                .setDescription(tool.getToolDefinition().getDescription()))
-                                        .toList());
+            if (!tools.isEmpty()) {
+                prompt.setTool(tools.values()
+                                       .stream()
+                                       .map(tool -> SystemPrompt.ToolSummary.builder()
+                                               .name(tool.getToolDefinition().getName())
+                                               .description(tool.getToolDefinition().getDescription())
+                                               .build())
+                                       .toList());
 
             }
             prompts.add(prompt);
@@ -73,8 +91,6 @@ public class AgentSessionExtension implements AgentExtension {
         final var hints = new ArrayList<>();
         if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
             hints.add("USE SESSION INFORMATION TO CONTEXTUALIZE RESPONSES");
-            sessionStore.session(metadata.getSessionId())
-                    .ifPresent(hints::add);
         }
         return new ExtensionPromptSchema(prompts, hints);
     }

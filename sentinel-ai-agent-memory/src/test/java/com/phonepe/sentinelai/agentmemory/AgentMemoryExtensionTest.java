@@ -106,8 +106,10 @@ class AgentMemoryExtensionTest {
         TestUtils.setupMocks(6, "me", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = new SimpleOpenAIModel(
-                "gpt-4o",
+        final var httpClient = new OkHttpClient.Builder()
+                .build();
+        final var model = new SimpleOpenAIModel<>(
+                "global:LLM_GLOBAL_GPT_4O_PRD",
                 SimpleOpenAIAzure.builder()
 //                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
 //                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
@@ -115,7 +117,7 @@ class AgentMemoryExtensionTest {
                         .apiKey("BLAH")
                         .apiVersion("2024-10-21")
                         .objectMapper(objectMapper)
-                        .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder().build()))
+                        .clientAdapter(new OkHttpClientAdapter(httpClient))
                         .build(),
                 objectMapper
         );
@@ -125,42 +127,33 @@ class AgentMemoryExtensionTest {
                 .userId("ss")
                 .build();
         final var memoryStore = new InMemoryMemStore();
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                               .mapper(objectMapper)
+                               .model(model)
+                               .modelSettings(ModelSettings.builder()
+                                                      .temperature(0f)
+                                                      .seed(42)
+                                                      .parallelToolCalls(false)
+                                                      .build())
+                               .build())
+                .extensions(List.of(AgentMemoryExtension.builder()
+                                            .objectMapper(objectMapper)
+                                            .memoryStore(memoryStore)
+                                            .numMessagesForSummarization(3)
+                                            .saveMemoryAfterSessionEnd(true)
+                                            .build()))
+                .build()
+                .registerToolbox(toolbox);
         {
 
-            final var agent = SimpleAgent.builder()
-                    .setup(AgentSetup.builder()
-                                   .mapper(objectMapper)
-                                   .model(model)
-                                   .modelSettings(ModelSettings.builder().temperature(0.1f).seed(42).build())
-                                   .build())
-                    .extensions(List.of(AgentMemoryExtension.builder()
-                                                .objectMapper(objectMapper)
-                                                .memoryStore(memoryStore)
-                                                .numMessagesForSummarization(3)
-                                                .saveMemoryAfterSessionEnd(true)
-                                                .build()))
-                    .build()
-                    .registerToolbox(toolbox);
+
             final var response = agent.execute(new UserInput("Hi"), requestMetadata);
             log.info("Agent response: {}", response.getData().message());
         }
 
 
         {
-            final var agent = SimpleAgent.builder()
-                    .setup(AgentSetup.builder()
-                                   .mapper(objectMapper)
-                                   .model(model)
-                                   .modelSettings(ModelSettings.builder().temperature(0.1f).build())
-                                   .build())
-                    .extensions(List.of(AgentMemoryExtension.builder()
-                                                .objectMapper(objectMapper)
-                                                .memoryStore(memoryStore)
-                                                .numMessagesForSummarization(3)
-                                                .saveMemoryAfterSessionEnd(true)
-                                                .build()))
-                    .build()
-                    .registerToolbox(toolbox);
             final var response2 = agent.execute(
                     new UserInput("How is the weather here?"), requestMetadata);
             log.info("Second call: {}", response2.getData());

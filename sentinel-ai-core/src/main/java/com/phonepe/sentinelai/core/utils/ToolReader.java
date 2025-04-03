@@ -2,6 +2,7 @@ package com.phonepe.sentinelai.core.utils;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.google.common.base.CaseFormat;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.tools.CallableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
@@ -35,7 +36,9 @@ public class ToolReader {
                                      final var callableTool = createCallableToolFromLocalMethods(
                                              instance,
                                              method);
-                                     log.info("Created tool: {}::{}", className, callableTool.getToolDefinition().getName());
+                                     log.info("Created tool: {}::{}",
+                                              className,
+                                              callableTool.getToolDefinition().getName());
                                      return callableTool;
                                  })
                                  .collect(toMap(tool -> tool.getToolDefinition().getName(), Function.identity())));
@@ -65,9 +68,13 @@ public class ToolReader {
                                          description,
                                          TypeFactory.defaultInstance().constructType(paramType)));
         }
+        final var toolClassName = CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
+                .convert(instance.getClass().getSimpleName());
+        final var toolName = toolClassName + "_" + CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
+                .convert((toolDef.name().isBlank() ? method.getName() : toolDef.name()));
         return new CallableTool(
                 ToolDefinition.builder()
-                        .name(toolDef.name().isBlank() ? method.getName() : toolDef.name())
+                        .name(toolName)
                         .description(toolDef.value())
                         .contextAware(hasContext)
                         .parameters(params)

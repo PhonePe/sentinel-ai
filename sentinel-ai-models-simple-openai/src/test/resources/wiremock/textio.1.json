@@ -12,7 +12,7 @@
         "id" : "call_hZknT6e7hhtTU9dwmarvdcuf",
         "type" : "function",
         "function" : {
-          "name" : "getName",
+          "name" : "test_agent_get_name",
           "arguments" : "{}"
         }
       } ]

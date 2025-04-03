@@ -1,5 +1,6 @@
 package com.phonepe.sentinelai.core.agent;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -12,7 +13,6 @@ import com.google.common.base.Strings;
 import com.google.common.primitives.Primitives;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
-import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
@@ -83,6 +83,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
         xmlMapper.configure(ToXmlGenerator.Feature.WRITE_XML_DECLARATION, true);
         xmlMapper.configure(ToXmlGenerator.Feature.WRITE_XML_1_1, true);
+        xmlMapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
+        xmlMapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_EMPTY);
         registerTools(knownTools);
     }
 
@@ -264,7 +266,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                            e)));
         }
         log.debug("Final system prompt: {}", finalSystemPrompt);
-        messages.add(new SystemPrompt(finalSystemPrompt, false, null));
+        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(finalSystemPrompt,
+                                                                                         false,
+                                                                                         null));
         messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
         return mergedAgentSetup.getModel()
                 .exchange_messages(
@@ -348,8 +352,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                   new ModelUsageStats());
         var finalSystemPrompt = "";
         try {
-            finalSystemPrompt = xmlMapper.writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(systemPrompt(request, requestMetadata, messages));
+            finalSystemPrompt = systemPrompt(request, requestMetadata, messages);
         }
         catch (JsonProcessingException e) {
             log.error("Error serializing system prompt", e);
@@ -359,7 +362,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                            e)));
         }
         log.debug("Final system prompt: {}", finalSystemPrompt);
-        messages.add(new SystemPrompt(finalSystemPrompt, false, null));
+        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(finalSystemPrompt,
+                                                                                         false,
+                                                                                         null));
         messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
         return mergedAgentSetup.getModel()
                 .exchange_messages_streaming(
@@ -381,29 +386,44 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             R request,
             final AgentRequestMetadata requestMetadata,
             List<AgentMessage> messages) throws JsonProcessingException {
-        final var prompt = new SystemPromptSchema()
+        final var secondaryTasks = this.extensions
+                .stream()
+                .map(extension -> new SystemPrompt.SecondaryTask()
+                        .setInstructions(extension.additionalSystemPrompts(request,
+                                                                           requestMetadata,
+                                                                           (A) this)))
+                .toList();
+        final var knowledge = this.extensions
+                .stream()
+                .flatMap(extension -> extension.facts(request, requestMetadata, (A) this).stream())
+                .toList();
+        final var prompt = new SystemPrompt()
                 .setCoreInstructions(
                         "Your main job is to answer the user query as provided in user prompt in the `user_input` tag. "
                                 + (!messages.isEmpty()
-                                   ? "Use the provided old messages for extra context and information." : ""))
-                .setPrimaryTask(new SystemPromptSchema.PrimaryTask()
+                                   ? "Use the provided old messages for extra context and information. " : "")
+                                + ((!secondaryTasks.isEmpty())
+                                   ? "Perform the provided secondary tasks as well and populate the output in " +
+                                           "designated output field for the task. "
+                                   : "")
+                                + ((!knowledge.isEmpty())
+                                   ? "Use the provided knowledge and facts to enrich your responses and avoid " +
+                                           "unnecessary tool calls."
+                                   : ""))
+                .setPrimaryTask(new SystemPrompt.PrimaryTask()
                                         .setRole(systemPrompt)
-                                        .setTools(this.knownTools.values()
-                                                          .stream()
-                                                          .map(tool -> new SystemPromptSchema.ToolSummary()
-                                                                  .setName(tool.getToolDefinition().getName())
-                                                                  .setDescription(tool.getToolDefinition()
-                                                                                          .getDescription()))
-                                                          .toList()))
-                .setSecondaryTasks(this.extensions
-                                           .stream()
-                                           .map(extension -> new SystemPromptSchema.SecondaryTask()
-                                                   .setInstructions(extension.additionalSystemPrompts(request,
-                                                                                                      requestMetadata,
-                                                                                                      (A) this)))
-                                           .toList());
+                                        .setTool(this.knownTools.values()
+                                                         .stream()
+                                                         .map(tool -> SystemPrompt.ToolSummary.builder()
+                                                                 .name(tool.getToolDefinition().getName())
+                                                                 .description(tool.getToolDefinition()
+                                                                                      .getDescription())
+                                                                 .build())
+                                                         .toList()))
+                .setSecondaryTask(secondaryTasks)
+                .setFacts(knowledge);
         if (null != requestMetadata) {
-            prompt.setAdditionalData(new SystemPromptSchema.AdditionalData()
+            prompt.setAdditionalData(new SystemPrompt.AdditionalData()
                                              .setSessionId(requestMetadata.getSessionId())
                                              .setUserId(requestMetadata.getUserId()));
         }

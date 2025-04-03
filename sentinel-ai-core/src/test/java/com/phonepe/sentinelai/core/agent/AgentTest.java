@@ -88,12 +88,12 @@ class AgentTest {
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
                                                             return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("getName"));
+                                                                assertTrue(tools.containsKey("test_agent_get_name"));
                                                                 final var response = toolRunner.runTool(
                                                                         context,
                                                                         tools,
                                                                         new ToolCall("TC1",
-                                                                                     "getName",
+                                                                                     "test_agent_get_name",
                                                                                      "{}"));
                                                                 assertTrue(response.isSuccess());
                                                                 assertTrue(response.getToolCallId().equals("TC1"));
@@ -143,12 +143,12 @@ class AgentTest {
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
                                                             return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("sessionSummary"));
+                                                                assertTrue(tools.containsKey("test_agent_session_summary"));
                                                                 final var response = toolRunner.runTool(
                                                                         context,
                                                                         tools,
                                                                         new ToolCall("TC1",
-                                                                                     "sessionSummary",
+                                                                                     "test_agent_session_summary",
                                                                                      """
                                                                                              { "input": "Test Data" }
                                                                                              """));
@@ -200,12 +200,12 @@ class AgentTest {
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
                                                             return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("voidTool"));
+                                                                assertTrue(tools.containsKey("test_agent_void_tool"));
                                                                 final var response = toolRunner.runTool(
                                                                         context,
                                                                         tools,
                                                                         new ToolCall("TC1",
-                                                                                     "voidTool",
+                                                                                     "test_agent_void_tool",
                                                                                      "{}"));
                                                                 assertTrue(response.isSuccess());
                                                                 assertTrue(response.getToolCallId().equals("TC1"));
@@ -255,12 +255,12 @@ class AgentTest {
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
                                                             return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("structuredTool"));
+                                                                assertTrue(tools.containsKey("test_agent_structured_tool"));
                                                                 final var response = toolRunner.runTool(
                                                                         context,
                                                                         tools,
                                                                         new ToolCall("TC1",
-                                                                                     "structuredTool",
+                                                                                     "test_agent_structured_tool",
                                                                                      """
                                                                                              {
                                                                                                 "input": {
@@ -317,12 +317,12 @@ class AgentTest {
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
                                                             return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("throwTool"));
+                                                                assertTrue(tools.containsKey("test_agent_throw_tool"));
                                                                 final var response = toolRunner.runTool(
                                                                         context,
                                                                         tools,
                                                                         new ToolCall("TC1",
-                                                                                     "throwTool",
+                                                                                     "test_agent_throw_tool",
                                                                                      "{}"));
                                                                 assertFalse(response.isSuccess());
                                                                 assertTrue(response.getToolCallId().equals("TC1"));

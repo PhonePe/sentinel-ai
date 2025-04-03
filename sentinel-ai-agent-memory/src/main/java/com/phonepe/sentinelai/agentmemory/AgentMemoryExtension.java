@@ -7,7 +7,7 @@ import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
-import com.phonepe.sentinelai.core.agent.SystemPromptSchema;
+import com.phonepe.sentinelai.core.agent.SystemPrompt;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
@@ -31,17 +31,7 @@ import java.util.Optional;
 public class AgentMemoryExtension implements AgentExtension {
     private static final String OUTPUT_KEY = "memoryOutput";
 
-    @Value
-    public static class Fact {
-        String name;
-        String content;
-    }
 
-    @Value
-    public static class FactList {
-        String description;
-        List<Fact> facts;
-    }
 
 
     boolean saveMemoryAfterSessionEnd;
@@ -67,48 +57,58 @@ public class AgentMemoryExtension implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
+    public <R, T, A extends Agent<R, T, A>> List<SystemPrompt.FactList> facts(
             R request,
             AgentRequestMetadata metadata,
             A agent) {
-        final var prompts = new ArrayList<SystemPromptSchema.SecondaryTask>();
-        final var memories = new ArrayList<FactList>();
+        final var memories = new ArrayList<SystemPrompt.FactList>();
 //        //Add relevant existing memories to the prompt
         if (!Strings.isNullOrEmpty(metadata.getUserId())) {
 
             final var memoriesAboutUser = memoryStore
                     .findMemoriesAboutUser(metadata.getUserId(), null, 5);
             if (!memoriesAboutUser.isEmpty()) {
-                final var factList = new FactList("Memories about user", memoriesAboutUser.stream()
-                        .map(agentMemory -> new Fact(agentMemory.getName(), agentMemory.getContent()))
+                final var factList = new SystemPrompt.FactList("Memories about user", memoriesAboutUser.stream()
+                        .map(agentMemory -> new SystemPrompt.Fact(agentMemory.getName(), agentMemory.getContent()))
                         .toList());
                 memories.add(factList);
             }
         }
-
         if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
             final var memoriesAboutSession = memoryStore
-                    .findMemories(metadata.getSessionId(), MemoryScope.ENTITY, null, "", 5);
+                    .findMemories(metadata.getSessionId(), MemoryScope.SESSION, null, "", 5);
             if (!memoriesAboutSession.isEmpty()) {
-                final var factList = new FactList("Memories about current session", memoriesAboutSession.stream()
-                        .map(agentMemory -> new Fact(agentMemory.getName(), agentMemory.getContent()))
+                final var factList = new SystemPrompt.FactList("Memories about current session", memoriesAboutSession.stream()
+                        .map(agentMemory -> new SystemPrompt.Fact(agentMemory.getName(), agentMemory.getContent()))
                         .toList());
                 memories.add(factList);
             }
         }
+        return memories;
+    }
 
-        if (!memories.isEmpty()) {
-            final var memUsagePrompt = new SystemPromptSchema.SecondaryTask()
-                    .setObjective("USE MEMORY ABOUT USER, SESSION AND YOURSELF WHEREVER APPLICABLE")
-                    .setInstructions("Use facts provided in the factlist section below to enhance the conversation and eliminate redundant tool calls")
-                    .setAdditionalInstructions(memories);
-            prompts.add(memUsagePrompt);
-        }
+    @Override
+    public <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
+            R request,
+            AgentRequestMetadata metadata,
+            A agent) {
+        final var prompts = new ArrayList<SystemPrompt.SecondaryTask>();
+
+
+
+
+//        if (!memories.isEmpty()) {
+//            final var memUsagePrompt = new SystemPrompt.SecondaryTask()
+//                    .setObjective("USE MEMORY ABOUT USER, SESSION AND YOURSELF WHEREVER APPLICABLE")
+//                    .setInstructions("Use facts provided in the facts section below to avoid making repeated tool calls for information already available ")
+//                    .setAdditionalInstructions(memories);
+//            prompts.add(memUsagePrompt);
+//        }
 
         //TODO::IF ID IS EXPOSED IN MEMORY, WILL WE BE ABLE TO UPDATE THEM?
         if (saveMemoryAfterSessionEnd) {
             //Add extract prompt only if extraction is needed
-            final var prompt = new SystemPromptSchema.SecondaryTask()
+            final var prompt = new SystemPrompt.SecondaryTask()
                     .setObjective("EXTRACT MEMORY FROM MESSAGES AND POPULATE `memoryOutput` FIELD")
                     .setOutputField(OUTPUT_KEY)
                     .setInstructions("""                           
@@ -124,11 +124,12 @@ public class AgentMemoryExtension implements AgentExtension {
                                 """);
             final var tools = this.tools();
             if(!tools.isEmpty()) {
-                prompt.setTools(tools.values()
+                prompt.setTool(tools.values()
                         .stream()
-                        .map(tool -> new SystemPromptSchema.ToolSummary()
-                                .setName(tool.getToolDefinition().getName())
-                                .setDescription(tool.getToolDefinition().getDescription()))
+                        .map(tool -> SystemPrompt.ToolSummary.builder()
+                                .name(tool.getToolDefinition().getName())
+                                .description(tool.getToolDefinition().getDescription())
+                                .build())
                         .toList());
 
             }
@@ -165,10 +166,10 @@ public class AgentMemoryExtension implements AgentExtension {
     }
 
     @Tool("Find procedural memory about any topic from the store")
-    public List<Fact> findProceduralMemory(@JsonPropertyDescription("keywords to find relevant procedural memory") final String query) {
+    public List<SystemPrompt.Fact> findProceduralMemory(@JsonPropertyDescription("keywords to find relevant procedural memory") final String query) {
         return memoryStore.findProcessMemory(query)
                 .stream()
-                .map(agentMemory -> new Fact(agentMemory.getName(), agentMemory.getContent()))
+                .map(agentMemory -> new SystemPrompt.Fact(agentMemory.getName(), agentMemory.getContent()))
                 .toList();
     }
 
