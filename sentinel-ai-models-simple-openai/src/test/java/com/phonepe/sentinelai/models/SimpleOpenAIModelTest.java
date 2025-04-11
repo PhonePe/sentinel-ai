@@ -4,10 +4,7 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentExtension;
-import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
-import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.CallableTool;
@@ -78,7 +75,7 @@ class SimpleOpenAIModelTest {
 
         final var httpClient = new OkHttpClient.Builder()
                 .build();
-        final var model = new SimpleOpenAIModel(
+        final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
 //                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
@@ -105,23 +102,23 @@ class SimpleOpenAIModelTest {
                                .build())
                 .build();
 
-
         final var requestMetadata = AgentRequestMetadata.builder()
                 .sessionId("s1")
                 .userId("ss")
                 .build();
-        final var response = agent.execute(new UserInput("Hi"),
-                                           requestMetadata,
-                                           null,
-                                           null);
+        final var response = agent.execute(AgentInput.<UserInput>builder()
+                .request(new UserInput("Hi?"))
+                .requestMetadata(requestMetadata)
+                .build());
         log.info("Agent response: {}", response.getData());
 
 
         final var response2 = agent.execute(
-                new UserInput("What is my name?"),
-                requestMetadata,
-                response.getAllMessages(),
-                null);
+                AgentInput.<UserInput>builder()
+                        .request(new UserInput("What is my name?"))
+                        .requestMetadata(requestMetadata)
+                                .oldMessages(response.getAllMessages())
+                        .build());
         log.info("Second call: {}", response2.getData());
         if(log.isTraceEnabled()) {
             log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()

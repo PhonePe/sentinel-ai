@@ -120,12 +120,14 @@ class AgentTest {
                                             List.of(),
                                             Map.of()
         );
-        final var response = textAgent.execute("Hi",
-                                               AgentRequestMetadata.builder()
-                                                       .sessionId("s1")
-                                                       .userId("ss").build(),
-                                               null,
-                                               null);
+        final var response = textAgent.execute(
+                AgentInput.<String>builder()
+                        .request("Hi")
+                        .requestMetadata(
+                                AgentRequestMetadata.builder()
+                                        .sessionId("s1")
+                                        .userId("ss").build())
+                        .build());
         assertTrue(response.getData().contains("Santanu"));
     }
 
@@ -143,7 +145,8 @@ class AgentTest {
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
                                                             return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("test_agent_session_summary"));
+                                                                assertTrue(tools.containsKey(
+                                                                        "test_agent_session_summary"));
                                                                 final var response = toolRunner.runTool(
                                                                         context,
                                                                         tools,
@@ -177,12 +180,14 @@ class AgentTest {
                                             List.of(),
                                             Map.of()
         );
-        final var response = textAgent.execute("Hi",
-                                               AgentRequestMetadata.builder()
-                                                       .sessionId("s1")
-                                                       .userId("ss").build(),
-                                               null,
-                                               null);
+        final var response = textAgent.execute(
+                AgentInput.<String>builder()
+                        .request("Hi")
+                        .requestMetadata(
+                                AgentRequestMetadata.builder()
+                                        .sessionId("s1")
+                                        .userId("ss").build())
+                        .build());
         assertTrue(response.getData().contains("Session summary: Test Data"));
     }
 
@@ -232,12 +237,14 @@ class AgentTest {
                                             List.of(),
                                             Map.of()
         );
-        final var response = textAgent.execute("Hi",
-                                               AgentRequestMetadata.builder()
-                                                       .sessionId("s1")
-                                                       .userId("ss").build(),
-                                               null,
-                                               null);
+        final var response = textAgent.execute(
+                AgentInput.<String>builder()
+                        .request("Hi")
+                        .requestMetadata(
+                                AgentRequestMetadata.builder()
+                                        .sessionId("s1")
+                                        .userId("ss").build())
+                        .build());
         assertTrue(response.getData().contains("Hello success"));
     }
 
@@ -255,7 +262,8 @@ class AgentTest {
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
                                                             return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("test_agent_structured_tool"));
+                                                                assertTrue(tools.containsKey(
+                                                                        "test_agent_structured_tool"));
                                                                 final var response = toolRunner.runTool(
                                                                         context,
                                                                         tools,
@@ -293,12 +301,14 @@ class AgentTest {
                                             List.of(),
                                             Map.of()
         );
-        final var response = textAgent.execute("Hi",
-                                               AgentRequestMetadata.builder()
-                                                       .sessionId("s1")
-                                                       .userId("ss").build(),
-                                               null,
-                                               null);
+        final var response = textAgent.execute(
+                AgentInput.<String>builder()
+                        .request("Hi")
+                        .requestMetadata(
+                                AgentRequestMetadata.builder()
+                                        .sessionId("s1")
+                                        .userId("ss").build())
+                        .build());
         System.out.println(response.getData());
         assertTrue(response.getData().contains("Hello Test Data"));
     }
@@ -350,12 +360,14 @@ class AgentTest {
                                             List.of(),
                                             Map.of()
         );
-        final var response = textAgent.execute("Hi",
-                                               AgentRequestMetadata.builder()
-                                                       .sessionId("s1")
-                                                       .userId("ss").build(),
-                                               null,
-                                               null);
+        final var response = textAgent.execute(
+                AgentInput.<String>builder()
+                        .request("Hi")
+                        .requestMetadata(
+                                AgentRequestMetadata.builder()
+                                        .sessionId("s1")
+                                        .userId("ss").build())
+                        .build());
         assertNull(response.getData());
         final var data = response.getError();
         assertTrue(data.getMessage().contains("Test exception"));
@@ -407,12 +419,14 @@ class AgentTest {
                                             List.of(),
                                             Map.of()
         );
-        final var response = textAgent.execute("Hi",
-                                               AgentRequestMetadata.builder()
-                                                       .sessionId("s1")
-                                                       .userId("ss").build(),
-                                               null,
-                                               null);
+        final var response = textAgent.execute(
+                AgentInput.<String>builder()
+                        .request("Hi")
+                        .requestMetadata(
+                                AgentRequestMetadata.builder()
+                                        .sessionId("s1")
+                                        .userId("ss").build())
+                        .build());
         assertNull(response.getData());
         final var data = response.getError();
         assertTrue(data.getMessage().contains("Invalid tool: getUnknown"));

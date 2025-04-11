@@ -139,12 +139,18 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
                 .build()
                 .registerToolbox(toolbox);
         {
-            final var response = agent.execute(new UserInput("Hi"), requestMetadata);
+            final var response = agent.execute(AgentInput.<UserInput>builder()
+                                                       .request(new UserInput("Hi"))
+                                                       .requestMetadata(requestMetadata)
+                                                       .build());
             log.debug("Agent response: {}", response.getData().message());
         }
         {
             final var response2 = agent.execute(
-                    new UserInput("How is the weather here?"), requestMetadata);
+                    AgentInput.<UserInput>builder()
+                            .request(new UserInput("How is the weather here?"))
+                            .requestMetadata(requestMetadata)
+                            .build());
             log.info("Second call: {}", response2.getData());
             if (log.isTraceEnabled()) {
                 log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()

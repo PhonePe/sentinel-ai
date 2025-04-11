@@ -3,6 +3,7 @@ package com.phonepe.sentinelai.models;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
@@ -54,7 +55,7 @@ class SimpleOpenAIModelTextIOTest {
 
         final var httpClient = new OkHttpClient.Builder()
                 .build();
-        final var model = new SimpleOpenAIModel(
+        final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
 //                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
@@ -75,11 +76,13 @@ class SimpleOpenAIModelTextIOTest {
                                                                        .seed(1)
                                                                        .build())
                                                 .build());
-        final var response = agent.execute("Hi", AgentRequestMetadata.builder()
-                              .sessionId("s1")
-                              .userId("ss").build(),
-                      null,
-                      null);
+        final var response = agent.execute(AgentInput.<String>builder()
+                                                   .request("Hi")
+                                                   .requestMetadata(
+                                                           AgentRequestMetadata.builder()
+                                                                   .sessionId("s1")
+                                                                   .userId("ss").build())
+                                                   .build());
         assertTrue(response.getData().contains("Santanu"));
         assertTrue(response.getUsage().getTotalTokens() > 1);
     }

@@ -36,9 +36,10 @@ public class ToolReader {
                                      final var callableTool = createCallableToolFromLocalMethods(
                                              instance,
                                              method);
-                                     log.info("Created tool: {}::{}",
+                                     log.info("Created tool: {} from {}::{}",
+                                              callableTool.getToolDefinition().getName(),
                                               className,
-                                              callableTool.getToolDefinition().getName());
+                                              method.getName());
                                      return callableTool;
                                  })
                                  .collect(toMap(tool -> tool.getToolDefinition().getName(), Function.identity())));

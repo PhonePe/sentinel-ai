@@ -8,6 +8,7 @@ import lombok.SneakyThrows;
 import lombok.Value;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Schema for system prompts.
@@ -19,19 +20,6 @@ public class SystemPrompt {
     public static class ToolSummary {
         String name;
         String description;
-    }
-
-    @Value
-    public static class Fact {
-        String name;
-        String content;
-    }
-
-    @Value
-    public static class FactList {
-        String description;
-        @JacksonXmlElementWrapper(useWrapping = false)
-        List<Fact> fact;
     }
 
     @Data
@@ -57,6 +45,7 @@ public class SystemPrompt {
     public static class AdditionalData {
         private String sessionId;
         private String userId;
+        private Map<String, Object> customParams;
     }
 
 

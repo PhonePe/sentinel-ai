@@ -15,7 +15,7 @@
         <module>sentinel-ai-session</module>
         <module>sentinel-ai-embedding</module>
         <module>sentinel-ai-storage-es</module>
-        <module>sentinel-ai-aggregate-coverage</module>
+        <module>sentinel-ai-bom</module>
     </modules>
 
     <properties>

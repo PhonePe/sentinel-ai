@@ -45,19 +45,4 @@ public class AgentSetup {
      */
     EventBus eventBus;
 
-//    @Builder
-//    public AgentSetup(
-//            ObjectMapper mapper,
-//            Model model,
-//            ModelSettings modelSettings,
-//            ExecutorService executorService,
-//            @Singular List<AgentExtension> extensions,
-//            EventBus eventBus) {
-//        this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
-//        this.model = model;
-//        this.modelSettings = modelSettings;
-//        this.executorService = Objects.requireNonNullElseGet(executorService, Executors::newCachedThreadPool);
-//        this.extensions = Objects.requireNonNullElseGet(extensions, List::of);
-//        this.eventBus = eventBus;
-//    }
 }

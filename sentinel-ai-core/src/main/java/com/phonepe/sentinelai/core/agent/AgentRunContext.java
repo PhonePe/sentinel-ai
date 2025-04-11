@@ -33,12 +33,7 @@ public class AgentRunContext<R> {
     AgentSetup agentSetup;
 
     /**
-     * Dependencies for the agent
-     */
-    Object dependencies;
-
-    /**
-     * old messages
+     * Old messages
      */
     List<AgentMessage> oldMessages;
 

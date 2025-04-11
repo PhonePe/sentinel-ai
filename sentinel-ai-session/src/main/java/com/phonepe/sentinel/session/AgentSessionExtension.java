@@ -4,10 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentExtension;
-import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
-import com.phonepe.sentinelai.core.agent.SystemPrompt;
+import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
 import lombok.NonNull;
@@ -46,15 +43,15 @@ public class AgentSessionExtension implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> List<SystemPrompt.FactList> facts(
+    public <R, T, A extends Agent<R, T, A>> List<FactList> facts(
             R request,
             AgentRequestMetadata metadata,
             A agent) {
         if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
             return sessionStore.session(metadata.getSessionId())
                     .map(sessionSummary -> List.of(
-                            new SystemPrompt.FactList("Information about session %s".formatted(metadata.getSessionId()),
-                                                      List.of(new SystemPrompt.Fact(
+                            new FactList("Information about session %s".formatted(metadata.getSessionId()),
+                                         List.of(new Fact(
                                                               "Session Summary", sessionSummary.toString())))))
                     .orElse(List.of());
         }

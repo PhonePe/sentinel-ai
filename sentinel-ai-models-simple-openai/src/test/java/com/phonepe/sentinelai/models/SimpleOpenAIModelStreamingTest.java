@@ -4,6 +4,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
@@ -101,22 +102,31 @@ class SimpleOpenAIModelStreamingTest {
                                                                        .build())
                                                 .build());
         final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
-        final var response = agent.executeAsyncStreaming("Hi", AgentRequestMetadata.builder()
-                                                                 .sessionId("s1")
-                                                                 .userId("ss")
-                                                                 .usageStats(stats)
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                                                                 .request("Hi")
+                                                                 .requestMetadata(
+                                                                         AgentRequestMetadata.builder()
+                                                                                 .sessionId("s1")
+                                                                                 .userId("ss")
+                                                                                 .usageStats(stats)
+                                                                                 .build())
                                                                  .build(),
                                                          data -> print(data, outputStream))
                 .join();
         assertTrue(new String(response.getData()).contains("Santanu"));
         assertTrue(response.getUsage().getTotalTokens() > 1);
-        final var response2 = agent.executeAsyncStreaming("What is my name?", AgentRequestMetadata.builder()
-                                                                  .sessionId("s1")
-                                                                  .userId("ss")
-                                                                  .usageStats(stats)
-                                                                  .build(),
-                                                          data -> print(data, outputStream),
-                                                          response.getAllMessages())
+        final var response2 = agent.executeAsyncStreaming(
+                        AgentInput.<String>builder()
+                                .request("What is my name?")
+                                .requestMetadata(
+                                        AgentRequestMetadata.builder()
+                                                .sessionId("s1")
+                                                .userId("ss")
+                                                .usageStats(stats)
+                                                .build())
+                                .oldMessages(response.getAllMessages())
+                                .build(),
+                        data -> print(data, outputStream))
                 .join();
         assertTrue(new String(response2.getData()).contains("Santanu"));
         assertTrue(response2.getUsage().getTotalTokens() > 1);

@@ -130,25 +130,26 @@ class AgentSessionExtensionTest {
                 .build()
                 .registerToolbox(toolbox);
 
-
         final var requestMetadata = AgentRequestMetadata.builder()
                 .sessionId("s1")
                 .userId("ss")
                 .build();
-        final var response = agent.execute(new UserInput("Hi"),
-                                           requestMetadata,
-                                           null,
-                                           null);
+        final var response = agent.execute(
+                AgentInput.<UserInput>builder()
+                        .request(new UserInput("Hi"))
+                        .requestMetadata(requestMetadata)
+                        .build());
         log.info("Agent response: {}", response.getData());
 
 
         final var response2 = agent.execute(
-                new UserInput("How is the weather at user's location?"),
-                requestMetadata,
-                response.getAllMessages(),
-                null);
+                AgentInput.<UserInput>builder()
+                        .request(new UserInput("How is the weather at user's location?"))
+                        .requestMetadata(requestMetadata)
+                        .oldMessages(response.getAllMessages())
+                        .build());
         log.info("Second call: {}", response2.getData());
-        if(log.isTraceEnabled()) {
+        if (log.isTraceEnabled()) {
             log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
                     .writeValueAsString(response2.getAllMessages()));
         }

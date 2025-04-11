@@ -39,3 +39,4 @@ build/
 .idea
 dep
 data
+.cache
