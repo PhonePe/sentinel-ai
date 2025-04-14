@@ -104,7 +104,7 @@ set only the required parameters and will default whatever it can if not provide
 
 ### Available Settings
 
-Here is a markdown table listing all the available settings for the `AgentSetup` class:
+Here are all available settings for the `AgentSetup` class:
 
 | **Setting**       | **Type**          | **Description**                                                                                                   |
 |-------------------|-------------------|-------------------------------------------------------------------------------------------------------------------|

@@ -255,4 +255,4 @@ public class SimpleTextAgentExample {
 ```
 
 You can now run the agent to converse with it. The agent will keep the context of the conversation and will be able to
-respond to your.
+respond to your queries.
