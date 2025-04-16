@@ -9,7 +9,7 @@ import lombok.Value;
  */
 @Value
 public class ToolParameter {
-    @NonNull()
+    @NonNull
     String name;
     @NonNull
     String description;

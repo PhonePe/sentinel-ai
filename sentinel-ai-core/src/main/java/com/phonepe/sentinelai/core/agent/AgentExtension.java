@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- *
+ * Can be used to extend the functionality of an agent. This can be used to add additional system prompts and facts.
  */
 public interface AgentExtension extends ToolBox {
 

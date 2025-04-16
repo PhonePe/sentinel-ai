@@ -184,17 +184,20 @@ public class BookSummarizingAgent extends Agent<BookInfo, BookSummary, BookSumma
 }
 
 ```
-## The `AgentInput` class
-Sentinel agent `execute*` requests can take multiple parameters along with the core request(user prompt). The `AgentInput` class wraps all
-parameters and provides a builder allowing users to easily send or skip additional parameters.
 
-| **Property**       | **Type**                | **Description**                                                                                                                                               |
-|---------------------|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `request`          | `R`                     | Request object. This is a required parameter.                                                                                                                 |
-| `facts`            | `List<FactList>`        | List of facts to be passed to the agent. This is passed to LLM as 'knowledge' in the system prompt.                                                           |
-| `requestMetadata`  | `AgentRequestMetadata`  | Metadata for the request.                                                                                                                                     |
-| `oldMessages`      | `List<AgentMessage>`    | List of old messages to be sent to the LLM for this run. If set to `null`, messages are generated and consumed by the agent in this session.                  |
-| `agentSetup`       | `AgentSetup`            | Setup for the agent. Overrides runtime setup. If set to `null`, the setup provided during agent creation is used. Fields provided at runtime take precedence. |
+## The `AgentInput` class
+
+Sentinel agent `execute*` requests can take multiple parameters along with the core request(user prompt). The
+`AgentInput` class wraps all parameters and provides a builder allowing users to easily send or skip additional
+parameters.
+
+| **Property**      | **Type**               | **Description**                                                                                                                                               |
+|-------------------|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `request`         | `R`                    | Request object. This is a required parameter.                                                                                                                 |
+| `facts`           | `List<FactList>`       | List of facts to be passed to the agent. This is passed to LLM as 'knowledge' in the system prompt.                                                           |
+| `requestMetadata` | `AgentRequestMetadata` | Metadata for the request.                                                                                                                                     |
+| `oldMessages`     | `List<AgentMessage>`   | List of old messages to be sent to the LLM for this run. If set to `null`, messages are generated and consumed by the agent in this session.                  |
+| `agentSetup`      | `AgentSetup`           | Setup for the agent. Overrides runtime setup. If set to `null`, the setup provided during agent creation is used. Fields provided at runtime take precedence. |
 
 ## The `AgentOutput` class
 
@@ -278,6 +281,7 @@ Output from the above would be something like:
 ```
 
 ## Request Metadata
+
 Sometimes it is important to maintain context of the conversation. For example, if you are building a chat agent, you
 may want to keep track of the session or the user the conversation is happening with. SentinelAI provides the
 `AgentRequestMetadata` class for this purpose. The metadata class also provides the option to send back the
@@ -288,23 +292,24 @@ across calls. If provided, the agent will merge the usage from current execution
     The request metadata passed to execute calls are serialized and passed to the LLM as part of the structured system
     prompt.
 
-| **Property**   | **Type**                | **Description**                                                                                     |
-|-----------------|-------------------------|-----------------------------------------------------------------------------------------------------|
-| `sessionId`    | `String`               | Session ID for the current conversation. This is passed to LLM as additional data in the system prompt. |
-| `userId`       | `String`               | A User ID for the user the agent is having the current conversation with. This is passed to LLM as additional data in the system prompt. |
-| `customParams` | `Map<String, Object>`  | Any other custom parameters that need to be passed to the agent or the tools being invoked by the agent. This is passed to LLM as additional data in the system prompt. |
-| `usageStats`   | `ModelUsageStats`      | Global usage stats object that can be used to track usage of the model across execute calls.         |
+| **Property**   | **Type**              | **Description**                                                                                                                                                         |
+|----------------|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `sessionId`    | `String`              | Session ID for the current conversation. This is passed to LLM as additional data in the system prompt.                                                                 |
+| `userId`       | `String`              | A User ID for the user the agent is having the current conversation with. This is passed to LLM as additional data in the system prompt.                                |
+| `customParams` | `Map<String, Object>` | Any other custom parameters that need to be passed to the agent or the tools being invoked by the agent. This is passed to LLM as additional data in the system prompt. |
+| `usageStats`   | `ModelUsageStats`     | Global usage stats object that can be used to track usage of the model across execute calls.                                                                            |
 
 !!!note
     Request metadata is optional and passing `null` for this param is acceptable.
 
 ## Prompts
 
-Sentinel AI has some special handling to improve LLM performance for agentic use cases both for system and user prompts. The
+Sentinel AI has some special handling to improve LLM performance for agentic use cases both for system and user prompts.
 
-### System Prompts 
+### System Prompts
+
 SentinelAI converts the system prompt in an XML format for easy parsing by the LLM. The string or object passed as the
-system prompt to the agent is passed in a tag called `<role>`. Other information such as tools, properties from request 
+system prompt to the agent is passed in a tag called `<role>`. Other information such as tools, properties from request
 metadata as well as facts and additional tasks from the registered extensions are added to the prompt as well.
 
 !!!danger "Serializability requirements"
@@ -318,13 +323,16 @@ metadata as well as facts and additional tasks from the registered extensions ar
 ```xml title="Sample system prompt generated by SentinelAI"
 <?xml version='1.1' encoding='UTF-8'?>
 <SystemPrompt>
-    <coreInstructions>Your main job is to answer the user query as provided in user prompt in the `user_input` tag. Perform the provided secondary tasks as well and populate the output in designated output field for the task. Use the provided knowledge and facts to enrich your responses and avoid unnecessary tool calls.</coreInstructions>
+    <coreInstructions>Your main job is to answer the user query as provided in user prompt in the `user_input` tag.
+        Perform the provided secondary tasks as well and populate the output in designated output field for the task.
+        Use the provided knowledge and facts to enrich your responses and avoid unnecessary tool calls.
+    </coreInstructions>
     <primaryTask>
         <role>greet the user</role> <!--(1)!-->
         <tools> <!--(2)!-->
             <tool>
                 <name>test_tool_box_get_location_for_user</name>
-                <description>Get  location for user</description>
+                <description>Get location for user</description>
             </tool>
             <tool>
                 <name>simple_agent_get_name</name>
@@ -350,7 +358,8 @@ metadata as well as facts and additional tasks from the registered extensions ar
                         <instructions>How to extract different memory types:
                             - SEMANTIC: Extract fact about the session or user or any other subject
                             - EPISODIC: Extract a specific event or episode from the conversation
-                            - PROCEDURAL: Extract a procedure as a list of steps or a sequence of actions that you can use later
+                            - PROCEDURAL: Extract a procedure as a list of steps or a sequence of actions that you can
+                            use later
                         </instructions>
                         <additionalInstructions>IMPORTANT INSTRUCTION FOR MEMORY EXTRACTION:
                             - Do not include non-reusable information as memories.
@@ -396,3 +405,39 @@ metadata as well as facts and additional tasks from the registered extensions ar
 3. Secondary tasks provided by extensions
 4. Request metadata passed to the agent
 5. Facts provided by extensions and client
+
+### User prompts
+
+The mandatory `request` property passed in the `AgentInput<R>` parameter to the `execute*` methods is converted to a
+structured XML object and wrapped in `<user_input>` tag.
+
+For example, for the book summarizer agent, the provided `BookInfo` object is sent to the LLM as follows:
+```xml
+<user_input>
+  <isbn>978-0393096729</isbn>
+  <title>War and Peace</title>
+</user_input>
+```
+
+Original input request for the above would be something like:
+```java
+agent.execute(
+      AgentInput.<BookInfo>builder()
+              .request(new BookInfo("978-0393096729", "War and Peace"))
+              .build());
+```
+
+## Extensions
+
+Extensions are a way to add additional functionality to your agent. They are exposed as modules and can be used to
+extend the functionality of the agent. Agents can be configured to use extensions by adding while creating the agent.
+The extensions are loaded in the order they are added.
+
+Extensions can be used to:
+
+- Add facts to the knowledge passed to the agent in the system prompt
+- Add custom tools to the agent
+- Get agent to perform additional tasks
+- Generate extra information from the agent
+
+To create an extension derive and implement the `AgentExtension` interface.
