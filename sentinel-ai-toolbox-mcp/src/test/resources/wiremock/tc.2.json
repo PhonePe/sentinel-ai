@@ -1,0 +1,28 @@
+{
+  "id" : "chatcmpl-BPLkHYMZx8A8lxEPVqFkpFRQW9FVE",
+  "object" : "chat.completion",
+  "created" : 1745381489,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_ded0d14823",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "{\"output\":\"The sum of 3 and -9 is -6.\"}"
+    },
+    "finish_reason" : "stop"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 782,
+    "completion_tokens" : 22,
+    "total_tokens" : 804,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+}

@@ -22,8 +22,7 @@ import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.events.ToolCallCompletedAgentEvent;
 import com.phonepe.sentinelai.core.events.ToolCalledAgentEvent;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
-import com.phonepe.sentinelai.core.tools.CallableTool;
-import com.phonepe.sentinelai.core.tools.ToolBox;
+import com.phonepe.sentinelai.core.tools.*;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolReader;
@@ -56,14 +55,14 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     @FunctionalInterface
     public interface ToolRunner<S> {
-        ToolCallResponse runTool(AgentRunContext<S> context, Map<String, CallableTool> tool, ToolCall toolCall);
+        ToolCallResponse runTool(AgentRunContext<S> context, Map<String, ExecutableTool> tool, ToolCall toolCall);
     }
 
     private final Class<T> outputType;
     private final String systemPrompt;
     private final AgentSetup setup;
     private final List<AgentExtension> extensions;
-    private final Map<String, CallableTool> knownTools = new ConcurrentHashMap<>();
+    private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
     private final XmlMapper xmlMapper = new XmlMapper();
 
     @SneakyThrows
@@ -72,7 +71,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             @NonNull String systemPrompt,
             @NonNull AgentSetup setup,
             List<AgentExtension> extensions,
-            Map<String, CallableTool> knownTools) {
+            Map<String, ExecutableTool> knownTools) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(systemPrompt), "Please provide a valid system prompt");
 
         this.outputType = outputType;
@@ -119,11 +118,11 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     /**
      * Register tools with the agent directly
      *
-     * @param callableTools List of callable tools
+     * @param tools List of callable tools
      * @return this
      */
-    public A registerTools(List<CallableTool> callableTools) {
-        return registerTools(Objects.requireNonNullElseGet(callableTools, List::<CallableTool>of)
+    public A registerTools(List<ExecutableTool> tools) {
+        return registerTools(Objects.requireNonNullElseGet(tools, List::<InternalTool>of)
                                      .stream()
                                      .collect(toMap(tool -> tool.getToolDefinition().getName(),
                                                     Function.identity())));
@@ -136,7 +135,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @return this
      */
     @SuppressWarnings("unchecked")
-    public A registerTools(Map<String, CallableTool> callableTools) {
+    public A registerTools(Map<String, ExecutableTool> callableTools) {
         final var tools = new HashMap<>(Objects.requireNonNullElseGet(callableTools, Map::of));
         if (!tools.isEmpty()) {
             log.info("Discovered tools: {}", tools.keySet());
@@ -340,7 +339,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     private ToolCallResponse runToolObserved(
             AgentRunContext<R> context,
-            Map<String, CallableTool> tools,
+            Map<String, ExecutableTool> tools,
             ToolCall toolCall) {
         context.getAgentSetup()
                 .getEventBus()
@@ -369,51 +368,88 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     @SuppressWarnings("java:S3011")
     private ToolCallResponse runTool(
             AgentRunContext<R> context,
-            Map<String, CallableTool> tools,
+            Map<String, ExecutableTool> tools,
             ToolCall toolCall) {
         //TODO::RETRY LOGIC
         final var tool = tools.get(toolCall.getToolName());
-        if (null != tool) {
-            try {
-                final var args = new ArrayList<>();
-                if (tool.getToolDefinition().isContextAware()) {
-                    args.add(context);
-                }
-                args.addAll(params(tool, toolCall.getArguments()));
-                final var callable = tool.getCallable();
-                callable.setAccessible(true);
-                log.info("Calling tool: {} Tool call ID: {}", toolCall.getToolName(), toolCall.getToolCallId());
-                var resultObject = callable.invoke(tool.getInstance(), args.toArray());
-                return new ToolCallResponse(toolCall.getToolCallId(),
-                                            toolCall.getToolName(),
-                                            true,
-                                            toStringContent(tool, resultObject),
-                                            LocalDateTime.now());
-            }
-            catch (InvocationTargetException e) {
-                log.info("Local error making tool call " + toolCall.getToolCallId(), e);
-                final var rootCause = AgentUtils.rootCause(e);
-                return new ToolCallResponse(toolCall.getToolCallId(),
-                                            toolCall.getToolName(),
-                                            false,
-                                            "Tool call local failure: %s".formatted(rootCause.getMessage()),
-                                            LocalDateTime.now());
-            }
-            catch (Exception e) {
-                log.info("Error making tool call " + toolCall.getToolCallId(), e);
-                final var rootCause = AgentUtils.rootCause(e);
-                return new ToolCallResponse(toolCall.getToolCallId(),
-                                            toolCall.getToolName(),
-                                            false,
-                                            "Tool call failed. Threw exception: %s".formatted(rootCause.getMessage()),
-                                            LocalDateTime.now());
-            }
+        if(null == tool) {
+            return new ToolCallResponse(toolCall.getToolCallId(),
+                                        toolCall.getToolName(),
+                                        false,
+                                        "Tool call failed. Invalid tool: %s".
+
+                                                formatted(toolCall.getToolName()),
+                                        LocalDateTime.now());
         }
-        return new ToolCallResponse(toolCall.getToolCallId(),
-                                    toolCall.getToolName(),
-                                    false,
-                                    "Tool call failed. Invalid tool: %s".formatted(toolCall.getToolName()),
-                                    LocalDateTime.now());
+        return tool.accept(new ExecutableToolVisitor<ToolCallResponse>() {
+            @Override
+            public ToolCallResponse visit(ExternalTool externalTool) {
+                final var response = externalTool.getCallable()
+                        .apply(toolCall.getToolName(), toolCall.getArguments());
+                if(response.error()) {
+                    return new ToolCallResponse(toolCall.getToolCallId(),
+                                                toolCall.getToolName(),
+                                                false,
+                                                "Tool call failed. External tool error: %s".
+                                                        formatted(Objects.toString(response.response())),
+                                                LocalDateTime.now());
+                }
+                try {
+                    return new ToolCallResponse(toolCall.getToolCallId(),
+                                                       toolCall.getToolName(),
+                                                       true,
+                                                       setup.getMapper().writeValueAsString(response.response()),
+                                                       LocalDateTime.now());
+                }
+                catch (JsonProcessingException e) {
+                    return new ToolCallResponse(toolCall.getToolCallId(),
+                                                toolCall.getToolName(),
+                                                false,
+                                                "Error serializing external tool response: %s".
+                                                        formatted(Objects.toString(response.response())),
+                                                LocalDateTime.now());
+                }
+            }
+
+            @Override
+            public ToolCallResponse visit(InternalTool internalTool) {
+                try {
+                    final var args = new ArrayList<>();
+                    if (internalTool.getToolDefinition().isContextAware()) {
+                        args.add(context);
+                    }
+                    args.addAll(params(internalTool, toolCall.getArguments()));
+                    final var callable = internalTool.getCallable();
+                    callable.setAccessible(true);
+                    log.info("Calling tool: {} Tool call ID: {}", toolCall.getToolName(), toolCall.getToolCallId());
+                    var resultObject = callable.invoke(internalTool.getInstance(), args.toArray());
+                    return new ToolCallResponse(toolCall.getToolCallId(),
+                                                toolCall.getToolName(),
+                                                true,
+                                                toStringContent(internalTool, resultObject),
+                                                LocalDateTime.now());
+                }
+                catch (InvocationTargetException e) {
+                    log.info("Local error making tool call " + toolCall.getToolCallId(), e);
+                    final var rootCause = AgentUtils.rootCause(e);
+                    return new ToolCallResponse(toolCall.getToolCallId(),
+                                                toolCall.getToolName(),
+                                                false,
+                                                "Tool call local failure: %s".formatted(rootCause.getMessage()),
+                                                LocalDateTime.now());
+                }
+                catch (Exception e) {
+                    log.info("Error making tool call " + toolCall.getToolCallId(), e);
+                    final var rootCause = AgentUtils.rootCause(e);
+                    return new ToolCallResponse(toolCall.getToolCallId(),
+                                                toolCall.getToolName(),
+                                                false,
+                                                "Tool call failed. Threw exception: %s".formatted(rootCause.getMessage()),
+                                                LocalDateTime.now());
+                }
+
+            }
+        });
 
     }
 
@@ -425,10 +461,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @return List of parameters to be passed to the tool/function
      */
     @SneakyThrows
-    private List<Object> params(CallableTool tool, String params) {
+    private List<Object> params(InternalTool tool, String params) {
         final var paramNodes = setup.getMapper().readTree(params);
-        return tool.getToolDefinition()
-                .getParameters()
+        return tool.getParameters()
                 .entrySet()
                 .stream()
                 .map(entry -> {
@@ -448,7 +483,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @return JSON serialized result
      */
     @SneakyThrows
-    private String toStringContent(CallableTool tool, Object result) {
+    private String toStringContent(InternalTool tool, Object result) {
         if (tool.getReturnType().equals(Void.TYPE)) {
             return "success"; //This is recommended by OpenAI
         }

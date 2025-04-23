@@ -1,8 +1,9 @@
 package com.phonepe.sentinelai.core.tools;
 
-import lombok.*;
-
-import java.util.Map;
+import lombok.Builder;
+import lombok.NonNull;
+import lombok.Value;
+import lombok.With;
 
 /**
  * Metadata for a tool that will be called by the LLM
@@ -19,6 +20,4 @@ public class ToolDefinition {
 
     boolean contextAware;
 
-    @Singular
-    Map<String, ToolParameter> parameters;
 }

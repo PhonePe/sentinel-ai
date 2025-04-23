@@ -16,6 +16,7 @@
         <module>sentinel-ai-embedding</module>
         <module>sentinel-ai-storage-es</module>
         <module>sentinel-ai-bom</module>
+        <module>sentinel-ai-toolbox-mcp</module>
     </modules>
 
     <properties>

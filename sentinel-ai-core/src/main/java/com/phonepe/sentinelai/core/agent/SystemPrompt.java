@@ -7,6 +7,9 @@ import lombok.Data;
 import lombok.SneakyThrows;
 import lombok.Value;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -58,6 +61,7 @@ public class SystemPrompt {
     private List<FactList> facts;
     @JacksonXmlElementWrapper(localName = "hints")
     private List<Object> hint;
+    private String currentTime = LocalDateTime.now().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME);
 
     @SneakyThrows
     public static String convert(SystemPrompt prompt, ObjectMapper xmlMapper) {

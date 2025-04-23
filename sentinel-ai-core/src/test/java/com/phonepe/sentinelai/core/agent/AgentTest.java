@@ -6,7 +6,7 @@ import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
-import com.phonepe.sentinelai.core.tools.CallableTool;
+import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.NonNull;
@@ -36,7 +36,7 @@ class AgentTest {
         public TestAgent(
                 @NonNull AgentSetup setup,
                 List<AgentExtension> extensions,
-                Map<String, CallableTool> knownTools) {
+                Map<String, ExecutableTool> knownTools) {
             super(String.class, "This is irrelevant", setup, extensions, knownTools);
         }
 
@@ -83,7 +83,7 @@ class AgentTest {
                                                         public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
                                                                 AgentRunContext<R> context,
                                                                 Class<T> responseType,
-                                                                Map<String, CallableTool> tools,
+                                                                Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
@@ -140,7 +140,7 @@ class AgentTest {
                                                         public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
                                                                 AgentRunContext<R> context,
                                                                 Class<T> responseType,
-                                                                Map<String, CallableTool> tools,
+                                                                Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
@@ -200,7 +200,7 @@ class AgentTest {
                                                         public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
                                                                 AgentRunContext<R> context,
                                                                 Class<T> responseType,
-                                                                Map<String, CallableTool> tools,
+                                                                Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
@@ -257,7 +257,7 @@ class AgentTest {
                                                         public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
                                                                 AgentRunContext<R> context,
                                                                 Class<T> responseType,
-                                                                Map<String, CallableTool> tools,
+                                                                Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
@@ -322,7 +322,7 @@ class AgentTest {
                                                         public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
                                                                 AgentRunContext<R> context,
                                                                 Class<T> responseType,
-                                                                Map<String, CallableTool> tools,
+                                                                Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
@@ -382,7 +382,7 @@ class AgentTest {
                                                         public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
                                                                 AgentRunContext<R> context,
                                                                 Class<T> responseType,
-                                                                Map<String, CallableTool> tools,
+                                                                Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
                                                                 A agent) {
