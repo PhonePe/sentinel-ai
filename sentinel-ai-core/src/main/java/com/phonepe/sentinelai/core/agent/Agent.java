@@ -292,8 +292,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                            "designated output field for the task. "
                                    : "")
                                 + ((!knowledge.isEmpty())
-                                   ? "Use the provided knowledge and facts to enrich your responses and avoid " +
-                                           "unnecessary tool calls."
+                                   ? "Use the provided knowledge and facts to enrich your responses."
                                    : ""))
                 .setPrimaryTask(new SystemPrompt.PrimaryTask()
                                         .setRole(systemPrompt)
