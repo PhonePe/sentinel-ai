@@ -6,6 +6,7 @@ import com.phonepe.sentinelai.embedding.HuggingfaceEmbeddingModel;
 import com.phonepe.sentinelai.storage.ESClient;
 import com.phonepe.sentinelai.storage.ESIntegrationTestBase;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -20,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Test for {@link ESAgentMemoryDocument}
  */
 @Testcontainers
+@Slf4j
 class ESAgentMemoryStorageTest extends ESIntegrationTestBase {
 
 
@@ -63,7 +65,7 @@ class ESAgentMemoryStorageTest extends ESIntegrationTestBase {
                                                      EnumSet.of(SEMANTIC),
                                                      "name",
                                                      10);
-            System.out.println(results);
+            log.debug("Results: {}", results);
             assertEquals(1, results.size());
         }
 

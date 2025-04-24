@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.phonepe.sentinel-ai</groupId>
         <artifactId>sentinel-ai</artifactId>
-        <version>1.0-RC0-SNAPSHOT</version>
+        <version>1.0.0-alpha1</version>
     </parent>
 
     <artifactId>sentinel-ai-embedding</artifactId>

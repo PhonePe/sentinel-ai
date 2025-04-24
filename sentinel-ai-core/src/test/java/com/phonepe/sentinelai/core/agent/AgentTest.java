@@ -10,6 +10,7 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Basic tests for {@link Agent}
  */
+@Slf4j
 class AgentTest {
 
     private record Input(String data) {
@@ -309,7 +311,7 @@ class AgentTest {
                                         .sessionId("s1")
                                         .userId("ss").build())
                         .build());
-        System.out.println(response.getData());
+        log.debug("Tool response: {}", response.getData());
         assertTrue(response.getData().contains("Hello Test Data"));
     }
 

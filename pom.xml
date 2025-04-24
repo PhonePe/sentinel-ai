@@ -6,7 +6,7 @@
 
     <groupId>com.phonepe.sentinel-ai</groupId>
     <artifactId>sentinel-ai</artifactId>
-    <version>1.0-RC0-SNAPSHOT</version>
+    <version>1.0.0-alpha1</version>
     <packaging>pom</packaging>
     <modules>
         <module>sentinel-ai-core</module>
@@ -26,7 +26,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.24</lombok.version>
         <dropwizard.version>2.1.12</dropwizard.version>
-        <slf4j-api.version>1.7.32</slf4j-api.version>
+        <slf4j-api.version>2.0.17</slf4j-api.version>
         <junit.version>5.8.2</junit.version>
         <signals.version>1.4</signals.version>
         <function-metrics.version>1.0.16</function-metrics.version>
@@ -35,7 +35,7 @@
         <dw-guicey.version>5.10.2</dw-guicey.version>
         <curator.version>5.4.0</curator.version>
         <metrics-core.version>4.2.13</metrics-core.version>
-        <logback.version>1.2.11</logback.version>
+        <logback.version>1.5.18</logback.version>
         <httpclient.version>5.2.1</httpclient.version>
         <aspectj.version>1.9.9.1</aspectj.version>
         <failsafe.version>3.3.2</failsafe.version>
