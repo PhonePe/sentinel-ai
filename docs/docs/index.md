@@ -40,6 +40,9 @@ Building an agent with Sentinel involves broadly the following steps:
 
 ### Add the required dependencies
 
+!!!note "Latest Version"
+    The latest version of the library can be found [here](https://central.sonatype.com/namespace/com.phonepe.sentinel-ai){:target="_blank"}.
+
 Sentinel AI should be included at the top level using the bom. To use the BOM, add the following to the
 `dependencyManagement` section of your project.
 
