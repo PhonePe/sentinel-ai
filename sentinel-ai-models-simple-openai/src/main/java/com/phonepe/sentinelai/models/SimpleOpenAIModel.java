@@ -21,7 +21,8 @@ import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
-import com.phonepe.sentinelai.core.tools.CallableTool;
+import com.phonepe.sentinelai.core.tools.ExecutableTool;
+import com.phonepe.sentinelai.core.tools.ParameterMapper;
 import com.phonepe.sentinelai.core.utils.Pair;
 import io.github.sashirestela.openai.common.ResponseFormat;
 import io.github.sashirestela.openai.common.function.FunctionCall;
@@ -48,7 +49,6 @@ import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
 import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageReceivedEvent;
 import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageSentEvent;
 import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
-import static java.util.stream.Collectors.toMap;
 
 /**
  * Model implementation based on SimpleOpenAI client.
@@ -64,12 +64,20 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     String modelName;
     M openAIProvider;
     ObjectMapper mapper;
+    ParameterMapper parameterMapper;
+
+    public SimpleOpenAIModel(String modelName, M openAIProvider, ObjectMapper mapper) {
+        this.modelName = modelName;
+        this.openAIProvider = openAIProvider;
+        this.mapper = mapper;
+        this.parameterMapper = new ParameterMapper(mapper);
+    }
 
     @Override
     public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
             AgentRunContext<R> context,
             Class<T> responseType,
-            Map<String, CallableTool> tools,
+            Map<String, ExecutableTool> tools,
             Agent.ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent) {
@@ -92,24 +100,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                           .stream()
                                           .map(tool -> {
                                               final var toolDefinition = tool.getToolDefinition();
-                                              final var paramNodes = toolDefinition.getParameters()
-                                                      .values()
-                                                      .stream()
-                                                      .map(param -> Pair.of(param.getName(),
-                                                                            schema(param.getType().getRawClass())))
-                                                      .collect(toMap(Pair::getFirst, Pair::getSecond));
-                                              final var params = mapper.createObjectNode();
-                                              params.put("type", "object");
-                                              params.put("additionalProperties", false);
-                                              params.set("properties",
-                                                         mapper.valueToTree(paramNodes));
-                                              params.set("required",
-                                                         mapper.valueToTree(paramNodes.keySet()));
                                               return new Tool(
                                                       ToolType.FUNCTION,
                                                       new Tool.ToolFunctionDef(toolDefinition.getName(),
                                                                                toolDefinition.getDescription(),
-                                                                               params,
+                                                                               tool.accept(parameterMapper),
                                                                                true));
                                           })
                                           .toList());
@@ -120,7 +115,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 stats.incrementRequestsForRun();
                 final var completionResponse = openAIProvider.chatCompletions()
                         .create(builder.build())
-                        .join();
+                        .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
                 logResponse(completionResponse);
                 final var usage = completionResponse.getUsage();
                 if (null != usage) {
@@ -232,7 +227,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     @Override
     public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<byte[]>> exchange_messages_streaming(
             AgentRunContext<R> context,
-            Map<String, CallableTool> tools,
+            Map<String, ExecutableTool> tools,
             Agent.ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent,
@@ -256,13 +251,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                           .stream()
                                           .map(tool -> {
                                               final var toolDefinition = tool.getToolDefinition();
-                                              final var params = mapper.createObjectNode();
-                                              params.put("type", "object");
-                                              params.put("additionalProperties", false);
-                                              params.set("properties",
-                                                         mapper.valueToTree(toolDefinition.getParameters()));
-                                              params.set("required",
-                                                         mapper.valueToTree(toolDefinition.getParameters().keySet()));
+                                              final var params = tool.accept(parameterMapper);
                                               return new Tool(
                                                       ToolType.FUNCTION,
                                                       new Tool.ToolFunctionDef(toolDefinition.getName(),
@@ -423,7 +412,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
     private static <R, T, A extends Agent<R, T, A>> AgentOutput<T> handleToolCalls(
             AgentRunContext<R> context,
-            Map<String, CallableTool> tools,
+            Map<String, ExecutableTool> tools,
             List<AgentMessage> oldMessages,
             ExecutorService executorService,
             Agent.ToolRunner toolRunner,

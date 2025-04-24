@@ -4,7 +4,7 @@ import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
-import com.phonepe.sentinelai.core.tools.CallableTool;
+import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import org.apache.commons.lang3.NotImplementedException;
 
 import java.util.List;
@@ -21,19 +21,19 @@ public interface Model {
 //            R request,
 //            Class<T> responseType,
 //            String systemPrompt,
-//            Map<String, CallableTool> tools);
+//            Map<String, InternalTool> tools);
 
     <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
             AgentRunContext<R> context,
             Class<T> responseType,
-            Map<String, CallableTool> tools,
+            Map<String, ExecutableTool> tools,
             Agent.ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent);
 
     default <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<byte[]>> exchange_messages_streaming(
             AgentRunContext<R> context,
-            Map<String, CallableTool> tools,
+            Map<String, ExecutableTool> tools,
             Agent.ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent,

@@ -8,7 +8,7 @@ import java.util.Map;
  *
  */
 public interface ToolBox {
-    default Map<String, CallableTool> tools() {
+    default Map<String, ExecutableTool> tools() {
         return ToolReader.readTools(this);
     }
 }

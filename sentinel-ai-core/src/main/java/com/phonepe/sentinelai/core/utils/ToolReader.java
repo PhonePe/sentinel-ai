@@ -4,10 +4,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.CaseFormat;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
-import com.phonepe.sentinelai.core.tools.CallableTool;
-import com.phonepe.sentinelai.core.tools.Tool;
-import com.phonepe.sentinelai.core.tools.ToolDefinition;
-import com.phonepe.sentinelai.core.tools.ToolParameter;
+import com.phonepe.sentinelai.core.tools.*;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,9 +22,9 @@ import static java.util.stream.Collectors.toMap;
 @Slf4j
 @UtilityClass
 public class ToolReader {
-    public static Map<String, CallableTool> readTools(Object instance) {
+    public static Map<String, ExecutableTool> readTools(Object instance) {
         Class<?> type = instance.getClass();
-        final var tools = new HashMap<String, CallableTool>();
+        final var tools = new HashMap<String, ExecutableTool>();
         while (type != Object.class) { // Traverse up till we reach Object
             final var className = type.getSimpleName();
             tools.putAll(Arrays.stream(type.getDeclaredMethods())
@@ -48,7 +45,7 @@ public class ToolReader {
         return tools;
     }
 
-    private static CallableTool createCallableToolFromLocalMethods(Object instance, Method method) {
+    private static InternalTool createCallableToolFromLocalMethods(Object instance, Method method) {
         final var toolDef = method.getAnnotation(Tool.class);
         final var params = new HashMap<String, ToolParameter>();
         final var paramTypes = method.getParameterTypes();
@@ -73,13 +70,13 @@ public class ToolReader {
                 .convert(instance.getClass().getSimpleName());
         final var toolName = toolClassName + "_" + CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
                 .convert((toolDef.name().isBlank() ? method.getName() : toolDef.name()));
-        return new CallableTool(
+        return new InternalTool(
                 ToolDefinition.builder()
                         .name(toolName)
                         .description(toolDef.value())
                         .contextAware(hasContext)
-                        .parameters(params)
                         .build(),
+                params,
                 method,
                 instance,
                 method.getReturnType());
