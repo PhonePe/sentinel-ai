@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -6,7 +6,7 @@
 
     <groupId>com.phonepe.sentinel-ai</groupId>
     <artifactId>sentinel-ai</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.0-alpha2</version>
     <name>Sentinel AI</name>
     <url>https://github.com/PhonePe/sentinel-ai</url>
     <description>Sentinel AI Agent Framework</description>
@@ -43,13 +43,23 @@
 
     <modules>
         <module>sentinel-ai-core</module>
+
+        <!-- models -->
         <module>sentinel-ai-models-simple-openai</module>
+        <module>sentinel-ai-embedding</module>
+
+        <!-- toolboxes -->
+        <module>sentinel-ai-toolbox-mcp</module>
+
+        <!-- extensions -->
         <module>sentinel-ai-agent-memory</module>
         <module>sentinel-ai-session</module>
-        <module>sentinel-ai-embedding</module>
+
+        <!-- Storage implementations -->
         <module>sentinel-ai-storage-es</module>
+
+        <!-- All other modules above this -->
         <module>sentinel-ai-bom</module>
-        <module>sentinel-ai-toolbox-mcp</module>
     </modules>
 
     <properties>

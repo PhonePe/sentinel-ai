@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.phonepe.sentinel-ai</groupId>
         <artifactId>sentinel-ai</artifactId>
-        <version>1.0.0-alpha1</version>
+        <version>1.0.0-alpha2</version>
     </parent>
 
     <artifactId>sentinel-ai-bom</artifactId>
@@ -26,6 +26,8 @@
                 <artifactId>sentinel-ai-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
+            <!-- models -->
             <dependency>
                 <groupId>com.phonepe.sentinel-ai</groupId>
                 <artifactId>sentinel-ai-models-simple-openai</artifactId>
@@ -36,6 +38,15 @@
                 <artifactId>sentinel-ai-embedding</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
+            <!-- toolbox -->
+            <dependency>
+                <groupId>com.phonepe.sentinel-ai</groupId>
+                <artifactId>sentinel-ai-toolbox-mcp</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- extensions -->
             <dependency>
                 <groupId>com.phonepe.sentinel-ai</groupId>
                 <artifactId>sentinel-ai-agent-memory</artifactId>
@@ -46,6 +57,8 @@
                 <artifactId>sentinel-ai-session</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
+            <!-- storage -->
             <dependency>
                 <groupId>com.phonepe.sentinel-ai</groupId>
                 <artifactId>sentinel-ai-storage-es</artifactId>
@@ -60,6 +73,8 @@
             <artifactId>sentinel-ai-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- models -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-models-simple-openai</artifactId>
@@ -70,6 +85,15 @@
             <artifactId>sentinel-ai-embedding</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- toolbox -->
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-toolbox-mcp</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- extensions -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-agent-memory</artifactId>
@@ -80,6 +104,8 @@
             <artifactId>sentinel-ai-session</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- storage -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-storage-es</artifactId>
