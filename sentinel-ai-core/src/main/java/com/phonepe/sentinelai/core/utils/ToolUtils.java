@@ -1,16 +1,19 @@
 package com.phonepe.sentinelai.core.utils;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.CaseFormat;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.tools.*;
+import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -21,7 +24,7 @@ import static java.util.stream.Collectors.toMap;
  */
 @Slf4j
 @UtilityClass
-public class ToolReader {
+public class ToolUtils {
     public static Map<String, ExecutableTool> readTools(Object instance) {
         Class<?> type = instance.getClass();
         final var tools = new HashMap<String, ExecutableTool>();
@@ -45,7 +48,7 @@ public class ToolReader {
         return tools;
     }
 
-    private static InternalTool createCallableToolFromLocalMethods(Object instance, Method method) {
+    public static Pair<ToolDefinition, ToolMethodInfo> toolMetadata(String prefix, Method method) {
         final var toolDef = method.getAnnotation(Tool.class);
         final var params = new HashMap<String, ToolParameter>();
         final var paramTypes = method.getParameterTypes();
@@ -66,19 +69,46 @@ public class ToolReader {
                                          description,
                                          TypeFactory.defaultInstance().constructType(paramType)));
         }
-        final var toolClassName = CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
-                .convert(instance.getClass().getSimpleName());
-        final var toolName = toolClassName + "_" + CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
+        final var toolName = prefix + "_" + CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
                 .convert((toolDef.name().isBlank() ? method.getName() : toolDef.name()));
-        return new InternalTool(
+        return Pair.of(
                 ToolDefinition.builder()
                         .name(toolName)
                         .description(toolDef.value())
                         .contextAware(hasContext)
                         .build(),
-                params,
-                method,
-                instance,
-                method.getReturnType());
+                new ToolMethodInfo(params,
+                                   method,
+                                   method.getReturnType()));
+    }
+
+
+    @SneakyThrows
+    public static List<Object> convertToRealParams(
+            ToolMethodInfo methodInfo,
+            String params,
+            ObjectMapper objectMapper) {
+        final var paramNodes = objectMapper.readTree(params);
+        return methodInfo.parameters()
+                .entrySet()
+                .stream()
+                .map(entry -> {
+                    final var paramName = entry.getKey();
+                    final var paramType = entry.getValue().getType();
+                    final var paramNode = paramNodes.get(paramName);
+                    return objectMapper.convertValue(paramNode, paramType);
+                })
+                .toList();
+    }
+
+    private static InternalTool createCallableToolFromLocalMethods(Object instance, Method method) {
+        final var toolMetadata = toolMetadata(CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
+                                                      .convert(instance.getClass().getSimpleName()),
+                                              method);
+        return new InternalTool(
+                toolMetadata.getFirst(),
+                toolMetadata.getSecond(),
+                instance
+        );
     }
 }

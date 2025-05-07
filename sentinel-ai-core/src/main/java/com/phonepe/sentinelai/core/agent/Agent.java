@@ -25,7 +25,7 @@ import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.*;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.core.utils.ToolReader;
+import com.phonepe.sentinelai.core.utils.ToolUtils;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -84,7 +84,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         xmlMapper.configure(ToXmlGenerator.Feature.WRITE_XML_1_1, true);
         xmlMapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
         xmlMapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_EMPTY);
-        registerTools(ToolReader.readTools(this));
+        registerTools(ToolUtils.readTools(this));
         registerTools(knownTools);
     }
 
@@ -417,8 +417,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     if (internalTool.getToolDefinition().isContextAware()) {
                         args.add(context);
                     }
-                    args.addAll(params(internalTool, toolCall.getArguments()));
-                    final var callable = internalTool.getCallable();
+                    args.addAll(params(internalTool.getMethodInfo(), toolCall.getArguments()));
+                    final var callable = internalTool.getMethodInfo().callable();
                     callable.setAccessible(true);
                     log.info("Calling tool: {} Tool call ID: {}", toolCall.getToolName(), toolCall.getToolCallId());
                     var resultObject = callable.invoke(internalTool.getInstance(), args.toArray());
@@ -455,23 +455,14 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     /**
      * Convert parameters string received from LLM to actual parameters for tool call
      *
-     * @param tool   Actual tool to be called
+     * @param methodInfo   Method information for the tool
      * @param params Parameters string to be converted
      * @return List of parameters to be passed to the tool/function
      */
     @SneakyThrows
-    private List<Object> params(InternalTool tool, String params) {
-        final var paramNodes = setup.getMapper().readTree(params);
-        return tool.getParameters()
-                .entrySet()
-                .stream()
-                .map(entry -> {
-                    final var paramName = entry.getKey();
-                    final var paramType = entry.getValue().getType();
-                    final var paramNode = paramNodes.get(paramName);
-                    return setup.getMapper().convertValue(paramNode, paramType);
-                })
-                .toList();
+    private List<Object> params(ToolMethodInfo methodInfo, String params) {
+        final var objectMapper = setup.getMapper();
+        return ToolUtils.convertToRealParams(methodInfo, params, objectMapper);
     }
 
     /**
@@ -483,11 +474,12 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      */
     @SneakyThrows
     private String toStringContent(InternalTool tool, Object result) {
-        if (tool.getReturnType().equals(Void.TYPE)) {
+        final var returnType = tool.getMethodInfo().returnType();
+        if (returnType.equals(Void.TYPE)) {
             return "success"; //This is recommended by OpenAI
         }
         else {
-            if (tool.getReturnType().isAssignableFrom(String.class) || Primitives.isWrapperType(tool.getReturnType())) {
+            if (returnType.isAssignableFrom(String.class) || Primitives.isWrapperType(returnType)) {
                 return Objects.toString(result);
             }
         }

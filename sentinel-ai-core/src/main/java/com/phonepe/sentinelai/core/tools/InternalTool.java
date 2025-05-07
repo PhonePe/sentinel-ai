@@ -1,9 +1,8 @@
 package com.phonepe.sentinelai.core.tools;
 
-import lombok.*;
-
-import java.lang.reflect.Method;
-import java.util.Map;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import lombok.Value;
 
 /**
  *
@@ -13,24 +12,16 @@ import java.util.Map;
 @ToString(callSuper = true)
 public class InternalTool extends ExecutableTool {
 
-    @Singular
-    Map<String, ToolParameter> parameters;
-    Method callable;
+    ToolMethodInfo methodInfo;
     Object instance;
-    Class<?> returnType;
 
-    @Builder
     public InternalTool(
             ToolDefinition toolDefinition,
-            Map<String, ToolParameter> parameters,
-            Method callable,
-            Object instance,
-            Class<?> returnType) {
+            ToolMethodInfo toolMethodInfo,
+            Object instance) {
         super(toolDefinition);
-        this.parameters = parameters;
-        this.callable = callable;
         this.instance = instance;
-        this.returnType = returnType;
+        this.methodInfo = toolMethodInfo;
     }
 
     @Override

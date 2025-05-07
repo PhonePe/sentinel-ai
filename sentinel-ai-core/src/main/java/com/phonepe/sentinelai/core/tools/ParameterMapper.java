@@ -2,6 +2,8 @@ package com.phonepe.sentinelai.core.tools;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.primitives.Primitives;
 import com.phonepe.sentinelai.core.utils.Pair;
 import lombok.AllArgsConstructor;
 
@@ -23,11 +25,23 @@ public class ParameterMapper implements ExecutableToolVisitor<JsonNode> {
 
     @Override
     public JsonNode visit(InternalTool internalTool) {
-        final var paramNodes = internalTool.getParameters()
+        final var methodInfo = internalTool.getMethodInfo();
+        return parametersFromMethodInfo(objectMapper, methodInfo);
+    }
+
+    public static ObjectNode parametersFromMethodInfo(final ObjectMapper objectMapper,
+                                                      final ToolMethodInfo methodInfo) {
+        final var paramNodes = methodInfo.parameters()
                 .values()
                 .stream()
-                .map(param -> Pair.of(param.getName(),
-                                      schema(param.getType().getRawClass())))
+                .map(param -> {
+                    final var rawType = param.getType().getRawClass();
+                    final var paramSchema = (ObjectNode) schema(rawType);
+                    if (rawType.isAssignableFrom(String.class) || Primitives.isWrapperType(rawType)) {
+                        paramSchema.put("description", param.getDescription());
+                    }
+                    return Pair.of(param.getName(), paramSchema);
+                })
                 .collect(toMap(Pair::getFirst, Pair::getSecond));
         final var params = objectMapper.createObjectNode();
         params.put("type", "object");
@@ -38,4 +52,5 @@ public class ParameterMapper implements ExecutableToolVisitor<JsonNode> {
                    objectMapper.valueToTree(paramNodes.keySet()));
         return params;
     }
+
 }
