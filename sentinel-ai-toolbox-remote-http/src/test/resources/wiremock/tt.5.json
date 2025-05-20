@@ -1,0 +1,28 @@
+{
+  "id" : "chatcmpl-BZDlRQv3i4rivOMzVyIKMKv9RIEAp",
+  "object" : "chat.completion",
+  "created" : 1747734089,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_7a53abb7a2",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "{\"output\":\"The weather in Bangalore is currently sunny.\"}"
+    },
+    "finish_reason" : "stop"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 601,
+    "completion_tokens" : 18,
+    "total_tokens" : 619,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+}

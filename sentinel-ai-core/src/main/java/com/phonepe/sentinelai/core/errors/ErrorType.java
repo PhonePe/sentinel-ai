@@ -9,17 +9,19 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum ErrorType {
-    SUCCESS("Success"),
-    NO_RESPONSE("No response"),
-    REFUSED("Refused: Reason: %s"),
-    FILTERED("Content filtered"),
-    LENGTH_EXCEEDED("Content length exceeded"),
-    TOOL_CALL_PERMANENT_FAILURE("Tool call failed permanently for tools: %s"),
-    JSON_ERROR("Error parsing JSON. Error: %s"),
-    SERIALIZATION_ERROR("Error serializing object to JSON. Error: %s"),
-    UNKNOWN("Unknown response"),
+    SUCCESS("Success", false),
+    NO_RESPONSE("No response", true),
+    REFUSED("Refused: Reason: %s", false),
+    FILTERED("Content filtered", true),
+    LENGTH_EXCEEDED("Content length exceeded", true),
+    TOOL_CALL_PERMANENT_FAILURE("Tool call failed permanently for tool: %s", false),
+    TOOL_CALL_TEMPORARY_FAILURE("Tool call failed temporarily for tool: %s", true),
+    JSON_ERROR("Error parsing JSON. Error: %s", true),
+    SERIALIZATION_ERROR("Error serializing object to JSON. Error: %s", true),
+    DESERIALIZATION_ERROR("Error deserializing object to JSON. Error: %s", true),
+    UNKNOWN("Unknown response", true),
     ;
 
     private final String message;
-    private final boolean retryable = false;
+    private final boolean retryable;
 }

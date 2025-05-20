@@ -1,0 +1,88 @@
+package com.phonepe.sentinelai.toolbox.remotehttp.templating;
+
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.phonepe.sentinelai.core.tools.ExecutableToolVisitor;
+import com.phonepe.sentinelai.core.tools.ExternalTool;
+import com.phonepe.sentinelai.core.tools.InternalTool;
+import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.toolbox.remotehttp.*;
+import okhttp3.OkHttpClient;
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.phonepe.sentinelai.toolbox.remotehttp.HttpToolParameterType.STRING;
+import static com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplate.Template.strSubstitutor;
+import static com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplate.Template.text;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+/**
+ * Tests {@link HttpCallTemplateExpander}
+ */
+@WireMockTest
+class HttpCallTemplateExpanderTest {
+
+    @Test
+    void test(WireMockRuntimeInfo wiremock) {
+        final var mapper = JsonUtils.createMapper();
+        stubFor(post(urlEqualTo("/api/v1/location"))
+                        .withRequestBody(containing("santanu"))
+                        .willReturn(jsonResponse("""
+                                                         {
+                                                         "location" : "Bangalore"
+                                                         }
+                                                         """, 200)));
+
+        final var upstream = "test";
+        final var toolSource = InMemoryHttpToolSource.builder()
+                .mapper(mapper)
+                .build()
+                .register(upstream,
+                          HttpTool.builder()
+                                  .toolConfig(HttpToolMetadata.builder()
+                                                      .name("getLocation")
+                                                      .description("Get location of the user")
+                                                      .parameters(
+                                                              Map.of("name",
+                                                                     new HttpToolMetadata.HttpToolParameterMeta(
+                                                                             "Name of the user", STRING)))
+                                                      .build())
+                                  .template(HttpCallTemplate.builder()
+                                                    .path(text("/api/v1/location"))
+                                                    .method(HttpRemoteCallSpec.HttpMethod.POST)
+                                                    .body(strSubstitutor("{ \"name\" : \"${name}\" }"))
+                                                    .build())
+                                  .build());
+
+        final var toolBox = new HttpToolBox(upstream,
+                                            new OkHttpClient.Builder()
+                                                          .build(),
+                                            toolSource,
+                                            JsonUtils.createMapper(),
+                                                  url -> wiremock.getHttpBaseUrl());
+        final var tools = toolBox.tools();
+        final var response = tools.get("getLocation")
+                .accept(new ExecutableToolVisitor<String>() {
+                    @Override
+                    public String visit(ExternalTool externalTool) {
+                        return (String) externalTool.getCallable().apply("getLocation", """
+                                {
+                                    "name" : "santanu"
+                                }
+                                """).response();
+                    }
+
+                    @Override
+                    public String visit(InternalTool internalTool) {
+                        return "";
+                    }
+                });
+        assertEquals("""
+                             {
+                             "location" : "Bangalore"
+                             }
+                             """, response);
+    }
+}

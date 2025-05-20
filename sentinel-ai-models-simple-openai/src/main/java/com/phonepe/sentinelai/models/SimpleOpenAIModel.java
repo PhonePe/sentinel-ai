@@ -2,7 +2,6 @@ package com.phonepe.sentinelai.models;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Predicates;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.Agent;
@@ -449,11 +448,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     stats.incrementToolCallsForRun();
                     return toolCallResponse;
                 })
-                .filter(Predicates.not(ToolCallResponse::isSuccess))
+                .filter(r -> !r.isSuccess() && !r.getErrorType().isRetryable())
                 .toList();
 
         if (!failedCalls.isEmpty()) {
-            //TODO::DETERMINE IF CALLS HAVE FAILED PERMANENTLY
             return AgentOutput.error(oldMessages,
                                      stats,
                                      SentinelError.error(ErrorType.TOOL_CALL_PERMANENT_FAILURE,

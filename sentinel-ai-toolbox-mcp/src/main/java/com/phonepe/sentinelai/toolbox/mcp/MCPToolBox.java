@@ -1,7 +1,8 @@
-package com.phonepe.sentinelai.mcp;
+package com.phonepe.sentinelai.toolbox.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
@@ -86,7 +87,11 @@ public class MCPToolBox implements ToolBox {
         log.debug("Calling MCP tool: {} with args: {}",
                   toolName, args);
         final var res = mcpClient.callTool(new McpSchema.CallToolRequest(toolName, args));
-        return new ExternalTool.ExternalToolResponse(res.content(), Objects.requireNonNullElse(res.isError(), false));
+        return new ExternalTool.ExternalToolResponse(
+                res.content(),
+                Boolean.FALSE.equals(res.isError())
+                ? ErrorType.TOOL_CALL_TEMPORARY_FAILURE
+                : ErrorType.SUCCESS);
 
     }
 }

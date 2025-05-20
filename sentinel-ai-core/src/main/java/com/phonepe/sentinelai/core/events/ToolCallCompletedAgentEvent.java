@@ -1,5 +1,6 @@
 package com.phonepe.sentinelai.core.events;
 
+import com.phonepe.sentinelai.core.errors.ErrorType;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.ToString;
@@ -17,7 +18,7 @@ public class ToolCallCompletedAgentEvent extends AgentEvent {
 
     String toolCallId;
     String toolCallName;
-    boolean success;
+    ErrorType errorType;
     String errorMessage;
     Duration elapsedTime;
 
@@ -28,13 +29,13 @@ public class ToolCallCompletedAgentEvent extends AgentEvent {
             String userId,
             @NonNull String toolCallId,
             @NonNull String toolCallName,
-            boolean success,
+            ErrorType errorType,
             String errorMessage,
             @NonNull Duration elapsedTime) {
         super(EventType.TOOL_CALL_COMPLETED, agentName, runId, sessionId, userId);
         this.toolCallId = toolCallId;
         this.toolCallName = toolCallName;
-        this.success = success;
+        this.errorType = errorType;
         this.errorMessage = errorMessage;
         this.elapsedTime = elapsedTime;
     }

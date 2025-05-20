@@ -358,7 +358,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                         AgentUtils.userId(context),
                                                         toolCall.getToolCallId(),
                                                         toolCall.getToolName(),
-                                                        response.isSuccess(),
+                                                        response.getErrorType(),
                                                         response.getResponse(),
                                                         Duration.ofMillis(stopwatch.elapsed(TimeUnit.MILLISECONDS))));
         return response;
@@ -371,39 +371,41 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             ToolCall toolCall) {
         //TODO::RETRY LOGIC
         final var tool = tools.get(toolCall.getToolName());
-        if(null == tool) {
+        if (null == tool) {
             return new ToolCallResponse(toolCall.getToolCallId(),
                                         toolCall.getToolName(),
-                                        false,
+                                        ErrorType.TOOL_CALL_PERMANENT_FAILURE,
                                         "Tool call failed. Invalid tool: %s".
 
                                                 formatted(toolCall.getToolName()),
                                         LocalDateTime.now());
         }
-        return tool.accept(new ExecutableToolVisitor<ToolCallResponse>() {
+        return tool.accept(new ExecutableToolVisitor<>() {
             @Override
             public ToolCallResponse visit(ExternalTool externalTool) {
                 final var response = externalTool.getCallable()
                         .apply(toolCall.getToolName(), toolCall.getArguments());
-                if(response.error()) {
-                    return new ToolCallResponse(toolCall.getToolCallId(),
-                                                toolCall.getToolName(),
-                                                false,
-                                                "Tool call failed. External tool error: %s".
-                                                        formatted(Objects.toString(response.response())),
-                                                LocalDateTime.now());
+                final var error = response.error();
+                if (!error.equals(ErrorType.SUCCESS)) {
+                    log.error("Error calling external tool {}: {}", toolCall.getToolName(), response.response());
+                    return new ToolCallResponse(
+                            toolCall.getToolCallId(),
+                            toolCall.getToolName(),
+                            error,
+                            "Tool call failed. External tool error: %s".formatted(Objects.toString(response.response())),
+                            LocalDateTime.now());
                 }
                 try {
                     return new ToolCallResponse(toolCall.getToolCallId(),
-                                                       toolCall.getToolName(),
-                                                       true,
-                                                       setup.getMapper().writeValueAsString(response.response()),
-                                                       LocalDateTime.now());
+                                                toolCall.getToolName(),
+                                                ErrorType.SUCCESS,
+                                                setup.getMapper().writeValueAsString(response.response()),
+                                                LocalDateTime.now());
                 }
                 catch (JsonProcessingException e) {
                     return new ToolCallResponse(toolCall.getToolCallId(),
                                                 toolCall.getToolName(),
-                                                false,
+                                                ErrorType.SERIALIZATION_ERROR,
                                                 "Error serializing external tool response: %s".
                                                         formatted(Objects.toString(response.response())),
                                                 LocalDateTime.now());
@@ -424,7 +426,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     var resultObject = callable.invoke(internalTool.getInstance(), args.toArray());
                     return new ToolCallResponse(toolCall.getToolCallId(),
                                                 toolCall.getToolName(),
-                                                true,
+                                                ErrorType.SUCCESS,
                                                 toStringContent(internalTool, resultObject),
                                                 LocalDateTime.now());
                 }
@@ -433,7 +435,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     final var rootCause = AgentUtils.rootCause(e);
                     return new ToolCallResponse(toolCall.getToolCallId(),
                                                 toolCall.getToolName(),
-                                                false,
+                                                ErrorType.TOOL_CALL_PERMANENT_FAILURE,
                                                 "Tool call local failure: %s".formatted(rootCause.getMessage()),
                                                 LocalDateTime.now());
                 }
@@ -442,7 +444,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     final var rootCause = AgentUtils.rootCause(e);
                     return new ToolCallResponse(toolCall.getToolCallId(),
                                                 toolCall.getToolName(),
-                                                false,
+                                                ErrorType.TOOL_CALL_TEMPORARY_FAILURE,
                                                 "Tool call failed. Threw exception: %s".formatted(rootCause.getMessage()),
                                                 LocalDateTime.now());
                 }
@@ -455,8 +457,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     /**
      * Convert parameters string received from LLM to actual parameters for tool call
      *
-     * @param methodInfo   Method information for the tool
-     * @param params Parameters string to be converted
+     * @param methodInfo Method information for the tool
+     * @param params     Parameters string to be converted
      * @return List of parameters to be passed to the tool/function
      */
     @SneakyThrows

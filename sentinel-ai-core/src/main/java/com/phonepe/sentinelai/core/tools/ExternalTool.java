@@ -1,6 +1,7 @@
 package com.phonepe.sentinelai.core.tools;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.phonepe.sentinelai.core.errors.ErrorType;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.Value;
@@ -15,7 +16,7 @@ import java.util.function.BiFunction;
 @ToString(callSuper = true)
 public class ExternalTool extends ExecutableTool {
     public record ExternalToolResponse(Object response,
-                                       boolean error) {
+                                       ErrorType error) {
     }
     JsonNode parameterSchema;
     BiFunction<String, String, ExternalToolResponse> callable;

@@ -6,7 +6,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.github.victools.jsonschema.generator.*;
+import com.github.victools.jsonschema.generator.MemberScope;
+import com.github.victools.jsonschema.generator.Option;
+import com.github.victools.jsonschema.generator.OptionPreset;
+import com.github.victools.jsonschema.generator.SchemaGenerator;
+import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
+import com.github.victools.jsonschema.generator.SchemaVersion;
+import com.github.victools.jsonschema.generator.TypeScope;
 import com.github.victools.jsonschema.module.jackson.JacksonModule;
 import lombok.experimental.UtilityClass;
 

@@ -1,4 +1,4 @@
-package com.phonepe.sentinelai.mcp;
+package com.phonepe.sentinelai.toolbox.mcp;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @WireMockTest
 class MCPToolBoxTest {
-    class MCPTestAgent extends Agent<String, String, MCPTestAgent> {
+    private static class MCPTestAgent extends Agent<String, String, MCPTestAgent> {
 
         public MCPTestAgent(
                 @NonNull AgentSetup setup,

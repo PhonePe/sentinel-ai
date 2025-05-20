@@ -6,7 +6,7 @@
 
     <groupId>com.phonepe.sentinel-ai</groupId>
     <artifactId>sentinel-ai</artifactId>
-    <version>1.0.0-alpha2</version>
+    <version>1.0.0-alpha3</version>
     <name>Sentinel AI</name>
     <url>https://github.com/PhonePe/sentinel-ai</url>
     <description>Sentinel AI Agent Framework</description>
@@ -60,6 +60,7 @@
 
         <!-- All other modules above this -->
         <module>sentinel-ai-bom</module>
+        <module>sentinel-ai-toolbox-remote-http</module>
     </modules>
 
     <properties>

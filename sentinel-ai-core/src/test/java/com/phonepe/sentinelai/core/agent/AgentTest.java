@@ -104,7 +104,7 @@ class AgentTest {
                                                                 final var message =
                                                                         new ToolCallResponse(response.getToolCallId(),
                                                                                              response.getToolName(),
-                                                                                             response.isSuccess(),
+                                                                                             response.getErrorType(),
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
@@ -164,7 +164,7 @@ class AgentTest {
                                                                 final var message =
                                                                         new ToolCallResponse(response.getToolCallId(),
                                                                                              response.getToolName(),
-                                                                                             response.isSuccess(),
+                                                                                             response.getErrorType(),
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
@@ -221,7 +221,7 @@ class AgentTest {
                                                                 final var message =
                                                                         new ToolCallResponse(response.getToolCallId(),
                                                                                              response.getToolName(),
-                                                                                             response.isSuccess(),
+                                                                                             response.getErrorType(),
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
@@ -285,7 +285,7 @@ class AgentTest {
                                                                 final var message =
                                                                         new ToolCallResponse(response.getToolCallId(),
                                                                                              response.getToolName(),
-                                                                                             response.isSuccess(),
+                                                                                             response.getErrorType(),
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
@@ -343,7 +343,7 @@ class AgentTest {
                                                                 final var message =
                                                                         new ToolCallResponse(response.getToolCallId(),
                                                                                              response.getToolName(),
-                                                                                             response.isSuccess(),
+                                                                                             response.getErrorType(),
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
@@ -402,7 +402,7 @@ class AgentTest {
                                                                 final var message =
                                                                         new ToolCallResponse(response.getToolCallId(),
                                                                                              response.getToolName(),
-                                                                                             response.isSuccess(),
+                                                                                             response.getErrorType(),
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);

@@ -9,13 +9,13 @@
         <version>1.0.0-alpha3</version>
     </parent>
 
-    <artifactId>sentinel-ai-models-simple-openai</artifactId>
+    <artifactId>sentinel-ai-toolbox-remote-http</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <simple-openai.version>3.19.4</simple-openai.version>
+        <commons-text.version>1.13.1</commons-text.version>
     </properties>
 
     <dependencies>
@@ -25,27 +25,26 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.github.sashirestela</groupId>
-            <artifactId>simple-openai</artifactId>
-            <version>${simple-openai.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-simple</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <!-- OkHttp dependency is optional if you decide to use it with simple-openai -->
-        <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
             <version>${okhttp.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>${commons-text.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
-            <artifactId>sentinel-ai-core</artifactId>
+            <artifactId>sentinel-ai-models-simple-openai</artifactId>
             <version>${project.version}</version>
-            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>${logback.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -55,10 +54,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-core</artifactId>
-            <version>${logback.version}</version>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-core</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
+            <type>test-jar</type>
         </dependency>
     </dependencies>
+
 </project>
