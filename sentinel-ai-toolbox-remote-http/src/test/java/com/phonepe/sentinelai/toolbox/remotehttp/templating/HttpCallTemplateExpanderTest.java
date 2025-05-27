@@ -40,8 +40,8 @@ class HttpCallTemplateExpanderTest {
                 .mapper(mapper)
                 .build()
                 .register(upstream,
-                          HttpTool.builder()
-                                  .toolConfig(HttpToolMetadata.builder()
+                          TemplatizedHttpTool.builder()
+                                  .metadata(HttpToolMetadata.builder()
                                                       .name("getLocation")
                                                       .description("Get location of the user")
                                                       .parameters(
@@ -51,7 +51,7 @@ class HttpCallTemplateExpanderTest {
                                                       .build())
                                   .template(HttpCallTemplate.builder()
                                                     .path(text("/api/v1/location"))
-                                                    .method(HttpRemoteCallSpec.HttpMethod.POST)
+                                                    .method(HttpCallSpec.HttpMethod.POST)
                                                     .body(strSubstitutor("{ \"name\" : \"${name}\" }"))
                                                     .build())
                                   .build());

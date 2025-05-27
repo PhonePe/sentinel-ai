@@ -45,11 +45,16 @@ class HttpToolBoxTest {
             }
 
             @Override
-            public HttpRemoteCallSpec resolve(String upstream, String toolName, String arguments) {
-                return HttpRemoteCallSpec.builder()
-                        .method(HttpRemoteCallSpec.HttpMethod.GET)
+            public HttpCallSpec resolve(String upstream, String toolName, String arguments) {
+                return HttpCallSpec.builder()
+                        .method(HttpCallSpec.HttpMethod.GET)
                         .path("/api/v1/name")
                         .build();
+            }
+
+            @Override
+            public List<String> upstreams() {
+                return List.of("test");
             }
         };
         final var toolBox = new HttpToolBox(wiremock.getHttpBaseUrl(),

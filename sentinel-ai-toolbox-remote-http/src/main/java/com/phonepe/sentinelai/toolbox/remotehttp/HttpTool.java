@@ -1,18 +1,13 @@
 package com.phonepe.sentinelai.toolbox.remotehttp;
 
-import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplate;
-import lombok.Builder;
-import lombok.NonNull;
-import lombok.Value;
+import lombok.*;
 
 /**
  * A tool abstraction that makes an HTTP call to remote server
  */
-@Value
-@Builder
-public class HttpTool {
+@Data
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
+public abstract class HttpTool {
     @NonNull
-    HttpToolMetadata toolConfig;
-    @NonNull
-    HttpCallTemplate template;
+    HttpToolMetadata metadata;
 }

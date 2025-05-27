@@ -12,15 +12,14 @@ import java.util.Map;
  */
 @Value
 @Builder
-public class HttpRemoteCallSpec {
+public class HttpCallSpec {
     @NonNull
-    HttpRemoteCallSpec.HttpMethod method;
+    HttpCallSpec.HttpMethod method;
     @NonNull
     String path;
     Map<String, List<String>> headers;
     String body;
     String contentType;
-    String responseMapper;
 
     public enum HttpMethod {
         GET,

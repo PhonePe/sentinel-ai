@@ -36,9 +36,18 @@ import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 public class HttpToolBox implements ToolBox {
     private final String upstream;
     private final OkHttpClient httpClient;
-    private final HttpToolSource<?> httpToolSource;
+    private final HttpToolSource<?, ?> httpToolSource;
     private final ObjectMapper mapper;
     private final UpstreamResolver upstreamResolver;
+
+    public HttpToolBox(
+            String upstream,
+            OkHttpClient httpClient,
+            HttpToolSource<?, ?> httpToolSource,
+            ObjectMapper mapper,
+            String endpointUrl) {
+        this(upstream, httpClient, httpToolSource, mapper, UpstreamResolver.direct(endpointUrl));
+    }
 
     @Override
     public Map<String, ExecutableTool> tools() {
@@ -62,29 +71,26 @@ public class HttpToolBox implements ToolBox {
 
                                     parameters.set(paramName, paramSchema);
                                 });
-                        ((ObjectNode)paramNodes).set("required",
-                                                       mapper.valueToTree(parameterMetadata.keySet()));
+                        ((ObjectNode) paramNodes).set("required",
+                                                      mapper.valueToTree(parameterMetadata.keySet()));
                     }
-                    return new ExternalTool(ToolDefinition.builder()
-                                                    .name(toolName)
-                                                    .description(tool.getDescription())
-                                                    .contextAware(false)
-                                                    .build(),
-                                            paramNodes,
-                                            //TODO::PARAM SCHEMA
-                                            (name, arguments) -> makeHttpCall(
-                                                    httpToolSource.resolve(
-                                                            upstream,
-                                                            name,
-                                                            arguments)));
+                    return new ExternalTool(
+                            ToolDefinition.builder()
+                                    .name(toolName)
+                                    .description(tool.getDescription())
+                                    .contextAware(false)
+                                    .build(),
+                            paramNodes,
+                            (name, arguments) -> makeHttpCall(
+                                    httpToolSource.resolve(upstream, name, arguments)));
                 })
                 .collect(Collectors.toMap(tool -> tool.getToolDefinition().getName(), Function.identity()));
     }
 
     @SneakyThrows
-    private ExternalTool.ExternalToolResponse makeHttpCall(final HttpRemoteCallSpec spec) {
+    private ExternalTool.ExternalToolResponse makeHttpCall(final HttpCallSpec spec) {
         final var endpoint = upstreamResolver.resolve(upstream);
-        final var requestBuilder = new Request.Builder() //TODO::TIMEOUT ETC
+        final var requestBuilder = new Request.Builder()
                 .url(URI.create("%s%s".formatted(endpoint, spec.getPath())).toURL());
         Objects.requireNonNullElse(spec.getHeaders(), Map.<String, List<String>>of())
                 .forEach((name, values) -> values.forEach(value -> requestBuilder.header(name, value)));
@@ -106,11 +112,12 @@ public class HttpToolBox implements ToolBox {
                                                          : ErrorType.SUCCESS);
         }
         catch (IOException e) {
-            return new ExternalTool.ExternalToolResponse("Error running tool: " + rootCause(e), ErrorType.TOOL_CALL_TEMPORARY_FAILURE);
+            return new ExternalTool.ExternalToolResponse("Error running tool: " + rootCause(e),
+                                                         ErrorType.TOOL_CALL_TEMPORARY_FAILURE);
         }
     }
 
-    private static RequestBody body(HttpRemoteCallSpec spec) {
+    private static RequestBody body(HttpCallSpec spec) {
         if (!Strings.isNullOrEmpty(spec.getBody())) {
             final var contentType = Objects.requireNonNullElse(spec.getContentType(),
                                                                com.google.common.net.MediaType.JSON_UTF_8.type());

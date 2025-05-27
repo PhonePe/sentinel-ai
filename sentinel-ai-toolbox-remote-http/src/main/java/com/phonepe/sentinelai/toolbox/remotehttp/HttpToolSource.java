@@ -7,7 +7,7 @@ import java.util.Objects;
 /**
  * Interface for a source of tools.
  */
-public interface HttpToolSource<S extends HttpToolSource<S>> {
+public interface HttpToolSource<T extends HttpTool, S extends HttpToolSource<T, S>> {
 
     /**
      * Register a tool for the given upstream.
@@ -15,7 +15,7 @@ public interface HttpToolSource<S extends HttpToolSource<S>> {
      * @param tool Definition for the tool
      * @return this
      */
-    default S register(String upstream, HttpTool ...tool) {
+    default S register(String upstream, T ...tool) {
         Objects.requireNonNull(tool, "At least one tool is needed to be passed as argument");
         return register(upstream, Arrays.asList(tool));
     }
@@ -26,7 +26,7 @@ public interface HttpToolSource<S extends HttpToolSource<S>> {
      * @param tool Definition for the tool
      * @return this
      */
-    S register(String upstream, List<HttpTool> tool);
+    S register(String upstream, List<T> tool);
 
     /**
      * List all known tools for the given upstream
@@ -43,5 +43,11 @@ public interface HttpToolSource<S extends HttpToolSource<S>> {
      * @return A fully resolved remote HTTP call specification
      * @throws IllegalArgumentException if the tool is not found for the given {upstream, toolName} combination
      */
-    HttpRemoteCallSpec resolve(String upstream, String toolName, String arguments);
+    HttpCallSpec resolve(String upstream, String toolName, String arguments);
+
+    /**
+     * Get a list of known upstreams
+     * @return List of known upstreams
+     */
+    List<String> upstreams();
 }

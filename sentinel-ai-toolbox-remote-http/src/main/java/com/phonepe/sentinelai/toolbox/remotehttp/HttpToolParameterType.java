@@ -28,5 +28,9 @@ public enum HttpToolParameterType {
     SHORT_ARRAY(Short[].class),
     CHARACTER_ARRAY(Character[].class)
     ;
+
+    /**
+     * The java raw type specific to a parameter type.
+     */
     private final Class<?> rawType;
 }

@@ -1,9 +1,12 @@
-package com.phonepe.sentinelai.toolbox.remotehttp;
+package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplateExpander;
+import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
+import com.phonepe.sentinelai.toolbox.remotehttp.HttpTool;
+import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolMetadata;
+import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolSource;
 import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -20,9 +23,9 @@ import java.util.stream.Collectors;
  * An in-memory implementation of {@link HttpToolSource} that stores tools in a map.
  */
 @Slf4j
-public class InMemoryHttpToolSource implements HttpToolSource<InMemoryHttpToolSource> {
+public class InMemoryHttpToolSource implements TemplatizedHttpToolSource<InMemoryHttpToolSource> {
 
-    private final Map<String, Map<String, HttpTool>> tools = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, TemplatizedHttpTool>> tools = new ConcurrentHashMap<>();
 
     private final HttpCallTemplateExpander expander;
     private final ObjectMapper mapper;
@@ -39,7 +42,7 @@ public class InMemoryHttpToolSource implements HttpToolSource<InMemoryHttpToolSo
     }
 
     @Override
-    public InMemoryHttpToolSource register(String upstream, List<HttpTool> tool) {
+    public InMemoryHttpToolSource register(String upstream, List<TemplatizedHttpTool> tool) {
         if(tool.isEmpty()) {
             log.warn("No tool provided for upstream {}", upstream);
             return this;
@@ -47,7 +50,7 @@ public class InMemoryHttpToolSource implements HttpToolSource<InMemoryHttpToolSo
         tools.compute(upstream,
                       (u, existing) -> {
                           final var toolMap = tool.stream()
-                                  .collect(Collectors.toUnmodifiableMap(t -> t.getToolConfig().getName(),
+                                  .collect(Collectors.toUnmodifiableMap(t -> t.getMetadata().getName(),
                                                             Function.identity()));
                             if (existing == null) {
                                 return new ConcurrentHashMap<>(toolMap);
@@ -63,12 +66,12 @@ public class InMemoryHttpToolSource implements HttpToolSource<InMemoryHttpToolSo
         return tools.getOrDefault(upstream, Map.of())
                 .values()
                 .stream()
-                .map(HttpTool::getToolConfig)
+                .map(HttpTool::getMetadata)
                 .toList();
     }
 
     @Override
-    public HttpRemoteCallSpec resolve(String upstream, String toolName, String arguments) {
+    public HttpCallSpec resolve(String upstream, String toolName, String arguments) {
         return Optional.ofNullable(tools.getOrDefault(upstream, Map.of())
                 .get(toolName))
                 .map(tool -> expandTemplate(arguments, tool))
@@ -76,8 +79,13 @@ public class InMemoryHttpToolSource implements HttpToolSource<InMemoryHttpToolSo
                         "No tool %s found for upstream %s".formatted(toolName, upstream)));
     }
 
+    @Override
+    public List<String> upstreams() {
+        return List.copyOf(tools.keySet());
+    }
+
     @SneakyThrows
-    private HttpRemoteCallSpec expandTemplate(String arguments, HttpTool tool) {
+    private HttpCallSpec expandTemplate(String arguments, TemplatizedHttpTool tool) {
         return expander.convert(tool.getTemplate(),
                                 mapper.readValue(arguments, new TypeReference<>() {}));
     }

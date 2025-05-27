@@ -1,6 +1,8 @@
 package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 
-import com.phonepe.sentinelai.toolbox.remotehttp.HttpRemoteCallSpec;
+import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
+import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.TextHttpCallTemplatingEngine;
+import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.TextSubstitutorHttpCallTemplatingEngine;
 import lombok.AllArgsConstructor;
 
 import java.util.List;
@@ -10,7 +12,7 @@ import java.util.Objects;
 import static java.util.stream.Collectors.toMap;
 
 /**
- * A class that expands a {@link HttpCallTemplate} to a {@link HttpRemoteCallSpec}.
+ * A class that expands a {@link HttpCallTemplate} to a {@link HttpCallSpec}.
  */
 @AllArgsConstructor
 public class HttpCallTemplateExpander {
@@ -19,17 +21,17 @@ public class HttpCallTemplateExpander {
     public HttpCallTemplateExpander() {
         this(Map.of(
                 HttpCallTemplate.TemplateType.TEXT, new TextHttpCallTemplatingEngine(),
-                HttpCallTemplate.TemplateType.STR_SUBSTITUTOR, new StrSubstitutorHttpCallTemplatingEngine()));
+                HttpCallTemplate.TemplateType.TEXT_SUBSTITUTOR, new TextSubstitutorHttpCallTemplatingEngine()));
     }
 
     /**
-     * Converts a {@link HttpCallTemplate} to a {@link HttpRemoteCallSpec}.
+     * Converts a {@link HttpCallTemplate} to a {@link HttpCallSpec}.
      *
      * @param template the template to convert
      * @param context  the context to use for conversion
-     * @return the converted {@link HttpRemoteCallSpec}
+     * @return the converted {@link HttpCallSpec}
      */
-    public HttpRemoteCallSpec convert(final HttpCallTemplate template, Map<String, Object> context) {
+    public HttpCallSpec convert(final HttpCallTemplate template, Map<String, Object> context) {
 
         final var path = convert(template.getPath(), context);
         final var method = template.getMethod();
@@ -45,15 +47,13 @@ public class HttpCallTemplateExpander {
                                                .toList()));
         final var body = convert(template.getBody(), context);
         final var contentType = template.getContentType();
-        final var responseMapper = template.getResponseMapper();
 
-        return HttpRemoteCallSpec.builder()
+        return HttpCallSpec.builder()
                 .method(method)
                 .path(path)
                 .headers(headers)
                 .body(body)
                 .contentType(contentType)
-                .responseMapper(convert(responseMapper, context))
                 .build();
     }
 

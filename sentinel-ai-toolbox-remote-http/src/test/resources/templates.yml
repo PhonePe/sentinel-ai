@@ -1,0 +1,40 @@
+test:
+  tools:
+  - metadata:
+      name: getName
+      description: Get the name of the user
+    definition:
+      method: GET
+      path:
+        type: TEXT
+        content: /api/v1/name
+  - metadata:
+      name: getLocation
+      description: Get location for specified user
+      parameters:
+        name:
+          description: Name of the user
+          type: STRING
+    definition:
+      method: POST
+      path:
+        type: TEXT
+        content: /api/v1/location
+      body:
+        type: TEXT_SUBSTITUTOR
+        content: |
+          {
+            "name": "${name}"
+          }
+  - metadata:
+      name: getWeatherForCity
+      description: Get weather for specified location
+      parameters:
+        city:
+          description: City for which weather is to be fetched
+          type: STRING
+    definition:
+      method: GET
+      path:
+        type: TEXT_SUBSTITUTOR
+        content: /api/v1/weather/${city}
