@@ -50,6 +50,7 @@
 
         <!-- toolboxes -->
         <module>sentinel-ai-toolbox-mcp</module>
+        <module>sentinel-ai-toolbox-remote-http</module>
 
         <!-- extensions -->
         <module>sentinel-ai-agent-memory</module>
@@ -60,7 +61,6 @@
 
         <!-- All other modules above this -->
         <module>sentinel-ai-bom</module>
-        <module>sentinel-ai-toolbox-remote-http</module>
     </modules>
 
     <properties>

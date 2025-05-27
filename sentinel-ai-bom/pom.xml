@@ -16,7 +16,6 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-<!--        <maven.deploy.skip>true</maven.deploy.skip>-->
         <flatten.maven.plugin-version>1.7.0</flatten.maven.plugin-version>
     </properties>
     <dependencyManagement>
@@ -43,6 +42,11 @@
             <dependency>
                 <groupId>com.phonepe.sentinel-ai</groupId>
                 <artifactId>sentinel-ai-toolbox-mcp</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.phonepe.sentinel-ai</groupId>
+                <artifactId>sentinel-ai-toolbox-remote-http</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -90,6 +94,11 @@
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-toolbox-mcp</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-toolbox-remote-http</artifactId>
             <version>${project.version}</version>
         </dependency>
 
