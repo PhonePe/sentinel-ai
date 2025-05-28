@@ -36,8 +36,16 @@ public class HttpToolReaders {
     void loadToolsFromYAML(
             Path path,
             final HttpToolSource<TemplatizedHttpTool, S> toolSource) {
+        loadToolsFromYAMLContent(Files.readAllBytes(path), toolSource);
+    }
+
+    @SneakyThrows
+    public static <S extends HttpToolSource<TemplatizedHttpTool, S>>
+    void loadToolsFromYAMLContent(
+            byte[] content,
+            final HttpToolSource<TemplatizedHttpTool, S> toolSource) {
         final var yamlMapper = new YAMLMapper();
-        yamlMapper.readValue(Files.readAllBytes(path),
+        yamlMapper.readValue(content,
                              new TypeReference<Map<String, ConfiguredUpstream>>() {
                              })
                 .forEach(((upstream, configuredUpstream) ->

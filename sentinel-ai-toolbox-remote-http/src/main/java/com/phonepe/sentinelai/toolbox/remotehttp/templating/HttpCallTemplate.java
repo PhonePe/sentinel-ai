@@ -65,7 +65,7 @@ public class HttpCallTemplate {
          * @param content the content of the template, which can contain variables in the form of ${variable}
          * @return a new Template instance
          */
-        public static Template strSubstitutor(String content) {
+        public static Template textSubstitutor(String content) {
             return Template.builder()
                     .type(TemplateType.TEXT_SUBSTITUTOR)
                     .content(content)

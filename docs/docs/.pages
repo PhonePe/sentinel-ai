@@ -2,3 +2,4 @@ nav:
   - index.md
   - basics.md
   - tools.md
+  - calling-remote-services.md

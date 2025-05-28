@@ -14,7 +14,7 @@ import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.phonepe.sentinelai.toolbox.remotehttp.HttpToolParameterType.STRING;
-import static com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplate.Template.strSubstitutor;
+import static com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplate.Template.textSubstitutor;
 import static com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplate.Template.text;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -52,7 +52,7 @@ class HttpCallTemplateExpanderTest {
                                   .template(HttpCallTemplate.builder()
                                                     .path(text("/api/v1/location"))
                                                     .method(HttpCallSpec.HttpMethod.POST)
-                                                    .body(strSubstitutor("{ \"name\" : \"${name}\" }"))
+                                                    .body(textSubstitutor("{ \"name\" : \"${name}\" }"))
                                                     .build())
                                   .build());
 
