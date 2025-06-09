@@ -58,7 +58,11 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
     public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
         public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, ExecutableTool> tools) {
-            super(OutputObject.class, "greet the user", setup, extensions, tools);
+            super(OutputObject.class,
+                  "greet the user. extract memories about the user to make conversations easier in the future.",
+                  setup,
+                  extensions,
+                  tools);
         }
 
         @Tool("Get name of user")
@@ -82,7 +86,7 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(8, "me", getClass());
+        TestUtils.setupMocks(7, "me", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
@@ -118,7 +122,6 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
         final var extensions = List.of(AgentMemoryExtension.builder()
                                                .objectMapper(objectMapper)
                                                .memoryStore(memoryStorage)
-                                               .numMessagesForSummarization(3)
                                                .saveMemoryAfterSessionEnd(true)
                                                .build(),
                                        AgentSessionExtension.builder()
@@ -141,6 +144,13 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
         {
             final var response = agent.execute(AgentInput.<UserInput>builder()
                                                        .request(new UserInput("Hi"))
+                                                       .requestMetadata(requestMetadata)
+                                                       .build());
+            log.debug("Agent response: {}", response.getData().message());
+        }
+        {
+            final var response = agent.execute(AgentInput.<UserInput>builder()
+                                                       .request(new UserInput("Today is sunny in bangalore"))
                                                        .requestMetadata(requestMetadata)
                                                        .build());
             log.debug("Agent response: {}", response.getData().message());
@@ -172,11 +182,6 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
     @Value
     public static class TestToolBox implements ToolBox {
         String user;
-
-        @Tool("Get weather today")
-        public String getWeatherToday(@JsonPropertyDescription("Name of user") final String location) {
-            return location.equalsIgnoreCase("bangalore") ? "Sunny" : "unknown";
-        }
 
         @Tool("Get  location for user")
         public String getLocationForUser(@JsonPropertyDescription("Name of user") final String name) {

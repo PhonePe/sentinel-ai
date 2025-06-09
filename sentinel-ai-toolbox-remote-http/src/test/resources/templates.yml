@@ -38,3 +38,14 @@ test:
       path:
         type: TEXT_SUBSTITUTOR
         content: /api/v1/weather/${city}
+    transformer:
+      type: JOLT
+      config: |
+        [
+          {
+            "operation": "shift",
+            "spec": {
+              "weatherValue": "weather"
+            }
+          }
+        ]

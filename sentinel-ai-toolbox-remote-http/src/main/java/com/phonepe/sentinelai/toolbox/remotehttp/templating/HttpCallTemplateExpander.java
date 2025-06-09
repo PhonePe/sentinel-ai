@@ -4,6 +4,7 @@ import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.TextHttpCallTemplatingEngine;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.TextSubstitutorHttpCallTemplatingEngine;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import static java.util.stream.Collectors.toMap;
  * A class that expands a {@link HttpCallTemplate} to a {@link HttpCallSpec}.
  */
 @AllArgsConstructor
+@Slf4j
 public class HttpCallTemplateExpander {
     private final Map<HttpCallTemplate.TemplateType, HttpCallTemplatingEngine> templatingEngines;
 
@@ -47,13 +49,15 @@ public class HttpCallTemplateExpander {
                                                .toList()));
         final var body = convert(template.getBody(), context);
         final var contentType = template.getContentType();
-
+        log.debug("Expanding spec: path: {}, method: {}, headers: {}, body: {}",
+                  path, method, headers, body);
         return HttpCallSpec.builder()
                 .method(method)
                 .path(path)
                 .headers(headers)
                 .body(body)
                 .contentType(contentType)
+
                 .build();
     }
 

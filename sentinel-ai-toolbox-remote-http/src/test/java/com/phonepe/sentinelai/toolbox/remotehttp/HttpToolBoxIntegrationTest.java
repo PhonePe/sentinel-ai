@@ -127,7 +127,8 @@ class HttpToolBoxIntegrationTest {
         stubFor(get(urlEqualTo("/api/v1/weather/Bangalore"))
                         .willReturn(jsonResponse("""
                                                          {
-                                                         "location" : "Sunny"
+                                                         "location" : "Bangalore",
+                                                         "weatherValue" : "sunny"
                                                          }
                                                          """, 200)));
     }

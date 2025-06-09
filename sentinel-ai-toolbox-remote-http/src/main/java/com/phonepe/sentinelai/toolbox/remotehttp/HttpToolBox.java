@@ -11,10 +11,7 @@ import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.SneakyThrows;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
+import okhttp3.*;
 
 import java.io.IOException;
 import java.net.URI;
@@ -23,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import static com.phonepe.sentinelai.core.utils.AgentUtils.rootCause;
@@ -81,8 +79,10 @@ public class HttpToolBox implements ToolBox {
                                     .contextAware(false)
                                     .build(),
                             paramNodes,
-                            (name, arguments) -> makeHttpCall(
-                                    httpToolSource.resolve(upstream, name, arguments)));
+                            (name, arguments) -> {
+                                final var resolved = httpToolSource.resolve(upstream, name, arguments);
+                                return makeHttpCall(resolved);
+                            });
                 })
                 .collect(Collectors.toMap(tool -> tool.getToolDefinition().getName(), Function.identity()));
     }
@@ -102,11 +102,7 @@ public class HttpToolBox implements ToolBox {
             case DELETE -> requestBuilder.delete().build();
         };
         try (final var response = httpClient.newCall(request).execute()) {
-            final var defaultResponse = response.isSuccessful() ? "Successful" : "Failure";
-            final var string = response.body() != null
-                               ? response.body().string()
-                               : defaultResponse;
-            return new ExternalTool.ExternalToolResponse(string,
+            return new ExternalTool.ExternalToolResponse(body(spec, response),
                                                          !response.isSuccessful()
                                                          ? ErrorType.TOOL_CALL_TEMPORARY_FAILURE
                                                          : ErrorType.SUCCESS);
@@ -115,6 +111,18 @@ public class HttpToolBox implements ToolBox {
             return new ExternalTool.ExternalToolResponse("Error running tool: " + rootCause(e),
                                                          ErrorType.TOOL_CALL_TEMPORARY_FAILURE);
         }
+    }
+
+    @SneakyThrows
+    private static String body(HttpCallSpec spec, Response response) {
+        final var responseBody = response.body();
+        if(null == responseBody) {
+            return response.isSuccessful() ? "Successful" : "Failure";
+        }
+        final var bodyStr = response.body().string().trim().replaceAll("\\s+", " ");
+        final var transformer = Objects.requireNonNullElseGet(spec.getResponseTransformer(),
+                                                              UnaryOperator::<String>identity);
+        return transformer.apply(bodyStr);
     }
 
     private static RequestBody body(HttpCallSpec spec) {

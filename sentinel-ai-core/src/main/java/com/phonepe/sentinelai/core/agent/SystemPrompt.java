@@ -51,7 +51,7 @@ public class SystemPrompt {
         private Map<String, Object> customParams;
     }
 
-
+    private String name;
     private String coreInstructions;
     private PrimaryTask primaryTask;
     @JacksonXmlElementWrapper(localName = "secondaryTasks")

@@ -11,10 +11,7 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.toMap;
@@ -50,7 +47,7 @@ public class ToolUtils {
 
     public static Pair<ToolDefinition, ToolMethodInfo> toolMetadata(String prefix, Method method) {
         final var toolDef = method.getAnnotation(Tool.class);
-        final var params = new HashMap<String, ToolParameter>();
+        final var params = new ArrayList<ToolParameter>();
         final var paramTypes = method.getParameterTypes();
         final var declParams = method.getParameters();
         boolean hasContext = false;
@@ -64,8 +61,7 @@ public class ToolUtils {
 
             final var paramAnnotation = param.getAnnotation(JsonPropertyDescription.class);
             final var description = (null != paramAnnotation) ? paramAnnotation.value() : "";
-            params.put(param.getName(),
-                       new ToolParameter(param.getName(),
+            params.add(new ToolParameter(param.getName(),
                                          description,
                                          TypeFactory.defaultInstance().constructType(paramType)));
         }
@@ -90,11 +86,10 @@ public class ToolUtils {
             ObjectMapper objectMapper) {
         final var paramNodes = objectMapper.readTree(params);
         return methodInfo.parameters()
-                .entrySet()
                 .stream()
-                .map(entry -> {
-                    final var paramName = entry.getKey();
-                    final var paramType = entry.getValue().getType();
+                .map(param -> {
+                    final var paramName = param.getName();
+                    final var paramType = param.getType();
                     final var paramNode = paramNodes.get(paramName);
                     return objectMapper.convertValue(paramNode, paramType);
                 })

@@ -86,6 +86,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         xmlMapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_EMPTY);
         registerTools(ToolUtils.readTools(this));
         registerTools(knownTools);
+        this.extensions.forEach(extension -> registerTools(extension.tools()));
     }
 
     public abstract String name();
@@ -283,6 +284,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         }
         knowledge.addAll(knowledgeFromExtensions);
         final var prompt = new SystemPrompt()
+                .setName(name())
                 .setCoreInstructions(
                         "Your main job is to answer the user query as provided in user prompt in the `user_input` tag. "
                                 + (!messages.isEmpty()
@@ -385,6 +387,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             public ToolCallResponse visit(ExternalTool externalTool) {
                 final var response = externalTool.getCallable()
                         .apply(toolCall.getToolName(), toolCall.getArguments());
+                log.debug("Tool response: {}", response);
                 final var error = response.error();
                 if (!error.equals(ErrorType.SUCCESS)) {
                     log.error("Error calling external tool {}: {}", toolCall.getToolName(), response.response());

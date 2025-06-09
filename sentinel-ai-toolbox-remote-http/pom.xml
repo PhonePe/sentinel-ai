@@ -16,6 +16,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <commons-text.version>1.13.1</commons-text.version>
+        <jolt.version>0.1.8</jolt.version>
     </properties>
 
     <dependencies>
@@ -37,6 +38,11 @@
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.bazaarvoice.jolt</groupId>
+            <artifactId>jolt-complete</artifactId>
+            <version>${jolt.version}</version>
         </dependency>
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>

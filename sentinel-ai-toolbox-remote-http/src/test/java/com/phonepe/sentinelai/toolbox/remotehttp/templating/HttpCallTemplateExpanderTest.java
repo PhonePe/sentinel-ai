@@ -79,10 +79,6 @@ class HttpCallTemplateExpanderTest {
                         return "";
                     }
                 });
-        assertEquals("""
-                             {
-                             "location" : "Bangalore"
-                             }
-                             """, response);
+        assertEquals("{ \"location\" : \"Bangalore\" }", response);
     }
 }

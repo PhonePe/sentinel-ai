@@ -32,7 +32,6 @@ public class ParameterMapper implements ExecutableToolVisitor<JsonNode> {
     public static ObjectNode parametersFromMethodInfo(final ObjectMapper objectMapper,
                                                       final ToolMethodInfo methodInfo) {
         final var paramNodes = methodInfo.parameters()
-                .values()
                 .stream()
                 .map(param -> {
                     final var rawType = param.getType().getRawClass();

@@ -1,28 +1,21 @@
 {
-  "id" : "chatcmpl-BI9JLkVNV8rr8CcZaZsKFepOeTfWE",
+  "id" : "chatcmpl-BgO4LWj5mUnaiAIzlZ3ZBrWBOqC0x",
   "object" : "chat.completion",
-  "created" : 1743665395,
+  "created" : 1749441997,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_ded0d14823",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
-      "tool_calls" : [ {
-        "id" : "call_hGAXcgUTccfGl3fpLmZWj8YI",
-        "type" : "function",
-        "function" : {
-          "name" : "test_tool_box_get_location_for_user",
-          "arguments" : "{\"name\":\"Santanu\"}"
-        }
-      } ]
+      "content" : "{\"output\":{\"message\":\"That's great to hear! Sunny days can really lift the mood. How do you usually like to spend sunny days in Bangalore?\",\"username\":\"\"},\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"User is located in Bangalore.\",\"name\":\"UserLocation\",\"reusabilityScore\":8,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"location\"],\"type\":\"SEMANTIC\"}]},\"sessionOutput\":{\"sessionId\":\"s1\",\"summary\":\"User greeted and location identified as Bangalore. User mentioned that today is sunny in Bangalore.\",\"topics\":[\"greeting\",\"location\",\"weather\"]}}"
     },
-    "finish_reason" : "tool_calls"
+    "finish_reason" : "stop"
   } ],
   "usage" : {
-    "prompt_tokens" : 1793,
-    "completion_tokens" : 21,
-    "total_tokens" : 1814,
+    "prompt_tokens" : 1549,
+    "completion_tokens" : 128,
+    "total_tokens" : 1677,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

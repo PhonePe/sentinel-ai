@@ -16,12 +16,6 @@ import java.util.function.Consumer;
  * Abstract representation for a LLM model
  */
 public interface Model {
-//    <R, T, D> CompletableFuture<T> completions(
-//            AgentRunContext<D,R> context,
-//            R request,
-//            Class<T> responseType,
-//            String systemPrompt,
-//            Map<String, InternalTool> tools);
 
     <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
             AgentRunContext<R> context,

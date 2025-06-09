@@ -20,7 +20,8 @@ import java.util.Map;
 public class HttpToolReaders {
     public record ConfiguredHttpTool(
             HttpToolMetadata metadata,
-            HttpCallTemplate definition
+            HttpCallTemplate definition,
+            ResponseTransformerConfig transformer
     ) {
     }
 
@@ -52,7 +53,8 @@ public class HttpToolReaders {
                         toolSource.register(upstream,
                                             configuredUpstream.tools()
                                                     .stream()
-                                                    .map(tool -> new TemplatizedHttpTool(tool.metadata(), tool.definition()))
+                                                    .map(tool -> new TemplatizedHttpTool(
+                                                            tool.metadata(), tool.definition(), tool.transformer()))
                                                     .toList())));
     }
 }

@@ -83,8 +83,8 @@ class AgentMemoryExtensionTest {
                 String scopeId,
                 MemoryScope scope,
                 Set<MemoryType> memoryTypes,
-                String query,
-                int count) {
+                List<String> topics, String query,
+                int minReusabilityScore, int count) {
             return memories.getOrDefault(new Key(scope, scopeId), List.of());
         }
 
@@ -140,7 +140,6 @@ class AgentMemoryExtensionTest {
                 .extensions(List.of(AgentMemoryExtension.builder()
                                             .objectMapper(objectMapper)
                                             .memoryStore(memoryStore)
-                                            .numMessagesForSummarization(3)
                                             .saveMemoryAfterSessionEnd(true)
                                             .build()))
                 .build()

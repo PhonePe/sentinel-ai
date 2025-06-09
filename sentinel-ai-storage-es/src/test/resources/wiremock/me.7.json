@@ -1,28 +1,21 @@
 {
-  "id" : "chatcmpl-BI9JWUTUIdTi7uKgBK62v0aN9oeJn",
+  "id" : "chatcmpl-BgO4Nwur2JKJlMtSQPSmGIVHZniTe",
   "object" : "chat.completion",
-  "created" : 1743665406,
+  "created" : 1749441999,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_b705f0c291",
+  "system_fingerprint" : "fp_ded0d14823",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
-      "tool_calls" : [ {
-        "id" : "call_qZFo2tcxe0RWJahLqKD5HFtj",
-        "type" : "function",
-        "function" : {
-          "name" : "test_tool_box_get_weather_today",
-          "arguments" : "{\"location\":\"Bangalore\"}"
-        }
-      } ]
+      "content" : "{\"output\":{\"message\":\"Hello! Since you're in Bangalore, I can tell you that today is sunny there. How do you feel about the weather?\",\"username\":\"User\"},\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"User is located in Bangalore.\",\"name\":\"UserLocation\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"location\"],\"type\":\"SEMANTIC\"}]},\"sessionOutput\":{\"sessionId\":\"s1\",\"summary\":\"User greeted and location identified as Bangalore. User mentioned that today is sunny in Bangalore.\",\"topics\":[\"greeting\",\"location\",\"weather\"]}}"
     },
-    "finish_reason" : "tool_calls"
+    "finish_reason" : "stop"
   } ],
   "usage" : {
-    "prompt_tokens" : 1828,
-    "completion_tokens" : 20,
-    "total_tokens" : 1848,
+    "prompt_tokens" : 1605,
+    "completion_tokens" : 129,
+    "total_tokens" : 1734,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

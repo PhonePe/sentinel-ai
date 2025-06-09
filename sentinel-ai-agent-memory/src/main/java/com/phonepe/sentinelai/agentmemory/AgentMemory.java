@@ -18,10 +18,10 @@ public class AgentMemory {
     @JsonPropertyDescription("Agent for whom this memory is relevant")
     String agentName;
 
-    @JsonPropertyDescription("Scope of the memory. Whether it is user or session specific or global")
+    @JsonPropertyDescription("Scope of the memory. Whether it is entity specific or specific to the agent itself")
     MemoryScope scope;
 
-    @JsonPropertyDescription("For entity scoped memories, this will signify what entity it is scoped to")
+    @JsonPropertyDescription("For entity scoped memories, this will signify what entity it is scoped to. for agent memory, this will be set to agent name")
     String scopeId;
 
     @JsonPropertyDescription("Whether the memory is semantic, episodic or procedural")

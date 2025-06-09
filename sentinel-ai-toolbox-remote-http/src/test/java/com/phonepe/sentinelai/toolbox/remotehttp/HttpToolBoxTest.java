@@ -75,10 +75,6 @@ class HttpToolBoxTest {
                 return "";
             }
         });
-        assertEquals("""
-                             {
-                             "name" : "Santanu"
-                             }
-                             """, response);
+        assertEquals("{ \"name\" : \"Santanu\" }", response);
     }
 }

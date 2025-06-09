@@ -47,21 +47,24 @@ public class ESAgentMemoryStorage implements AgentMemoryStore {
             String scopeId,
             MemoryScope scope,
             Set<MemoryType> memoryTypes,
-            String query,
+            List<String> topics, String query,
+            int minReusabilityScore,
             int count) {
         final var queryBuilder = new SearchRequest.Builder().index(indexName());
         final var boolBuilder = new BoolQuery.Builder();
         //Filter on scope
         //If looking for agent scoped memory only scope is okay
-        switch (scope) {
-            case AGENT -> boolBuilder.filter(f -> f.term(m ->
-                                                                 m.field(ESAgentMemoryDocument.Fields.scope)
-                                                                         .value(scope.name())));
-            case SESSION, ENTITY -> boolBuilder.filter(f -> f.term(m ->
-                                                                           m.field(ESAgentMemoryDocument.Fields.scopeId)
-                                                                                   .value(scopeId)))
-                    .filter(f -> f.term(m ->
-                                                m.field(ESAgentMemoryDocument.Fields.scope).value(scope.name())));
+        if(scope != null && !Strings.isNullOrEmpty(scopeId)) {
+            switch (scope) {
+                case AGENT -> boolBuilder.filter(f -> f.term(m ->
+                                                                     m.field(ESAgentMemoryDocument.Fields.scope)
+                                                                             .value(scope.name())));
+                case ENTITY -> boolBuilder.filter(f -> f.term(m ->
+                                                                      m.field(ESAgentMemoryDocument.Fields.scopeId)
+                                                                              .value(scopeId)))
+                        .filter(f -> f.term(m ->
+                                                    m.field(ESAgentMemoryDocument.Fields.scope).value(scope.name())));
+            }
         }
         if (null != memoryTypes && !memoryTypes.isEmpty()) {
             boolBuilder.filter(f -> f.terms(m -> m.field(ESAgentMemoryDocument.Fields.memoryType)
@@ -71,9 +74,21 @@ public class ESAgentMemoryStorage implements AgentMemoryStore {
                                                   .toList())
                                    .build())));
         }
+        if (null != topics && !topics.isEmpty()) {
+            boolBuilder.filter(f -> f.terms(m -> m.field(ESAgentMemoryDocument.Fields.topics)
+                    .terms(new TermsQueryField.Builder()
+                                   .value(topics.stream()
+                                                .map(FieldValue::of)
+                                                .toList())
+                                   .build())));
+        }
+        if(minReusabilityScore > 0) {
+            boolBuilder.filter(f -> f.range(r -> r.number(m -> m.field(ESAgentMemoryDocument.Fields.reusabilityScore)
+                    .gte((double)minReusabilityScore))));
+        }
         //If a text query is sent, use text query along with cosine based vector search to get relevant results
         if (!Strings.isNullOrEmpty(query)) {
-            boolBuilder.must(m -> m.match(q -> q.field(ESAgentMemoryDocument.Fields.content).query(query)));
+//            boolBuilder.must(m -> m.match(q -> q.field(ESAgentMemoryDocument.Fields.content).query(query)));
             final var embedding = embeddingModel.getEmbedding(query);
             final var embeddingList = new ArrayList<Float>(embedding.length);
             for (float v : embedding) {

@@ -15,12 +15,15 @@ public class TemplatizedHttpTool extends HttpTool {
 
     @NonNull
     HttpCallTemplate template;
+    ResponseTransformerConfig responseTransformations;
 
     @Builder
     @Jacksonized
     public TemplatizedHttpTool(@NonNull HttpToolMetadata metadata,
-                               @NonNull HttpCallTemplate template) {
+                               @NonNull HttpCallTemplate template,
+                               ResponseTransformerConfig responseTransformations) {
         super(metadata);
         this.template = template;
+        this.responseTransformations = responseTransformations;
     }
 }
