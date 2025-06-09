@@ -140,6 +140,13 @@ The following parameter types are supported:
 - `SHORT_ARRAY`
 - `CHARACTER_ARRAY`
 
+#### Response Transformation
+The HTTP toolbox supports transformation of the response of the API call. This is currently supported only for JSON 
+responses. Json transformation is achieved using the powerful [JOLT](https://github.com/bazaarvoice/jolt){:target="_blank"} transformation library.
+
+!!!tip "Testing out JOLT Transformations"
+    You can test out JOLT transformations using the [JOLT Transform Tool](https://jolt-demo.appspot.com/){:target="_blank"}.
+
 #### HTTP Tool Template
 
 The template for the HTTP tool is a simple object that contains the following properties:
@@ -172,6 +179,18 @@ final var tool = TemplatizedHttpTool.builder()
                                   "Authorization", List.of(Template.textSubstitutor("Bearer ${token}")),
                                   "Client-ID", List.of(Template.text("Agent-Vinod"))))
                           .build())
+        .responseTransformations(ResponseTransformerConfig.builder() //(Optional) Response transformation config
+                                     .type(ResponseTransformerConfig.Type.JOLT)
+                                     .config("""
+                                             [
+                                               {
+                                                  "operation": "shift",
+                                                  "spec": {
+                                                     "location": "userLocation"
+                                                  }
+                                               }
+                                             ]
+                                             """)
         .build();
 ```
 

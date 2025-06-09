@@ -54,6 +54,19 @@ class HttpCallTemplateExpanderTest {
                                                     .method(HttpCallSpec.HttpMethod.POST)
                                                     .body(textSubstitutor("{ \"name\" : \"${name}\" }"))
                                                     .build())
+                                  .responseTransformations(ResponseTransformerConfig.builder()
+                                                                   .type(ResponseTransformerConfig.Type.JOLT)
+                                                                   .config("""
+                                                                            [
+                                                                              {
+                                                                                 "operation": "shift",
+                                                                                 "spec": {
+                                                                                    "location": "userLocation"
+                                                                                 }
+                                                                              }
+                                                                            ]
+                                                                            """)
+                                                                   .build())
                                   .build());
 
         final var toolBox = new HttpToolBox(upstream,
@@ -79,6 +92,6 @@ class HttpCallTemplateExpanderTest {
                         return "";
                     }
                 });
-        assertEquals("{ \"location\" : \"Bangalore\" }", response);
+        assertEquals("{\"userLocation\":\"Bangalore\"}", response);
     }
 }
