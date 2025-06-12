@@ -26,8 +26,10 @@ import com.phonepe.sentinelai.core.tools.*;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
+import io.appform.signals.signals.ConsumingFireForgetSignal;
 import lombok.NonNull;
 import lombok.SneakyThrows;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
@@ -58,13 +60,28 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         ToolCallResponse runTool(AgentRunContext<S> context, Map<String, ExecutableTool> tool, ToolCall toolCall);
     }
 
+    @Value
+    public static class ProcessingCompletedData<R, T, A extends Agent<R, T, A>> {
+        Agent<R, T, A> agent;
+        AgentSetup agentSetup;
+        AgentRunContext<R> context;
+        AgentInput<R> input;
+        AgentOutput<?> output;
+        ProcessingMode processingMode;
+    }
+
     private final Class<T> outputType;
     private final String systemPrompt;
     private final AgentSetup setup;
     private final List<AgentExtension> extensions;
     private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
     private final XmlMapper xmlMapper = new XmlMapper();
+    private final ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> requestCompleted =
+            new ConsumingFireForgetSignal<>();
 
+    @SuppressWarnings("unchecked")
+    private final A self = (A)this;
+    
     @SneakyThrows
     protected Agent(
             @NonNull Class<T> outputType,
@@ -86,7 +103,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         xmlMapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_EMPTY);
         registerTools(ToolUtils.readTools(this));
         registerTools(knownTools);
-        this.extensions.forEach(extension -> registerTools(extension.tools()));
+        this.extensions.forEach(extension -> {
+            registerTools(extension.tools());
+            extension.onRegistrationCompleted(self);
+        });
     }
 
     public abstract String name();
@@ -97,11 +117,14 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @param toolbox List of toolboxes
      * @return this
      */
-    @SuppressWarnings("unchecked")
     public A registerToolboxes(final List<ToolBox> toolbox) {
         Objects.requireNonNullElseGet(toolbox, List::<ToolBox>of)
                 .forEach(this::registerToolbox);
-        return (A) this;
+        return self;
+    }
+
+    public ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> onRequestCompleted() {
+        return requestCompleted;
     }
 
     /**
@@ -110,10 +133,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @param toolBox Toolbox to register
      * @return this
      */
-    @SuppressWarnings("unchecked")
     public A registerToolbox(ToolBox toolBox) {
         registerTools(toolBox.tools());
-        return (A) this;
+        return self;
     }
 
     /**
@@ -135,7 +157,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @param callableTools Map of callable tools
      * @return this
      */
-    @SuppressWarnings("unchecked")
     public A registerTools(Map<String, ExecutableTool> callableTools) {
         final var tools = new HashMap<>(Objects.requireNonNullElseGet(callableTools, Map::of));
         if (!tools.isEmpty()) {
@@ -145,7 +166,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             log.debug("No tools registered");
         }
         this.knownTools.putAll(tools);
-        return (A) this;
+        return self;
     }
 
     public final AgentOutput<T> execute(final AgentInput<R> request) {
@@ -158,7 +179,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @param input Input to the agent
      * @return
      */
-    @SuppressWarnings("unchecked")
     public final CompletableFuture<AgentOutput<T>> executeAsync(@NonNull AgentInput<R> input) {
         final var mergedAgentSetup = mergeAgentSetup(input.getAgentSetup(), this.setup);
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input.getOldMessages(), List.of()));
@@ -171,10 +191,11 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                   requestMetadata,
                                                   mergedAgentSetup,
                                                   messages,
-                                                  new ModelUsageStats());
+                                                  new ModelUsageStats(),
+                                                  ProcessingMode.DIRECT);
         var finalSystemPrompt = "";
         try {
-            finalSystemPrompt = systemPrompt(inputRequest, facts, requestMetadata, messages);
+            finalSystemPrompt = systemPrompt(inputRequest, facts, requestMetadata, messages, ProcessingMode.DIRECT);
         }
         catch (JsonProcessingException e) {
             log.error("Error serializing system prompt", e);
@@ -195,11 +216,17 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                         knownTools,
                         this::runToolObserved,
                         this.extensions,
-                        (A) this)
+                        self)
                 .thenApplyAsync(response -> {
                     if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
                         requestMetadata.getUsageStats().merge(response.getUsage());
                     }
+                    requestCompleted.dispatch(new ProcessingCompletedData<>(this,
+                                                                            mergedAgentSetup,
+                                                                            context,
+                                                                            input,
+                                                                            response,
+                                                                            ProcessingMode.DIRECT));
                     return response;
                 });
     }
@@ -210,7 +237,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @param input The input to the agent
      * @return The response to be consumed by the client
      */
-    @SuppressWarnings("unchecked")
     public final CompletableFuture<AgentOutput<byte[]>> executeAsyncStreaming(
             AgentInput<R> input,
             Consumer<byte[]> streamHandler) {
@@ -229,10 +255,11 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                   requestMetadata,
                                                   mergedAgentSetup,
                                                   messages,
-                                                  new ModelUsageStats());
+                                                  new ModelUsageStats(),
+                                                  ProcessingMode.STREAMING);
         var finalSystemPrompt = "";
         try {
-            finalSystemPrompt = systemPrompt(request, facts, requestMetadata, messages);
+            finalSystemPrompt = systemPrompt(request, facts, requestMetadata, messages, ProcessingMode.STREAMING);
         }
         catch (JsonProcessingException e) {
             log.error("Error serializing system prompt", e);
@@ -252,12 +279,18 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                         knownTools,
                         this::runToolObserved,
                         this.extensions,
-                        (A) this,
+                        self,
                         streamHandler)
                 .thenApply(response -> {
                     if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
                         requestMetadata.getUsageStats().merge(response.getUsage());
                     }
+                    requestCompleted.dispatch(new ProcessingCompletedData<>(this,
+                                                                                   mergedAgentSetup,
+                                                                                   context,
+                                                                                   input,
+                                                                                   response,
+                                                                                   ProcessingMode.STREAMING));
                     return response;
                 });
     }
@@ -266,23 +299,21 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             R request,
             List<FactList> facts,
             final AgentRequestMetadata requestMetadata,
-            List<AgentMessage> messages) throws JsonProcessingException {
+            List<AgentMessage> messages,
+            ProcessingMode processingMode) throws JsonProcessingException {
         final var secondaryTasks = this.extensions
                 .stream()
-                .map(extension -> new SystemPrompt.SecondaryTask()
-                        .setInstructions(extension.additionalSystemPrompts(request,
-                                                                           requestMetadata,
-                                                                           (A) this)))
+                .flatMap(extension -> extension
+                        .additionalSystemPrompts(request, requestMetadata, self, processingMode)
+                        .getTask()
+                        .stream())
                 .toList();
         final var knowledgeFromExtensions = this.extensions
                 .stream()
-                .flatMap(extension -> extension.facts(request, requestMetadata, (A) this).stream())
+                .flatMap(extension -> extension.facts(request, requestMetadata, self).stream())
                 .toList();
-        final var knowledge = new ArrayList<FactList>();
-        if (null != facts && !facts.isEmpty()) {
-            knowledge.addAll(facts);
-        }
-        knowledge.addAll(knowledgeFromExtensions);
+        final var knowledge = new ArrayList<>(knowledgeFromExtensions);
+        knowledge.addAll(Objects.requireNonNullElseGet(facts, List::of));
         final var prompt = new SystemPrompt()
                 .setName(name())
                 .setCoreInstructions(
@@ -296,16 +327,17 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                 + ((!knowledge.isEmpty())
                                    ? "Use the provided knowledge and facts to enrich your responses."
                                    : ""))
-                .setPrimaryTask(new SystemPrompt.PrimaryTask()
-                                        .setRole(systemPrompt)
-                                        .setTool(this.knownTools.values()
-                                                         .stream()
-                                                         .map(tool -> SystemPrompt.ToolSummary.builder()
-                                                                 .name(tool.getToolDefinition().getName())
-                                                                 .description(tool.getToolDefinition()
-                                                                                      .getDescription())
-                                                                 .build())
-                                                         .toList()))
+                .setPrimaryTask(SystemPrompt.Task.builder()
+                                        .objective(systemPrompt)
+                                        .tool(this.knownTools.values()
+                                                      .stream()
+                                                      .map(tool -> SystemPrompt.ToolSummary.builder()
+                                                              .name(tool.getToolDefinition().getName())
+                                                              .description(tool.getToolDefinition()
+                                                                                   .getDescription())
+                                                              .build())
+                                                      .toList())
+                                        .build())
                 .setSecondaryTask(secondaryTasks)
                 .setFacts(knowledge);
         if (null != requestMetadata) {

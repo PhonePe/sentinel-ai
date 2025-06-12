@@ -62,18 +62,18 @@ public class AgentSessionExtension implements AgentExtension {
     public <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
             R request,
             AgentRequestMetadata metadata,
-            A agent) {
-        final var prompts = new ArrayList<SystemPrompt.SecondaryTask>();
+            A agent, ProcessingMode processingMode) {
+        final var prompts = new ArrayList<SystemPrompt.Task>();
         if (updateSummaryAfterSession) {
-            final var prompt = new SystemPrompt.SecondaryTask()
-                    .setObjective("UPDATE SESSION SUMMARY")
-                    .setOutputField(OUTPUT_KEY)
-                    .setInstructions(
+            final var prompt = SystemPrompt.Task.builder()
+                    .objective("UPDATE SESSION SUMMARY")
+                    .outputField(OUTPUT_KEY)
+                    .instructions(
                             "Generate session summary and a list of topics being discussed in the session based on " +
                                     "the last few messages.");
             final var tools = this.tools();
             if (!tools.isEmpty()) {
-                prompt.setTool(tools.values()
+                prompt.tool(tools.values()
                                        .stream()
                                        .map(tool -> SystemPrompt.ToolSummary.builder()
                                                .name(tool.getToolDefinition().getName())
@@ -82,7 +82,7 @@ public class AgentSessionExtension implements AgentExtension {
                                        .toList());
 
             }
-            prompts.add(prompt);
+            prompts.add(prompt.build());
         }
 
         final var hints = new ArrayList<>();
@@ -93,7 +93,7 @@ public class AgentSessionExtension implements AgentExtension {
     }
 
     @Override
-    public Optional<AgentExtensionOutputDefinition> outputSchema() {
+    public Optional<AgentExtensionOutputDefinition> outputSchema(ProcessingMode processingMode) {
         if (updateSummaryAfterSession) {
             return Optional.of(new AgentExtensionOutputDefinition(
                     OUTPUT_KEY,
@@ -117,5 +117,10 @@ public class AgentSessionExtension implements AgentExtension {
             log.error("Error converting json node to memory output. Error: %s Json: %s"
                               .formatted(e.getMessage(), output), e);
         }
+    }
+
+    @Override
+    public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
+
     }
 }

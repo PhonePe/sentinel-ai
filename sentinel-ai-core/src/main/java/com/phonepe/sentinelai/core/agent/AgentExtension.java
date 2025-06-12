@@ -16,7 +16,7 @@ public interface AgentExtension extends ToolBox {
     @Value
     class ExtensionPromptSchema {
         @JacksonXmlElementWrapper(localName = "tasks")
-        List<SystemPrompt.SecondaryTask> task;
+        List<SystemPrompt.Task> task;
         List<Object> hints;
     }
 
@@ -30,7 +30,9 @@ public interface AgentExtension extends ToolBox {
 
     String name();
     <R, T, A extends Agent<R, T, A>> List<FactList> facts(R request, AgentRequestMetadata metadata, A agent);
-    <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(R request, AgentRequestMetadata metadata, A agent);
-    Optional<AgentExtensionOutputDefinition> outputSchema();
+    <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
+            R request, AgentRequestMetadata metadata, A agent, ProcessingMode processingMode);
+    Optional<AgentExtensionOutputDefinition> outputSchema(ProcessingMode processingMode);
     <R, T, A extends Agent<R, T, A>> void consume(final JsonNode output, A agent);
+    <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent);
 }

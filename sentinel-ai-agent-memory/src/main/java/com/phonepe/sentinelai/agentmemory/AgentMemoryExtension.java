@@ -7,11 +7,14 @@ import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 import lombok.Builder;
 import lombok.NonNull;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -89,56 +92,72 @@ public class AgentMemoryExtension implements AgentExtension {
     public <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
             R request,
             AgentRequestMetadata metadata,
-            A agent) {
-        final var prompts = new ArrayList<SystemPrompt.SecondaryTask>();
+            A agent,
+            ProcessingMode processingMode) {
+        final var prompts = new ArrayList<SystemPrompt.Task>();
 
-        prompts.add(new SystemPrompt.SecondaryTask()
-                            .setAdditionalInstructions("""
-                               Before proceeding with primary task, you must check if you have any memories
-                                related to the request using the provided tool and use them in processing
-                                the request
-                             """)
-                            .setTool(tools.values()
-                                             .stream()
-                                             .map(tool -> SystemPrompt.ToolSummary.builder()
-                                                     .name(tool.getToolDefinition().getName())
-                                                     .description(tool.getToolDefinition().getDescription())
-                                                     .build())
-                                             .toList()));
-        if (saveMemoryAfterSessionEnd) {
+        prompts.add(SystemPrompt.Task.builder()
+                            .objective("""
+                                                 Before proceeding with primary task, you must check if you have any memories
+                                                  related to the request using the provided tool and use them in processing
+                                                  the request
+                                               """)
+                            .tool(tools.values()
+                                          .stream()
+                                          .map(tool -> SystemPrompt.ToolSummary.builder()
+                                                  .name(tool.getToolDefinition().getName())
+                                                  .description(tool.getToolDefinition().getDescription())
+                                                  .build())
+                                          .toList())
+                            .build());
+        if (saveMemoryAfterSessionEnd && processingMode.equals(ProcessingMode.DIRECT)) { //Structured output is not supported in streaming mode
             //Add extract prompt only if extraction is needed
-            final var prompt = new SystemPrompt.SecondaryTask()
-                    .setObjective("YOU MUST EXTRACT MEMORY FROM MESSAGES AND POPULATE `memoryOutput` FIELD")
-                    .setOutputField(OUTPUT_KEY)
-                    .setInstructions("""                           
-                        How to extract different memory types:
-                        - SEMANTIC: Extract fact about the user or any other subject or entity being discussed in the conversation
-                        - EPISODIC: Extract a specific event or episode from the conversation.
-                        - PROCEDURAL: Extract a procedure as a list of steps or a sequence of actions that you can use later
-                        
-                        Setting memory scope and scopeId:
-                         - AGENT: Memory that is relevant to the agent's own actions and decisions. For example, if the agent is used to query an analytics store, a relevant agent level memory would be the interpretation of a particular field in the db.
-                         - ENTITY: Memory that is relevant to the entity being interacted with by the agent. For example, if the agent is a customer service agent, this would be the memory relevant to the customer.
-                        
-                        scopeId will be set to agent name for AGENT scope and userId or relevant entity id for ENTITY scope.
-                        """)
-                    .setAdditionalInstructions("""
-                        IMPORTANT INSTRUCTION FOR MEMORY EXTRACTION:
-                        - Do not include non-reusable information as memories.
-                        - Extract as many useful memories as possible
-                        - If memory seems relevant to be used across sessions and users store it at agent level instead of session or user
-                        """);
+            final var prompt = extractionTaskPrompt();
             prompts.add(prompt);
         }
 
         return new ExtensionPromptSchema(prompts, List.of());
     }
 
+    private static SystemPrompt.Task extractionTaskPrompt() {
+        return SystemPrompt.Task.builder()
+                .objective("YOU MUST EXTRACT MEMORY FROM MESSAGES AND POPULATE `memoryOutput` FIELD")
+                .outputField(OUTPUT_KEY)
+                .instructions("""                           
+                                      How to extract different memory types:
+                                      - SEMANTIC: Extract fact about the user or any other subject or entity being discussed in the conversation
+                                      - EPISODIC: Extract a specific event or episode from the conversation.
+                                      - PROCEDURAL: Extract a procedure as a list of steps or a sequence of actions that you can use later
+                                      
+                                      Setting memory scope and scopeId:
+                                       - AGENT: Memory that is relevant to the agent's own actions and decisions. For example, if the agent is used to query an analytics store, a relevant agent level memory would be the interpretation of a particular field in the db.
+                                       - ENTITY: Memory that is relevant to the entity being interacted with by the agent. For example, if the agent is a customer service agent, this would be the memory relevant to the customer.
+                                      
+                                      scopeId will be set to agent name for AGENT scope and userId or relevant entity id for ENTITY scope.
+                                      """)
+                .additionalInstructions("""
+                                                IMPORTANT INSTRUCTION FOR MEMORY EXTRACTION:
+                                                - Do not include non-reusable information as memories.
+                                                - Extract as many useful memories as possible
+                                                - If memory seems relevant to be used across sessions and users store it at agent level instead of session or user
+                                                """)
+                .build();
+    }
+
     @Override
-    public Optional<AgentExtensionOutputDefinition> outputSchema() {
-        return Optional.of(new AgentExtensionOutputDefinition(OUTPUT_KEY,
-                                                              "Extracted memory",
-                                                              JsonUtils.schema(AgentMemoryOutput.class)));
+    public Optional<AgentExtensionOutputDefinition> outputSchema(ProcessingMode processingMode) {
+        if (processingMode == ProcessingMode.STREAMING) {
+            log.debug("Skipping output schema for streaming mode");
+            return Optional.empty();
+        }
+        return Optional.of(memorySchema());
+    }
+
+    @NotNull
+    private static AgentExtensionOutputDefinition memorySchema() {
+        return new AgentExtensionOutputDefinition(OUTPUT_KEY,
+                                                  "Extracted memory",
+                                                  JsonUtils.schema(AgentMemoryOutput.class));
     }
 
     @Override
@@ -170,10 +189,48 @@ public class AgentMemoryExtension implements AgentExtension {
                     });
         }
         catch (Exception e) {
-            log.error("Error converting json node to memory output. Error: %s Json: %s".formatted(e.getMessage(),
-                                                                                                  output), e);
+            log.error("Error converting json node to memory output. Error: %s Json: %s"
+                              .formatted(AgentUtils.rootCause(e).getMessage(), output), e);
         }
 
+    }
+
+    @Override
+    public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
+        agent.onRequestCompleted()
+                .connect(this::extractMemory);
+    }
+
+    @SneakyThrows
+    @SuppressWarnings("unchecked")
+    private <T, A extends Agent<R, T, A>, R> void extractMemory(Agent.ProcessingCompletedData<R, T, A> data) {
+        if(!saveMemoryAfterSessionEnd) {
+            log.debug("Memory extraction is disabled");
+            return;
+        }
+        if(!data.getProcessingMode().equals(ProcessingMode.STREAMING)) {
+            log.debug("Skipping async memory extraction as the request was processed directly");
+            return;
+        }
+        final var output = data.getAgentSetup().getModel()
+                .runDirect(data.getContext(),
+                           objectMapper.writeValueAsString(extractionTaskPrompt()),
+                           memorySchema(),
+                           data.getOutput().getAllMessages())
+                .join();
+        if(output.getError() != null) {
+            log.error("Error extracting memory: {}", output.getError());
+        }
+        else {
+            final var outputData = output.getData();
+            if(!outputData.isEmpty()) {
+                log.debug("Extracted memory output: {}", outputData);
+                consume(output.getData(), (A)data.getAgent());
+            }
+            else {
+                log.debug("No memory extracted from the output");
+            }
+        }
     }
 
     @Tool("Retrieve relevant memories based on topics and query derived from the current conversation")

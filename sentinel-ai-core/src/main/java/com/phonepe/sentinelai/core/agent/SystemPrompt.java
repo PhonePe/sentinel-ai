@@ -2,10 +2,7 @@ package com.phonepe.sentinelai.core.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
-import lombok.Builder;
-import lombok.Data;
-import lombok.SneakyThrows;
-import lombok.Value;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -26,14 +23,9 @@ public class SystemPrompt {
     }
 
     @Data
-    public static class PrimaryTask {
-        private Object role;
-        @JacksonXmlElementWrapper(localName = "tools")
-        private List<ToolSummary> tool;
-    }
-
-    @Data
-    public static class SecondaryTask {
+    @Builder
+    public static class Task {
+        @NonNull
         private String objective;
         private String outputField;
         private Object instructions;
@@ -53,9 +45,9 @@ public class SystemPrompt {
 
     private String name;
     private String coreInstructions;
-    private PrimaryTask primaryTask;
+    private Task primaryTask;
     @JacksonXmlElementWrapper(localName = "secondaryTasks")
-    private List<SecondaryTask> secondaryTask; //Come from extensions
+    private List<Task> secondaryTask; //Come from extensions
     private AdditionalData additionalData;
     @JacksonXmlElementWrapper(localName = "knowledge")
     private List<FactList> facts;

@@ -1,5 +1,6 @@
 package com.phonepe.sentinelai.models;
 
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
@@ -56,13 +57,29 @@ class SimpleOpenAIModelStreamingTest {
         public String getName() {
             return "Santanu";
         }
+
+        @Tool("Get location of the user")
+        public String getLocation(@JsonPropertyDescription("User name") String name) {
+            if(name.equalsIgnoreCase("santanu")) {
+                return "Bangalore";
+            }
+            throw new IllegalArgumentException("Invalid parameter");
+        }
+
+        @Tool("Get weather for city")
+        public String getWeather(@JsonPropertyDescription("City name") String city) {
+            if(city.equalsIgnoreCase("bangalore")) {
+                return "Sunny";
+            }
+            throw new IllegalArgumentException("Invalid parameter");
+        }
     }
 
     @Test
     @SneakyThrows
     void testAgent(final WireMockRuntimeInfo wiremock) {
         //Setup stub for SSE
-        IntStream.rangeClosed(1, 3)
+        IntStream.rangeClosed(1, 5)
                 .forEach(i -> {
                     stubFor(post("/chat/completions?api-version=2024-10-21")
                                     .inScenario("model-test")
@@ -79,7 +96,7 @@ class SimpleOpenAIModelStreamingTest {
         final var model = new SimpleOpenAIModel(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl("http://localhost:8080")
+//                        .baseUrl("http://localhost:8080") //Wiremock recorder input: $AZURE_ENDPOINT
 //                        // Uncomment the above to record responses using the wiremock recorder.
 //                        // Yeah ... life is hard
 //                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
@@ -113,11 +130,11 @@ class SimpleOpenAIModelStreamingTest {
                                                                  .build(),
                                                          data -> print(data, outputStream))
                 .join();
-        assertTrue(new String(response.getData()).contains("Santanu"));
+        assertTrue(new String(response.getData()).contains("sunny"));
         assertTrue(response.getUsage().getTotalTokens() > 1);
         final var response2 = agent.executeAsyncStreaming(
                         AgentInput.<String>builder()
-                                .request("What is my name?")
+                                .request("How is the weather?")
                                 .requestMetadata(
                                         AgentRequestMetadata.builder()
                                                 .sessionId("s1")

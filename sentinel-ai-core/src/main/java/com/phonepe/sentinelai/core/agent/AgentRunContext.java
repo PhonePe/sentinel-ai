@@ -42,4 +42,8 @@ public class AgentRunContext<R> {
      */
     ModelUsageStats modelUsageStats;
 
+    /**
+     * Processing mode for this run
+     */
+    ProcessingMode processingMode;
 }
