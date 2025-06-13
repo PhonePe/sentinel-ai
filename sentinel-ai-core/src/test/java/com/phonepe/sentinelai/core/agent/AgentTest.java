@@ -1,5 +1,6 @@
 package com.phonepe.sentinelai.core.agent;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
@@ -82,9 +83,9 @@ class AgentTest {
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
                                                                 AgentRunContext<R> context,
-                                                                Class<T> responseType,
+                                                                JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
@@ -108,10 +109,11 @@ class AgentTest {
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
-                                                                return AgentOutput.<T>success((T) ("Hello " + response.getResponse()),
-                                                                                              List.of(message),
-                                                                                              messages,
-                                                                                              context.getModelUsageStats());
+                                                                return ModelOutput.success(objectMapper.createObjectNode()
+                                                                                                   .textNode("Hello " + response.getResponse()),
+                                                                                           List.of(message),
+                                                                                           messages,
+                                                                                           context.getModelUsageStats());
                                                             });
                                                         }
                                                     })
@@ -139,9 +141,9 @@ class AgentTest {
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
                                                                 AgentRunContext<R> context,
-                                                                Class<T> responseType,
+                                                                JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
@@ -158,7 +160,7 @@ class AgentTest {
                                                                                              { "input": "Test Data" }
                                                                                              """));
                                                                 assertTrue(response.isSuccess());
-                                                                assertTrue(response.getToolCallId().equals("TC1"));
+                                                                assertEquals("TC1", response.getToolCallId());
                                                                 final var messages =
                                                                         new ArrayList<>(context.getOldMessages());
                                                                 final var message =
@@ -168,12 +170,14 @@ class AgentTest {
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
-                                                                return AgentOutput.<T>success((T) ("Hello " + response.getResponse()),
-                                                                                              List.of(message),
-                                                                                              messages,
-                                                                                              context.getModelUsageStats());
+                                                                return ModelOutput.success(objectMapper.createObjectNode()
+                                                                                                   .textNode("Hello " + response.getResponse()),
+                                                                                           List.of(message),
+                                                                                           messages,
+                                                                                           context.getModelUsageStats());
                                                             });
                                                         }
+
                                                     })
                                                     .modelSettings(ModelSettings.builder()
                                                                            .build())
@@ -198,10 +202,11 @@ class AgentTest {
         final var objectMapper = JsonUtils.createMapper();
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
+
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
                                                                 AgentRunContext<R> context,
-                                                                Class<T> responseType,
+                                                                JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
@@ -225,10 +230,11 @@ class AgentTest {
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
-                                                                return AgentOutput.<T>success((T) ("Hello " + response.getResponse()),
-                                                                                              List.of(message),
-                                                                                              messages,
-                                                                                              context.getModelUsageStats());
+                                                                return ModelOutput.success(objectMapper.createObjectNode()
+                                                                                                   .textNode("Hello " + response.getResponse()),
+                                                                                           List.of(message),
+                                                                                           messages,
+                                                                                           context.getModelUsageStats());
                                                             });
                                                         }
                                                     })
@@ -256,9 +262,9 @@ class AgentTest {
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
                                                                 AgentRunContext<R> context,
-                                                                Class<T> responseType,
+                                                                JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
@@ -289,10 +295,11 @@ class AgentTest {
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
-                                                                return AgentOutput.<T>success((T) ("Hello " + response.getResponse()),
-                                                                                              List.of(message),
-                                                                                              messages,
-                                                                                              context.getModelUsageStats());
+                                                                return ModelOutput.success(objectMapper.createObjectNode()
+                                                                                                   .textNode("Hello " + response.getResponse()),
+                                                                                           List.of(message),
+                                                                                           messages,
+                                                                                           context.getModelUsageStats());
                                                             });
                                                         }
                                                     })
@@ -320,10 +327,11 @@ class AgentTest {
         final var objectMapper = JsonUtils.createMapper();
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
+
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
                                                                 AgentRunContext<R> context,
-                                                                Class<T> responseType,
+                                                                JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
@@ -347,11 +355,11 @@ class AgentTest {
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
-                                                                return AgentOutput.<T>error(messages,
-                                                                                            context.getModelUsageStats(),
-                                                                                            SentinelError.error(
-                                                                                                    ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                                                                                    response.getResponse()));
+                                                                return ModelOutput.error(messages,
+                                                                                         context.getModelUsageStats(),
+                                                                                         SentinelError.error(
+                                                                                                 ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                                                                                 response.getResponse()));
                                                             });
                                                         }
                                                     })
@@ -381,9 +389,9 @@ class AgentTest {
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
                                                                 AgentRunContext<R> context,
-                                                                Class<T> responseType,
+                                                                JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
                                                                 Agent.ToolRunner<R> toolRunner,
                                                                 List<AgentExtension> extensions,
@@ -406,7 +414,7 @@ class AgentTest {
                                                                                              response.getResponse(),
                                                                                              LocalDateTime.now());
                                                                 messages.add(message);
-                                                                return AgentOutput.<T>error(messages,
+                                                                return ModelOutput.error(messages,
                                                                                             context.getModelUsageStats(),
                                                                                             SentinelError.error(
                                                                                                     ErrorType.TOOL_CALL_PERMANENT_FAILURE,

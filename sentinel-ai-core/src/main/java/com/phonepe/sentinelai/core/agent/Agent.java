@@ -43,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -80,8 +81,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             new ConsumingFireForgetSignal<>();
 
     @SuppressWarnings("unchecked")
-    private final A self = (A)this;
-    
+    private final A self = (A) this;
+
     @SneakyThrows
     protected Agent(
             @NonNull Class<T> outputType,
@@ -212,11 +213,12 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         return mergedAgentSetup.getModel()
                 .exchange_messages(
                         context,
-                        outputType,
+                        schema(outputType),
                         knownTools,
                         this::runToolObserved,
                         this.extensions,
                         self)
+                .thenApply(modelOutput -> convertToAgentOutput(modelOutput, mergedAgentSetup))
                 .thenApplyAsync(response -> {
                     if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
                         requestMetadata.getUsageStats().merge(response.getUsage());
@@ -231,13 +233,33 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 });
     }
 
+    private AgentOutput<T> convertToAgentOutput(
+            ModelOutput modelOutput,
+            AgentSetup mergedAgentSetup) {
+        try {
+            return new AgentOutput<>(null != modelOutput.getData()
+                                     ? mergedAgentSetup.getMapper().treeToValue(modelOutput.getData(), outputType)
+                                     : null,
+                                     modelOutput.getNewMessages(),
+                                     modelOutput.getAllMessages(),
+                                     modelOutput.getUsage(),
+                                     modelOutput.getError());
+        }
+        catch (JsonProcessingException e) {
+            log.error("Error converting model output to agent output. Error: {}", AgentUtils.rootCause(e), e);
+            return AgentOutput.error(modelOutput.getAllMessages(),
+                                     modelOutput.getUsage(),
+                                     SentinelError.error(ErrorType.JSON_ERROR, e));
+        }
+    }
+
     /**
      * Streaming execution. This should be used for text streaming applications like chat etc.
      *
      * @param input The input to the agent
      * @return The response to be consumed by the client
      */
-    public final CompletableFuture<AgentOutput<byte[]>> executeAsyncStreaming(
+    public final CompletableFuture<AgentOutput<T>> executeAsyncStreaming(
             AgentInput<R> input,
             Consumer<byte[]> streamHandler) {
         final var mergedAgentSetup = mergeAgentSetup(input.getAgentSetup(), this.setup);
@@ -281,16 +303,17 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                         this.extensions,
                         self,
                         streamHandler)
+                .thenApply(modelOutput -> convertToAgentOutput(modelOutput, mergedAgentSetup))
                 .thenApply(response -> {
                     if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
                         requestMetadata.getUsageStats().merge(response.getUsage());
                     }
                     requestCompleted.dispatch(new ProcessingCompletedData<>(this,
-                                                                                   mergedAgentSetup,
-                                                                                   context,
-                                                                                   input,
-                                                                                   response,
-                                                                                   ProcessingMode.STREAMING));
+                                                                            mergedAgentSetup,
+                                                                            context,
+                                                                            input,
+                                                                            response,
+                                                                            ProcessingMode.STREAMING));
                     return response;
                 });
     }
@@ -466,7 +489,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                 LocalDateTime.now());
                 }
                 catch (InvocationTargetException e) {
-                    log.info("Local error making tool call " + toolCall.getToolCallId(), e);
+                    log.error("Local error making tool call " + toolCall.getToolCallId(), e);
                     final var rootCause = AgentUtils.rootCause(e);
                     return new ToolCallResponse(toolCall.getToolCallId(),
                                                 toolCall.getToolName(),

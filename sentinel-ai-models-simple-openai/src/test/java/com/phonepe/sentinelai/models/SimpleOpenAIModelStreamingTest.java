@@ -25,10 +25,12 @@ import java.io.PrintStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.phonepe.sentinelai.core.utils.TestUtils.readStubFile;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -42,7 +44,7 @@ class SimpleOpenAIModelStreamingTest {
         public TestAgent(
                 @NonNull AgentSetup setup) {
             super(String.class,
-                  "Greet the user",
+                  "Greet the user by name and respond to queries",
                   setup,
                   List.of(),
                   Map.of());
@@ -114,6 +116,7 @@ class SimpleOpenAIModelStreamingTest {
                                                 .model(model)
                                                 .mapper(objectMapper)
                                                 .modelSettings(ModelSettings.builder()
+                                                                       .parallelToolCalls(false)
                                                                        .temperature(0.1f)
                                                                        .seed(1)
                                                                        .build())
@@ -130,8 +133,14 @@ class SimpleOpenAIModelStreamingTest {
                                                                  .build(),
                                                          data -> print(data, outputStream))
                 .join();
-        assertTrue(new String(response.getData()).contains("sunny"));
-        assertTrue(response.getUsage().getTotalTokens() > 1);
+        var responseString = response.getData();
+        log.info("Agent response: {}", responseString);
+        assertNotNull(responseString);
+        //The following needs to be done because the model is not deterministic and might call tools at different times
+        // across runs
+        final var sunnyFound = new AtomicBoolean(responseString.contains("sunny"));
+        final var nameFound = new AtomicBoolean(responseString.contains("Santanu"));
+        assertTrue(response.getUsage().getTotalTokens() > 1); //This ensures that all chunks have been consumed
         final var response2 = agent.executeAsyncStreaming(
                         AgentInput.<String>builder()
                                 .request("How is the weather?")
@@ -145,7 +154,11 @@ class SimpleOpenAIModelStreamingTest {
                                 .build(),
                         data -> print(data, outputStream))
                 .join();
-        assertTrue(new String(response2.getData()).contains("Santanu"));
+        responseString = response2.getData();
+        log.info("Agent response: {}", responseString);
+        sunnyFound.compareAndSet(false, responseString.contains("sunny"));
+        nameFound.compareAndSet(false, responseString.contains("Santanu"));
+        assertTrue(sunnyFound.get() && nameFound.get());
         assertTrue(response2.getUsage().getTotalTokens() > 1);
         assertTrue(stats.getTotalTokens() > 1);
         log.info("Session stats: {}", stats);

@@ -1,10 +1,7 @@
 package com.phonepe.sentinelai.core.model;
 
-import com.phonepe.sentinelai.core.agent.DirectRunOutput;
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentExtension;
-import com.phonepe.sentinelai.core.agent.AgentOutput;
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import org.apache.commons.lang3.NotImplementedException;
@@ -27,15 +24,15 @@ public interface Model {
         throw new UnsupportedOperationException("Direct run is not supported by this model");
     }
 
-    <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<T>> exchange_messages(
+    <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
             AgentRunContext<R> context,
-            Class<T> responseType,
+            JsonNode responseSchema,
             Map<String, ExecutableTool> tools,
             Agent.ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent);
 
-    default <R, T, A extends Agent<R, T, A>> CompletableFuture<AgentOutput<byte[]>> exchange_messages_streaming(
+    default <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages_streaming(
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
             Agent.ToolRunner<R> toolRunner,
