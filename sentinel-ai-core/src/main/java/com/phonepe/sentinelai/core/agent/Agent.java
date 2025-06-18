@@ -21,6 +21,7 @@ import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.events.ToolCallCompletedAgentEvent;
 import com.phonepe.sentinelai.core.events.ToolCalledAgentEvent;
+import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.*;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
@@ -55,11 +56,6 @@ import static java.util.stream.Collectors.toMap;
  */
 @Slf4j
 public abstract class Agent<R, T, A extends Agent<R, T, A>> {
-
-    @FunctionalInterface
-    public interface ToolRunner<S> {
-        ToolCallResponse runTool(AgentRunContext<S> context, Map<String, ExecutableTool> tool, ToolCall toolCall);
-    }
 
     @Value
     public static class ProcessingCompletedData<R, T, A extends Agent<R, T, A>> {
@@ -178,7 +174,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * Execute the agent synchronously.
      *
      * @param input Input to the agent
-     * @return
+     * @return The response from the agent
      */
     public final CompletableFuture<AgentOutput<T>> executeAsync(@NonNull AgentInput<R> input) {
         final var mergedAgentSetup = mergeAgentSetup(input.getAgentSetup(), this.setup);
@@ -213,7 +209,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         return mergedAgentSetup.getModel()
                 .exchange_messages(
                         context,
-                        schema(outputType),
+                        outputSchema(),
                         knownTools,
                         this::runToolObserved,
                         this.extensions,
@@ -238,7 +234,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             AgentSetup mergedAgentSetup) {
         try {
             return new AgentOutput<>(null != modelOutput.getData()
-                                     ? mergedAgentSetup.getMapper().treeToValue(modelOutput.getData(), outputType)
+                                     ? translateData(modelOutput, mergedAgentSetup)
                                      : null,
                                      modelOutput.getNewMessages(),
                                      modelOutput.getAllMessages(),
@@ -252,6 +248,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                      SentinelError.error(ErrorType.JSON_ERROR, e));
         }
     }
+
 
     /**
      * Streaming execution. This should be used for text streaming applications like chat etc.
@@ -316,6 +313,14 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                             ProcessingMode.STREAMING));
                     return response;
                 });
+    }
+
+    protected JsonNode outputSchema() {
+        return schema(outputType);
+    }
+
+    protected T translateData(ModelOutput modelOutput, AgentSetup mergedAgentSetup) throws JsonProcessingException {
+        return mergedAgentSetup.getMapper().treeToValue(modelOutput.getData(), outputType);
     }
 
     private String systemPrompt(
@@ -457,7 +462,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     return new ToolCallResponse(toolCall.getToolCallId(),
                                                 toolCall.getToolName(),
                                                 ErrorType.SUCCESS,
-                                                setup.getMapper().writeValueAsString(response.response()),
+                                                context.getAgentSetup().getMapper().writeValueAsString(response.response()),
                                                 LocalDateTime.now());
                 }
                 catch (JsonProcessingException e) {

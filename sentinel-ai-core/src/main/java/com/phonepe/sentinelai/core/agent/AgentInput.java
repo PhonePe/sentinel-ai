@@ -1,6 +1,7 @@
 package com.phonepe.sentinelai.core.agent;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
@@ -12,6 +13,7 @@ import java.util.List;
  * Input to an agent
  */
 @Value
+@AllArgsConstructor
 @Builder
 @With
 public class AgentInput<R> {

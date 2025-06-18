@@ -2,7 +2,11 @@ package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpTool;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolMetadata;
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 /**

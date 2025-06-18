@@ -28,14 +28,14 @@ public interface Model {
             AgentRunContext<R> context,
             JsonNode responseSchema,
             Map<String, ExecutableTool> tools,
-            Agent.ToolRunner<R> toolRunner,
+            ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent);
 
     default <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages_streaming(
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
-            Agent.ToolRunner<R> toolRunner,
+            ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent,
             Consumer<byte[]> streamHandler) {

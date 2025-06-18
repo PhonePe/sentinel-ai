@@ -1,9 +1,6 @@
 package com.phonepe.sentinelai.toolbox.remotehttp;
 
-import lombok.Builder;
-import lombok.NonNull;
-import lombok.Value;
-import lombok.With;
+import lombok.*;
 
 import java.util.Map;
 
@@ -19,6 +16,8 @@ public class HttpToolMetadata {
      * Metadata for all the tool parameters
      */
     @Value
+    @Builder
+    @AllArgsConstructor
     public static class HttpToolParameterMeta {
 
         /**

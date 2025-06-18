@@ -1,6 +1,5 @@
-package com.phonepe.sentinelai.core.agent;
+package configuredagents;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Value;
 
 /**
@@ -11,13 +10,10 @@ public class AgentMetadata {
     /**
      * Name of the agent
      */
-    String name;
+    String id;
 
     /**
-     * Description of the agent
+     * Configuration for the agent
      */
-    String description;
-
-    JsonNode inputSchema;
-    JsonNode outputSchema;
+    AgentConfiguration configuration;
 }

@@ -16,6 +16,7 @@ import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.Model;
+import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
@@ -155,7 +156,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             AgentRunContext<R> context,
             JsonNode responseSchema,
             Map<String, ExecutableTool> tools,
-            Agent.ToolRunner<R> toolRunner,
+            ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent) {
         final var oldMessages = context.getOldMessages();
@@ -264,7 +265,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages_streaming(
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
-            Agent.ToolRunner<R> toolRunner,
+            ToolRunner<R> toolRunner,
             List<AgentExtension> extensions,
             A agent,
             Consumer<byte[]> streamHandler) {
@@ -580,7 +581,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             A agent,
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
-            Agent.ToolRunner<R> toolRunner,
+            ToolRunner<R> toolRunner,
             List<io.github.sashirestela.openai.common.tool.ToolCall> toolCalls,
             AgentMessages agentMessages,
             ModelUsageStats stats,

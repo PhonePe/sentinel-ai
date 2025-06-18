@@ -61,6 +61,7 @@
 
         <!-- All other modules above this -->
         <module>sentinel-ai-bom</module>
+        <module>sentinelai-extras-configured-agents</module>
     </modules>
 
     <properties>

@@ -1,9 +1,8 @@
-package com.phonepe.sentinelai.core.agent;
+package com.phonepe.sentinelai.core.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.errors.SentinelError;
-import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import lombok.Value;
 
 import java.util.List;

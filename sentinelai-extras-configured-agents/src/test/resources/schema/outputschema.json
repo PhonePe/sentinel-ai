@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "condition": {
+      "type": "string"
+    },
+    "temperature": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "condition",
+    "temperature"
+  ],
+  "additionalProperties": false
+}
