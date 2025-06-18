@@ -12,7 +12,11 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /**
- *
+  * Factory for creating instances of {@link HttpToolBox} using a provided
+  * {@link TemplatizedHttpToolSource}, {@link OkHttpClient}, {@link ObjectMapper},
+  * and an endpoint provider factory.
+  *
+  * @param <S> the type of the tool source extending {@link TemplatizedHttpToolSource}
  */
 @AllArgsConstructor
 public class HttpToolboxFactory<S extends TemplatizedHttpToolSource<S>> {

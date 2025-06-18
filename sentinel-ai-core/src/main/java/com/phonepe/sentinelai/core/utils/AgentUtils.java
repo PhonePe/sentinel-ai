@@ -3,6 +3,7 @@ package com.phonepe.sentinelai.core.utils;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import lombok.experimental.UtilityClass;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -42,4 +43,36 @@ public class AgentUtils {
     public static int safeGetInt(Supplier<Integer> supplier) {
         return safeGetInt(supplier, 0);
     }
+
+    public static String id(String... args) {
+        return String.join("_",
+                           Arrays.stream(args)
+                                   .map(AgentUtils::lowerCamel)
+                                   .toList())
+                .replaceAll("[\\s\\p{Punct}]", "_").toLowerCase();
+    }
+
+    public static String lowerCamel(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+
+        // 1. Convert spaces to underscores
+        String temp = input.replace(' ', '_');
+
+        // 2. Add underscore before uppercase letters that follow lowercase letters
+        // (e.g., "camelCase" -> "camel_Case")
+        temp = temp.replaceAll("([a-z])([A-Z])", "$1_$2");
+
+        // 3. Add underscore before uppercase letters that follow numbers
+        // (e.g., "version1Point2" -> "version1_Point2")
+        temp = temp.replaceAll("(\\d)([A-Z])", "$1_$2");
+
+        // 4. Convert the entire string to lowercase
+        temp = temp.toLowerCase();
+
+        //5. Squeeze multiple _ to single
+        return temp.replaceAll("_+", "_");
+    }
+
 }

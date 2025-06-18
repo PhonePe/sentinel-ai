@@ -1,35 +1,35 @@
 {
-  "id" : "chatcmpl-BgO4CYkr8n9CFJCbaL00szLfnfKny",
+  "id" : "chatcmpl-Bjgrtg8EiXGKn4eQLGbKYvHoG1hKs",
   "object" : "chat.completion",
-  "created" : 1749441988,
+  "created" : 1750229245,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_ded0d14823",
+  "system_fingerprint" : "fp_57db37749c",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_y0NKCtWHh3fZBhoGUtxmrqMz",
+        "id" : "call_mLU6pyMmp7ANrIgVLKjDahKj",
         "type" : "function",
         "function" : {
-          "name" : "agent_memory_extension_find_memories",
-          "arguments" : "{\"query\":\"user named Santanu\"}"
+          "name" : "weatherserver_get_weather_for_location",
+          "arguments" : "{\"location\":\"Bangalore\"}"
         }
       } ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1524,
-    "completion_tokens" : 22,
-    "total_tokens" : 1546,
+    "prompt_tokens" : 289,
+    "completion_tokens" : 21,
+    "total_tokens" : 310,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 1280
+      "cached_tokens" : 0
     }
   }
 }

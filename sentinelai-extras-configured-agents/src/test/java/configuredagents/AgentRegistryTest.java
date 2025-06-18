@@ -9,8 +9,8 @@ import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
-import com.phonepe.sentinelai.core.utils.EnvLoader;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolMetadata;
@@ -38,6 +38,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  *
@@ -68,6 +69,8 @@ class AgentRegistryTest {
     @Test
     @SneakyThrows
     void test(WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(5, "me", getClass());
+
         stubFor(get(urlEqualTo("/api/v1/weather/Bangalore"))
                         .willReturn(jsonResponse("""
                                                          {
@@ -130,7 +133,7 @@ class AgentRegistryTest {
                 .memoryEnabled(false)
                 .prompt("Respond with the current weather for the given location.")
                 .inputSchema(loadSchema(objectMapper, "inputschema.json"))
-                .selectedRemoteHttpTools(Map.of("weatherserver", Set.of("get_weather_for_location")))
+                .selectedRemoteHttpTools(Map.of("weatherserver", Set.of("weatherserver_get_weather_for_location")))
                 .outputSchema(loadSchema(objectMapper, "outputschema.json"))
                 .build();
         log.info("Weather agent id: {}",
@@ -141,10 +144,10 @@ class AgentRegistryTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-//                        .baseUrl(wiremock.getHttpBaseUrl())
-//                        .apiKey("BLAH")
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
                         .apiVersion("2024-10-21")
                         .objectMapper(objectMapper)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
@@ -172,6 +175,7 @@ class AgentRegistryTest {
                 .join();
         log.info("Agent response: {}", objectMapper.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(response.getData()));
+        assertTrue(response.getData().matches(".*[sS]unny.*"));
     }
 
     @SneakyThrows

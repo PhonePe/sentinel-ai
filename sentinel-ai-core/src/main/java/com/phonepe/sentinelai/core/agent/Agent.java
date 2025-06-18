@@ -144,7 +144,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     public A registerTools(List<ExecutableTool> tools) {
         return registerTools(Objects.requireNonNullElseGet(tools, List::<InternalTool>of)
                                      .stream()
-                                     .collect(toMap(tool -> tool.getToolDefinition().getName(),
+                                     .collect(toMap(tool -> tool.getToolDefinition().getId(),
                                                     Function.identity())));
     }
 
@@ -360,7 +360,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                         .tool(this.knownTools.values()
                                                       .stream()
                                                       .map(tool -> SystemPrompt.ToolSummary.builder()
-                                                              .name(tool.getToolDefinition().getName())
+                                                              .name(tool.getToolDefinition().getId())
                                                               .description(tool.getToolDefinition()
                                                                                    .getDescription())
                                                               .build())
@@ -485,7 +485,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     args.addAll(params(internalTool.getMethodInfo(), toolCall.getArguments()));
                     final var callable = internalTool.getMethodInfo().callable();
                     callable.setAccessible(true);
-                    log.info("Calling tool: {} Tool call ID: {}", toolCall.getToolName(), toolCall.getToolCallId());
+                    log.debug("Calling tool: {} Tool call ID: {}", toolCall.getToolName(), toolCall.getToolCallId());
                     var resultObject = callable.invoke(internalTool.getInstance(), args.toArray());
                     return new ToolCallResponse(toolCall.getToolCallId(),
                                                 toolCall.getToolName(),

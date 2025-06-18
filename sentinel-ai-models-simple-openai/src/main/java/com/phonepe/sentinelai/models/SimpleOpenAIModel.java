@@ -469,7 +469,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                              final var toolDefinition = tool.getToolDefinition();
                                              return new Tool(
                                                      ToolType.FUNCTION,
-                                                     new Tool.ToolFunctionDef(toolDefinition.getName(),
+                                                     new Tool.ToolFunctionDef(toolDefinition.getId(),
                                                                               toolDefinition.getDescription(),
                                                                               tool.accept(parameterMapper),
                                                                               true));

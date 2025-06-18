@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -84,7 +85,7 @@ class MCPToolBoxTest {
         final var mcpClient = McpClient.sync(transport)
                 .build();
         mcpClient.initialize();
-        final var mcpToolBox = new MCPToolBox(mcpClient, objectMapper);
+        final var mcpToolBox = new MCPToolBox("Test MCP", mcpClient, objectMapper, Set.of());
         agent.registerToolbox(mcpToolBox);
         final var response = agent.execute(AgentInput.<String>builder()
                                                    .request("Use tool to add the number 3 and -9")

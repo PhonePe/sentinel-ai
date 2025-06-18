@@ -12,7 +12,7 @@
         "id" : "call_hHlZ4lcmooQCADZCkNKY9UEQ",
         "type" : "function",
         "function" : {
-          "name" : "add",
+          "name" : "test_mcp_add",
           "arguments" : "{\"a\":3,\"b\":-9}"
         }
       } ]

@@ -8,9 +8,11 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.tools.ToolDefinition;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 
 import java.io.IOException;
@@ -19,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -31,12 +34,14 @@ import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
  */
 @AllArgsConstructor
 @Builder
+@Slf4j
 public class HttpToolBox implements ToolBox {
     private final String upstream;
     private final OkHttpClient httpClient;
     private final HttpToolSource<?, ?> httpToolSource;
     private final ObjectMapper mapper;
     private final UpstreamResolver upstreamResolver;
+    private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
 
     public HttpToolBox(
             String upstream,
@@ -49,42 +54,57 @@ public class HttpToolBox implements ToolBox {
 
     @Override
     public Map<String, ExecutableTool> tools() {
-        return httpToolSource.list(upstream)
-                .stream()
-                .map(tool -> {
-                    final var toolName = tool.getName();
-                    final var parameters = mapper.createObjectNode();
-                    final var paramNodes = mapper.createObjectNode()
-                            .put("type", "object")
-                            .put("additionalProperties", false)
-                            .set("properties", parameters);
-                    final var parameterMetadata = Objects.requireNonNullElseGet(tool.getParameters(),
-                                                                                Map::<String,
-                                                                                        HttpToolMetadata.HttpToolParameterMeta>of);
-                    if (!parameterMetadata.isEmpty()) {
-                        parameterMetadata
-                                .forEach((paramName, paramMeta) -> {
-                                    final var paramSchema = ((ObjectNode) schema(paramMeta.getType().getRawType()))
-                                            .put("description", paramMeta.getDescription());
+        if (!knownTools.isEmpty()) {
+            return knownTools;
+        }
+        log.debug("Loading tools for HTTP upstream {}", upstream);
+        knownTools.putAll(httpToolSource.list(upstream)
+                                  .stream()
+                                  .map(tool -> {
+                                      final var toolName = tool.getName();
+                                      final var parameters = mapper.createObjectNode();
+                                      final var paramNodes = mapper.createObjectNode()
+                                              .put("type", "object")
+                                              .put("additionalProperties", false)
+                                              .set("properties", parameters);
+                                      final var parameterMetadata = Objects.requireNonNullElseGet(tool.getParameters(),
+                                                                                                  Map::<String,
+                                                                                                          HttpToolMetadata.HttpToolParameterMeta>of);
+                                      if (!parameterMetadata.isEmpty()) {
+                                          parameterMetadata
+                                                  .forEach((paramName, paramMeta) -> {
+                                                      final var paramSchema = ((ObjectNode) schema(paramMeta.getType()
+                                                                                                           .getRawType()))
+                                                              .put("description", paramMeta.getDescription());
 
-                                    parameters.set(paramName, paramSchema);
-                                });
-                        ((ObjectNode) paramNodes).set("required",
-                                                      mapper.valueToTree(parameterMetadata.keySet()));
-                    }
-                    return new ExternalTool(
-                            ToolDefinition.builder()
-                                    .name(toolName)
-                                    .description(tool.getDescription())
-                                    .contextAware(false)
-                                    .build(),
-                            paramNodes,
-                            (name, arguments) -> {
-                                final var resolved = httpToolSource.resolve(upstream, name, arguments);
-                                return makeHttpCall(resolved);
-                            });
-                })
-                .collect(Collectors.toMap(tool -> tool.getToolDefinition().getName(), Function.identity()));
+                                                      parameters.set(paramName, paramSchema);
+                                                  });
+                                          ((ObjectNode) paramNodes).set("required",
+                                                                        mapper.valueToTree(parameterMetadata.keySet()));
+                                      }
+                                      return new ExternalTool(
+                                              ToolDefinition.builder()
+                                                      .id(AgentUtils.id(upstream, toolName))
+                                                      .name(toolName)
+                                                      .description(tool.getDescription())
+                                                      .contextAware(false)
+                                                      .build(),
+                                              paramNodes,
+                                              (toolId, arguments) -> {
+                                                  final var toolDef = knownTools.get(toolId);
+                                                  if (null == toolDef) {
+                                                      throw new IllegalArgumentException("Unknown tool %s".formatted(
+                                                              toolId));
+                                                  }
+                                                  final var resolved = httpToolSource.resolve(
+                                                          upstream, toolDef.getToolDefinition().getName(), arguments);
+                                                  return makeHttpCall(resolved);
+                                              });
+                                  })
+                                  .collect(Collectors.toMap(tool -> tool.getToolDefinition().getId(),
+                                                            Function.identity())));
+        log.info("Loaded {} tools for HTTP upstream {}", knownTools.size(), upstream);
+        return knownTools;
     }
 
     @SneakyThrows
@@ -116,7 +136,7 @@ public class HttpToolBox implements ToolBox {
     @SneakyThrows
     private static String body(HttpCallSpec spec, Response response) {
         final var responseBody = response.body();
-        if(null == responseBody) {
+        if (null == responseBody) {
             return response.isSuccessful() ? "Successful" : "Failure";
         }
         final var bodyStr = response.body().string().trim().replaceAll("\\s+", " ");

@@ -61,6 +61,11 @@
                 <artifactId>sentinel-ai-session</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.phonepe.sentinel-ai</groupId>
+                <artifactId>sentinelai-extras-configured-agents</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- storage -->
             <dependency>
@@ -111,6 +116,11 @@
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-session</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinelai-extras-configured-agents</artifactId>
             <version>${project.version}</version>
         </dependency>
 

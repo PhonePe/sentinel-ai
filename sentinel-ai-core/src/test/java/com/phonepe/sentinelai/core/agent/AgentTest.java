@@ -72,7 +72,7 @@ class AgentTest {
             // Do nothing
         }
 
-        @Tool("Tool that takes tructured input and returns structured output")
+        @Tool("Tool that takes structured input and returns structured output")
         public Output structuredTool(final Input input) {
             return new Output("Hello " + input.data);
         }

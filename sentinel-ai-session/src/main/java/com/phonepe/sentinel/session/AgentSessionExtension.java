@@ -76,7 +76,7 @@ public class AgentSessionExtension implements AgentExtension {
                 prompt.tool(tools.values()
                                        .stream()
                                        .map(tool -> SystemPrompt.ToolSummary.builder()
-                                               .name(tool.getToolDefinition().getName())
+                                               .name(tool.getToolDefinition().getId())
                                                .description(tool.getToolDefinition().getDescription())
                                                .build())
                                        .toList());

@@ -3,7 +3,6 @@ package com.phonepe.sentinelai.core.utils;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.google.common.base.CaseFormat;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.tools.*;
 import lombok.SneakyThrows;
@@ -30,16 +29,16 @@ public class ToolUtils {
             tools.putAll(Arrays.stream(type.getDeclaredMethods())
                                  .filter(method -> method.isAnnotationPresent(Tool.class))
                                  .map(method -> {
-                                     final var callableTool = createCallableToolFromLocalMethods(
+                                     final var callableTool = createCallableToolFromLocalMethod(
                                              instance,
                                              method);
                                      log.info("Created tool: {} from {}::{}",
-                                              callableTool.getToolDefinition().getName(),
+                                              callableTool.getToolDefinition().getId(),
                                               className,
                                               method.getName());
                                      return callableTool;
                                  })
-                                 .collect(toMap(tool -> tool.getToolDefinition().getName(), Function.identity())));
+                                 .collect(toMap(tool -> tool.getToolDefinition().getId(), Function.identity())));
             type = type.getSuperclass();
         }
         return tools;
@@ -65,10 +64,12 @@ public class ToolUtils {
                                          description,
                                          TypeFactory.defaultInstance().constructType(paramType)));
         }
-        final var toolName = prefix + "_" + CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
-                .convert((toolDef.name().isBlank() ? method.getName() : toolDef.name()));
+        final var toolName = toolDef.name().isBlank() ? method.getName() : toolDef.name();
+//        final var toolName = prefix + "_" + CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
+//                .convert(tooName);
         return Pair.of(
                 ToolDefinition.builder()
+                        .id(AgentUtils.id(prefix, toolName))
                         .name(toolName)
                         .description(toolDef.value())
                         .contextAware(hasContext)
@@ -96,14 +97,8 @@ public class ToolUtils {
                 .toList();
     }
 
-    private static InternalTool createCallableToolFromLocalMethods(Object instance, Method method) {
-        final var toolMetadata = toolMetadata(CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
-                                                      .convert(instance.getClass().getSimpleName()),
-                                              method);
-        return new InternalTool(
-                toolMetadata.getFirst(),
-                toolMetadata.getSecond(),
-                instance
-        );
+    private static InternalTool createCallableToolFromLocalMethod(Object instance, Method method) {
+        final var toolMetadata = toolMetadata(instance.getClass().getSimpleName(), method);
+        return new InternalTool(toolMetadata.getFirst(), toolMetadata.getSecond(), instance);
     }
 }

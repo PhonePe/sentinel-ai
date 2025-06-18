@@ -5,6 +5,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.tools.ExecutableToolVisitor;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.toolbox.remotehttp.*;
 import okhttp3.OkHttpClient;
@@ -35,7 +36,7 @@ class HttpCallTemplateExpanderTest {
                                                          }
                                                          """, 200)));
 
-        final var upstream = "test";
+        final var upstream = wiremock.getHttpBaseUrl();
         final var toolSource = InMemoryHttpToolSource.builder()
                 .mapper(mapper)
                 .build()
@@ -74,13 +75,14 @@ class HttpCallTemplateExpanderTest {
                                                           .build(),
                                             toolSource,
                                             JsonUtils.createMapper(),
-                                                  url -> wiremock.getHttpBaseUrl());
+                                                  url -> upstream);
         final var tools = toolBox.tools();
-        final var response = tools.get("getLocation")
+        final var toolId = AgentUtils.id(upstream, "getLocation");
+        final var response = tools.get(toolId)
                 .accept(new ExecutableToolVisitor<String>() {
                     @Override
                     public String visit(ExternalTool externalTool) {
-                        return (String) externalTool.getCallable().apply("getLocation", """
+                        return (String) externalTool.getCallable().apply(toolId, """
                                 {
                                     "name" : "santanu"
                                 }

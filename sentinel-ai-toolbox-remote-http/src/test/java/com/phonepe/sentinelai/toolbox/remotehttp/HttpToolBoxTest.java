@@ -5,6 +5,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.tools.ExecutableToolVisitor;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,8 @@ class HttpToolBoxTest {
                                                          "name" : "Santanu"
                                                          }
                                                          """, 200)));
+        final var upstream = wiremock.getHttpBaseUrl();
+
         final var toolSource = new HttpToolSource() {
             @Override
             public HttpToolSource register(String upstream, List tool) {
@@ -57,17 +60,18 @@ class HttpToolBoxTest {
                 return List.of("test");
             }
         };
-        final var toolBox = new HttpToolBox(wiremock.getHttpBaseUrl(),
+        final var toolBox = new HttpToolBox(upstream,
                                             new OkHttpClient.Builder()
                                                           .build(),
                                             toolSource,
                                             JsonUtils.createMapper(),
                                                   url -> url);
         final var tools = toolBox.tools();
-        final var response = tools.get("getName").accept(new ExecutableToolVisitor<String>() {
+        final var toolId = AgentUtils.id(upstream, "getName");
+        final var response = tools.get(toolId).accept(new ExecutableToolVisitor<String>() {
             @Override
             public String visit(ExternalTool externalTool) {
-                return (String) externalTool.getCallable().apply("getName", "").response();
+                return (String) externalTool.getCallable().apply(toolId, "").response();
             }
 
             @Override
