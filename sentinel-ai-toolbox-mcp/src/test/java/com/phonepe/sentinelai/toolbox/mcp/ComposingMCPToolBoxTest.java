@@ -22,16 +22,18 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static com.phonepe.sentinelai.core.utils.TestUtils.assertNoFailedToolCalls;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ *
+ */
 @WireMockTest
-class MCPToolBoxTest {
-    private static class MCPTestAgent extends Agent<String, String, MCPTestAgent> {
+class ComposingMCPToolBoxTest {
+    private static class CompositeMCPTestAgent extends Agent<String, String, CompositeMCPTestAgent> {
 
-        public MCPTestAgent(
+        public CompositeMCPTestAgent(
                 @NonNull AgentSetup setup,
                 Map<String, ExecutableTool> knownTools) {
             super(String.class,
@@ -42,7 +44,7 @@ class MCPToolBoxTest {
 
         @Override
         public String name() {
-            return "mcp-test-agent";
+            return "composite-mcp-test-agent";
         }
     }
 
@@ -67,7 +69,7 @@ class MCPToolBoxTest {
                 objectMapper
         );
 
-        final var agent = new MCPTestAgent(
+        final var agent = new CompositeMCPTestAgent(
                 AgentSetup.builder()
                         .mapper(objectMapper)
                         .model(model)
@@ -86,7 +88,14 @@ class MCPToolBoxTest {
         final var mcpClient = McpClient.sync(transport)
                 .build();
         mcpClient.initialize();
-        final var mcpToolBox = new MCPToolBox("Test MCP", mcpClient, objectMapper, Set.of());
+        final var mcpToolBox = ComposingMCPToolBox.builder()
+                .build()
+                .registerMCPClient(SentinelMCPClient.builder()
+                                           .name("Test MCP")
+                                           .mcpClient(mcpClient)
+                                           .mapper(objectMapper)
+                                           .build())
+                .registerSelectedTool("test_mcp_add");
         agent.registerToolbox(mcpToolBox);
         final var response = agent.execute(AgentInput.<String>builder()
                                                    .request("Use tool to add the number 3 and -9")
