@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>sentinel-ai-toolbox-remote-http</artifactId>
+    <name>Sentinel AI ToolBox to work with Remote HTTP Services</name>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

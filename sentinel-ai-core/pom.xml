@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>sentinel-ai-core</artifactId>
+    <name>Sentinel AI Core Library</name>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

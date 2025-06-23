@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>sentinel-ai-agent-memory</artifactId>
+    <name>Sentinel AI Agent Memory Implementation</name>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

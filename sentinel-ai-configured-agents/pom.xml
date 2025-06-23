@@ -9,7 +9,8 @@
         <version>1.0.0-alpha3</version>
     </parent>
 
-    <artifactId>sentinelai-extras-configured-agents</artifactId>
+    <artifactId>sentinel-ai-configured-agents</artifactId>
+    <name>Sentinel AI Dynamically Configured Agents Extension</name>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

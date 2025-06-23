@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>sentinel-ai-session</artifactId>
+    <name>Sentinel AI Agent Session Management</name>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
