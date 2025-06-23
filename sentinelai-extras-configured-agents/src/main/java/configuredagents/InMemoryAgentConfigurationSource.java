@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  *
  */
-public class InMemoryConfiguredAgentSource implements ConfiguredAgentSource {
+public class InMemoryAgentConfigurationSource implements AgentConfigurationSource {
 
     private final Map<String, AgentMetadata> agentConfigurations = new ConcurrentHashMap<>();
 
@@ -31,7 +31,7 @@ public class InMemoryConfiguredAgentSource implements ConfiguredAgentSource {
 
     @Override
     public List<AgentSearchResponse> find(String query) {
-        throw new UnsupportedOperationException("Find operation is not supported in InMemoryConfiguredAgentSource");
+        throw new UnsupportedOperationException("Find operation is not supported in InMemoryAgentConfigurationSource");
     }
 
     @Override

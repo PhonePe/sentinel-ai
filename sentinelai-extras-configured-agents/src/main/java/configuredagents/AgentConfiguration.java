@@ -1,13 +1,13 @@
 package configuredagents;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import configuredagents.capabilities.AgentCapability;
 import lombok.*;
 
-import java.util.Map;
-import java.util.Set;
+import java.util.List;
 
 /**
- *
+ * Configuration for dynamically spun up {@link ConfiguredAgent}.
  */
 @Value
 @Builder
@@ -39,18 +39,12 @@ public class AgentConfiguration {
     /**
      * Output schema for the agent. Will default to String if not provided.
      */
-    @NonNull
     JsonNode outputSchema;
 
     /**
-     * Remote tools to be used by the agent.
+     * Capabilities of the agent.
      */
-    Map<String, Set<String>> selectedRemoteHttpTools;
+    @Singular
+    List<AgentCapability> capabilities;
 
-    /**
-     * MCP tools to be used by the agent.
-     */
-    Map<String, Set<String>> selectedMCPTools;
-
-    boolean memoryEnabled;
 }

@@ -6,43 +6,65 @@ import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
-import lombok.AllArgsConstructor;
+import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
- *
+ * A sentinel agent extension that provides a registry of agents that can be dynamically configured and spun up.
+ * Agents are exposed to the calling LLM as facts and can be invoked by the top level agent according to the
+ * requirement.
  */
-@AllArgsConstructor
 @Slf4j
-@Builder
 public class AgentRegistry implements AgentExtension {
 
+    /**
+     * Storage for agent configurations.
+     */
     @NonNull
-    private final HttpToolboxFactory<?> httpToolboxFactory;
-    @NonNull
-    private final ConfiguredAgentSource agentSource;
+    private final AgentConfigurationSource agentSource;
 
-    private final boolean skipAgentInjectionAsFact;
-    private final boolean includeParentAgentMessages;
+    /**
+     * By default, the registry will not pass parent agent messages to the invoked agent. If this option is set,
+     * registry will use the provided predicate to filter parent messages and pass them to the invoked agent.
+     */
+    private final Predicate<AgentMessage> parentMessageFilter;
 
-    private final Map<String, ConfiguredAgent> agentCache = new ConcurrentHashMap<>();
+    private final SimpleCache<ConfiguredAgent> agentCache;
 
-    public Optional<AgentMetadata> configureAgent(
-            @NonNull final AgentConfiguration configuration) {
-        final var agentId = configuration.getAgentName().replaceAll("[\\s\\p{Punct}]", "_").toLowerCase();
-        return agentSource.save(agentId, configuration);
+    @Builder
+    public AgentRegistry(
+            @NonNull AgentConfigurationSource agentSource,
+            @NonNull Function<AgentMetadata, ConfiguredAgent> agentFactory,
+            final Predicate<AgentMessage> parentMessageFilter) {
+        this.agentSource = agentSource;
+        this.parentMessageFilter = Objects.requireNonNullElseGet(parentMessageFilter, () -> message -> false);
+        agentCache = new SimpleCache<>(agentId -> {
+            log.info("Building new agent for: {}", agentId);
+            return agentFactory.apply(
+                    agentSource.read(agentId)
+                            .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId)));
+        });
     }
 
-    //    @Tool("Get an agent based on query")
-    public List<ConfiguredAgentSource.AgentSearchResponse> findAgent(
-            @JsonPropertyDescription("A query to find agent " +
-                    "based on requirements") String query) {
-        return agentSource.find(query);
+    public Optional<AgentMetadata> configureAgent(@NonNull final AgentConfiguration configuration) {
+        final var fixedConfig = new AgentConfiguration(
+                configuration.getAgentName(),
+                configuration.getDescription(),
+                configuration.getPrompt(),
+                Objects.requireNonNullElseGet(configuration.getInputSchema(), () -> JsonUtils.schema(String.class)),
+                Objects.requireNonNullElseGet(configuration.getOutputSchema(), () -> JsonUtils.schema(String.class)),
+                Objects.requireNonNullElseGet(configuration.getCapabilities(), List::of));
+        final var agentId = AgentUtils.id(fixedConfig.getAgentName());
+        return agentSource.save(agentId, fixedConfig);
     }
 
     @Tool("Get agent metadata")
@@ -64,47 +86,25 @@ public class AgentRegistry implements AgentExtension {
             @JsonPropertyDescription("The json serialized structured input to be sent to the agent") String agentInput) {
         try {
             final var parentMessages = context.getOldMessages();
-            final var messagesToBeSent = new ArrayList<AgentMessage>();
-            if (includeParentAgentMessages) {
-                messagesToBeSent.addAll(parentMessages);
+            final var messagesToBeSent = new ArrayList<>(parentMessages.stream()
+                                                                 .filter(parentMessageFilter)
+                                                                 .toList());
+            final var agent = agentCache.find(agentId).orElse(null);
+            if (null == agent) {
+                log.error("Agent not found: {}", agentId);
+                return context.getAgentSetup()
+                        .getMapper()
+                        .createObjectNode()
+                        .textNode("Agent not found: " + agentId);
             }
-            final var response = agentCache.computeIfAbsent(
-                            agentId,
-                            aid -> {
-                                log.info("Building new agent for: {}", aid);
-                                final var agentMeta = agentSource.read(agentId)
-                                        .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + aid));
-                                final var agentConfiguration = agentMeta.getConfiguration();
-                                final var selectedHttpTools
-                                        = Objects.<Map<String, Set<String>>>requireNonNullElseGet(
-                                        agentConfiguration.getSelectedRemoteHttpTools(), Map::of);
-                                final var httpToolBoxes = selectedHttpTools
-                                        .entrySet()
-                                        .stream()
-                                        .map(toolsFromUpstream -> new ComposingToolBox(
-                                                List.of(httpToolboxFactory.create(
-                                                                toolsFromUpstream.getKey())
-                                                                .orElseThrow(
-                                                                        () -> new IllegalArgumentException(
-                                                                                "No HTTP tool box found" +
-                                                                                        " for: " + toolsFromUpstream.getKey()))),
-                                                toolsFromUpstream.getValue()))
-                                        .toList();
-                                return new ConfiguredAgent(
-                                        agentConfiguration.getAgentName(),
-                                        agentConfiguration.getDescription(),
-                                        agentConfiguration.getPrompt(),
-                                        List.of(), //TODO::EXTENSIONS
-                                        new ComposingToolBox(httpToolBoxes, Set.of()),
-                                        agentConfiguration.getInputSchema(),
-                                        agentConfiguration.getOutputSchema());
-                            })
-                    .executeAsync(AgentInput.<JsonNode>builder()
-                                          .request(context.getAgentSetup().getMapper().readTree(agentInput))
-                                          .requestMetadata(context.getRequestMetadata())
-                                          .agentSetup(context.getAgentSetup())
-                                          .oldMessages(messagesToBeSent)
-                                          .build())
+            final var response = agent.executeAsync(AgentInput.<JsonNode>builder()
+                                                            .request(context.getAgentSetup()
+                                                                             .getMapper()
+                                                                             .readTree(agentInput))
+                                                            .requestMetadata(context.getRequestMetadata())
+                                                            .agentSetup(context.getAgentSetup())
+                                                            .oldMessages(messagesToBeSent)
+                                                            .build())
                     .join();
             if (response.getData() != null) {
                 return response.getData();

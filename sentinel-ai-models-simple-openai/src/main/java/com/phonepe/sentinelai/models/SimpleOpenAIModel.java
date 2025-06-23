@@ -500,7 +500,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }
     }
 
-    private static void mergeUsage(ModelUsageStats stats, Usage usage) {
+    public static void mergeUsage(ModelUsageStats stats, Usage usage) {
         if (null != usage) {
             stats.incrementRequestTokens(safeGetInt(usage::getPromptTokens))
                     .incrementResponseTokens(safeGetInt(usage::getCompletionTokens))

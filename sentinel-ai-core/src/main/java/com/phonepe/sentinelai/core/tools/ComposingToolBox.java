@@ -1,7 +1,5 @@
-package configuredagents;
+package com.phonepe.sentinelai.core.tools;
 
-import com.phonepe.sentinelai.core.tools.ExecutableTool;
-import com.phonepe.sentinelai.core.tools.ToolBox;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 
@@ -11,7 +9,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- *
+ * A toolbox that can be used to combine multiple toolboxes into one abd expose only selected tools to the Agent.
  */
 @AllArgsConstructor
 public class ComposingToolBox implements ToolBox {

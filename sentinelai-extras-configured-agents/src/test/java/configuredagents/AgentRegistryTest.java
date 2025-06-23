@@ -19,6 +19,7 @@ import com.phonepe.sentinelai.toolbox.remotehttp.UpstreamResolver;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplate;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.InMemoryHttpToolSource;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.TemplatizedHttpTool;
+import configuredagents.capabilities.AgentCapabilities;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import lombok.Builder;
@@ -79,7 +80,7 @@ class AgentRegistryTest {
                                                          "condition" : "sunny"
                                                          }
                                                          """, 200)));
-        final var agentSource = new InMemoryConfiguredAgentSource();
+        final var agentSource = new InMemoryAgentConfigurationSource();
         final var objectMapper = JsonUtils.createMapper();
         final var okHttpClient = new OkHttpClient.Builder()
                 .callTimeout(Duration.ofSeconds(180))
@@ -111,29 +112,36 @@ class AgentRegistryTest {
                                                               .path(HttpCallTemplate.Template.textSubstitutor(
                                                                       "/api/v1/weather/${location}")).build())
                                             .build()));
-        final var registry = new AgentRegistry(
-                new HttpToolboxFactory<>(okHttpClient,
-                                         objectMapper,
-                                         toolSource,
-                                         upstream -> new UpstreamResolver() {
-                                             @Override
-                                             public String resolve(String upstream) {
-                                                 return wiremock.getHttpBaseUrl();
-                                             }
-                                         }),
-                agentSource,
-                false,
-                false);
+        final var agentFactory = ConfiguredAgentFactory.builder()
+                .httpToolboxFactory(new HttpToolboxFactory<>(okHttpClient,
+                                                             objectMapper,
+                                                             toolSource,
+                                                             upstream -> new UpstreamResolver() {
+                                                                 @Override
+                                                                 public String resolve(String upstream) {
+                                                                     return wiremock.getHttpBaseUrl();
+                                                                 }
+                                                             }))
+                .mcpToolboxFactory(MCPToolBoxFactory.builder()
+                                           .objectMapper(objectMapper)
+                                           .clientProvider(upstream -> {
+                                               throw new IllegalStateException("MCP is not supported in this test");
+                                           })
+                                           .build())
+                .build();
+        final var registry = AgentRegistry.builder()
+                .agentSource(agentSource)
+                .agentFactory(agentFactory::createAgent)
+                .build();
 
         // Let's create weather agent configuration
 
         final var weatherAgentConfiguration = AgentConfiguration.builder()
                 .agentName("Weather Agent")
                 .description("Provides the weather information for a given location.")
-                .memoryEnabled(false)
                 .prompt("Respond with the current weather for the given location.")
                 .inputSchema(loadSchema(objectMapper, "inputschema.json"))
-                .selectedRemoteHttpTools(Map.of("weatherserver", Set.of("weatherserver_get_weather_for_location")))
+                .capability(AgentCapabilities.remoteHttpCalls(Map.of("weatherserver", Set.of("weatherserver_get_weather_for_location"))))
                 .outputSchema(loadSchema(objectMapper, "outputschema.json"))
                 .build();
         log.info("Weather agent id: {}",
