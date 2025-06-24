@@ -31,7 +31,7 @@ public class SystemPrompt extends AgentRequest {
     @Builder
     @Jacksonized
     public SystemPrompt(@NonNull String content, boolean dynamic, String methodReference) {
-        super(AgentMessageType.SYSTEM_PROMPT_REQUEST);
+        super(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE);
         this.content = content;
         this.dynamic = dynamic;
         this.methodReference = methodReference;

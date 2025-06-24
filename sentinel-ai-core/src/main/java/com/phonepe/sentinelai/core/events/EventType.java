@@ -1,6 +1,7 @@
 package com.phonepe.sentinelai.core.events;
 
 import lombok.Getter;
+import lombok.experimental.UtilityClass;
 
 /**
  * The different event types for the agent
@@ -19,6 +20,7 @@ public enum EventType {
         this.type = type;
     }
 
+    @UtilityClass
     public static final class Values {
         public static final String MESSAGE_RECEIVED = "MESSAGE_RECEIVED";
         public static final String MESSAGE_SENT = "MESSAGE_SENT";

@@ -51,7 +51,7 @@ public class ToolCallResponse extends AgentRequest {
             ErrorType errorType,
             @NonNull String response,
             LocalDateTime sentAt) {
-        super(AgentMessageType.TOOL_CALL_RESPONSE);
+        super(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE);
         this.toolCallId = toolCallId;
         this.toolName = toolName;
         this.errorType = errorType;

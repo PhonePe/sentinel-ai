@@ -7,7 +7,6 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
-import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
@@ -68,7 +67,6 @@ class AgentSessionExtensionTest {
         }
     }
 
-    //    public static class SimpleAgent extends Agent<UserInput, Void, OutputObject, SimpleAgent> {
     public static class SimpleAgent extends Agent<UserInput, String, SimpleAgent> {
         @Builder
         public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, ExecutableTool> tools) {

@@ -121,6 +121,6 @@ public class AgentSessionExtension implements AgentExtension {
 
     @Override
     public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
-
+        //Nothing to do here for now
     }
 }

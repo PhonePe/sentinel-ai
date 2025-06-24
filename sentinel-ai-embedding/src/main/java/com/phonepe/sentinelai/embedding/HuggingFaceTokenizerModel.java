@@ -9,24 +9,24 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- *
+ * A tokenizer model that uses models hosted on Hugging Face
  */
 public class HuggingFaceTokenizerModel implements TokenizerModel, AutoCloseable {
     private static final int MAX_LENGTH = 10_000;
     private final String modelName;
-    private final String modelRoot;
     private final int maxLength;
     private final HuggingFaceTokenizer tokenizer;
     private final boolean addSpecialTokens;
     private final boolean padding;
 
     @Builder
-    public HuggingFaceTokenizerModel(String modelName, String modelRoot, int maxLength, boolean addSpecialTokens,
-                                     boolean padding) {
+    public HuggingFaceTokenizerModel(
+            String modelName,
+            int maxLength,
+            boolean addSpecialTokens,
+            boolean padding) {
         this.modelName = Objects.requireNonNullElse(modelName,
                                                     "sentence-transformers/all-MiniLM-L6-v2");
-        this.modelRoot = Objects.requireNonNullElse(modelRoot,
-                                                    "djl://ai.djl.huggingface.pytorch/");
 
         this.maxLength = Math.max(maxLength, MAX_LENGTH);
         this.tokenizer = HuggingFaceTokenizer.newInstance(this.modelName, getDJLConfig());

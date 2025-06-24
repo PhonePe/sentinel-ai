@@ -24,5 +24,5 @@ public @interface Tool {
     /**
      * Number of retries for the tool in case of failures
      */
-    int retries = 0;
+    int retries() default 0;
 }

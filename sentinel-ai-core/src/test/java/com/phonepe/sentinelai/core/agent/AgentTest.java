@@ -84,7 +84,7 @@ class AgentTest {
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
                                                                 AgentRunContext<R> context,
                                                                 JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
@@ -100,7 +100,7 @@ class AgentTest {
                                                                                      "test_agent_get_name",
                                                                                      "{}"));
                                                                 assertTrue(response.isSuccess());
-                                                                assertTrue(response.getToolCallId().equals("TC1"));
+                                                                assertEquals("TC1", response.getToolCallId());
                                                                 final var messages =
                                                                         new ArrayList<>(context.getOldMessages());
                                                                 final var message =
@@ -142,7 +142,7 @@ class AgentTest {
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
                                                                 AgentRunContext<R> context,
                                                                 JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
@@ -205,7 +205,7 @@ class AgentTest {
                                                     .model(new Model() {
 
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
                                                                 AgentRunContext<R> context,
                                                                 JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
@@ -221,7 +221,7 @@ class AgentTest {
                                                                                      "test_agent_void_tool",
                                                                                      "{}"));
                                                                 assertTrue(response.isSuccess());
-                                                                assertTrue(response.getToolCallId().equals("TC1"));
+                                                                assertEquals("TC1", response.getToolCallId());
                                                                 final var messages =
                                                                         new ArrayList<>(context.getOldMessages());
                                                                 final var message =
@@ -263,7 +263,7 @@ class AgentTest {
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
                                                                 AgentRunContext<R> context,
                                                                 JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
@@ -286,7 +286,7 @@ class AgentTest {
                                                                                              }
                                                                                              """));
                                                                 assertTrue(response.isSuccess());
-                                                                assertTrue(response.getToolCallId().equals("TC1"));
+                                                                assertEquals("TC1", response.getToolCallId());
                                                                 final var messages =
                                                                         new ArrayList<>(context.getOldMessages());
                                                                 final var message =
@@ -330,7 +330,7 @@ class AgentTest {
                                                     .model(new Model() {
 
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
                                                                 AgentRunContext<R> context,
                                                                 JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
@@ -346,7 +346,7 @@ class AgentTest {
                                                                                      "test_agent_throw_tool",
                                                                                      "{}"));
                                                                 assertFalse(response.isSuccess());
-                                                                assertTrue(response.getToolCallId().equals("TC1"));
+                                                                assertEquals("TC1", response.getToolCallId());
                                                                 final var messages =
                                                                         new ArrayList<>(context.getOldMessages());
                                                                 final var message =
@@ -390,7 +390,7 @@ class AgentTest {
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
                                                         @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
                                                                 AgentRunContext<R> context,
                                                                 JsonNode responseSchema,
                                                                 Map<String, ExecutableTool> tools,
@@ -405,7 +405,7 @@ class AgentTest {
                                                                                      "getUnknown",
                                                                                      "{}"));
                                                                 assertFalse(response.isSuccess());
-                                                                assertTrue(response.getToolCallId().equals("TC1"));
+                                                                assertEquals("TC1", response.getToolCallId());
                                                                 final var messages =
                                                                         new ArrayList<>(context.getOldMessages());
                                                                 final var message =

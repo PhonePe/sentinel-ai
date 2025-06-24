@@ -207,7 +207,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                          null));
         messages.add(new UserPrompt(toXmlContent(inputRequest), LocalDateTime.now()));
         return mergedAgentSetup.getModel()
-                .exchange_messages(
+                .exchangeMessages(
                         context,
                         outputSchema(),
                         knownTools,
@@ -263,7 +263,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input.getOldMessages(), List.<AgentMessage>of())
                                                      .stream()
                                                      .filter(message -> !message.getMessageType()
-                                                             .equals(AgentMessageType.SYSTEM_PROMPT_REQUEST))
+                                                             .equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE))
                                                      .toList());
         final var runId = UUID.randomUUID().toString();
         final var requestMetadata = input.getRequestMetadata();
@@ -293,7 +293,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                          null));
         messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
         return mergedAgentSetup.getModel()
-                .exchange_messages_streaming(
+                .exchangeMessagesStreaming(
                         context,
                         knownTools,
                         this::runToolObserved,

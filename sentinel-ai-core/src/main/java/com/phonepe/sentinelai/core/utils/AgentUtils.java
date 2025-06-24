@@ -12,13 +12,13 @@ import java.util.function.Supplier;
  */
 @UtilityClass
 public class AgentUtils {
-    public static <R, D> String userId(AgentRunContext<R> context) {
+    public static <R> String userId(AgentRunContext<R> context) {
         return context.getRequestMetadata() != null
                ? context.getRequestMetadata().getUserId()
                : null;
     }
 
-    public static <R, D> String sessionId(AgentRunContext<R> context) {
+    public static <R> String sessionId(AgentRunContext<R> context) {
         return context.getRequestMetadata() != null
                ? context.getRequestMetadata().getSessionId()
                : null;

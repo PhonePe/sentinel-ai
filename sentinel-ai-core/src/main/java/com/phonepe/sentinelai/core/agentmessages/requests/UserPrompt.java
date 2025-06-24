@@ -22,7 +22,7 @@ public class UserPrompt extends AgentRequest {
     @Builder
     @Jacksonized
     public UserPrompt(@NonNull String content, LocalDateTime sentAt) {
-        super(AgentMessageType.USER_PROMPT_REQUEST);
+        super(AgentMessageType.USER_PROMPT_REQUEST_MESSAGE);
         this.content = content;
         this.sentAt = Objects.requireNonNullElse(sentAt, LocalDateTime.now());
     }

@@ -21,7 +21,7 @@ public class StructuredOutput extends AgentResponse {
     @Builder
     @Jacksonized
     public StructuredOutput(@NonNull String content) {
-        super(AgentMessageType.STRUCTURED_OUTPUT_RESPONSE);
+        super(AgentMessageType.STRUCTURED_OUTPUT_RESPONSE_MESSAGE);
         this.content = content;
     }
 

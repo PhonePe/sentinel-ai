@@ -5,14 +5,14 @@ package com.phonepe.sentinelai.core.agentmessages;
  */
 public enum AgentMessageType {
     //Request types as sent by agent
-    SYSTEM_PROMPT_REQUEST,
-    USER_PROMPT_REQUEST,
-    TOOL_CALL_REQUEST,
-    RETRY_REQUEST_REQUEST, //TODO
+    SYSTEM_PROMPT_REQUEST_MESSAGE,
+    USER_PROMPT_REQUEST_MESSAGE,
+    TOOL_CALL_REQUEST_MESSAGE,
+    RETRY_REQUEST_REQUEST_MESSAGE, //TODO
 
 
     //Response types as received from LLM
-    TEXT_RESPONSE,
-    STRUCTURED_OUTPUT_RESPONSE,
-    TOOL_CALL_RESPONSE
+    TEXT_RESPONSE_MESSAGE,
+    STRUCTURED_OUTPUT_RESPONSE_MESSAGE,
+    TOOL_CALL_RESPONSE_MESSAGE
 }

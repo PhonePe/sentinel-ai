@@ -42,7 +42,7 @@ public class TestUtils {
 
     public static void assertNoFailedToolCalls(AgentOutput<String> response) {
         final var failedCall = response.getNewMessages().stream()
-                .filter(agentMessage -> agentMessage.getMessageType().equals(AgentMessageType.TOOL_CALL_RESPONSE))
+                .filter(agentMessage -> agentMessage.getMessageType().equals(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE))
                 .map(ToolCallResponse.class::cast)
                 .filter(Predicate.not(ToolCallResponse::isSuccess))
                 .toList();

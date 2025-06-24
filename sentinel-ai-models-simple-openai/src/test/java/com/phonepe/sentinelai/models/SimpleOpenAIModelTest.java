@@ -17,8 +17,10 @@ import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -52,12 +54,10 @@ class SimpleOpenAIModelTest {
 
         @Tool("Get name of user")
         public String getName() {
-            try {
-                Thread.sleep(1000);
-            }
-            catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            final var endTime = System.currentTimeMillis() + 1000;
+            Awaitility.await()
+                    .pollDelay(Duration.ofSeconds(1))
+                    .until(() -> System.currentTimeMillis() >= endTime);
             return "Santanu";
         }
 

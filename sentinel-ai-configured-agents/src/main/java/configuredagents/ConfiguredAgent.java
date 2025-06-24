@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  *
  */
+@SuppressWarnings("unused")
 public class ConfiguredAgent {
 
 

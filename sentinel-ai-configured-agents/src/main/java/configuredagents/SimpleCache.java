@@ -14,14 +14,11 @@ public class SimpleCache<T> {
     private final Map<String, T> cache = new ConcurrentHashMap<>();
     private final Function<String, T> creator;
 
-    public SimpleCache(
-            @NonNull Function<String, T> creator) {
+    public SimpleCache(@NonNull Function<String, T> creator) {
         this.creator = creator;
     }
 
-    public Optional<T> find(String upstream) {
-        return Optional.of(cache.computeIfAbsent(
-                upstream,
-                creator));
+    public Optional<T> find(@NonNull String key) {
+        return Optional.of(cache.computeIfAbsent(key, creator));
     }
 }

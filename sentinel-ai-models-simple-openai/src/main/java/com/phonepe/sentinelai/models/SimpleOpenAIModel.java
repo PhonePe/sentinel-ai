@@ -31,6 +31,7 @@ import io.github.sashirestela.openai.domain.chat.Chat;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
 import io.github.sashirestela.openai.domain.chat.ChatRequest;
 import io.github.sashirestela.openai.service.ChatCompletionServices;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -98,16 +99,15 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var builder = createChatRequestBuilder(openAiMessages);
                 applyModelSettings(modelSettings, builder, Map.of());
                 builder.responseFormat(ResponseFormat.jsonSchema(ResponseFormat.JsonSchema.builder()
-                                                                         .name("output")
+                                                                         .name(OUTPUT_VARIABLE_NAME)
                                                                          .schema(outputDefinition.getSchema())
                                                                          .strict(true)
                                                                          .build()));
-                final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
                 final var completionResponse = openAIProvider.chatCompletions()
                         .create(builder.build())
                         .join();
-                logDataDebug("Response from model: {}", completionResponse);
+                logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
                 final var response = extractResponse(completionResponse);
                 if (null == response) {
@@ -115,30 +115,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }
                 final var message = response.getMessage();
                 output = switch (response.getFinishReason()) {
-                    case FinishReasons.STOP -> {
-                        final var refusal = message.getRefusal();
-                        if (!Strings.isNullOrEmpty(refusal)) {
-                            yield DirectRunOutput.error(stats,
-                                                        SentinelError.error(ErrorType.REFUSED, refusal));
-                        }
-                        final var content = message.getContent();
-                        if (!Strings.isNullOrEmpty(content)) {
-                            try {
-                                yield DirectRunOutput.success(stats, mapper.readTree(content));
-                            }
-                            catch (JsonProcessingException e) {
-                                yield DirectRunOutput.error(stats,
-                                                            SentinelError.error(ErrorType.JSON_ERROR, e));
-                            }
-                        }
-                        yield DirectRunOutput.error(stats, SentinelError.error(ErrorType.NO_RESPONSE));
-                    }
-                    case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> DirectRunOutput.error(stats,
-                                                                                                        SentinelError.error(
-                                                                                                                ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                                                                                                "Tools calls are " +
-                                                                                                                        "not " +
-                                                                                                                        "supported"));
+                    case FinishReasons.STOP -> processOutput(message, stats);
+                    case FinishReasons.FUNCTION_CALL,
+                         FinishReasons.TOOL_CALLS -> DirectRunOutput.error(
+                            stats,
+                            SentinelError.error(
+                                    ErrorType.TOOL_CALL_PERMANENT_FAILURE, "Tools calls are not supported"));
                     case FinishReasons.LENGTH -> DirectRunOutput.error(stats,
                                                                        SentinelError.error(ErrorType.LENGTH_EXCEEDED));
                     case FinishReasons.CONTENT_FILTER -> DirectRunOutput.error(stats,
@@ -152,7 +134,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
+    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
             AgentRunContext<R> context,
             JsonNode responseSchema,
             Map<String, ExecutableTool> tools,
@@ -188,7 +170,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var completionResponse = openAIProvider.chatCompletions()
                         .create(builder.build())
                         .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
-                logDataDebug("Response from model: {}", completionResponse);
+                logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
                 final var response = extractResponse(completionResponse);
                 if (null == response) {
@@ -196,37 +178,15 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }
                 final var message = response.getMessage();
                 output = switch (response.getFinishReason()) {
-                    case FinishReasons.STOP -> {
-                        final var refusal = message.getRefusal();
-                        if (!Strings.isNullOrEmpty(refusal)) {
-                            yield ModelOutput.error(oldMessages,
-                                                    stats,
-                                                    SentinelError.error(ErrorType.REFUSED, refusal));
-                        }
-                        final var content = message.getContent();
-                        if (!Strings.isNullOrEmpty(content)) {
-                            final var newMessage = new StructuredOutput(content);
-                            allMessages.add(newMessage);
-                            newMessages.add(newMessage);
-                            raiseMessageReceivedEvent(context, agent, newMessage, stopwatch);
-                            try {
-                                yield ModelOutput.success(convertToResponse(
-                                                                  content,
-                                                                  extensions,
-                                                                  agent,
-                                                                  context.getProcessingMode()),
-                                                          newMessages,
-                                                          allMessages,
-                                                          stats);
-                            }
-                            catch (JsonProcessingException e) {
-                                yield ModelOutput.error(oldMessages,
-                                                        stats,
-                                                        SentinelError.error(ErrorType.JSON_ERROR, e));
-                            }
-                        }
-                        yield ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.NO_RESPONSE));
-                    }
+                    case FinishReasons.STOP -> processOutput(context,
+                                                             extensions,
+                                                             agent,
+                                                             message,
+                                                             oldMessages,
+                                                             stats,
+                                                             allMessages,
+                                                             newMessages,
+                                                             stopwatch);
                     case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
                         final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(),
                                                                             List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
@@ -262,7 +222,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages_streaming(
+    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessagesStreaming(
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
             ToolRunner<R> toolRunner,
@@ -304,7 +264,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
                 final var outputs = completionResponseStream
                         .map(completionResponse -> {
-                            logDataDebug("Response from model: {}", completionResponse);
+                            logModelResponse(completionResponse);
                             mergeUsage(stats, completionResponse.getUsage());
                             final var response = extractResponse(completionResponse);
                             if (null == response) {
@@ -337,42 +297,16 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             }
                             //Model has stopped for some reason. Find out reason and handle
                             return switch (finishReason) {
-                                case FinishReasons.STOP -> {
-                                    //Model has sent all response
-                                    final var refusal = message.getRefusal();
-                                    if (!Strings.isNullOrEmpty(refusal)) {
-                                        yield ModelOutput.error(oldMessages,
-                                                                stats,
-                                                                SentinelError.error(ErrorType.REFUSED,
-                                                                                    refusal));
-                                    }
-                                    final var content = responseData.toString();
-                                    if (!Strings.isNullOrEmpty(content)) {
-                                        final var newMessage = new Text(content);
-                                        allMessages.add(newMessage);
-                                        newMessages.add(newMessage);
-                                        raiseMessageReceivedEvent(context, agent, newMessage, stopwatch);
-                                        try {
-                                            yield ModelOutput.success(convertToResponse(
-                                                                              content,
-                                                                              extensions,
-                                                                              agent,
-                                                                              context.getProcessingMode()),
-                                                                      newMessages,
-                                                                      allMessages,
-                                                                      stats);
-                                        }
-                                        catch (JsonProcessingException e) {
-                                            yield ModelOutput.error(oldMessages,
-                                                                    stats,
-                                                                    SentinelError.error(ErrorType.JSON_ERROR, e));
-                                        }
-                                    }
-
-                                    yield ModelOutput.error(oldMessages,
-                                                            stats,
-                                                            SentinelError.error(ErrorType.NO_RESPONSE));
-                                }
+                                case FinishReasons.STOP -> processStreamingOutput(context,
+                                                                                  extensions,
+                                                                                  agent,
+                                                                                  message,
+                                                                                  oldMessages,
+                                                                                  stats,
+                                                                                  responseData,
+                                                                                  allMessages,
+                                                                                  newMessages,
+                                                                                  stopwatch);
                                 case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
                                     //Model is waiting for us to run tools and respond back
                                     final var toolCalls = toolCallData.values()
@@ -454,6 +388,118 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 function);
     }
 
+    private DirectRunOutput processOutput(ChatMessage.ResponseMessage message, ModelUsageStats stats) {
+        final var refusal = message.getRefusal();
+        if (!Strings.isNullOrEmpty(refusal)) {
+            return DirectRunOutput.error(stats,
+                                         SentinelError.error(ErrorType.REFUSED, refusal));
+        }
+        final var content = message.getContent();
+        if (!Strings.isNullOrEmpty(content)) {
+            try {
+                return DirectRunOutput.success(stats, mapper.readTree(content));
+            }
+            catch (JsonProcessingException e) {
+                return DirectRunOutput.error(stats,
+                                             SentinelError.error(ErrorType.JSON_ERROR, e));
+            }
+        }
+        return DirectRunOutput.error(stats, SentinelError.error(ErrorType.NO_RESPONSE));
+    }
+
+    @SuppressWarnings("java:S107")
+    private <R, T, A extends Agent<R, T, A>> ModelOutput processOutput(
+            AgentRunContext<R> context,
+            List<AgentExtension> extensions,
+            A agent,
+            ChatMessage.ResponseMessage message,
+            List<AgentMessage> oldMessages,
+            ModelUsageStats stats,
+            ArrayList<AgentMessage> allMessages,
+            ArrayList<AgentMessage> newMessages,
+            Stopwatch stopwatch) {
+        final var refusal = message.getRefusal();
+        if (!Strings.isNullOrEmpty(refusal)) {
+            return ModelOutput.error(oldMessages,
+                                     stats,
+                                     SentinelError.error(ErrorType.REFUSED, refusal));
+        }
+        final var content = message.getContent();
+        if (!Strings.isNullOrEmpty(content)) {
+            final var newMessage = new StructuredOutput(content);
+            allMessages.add(newMessage);
+            newMessages.add(newMessage);
+            raiseMessageReceivedEvent(context, agent, newMessage, stopwatch);
+            try {
+                return ModelOutput.success(convertToResponse(
+                                                   content,
+                                                   extensions,
+                                                   agent,
+                                                   context.getProcessingMode()),
+                                           newMessages,
+                                           allMessages,
+                                           stats);
+            }
+            catch (JsonProcessingException e) {
+                return ModelOutput.error(oldMessages,
+                                         stats,
+                                         SentinelError.error(ErrorType.JSON_ERROR, e));
+            }
+        }
+        return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.NO_RESPONSE));
+    }
+
+    /*
+        * Process the streaming output from the model. This method is called when the model sends a response in chunks.
+     */
+    @SuppressWarnings("java:S107")
+    private <R, T, A extends Agent<R, T, A>> @NonNull ModelOutput processStreamingOutput(
+            AgentRunContext<R> context,
+            List<AgentExtension> extensions,
+            A agent,
+            ChatMessage.ResponseMessage message,
+            List<AgentMessage> oldMessages,
+            ModelUsageStats stats,
+            StringBuilder responseData,
+            ArrayList<AgentMessage> allMessages,
+            ArrayList<AgentMessage> newMessages,
+            Stopwatch stopwatch) {
+        //Model has sent all response
+        final var refusal = message.getRefusal();
+        if (!Strings.isNullOrEmpty(refusal)) {
+            return ModelOutput.error(oldMessages,
+                                     stats,
+                                     SentinelError.error(ErrorType.REFUSED,
+                                                         refusal));
+        }
+        final var content = responseData.toString();
+        if (!Strings.isNullOrEmpty(content)) {
+            final var newMessage = new Text(content);
+            allMessages.add(newMessage);
+            newMessages.add(newMessage);
+            raiseMessageReceivedEvent(context, agent, newMessage, stopwatch);
+            try {
+                return ModelOutput.success(convertToResponse(
+                                                   content,
+                                                   extensions,
+                                                   agent,
+                                                   context.getProcessingMode()),
+                                           newMessages,
+                                           allMessages,
+                                           stats);
+            }
+            catch (JsonProcessingException e) {
+                return ModelOutput.error(oldMessages,
+                                         stats,
+                                         SentinelError.error(ErrorType.JSON_ERROR, e));
+            }
+        }
+
+        return ModelOutput.error(oldMessages,
+                                 stats,
+                                 SentinelError.error(ErrorType.NO_RESPONSE));
+    }
+
     private ChatRequest.ChatRequestBuilder createChatRequestBuilder(ArrayList<ChatMessage> openAiMessages) {
         return ChatRequest.builder()
                 .messages(openAiMessages)
@@ -476,6 +522,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                          })
                                          .toList());
         }
+    }
+
+    private void logModelResponse(Object node) {
+        logDataDebug("Response from model: {}", node);
     }
 
     private void logDataDebug(String fmtStr, Object node) {

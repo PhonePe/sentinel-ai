@@ -65,8 +65,6 @@ public class ToolUtils {
                                          TypeFactory.defaultInstance().constructType(paramType)));
         }
         final var toolName = toolDef.name().isBlank() ? method.getName() : toolDef.name();
-//        final var toolName = prefix + "_" + CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_UNDERSCORE)
-//                .convert(tooName);
         return Pair.of(
                 ToolDefinition.builder()
                         .id(AgentUtils.id(prefix, toolName))

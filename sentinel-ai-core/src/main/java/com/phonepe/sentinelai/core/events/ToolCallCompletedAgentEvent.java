@@ -22,6 +22,7 @@ public class ToolCallCompletedAgentEvent extends AgentEvent {
     String errorMessage;
     Duration elapsedTime;
 
+    @SuppressWarnings("java:S107")
     public ToolCallCompletedAgentEvent(
             @NonNull String agentName,
             @NonNull String runId,

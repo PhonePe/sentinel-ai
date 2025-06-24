@@ -24,7 +24,7 @@ public interface Model {
         throw new UnsupportedOperationException("Direct run is not supported by this model");
     }
 
-    <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages(
+    <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
             AgentRunContext<R> context,
             JsonNode responseSchema,
             Map<String, ExecutableTool> tools,
@@ -32,7 +32,7 @@ public interface Model {
             List<AgentExtension> extensions,
             A agent);
 
-    default <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchange_messages_streaming(
+    default <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessagesStreaming(
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
             ToolRunner<R> toolRunner,
