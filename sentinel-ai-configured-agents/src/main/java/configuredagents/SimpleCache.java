@@ -1,6 +1,5 @@
 package configuredagents;
 
-import com.phonepe.sentinelai.core.tools.ToolBox;
 import lombok.NonNull;
 
 import java.util.Map;
@@ -9,20 +8,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
- * Caching factory for creating instances of {@link ToolBox}.
+ * A simple cache that allows for lazy loading of objects based on a key.
  */
 public class SimpleCache<T> {
-    private final Map<String, T> toolboxCache = new ConcurrentHashMap<>();
-    private final Function<String, T> toolboxCreator;
+    private final Map<String, T> cache = new ConcurrentHashMap<>();
+    private final Function<String, T> creator;
 
     public SimpleCache(
-            @NonNull Function<String, T> toolboxCreator) {
-        this.toolboxCreator = toolboxCreator;
+            @NonNull Function<String, T> creator) {
+        this.creator = creator;
     }
 
     public Optional<T> find(String upstream) {
-        return Optional.of(toolboxCache.computeIfAbsent(
+        return Optional.of(cache.computeIfAbsent(
                 upstream,
-                toolboxCreator));
+                creator));
     }
 }
