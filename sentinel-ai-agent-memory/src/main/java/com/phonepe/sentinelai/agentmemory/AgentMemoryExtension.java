@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
@@ -16,6 +18,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -31,7 +34,7 @@ public class AgentMemoryExtension implements AgentExtension {
      * Whether to save memory after session ends.
      * If true, the extension will extract memories from the session and save them in the memory store.
      */
-    private final boolean saveMemoryAfterSessionEnd;
+    private final MemoryExtractionMode memoryExtractionMode;
     /**
      * The memory store to use for saving and retrieving memories.
      */
@@ -51,10 +54,11 @@ public class AgentMemoryExtension implements AgentExtension {
 
     @Builder
     public AgentMemoryExtension(
-            boolean saveMemoryAfterSessionEnd,
+            MemoryExtractionMode memoryExtractionMode,
             @NonNull AgentMemoryStore memoryStore,
-            ObjectMapper objectMapper, int minRelevantReusabilityScore) {
-        this.saveMemoryAfterSessionEnd = saveMemoryAfterSessionEnd;
+            ObjectMapper objectMapper,
+            int minRelevantReusabilityScore) {
+        this.memoryExtractionMode = Objects.requireNonNullElse(memoryExtractionMode, MemoryExtractionMode.INLINE);
         this.memoryStore = memoryStore;
         this.objectMapper = Objects.requireNonNullElseGet(objectMapper, JsonUtils::createMapper);
         this.minRelevantReusabilityScore = minRelevantReusabilityScore;
@@ -105,12 +109,15 @@ public class AgentMemoryExtension implements AgentExtension {
                             .tool(tools.values()
                                           .stream()
                                           .map(tool -> SystemPrompt.ToolSummary.builder()
-                                                  .name(tool.getToolDefinition().getName())
+                                                  .name(tool.getToolDefinition().getId())
                                                   .description(tool.getToolDefinition().getDescription())
                                                   .build())
                                           .toList())
                             .build());
-        if (saveMemoryAfterSessionEnd && processingMode.equals(ProcessingMode.DIRECT)) { //Structured output is not supported in streaming mode
+        //Structured output is not supported in streaming mode so for streaming mode extraction is always out of band
+        //For direct mode, extraction can be inline or out of band or disabled altogether based on the memory
+        // extraction mode
+        if (memoryExtractionMode.equals(MemoryExtractionMode.INLINE) && processingMode.equals(ProcessingMode.DIRECT)) {
             //Add extract prompt only if extraction is needed
             final var prompt = extractionTaskPrompt();
             prompts.add(prompt);
@@ -146,11 +153,11 @@ public class AgentMemoryExtension implements AgentExtension {
 
     @Override
     public Optional<AgentExtensionOutputDefinition> outputSchema(ProcessingMode processingMode) {
-        if (processingMode == ProcessingMode.STREAMING) {
-            log.debug("Skipping output schema for streaming mode");
-            return Optional.empty();
+        if (memoryExtractionMode.equals(MemoryExtractionMode.INLINE) && processingMode.equals(ProcessingMode.DIRECT)) {
+            return Optional.of(memorySchema());
         }
-        return Optional.of(memorySchema());
+        log.debug("Skipping output schema for streaming mode");
+        return Optional.empty();
     }
 
     @NotNull
@@ -204,28 +211,50 @@ public class AgentMemoryExtension implements AgentExtension {
     @SneakyThrows
     @SuppressWarnings("unchecked")
     private <T, A extends Agent<R, T, A>, R> void extractMemory(Agent.ProcessingCompletedData<R, T, A> data) {
-        if(!saveMemoryAfterSessionEnd) {
+        if (memoryExtractionMode.equals(MemoryExtractionMode.DISABLED)) {
             log.debug("Memory extraction is disabled");
             return;
         }
-        if(!data.getProcessingMode().equals(ProcessingMode.STREAMING)) {
-            log.debug("Skipping async memory extraction as the request was processed directly");
-            return;
+        if (memoryExtractionMode.equals(MemoryExtractionMode.INLINE)) {
+            if (data.getProcessingMode().equals(ProcessingMode.DIRECT)) {
+                log.debug(
+                        "Inline memory extraction is enabled, will extract memory from output. Out of band extraction" +
+                                " is not needed.");
+                return;
+            }
+            else {
+                log.debug(
+                        "Inline memory extraction is enabled, but the request was processed in streaming mode, out of" +
+                                " band extraction being forced.");
+            }
         }
-        final var output = data.getAgentSetup().getModel()
-                .runDirect(data.getContext(),
+        else {
+            log.debug("Out of band memory extraction is enabled, will extract memory asynchronously");
+        }
+        // Replace the systemprompt with the extraction task prompt
+        final var messages = new ArrayList<AgentMessage>();
+        //Add system prompt to the messages
+        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
+                objectMapper.writeValueAsString(
+                extractionTaskPrompt()), false, null));
+        messages.add(new UserPrompt("You must extract memory from the following conversation between user and agent : " + objectMapper.writeValueAsString(Map.of("conversation", objectMapper.writeValueAsString(data.getContext().getOldMessages())
+                                           )),
+                                    LocalDateTime.now()));
+        final var output = data.getAgentSetup()
+                .getModel()
+                .runDirect(data.getContext().withOldMessages(messages),
                            objectMapper.writeValueAsString(extractionTaskPrompt()),
                            memorySchema(),
-                           data.getOutput().getAllMessages())
+                           messages)
                 .join();
-        if(output.getError() != null) {
+        if (output.getError() != null) {
             log.error("Error extracting memory: {}", output.getError());
         }
         else {
             final var outputData = output.getData();
-            if(!outputData.isEmpty()) {
+            if (!outputData.isEmpty()) {
                 log.debug("Extracted memory output: {}", outputData);
-                consume(output.getData(), (A)data.getAgent());
+                consume(output.getData(), (A) data.getAgent());
             }
             else {
                 log.debug("No memory extracted from the output");

@@ -27,7 +27,7 @@
 <!--    </logger>-->
 
         <logger name="com.phonepe.sentinelai">
-            <level value="TRACE" />
+            <level value="DEBUG" />
         </logger>
     <root>
         <level value="INFO" />

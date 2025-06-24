@@ -7,6 +7,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinel.session.AgentSessionExtension;
 import com.phonepe.sentinelai.agentmemory.AgentMemoryExtension;
+import com.phonepe.sentinelai.agentmemory.MemoryExtractionMode;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
@@ -122,7 +123,7 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
         final var extensions = List.of(AgentMemoryExtension.builder()
                                                .objectMapper(objectMapper)
                                                .memoryStore(memoryStorage)
-                                               .saveMemoryAfterSessionEnd(true)
+                                               .memoryExtractionMode(MemoryExtractionMode.INLINE)
                                                .build(),
                                        AgentSessionExtension.builder()
                                                .sessionStore(sessionStorage)

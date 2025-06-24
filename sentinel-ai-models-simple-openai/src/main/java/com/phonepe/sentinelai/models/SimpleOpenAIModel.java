@@ -104,8 +104,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                          .strict(true)
                                                                          .build()));
                 stats.incrementRequestsForRun();
+                final var request = builder.build();
+                logModelRequest(request);
                 final var completionResponse = openAIProvider.chatCompletions()
-                        .create(builder.build())
+                        .create(request)
                         .join();
                 logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
@@ -167,8 +169,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
 
+                final var request = builder.build();
+                logModelRequest(request);
                 final var completionResponse = openAIProvider.chatCompletions()
-                        .create(builder.build())
+                        .create(request)
                         .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
                 logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
@@ -522,6 +526,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                          })
                                          .toList());
         }
+    }
+
+    private void logModelRequest(Object node) {
+        logDataDebug("Request to model: {}", node);
     }
 
     private void logModelResponse(Object node) {

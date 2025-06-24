@@ -20,12 +20,15 @@ import lombok.SneakyThrows;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for {@link AgentMemoryExtension}
@@ -50,7 +53,14 @@ class AgentMemoryExtensionTest {
     public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
         public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, ExecutableTool> tools) {
-            super(OutputObject.class, "greet the user", setup, extensions, tools);
+            super(OutputObject.class,
+                  """
+                          greet the user and respond to queries being posted.
+                          IMPORTANT: you must extract memory about user for future use and to avoid tool calls.
+                          """,
+                  setup,
+                  extensions,
+                  tools);
         }
 
         @Tool("Get name of user")
@@ -76,7 +86,7 @@ class AgentMemoryExtensionTest {
         private record Key(MemoryScope scope, String scopeId) {
         }
 
-        private Map<Key, List<AgentMemory>> memories = new ConcurrentHashMap<>();
+        private final Map<Key, List<AgentMemory>> memories = new ConcurrentHashMap<>();
 
         @Override
         public List<AgentMemory> findMemories(
@@ -102,7 +112,7 @@ class AgentMemoryExtensionTest {
 
     @Test
     @SneakyThrows
-    void test(final WireMockRuntimeInfo wiremock) {
+    void testInlineExtraction(final WireMockRuntimeInfo wiremock) {
         TestUtils.setupMocks(6, "me", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
@@ -140,7 +150,7 @@ class AgentMemoryExtensionTest {
                 .extensions(List.of(AgentMemoryExtension.builder()
                                             .objectMapper(objectMapper)
                                             .memoryStore(memoryStore)
-                                            .saveMemoryAfterSessionEnd(true)
+                                            .memoryExtractionMode(MemoryExtractionMode.INLINE)
                                             .build()))
                 .build()
                 .registerToolbox(toolbox);
@@ -169,7 +179,84 @@ class AgentMemoryExtensionTest {
             }
             assertTrue(response2.getData().message().contains("sunny"));
         }
+        assertFalse(memoryStore.memories.get(new InMemoryMemStore.Key(MemoryScope.ENTITY, "ss")).isEmpty());
+    }
 
+    @Test
+    @SneakyThrows
+    void testOutOfBandExtraction(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(10, "ome", getClass());
+        final var objectMapper = JsonUtils.createMapper();
+        final var toolbox = new TestToolBox("Santanu");
+        final var httpClient = new OkHttpClient.Builder()
+                .build();
+        final var model = new SimpleOpenAIModel<>(
+                "global:LLM_GLOBAL_GPT_4O_PRD",
+                SimpleOpenAIAzure.builder()
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(objectMapper)
+                        .clientAdapter(new OkHttpClientAdapter(httpClient))
+                        .build(),
+                objectMapper
+        );
+
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
+        final var memoryStore = new InMemoryMemStore();
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                               .mapper(objectMapper)
+                               .model(model)
+                               .modelSettings(ModelSettings.builder()
+                                                      .temperature(0f)
+                                                      .seed(42)
+                                                      .parallelToolCalls(false)
+                                                      .build())
+                               .executorService(Executors.newFixedThreadPool(2))
+                               .build())
+                .extensions(List.of(AgentMemoryExtension.builder()
+                                            .objectMapper(objectMapper)
+                                            .memoryStore(memoryStore)
+                                            .memoryExtractionMode(MemoryExtractionMode.OUT_OF_BAND)
+                                            .build()))
+                .build()
+                .registerToolbox(toolbox);
+        {
+
+
+            final var response = agent.execute(
+                    AgentInput.<UserInput>builder()
+                            .request(new UserInput("Hi"))
+                            .requestMetadata(requestMetadata)
+                            .build());
+            log.info("Agent response: {}", response.getData().message());
+        }
+
+        Awaitility.await()
+                .pollDelay(Duration.ofSeconds(1))
+                .atMost(Duration.ofMinutes(1))
+                .until(() -> memoryStore.memories.get(new InMemoryMemStore.Key(MemoryScope.ENTITY, "ss")) != null);
+
+        {
+            final var response2 = agent.execute(
+                    AgentInput.<UserInput>builder()
+                            .request(new UserInput("How is the weather here?"))
+                            .requestMetadata(requestMetadata)
+                            .build());
+            log.info("Second call: {}", response2.getData());
+            if (log.isTraceEnabled()) {
+                log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
+                        .writeValueAsString(response2.getAllMessages()));
+            }
+            assertNotNull(response2.getData());
+            assertTrue(response2.getData().message().contains("sunny"));
+        }
     }
 
     /**

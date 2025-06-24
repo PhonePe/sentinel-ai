@@ -1,0 +1,28 @@
+{
+  "id" : "chatcmpl-Blv69675mQPAA3bfZLuG15iEF72vv",
+  "object" : "chat.completion",
+  "created" : 1750760601,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_57db37749c",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "{\"generatedMemory\":[{\"content\":\"The user has a userId of 'ss'.\",\"name\":\"UserId\",\"reusabilityScore\":8,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"user\",\"identity\"],\"type\":\"SEMANTIC\"},{\"content\":\"The current sessionId is 's1'.\",\"name\":\"SessionId\",\"reusabilityScore\":5,\"scope\":\"AGENT\",\"scopeId\":\"simple-agent\",\"topics\":[\"session\"],\"type\":\"SEMANTIC\"}]}"
+    },
+    "finish_reason" : "stop"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1263,
+    "completion_tokens" : 100,
+    "total_tokens" : 1363,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+}

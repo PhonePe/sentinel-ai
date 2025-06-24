@@ -3,10 +3,7 @@ package configuredagents.capabilities.impl;
 import configuredagents.ConfiguredAgent;
 import configuredagents.capabilities.AgentCapability;
 import configuredagents.capabilities.AgentCapabilityVisitor;
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import lombok.Value;
+import lombok.*;
 import lombok.extern.jackson.Jacksonized;
 
 import java.util.Map;
@@ -27,7 +24,7 @@ public class AgentRemoteHttpCallCapability extends AgentCapability {
 
     @Builder
     @Jacksonized
-    public AgentRemoteHttpCallCapability(Map<String, Set<String>> selectedRemoteTools) {
+    public AgentRemoteHttpCallCapability(@NonNull Map<String, Set<String>> selectedRemoteTools) {
         super(Type.REMOTE_HTTP_CALLS);
         this.selectedRemoteTools = selectedRemoteTools;
     }

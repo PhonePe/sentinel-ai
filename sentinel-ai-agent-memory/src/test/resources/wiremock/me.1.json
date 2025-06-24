@@ -1,35 +1,28 @@
 {
-  "id" : "chatcmpl-BHqpfWSDMPja9IC4RPnoHF3PHH6sP",
+  "id" : "chatcmpl-Blu1Vc4yj1KeiHVSBKtvp7CE7T37l",
   "object" : "chat.completion",
-  "created" : 1743594363,
-  "model" : "gpt-4o-2024-08-06",
-  "system_fingerprint" : "fp_b705f0c291",
+  "created" : 1750756469,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_57db37749c",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
-      "tool_calls" : [ {
-        "id" : "call_8IepuDhsoeVG2fOomyyZNFlo",
-        "type" : "function",
-        "function" : {
-          "name" : "simple_agent_get_name",
-          "arguments" : "{}"
-        }
-      } ]
+      "content" : "{\"output\":{\"message\":\"Hello! How can I assist you today?\",\"username\":\"\"},\"memoryOutput\":{\"generatedMemory\":[]}}"
     },
-    "finish_reason" : "tool_calls"
+    "finish_reason" : "stop"
   } ],
   "usage" : {
-    "prompt_tokens" : 1449,
-    "completion_tokens" : 13,
-    "total_tokens" : 1462,
+    "prompt_tokens" : 1305,
+    "completion_tokens" : 32,
+    "total_tokens" : 1337,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 1280
+      "cached_tokens" : 0
     }
   }
 }

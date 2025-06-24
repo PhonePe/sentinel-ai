@@ -1,28 +1,28 @@
 {
-  "id" : "chatcmpl-BHqpmUMnYVDSYXNHm6A7A1tPDgp01",
+  "id" : "chatcmpl-Blu1hj2r2d2S6rkcegZyTFwi1QofZ",
   "object" : "chat.completion",
-  "created" : 1743594370,
-  "model" : "gpt-4o-2024-08-06",
-  "system_fingerprint" : "fp_b705f0c291",
+  "created" : 1750756481,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_57db37749c",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
-      "content" : "{\"output\":{\"message\":\"Hello Santanu! The weather in Bangalore today is sunny. Enjoy your day!\",\"username\":\"Santanu\"},\"memoryOutput\":{\"globalMemory\":[],\"sessionId\":\"s1\",\"sessionMemories\":[],\"userId\":\"ss\",\"userMemories\":[]}}"
+      "content" : "{\"output\":{\"message\":\"Hello Santanu! The weather in Bangalore today is sunny. If you have any other questions or need assistance, feel free to ask!\",\"username\":\"Santanu\"},\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"Santanu is located in Bangalore.\",\"name\":\"UserLocation\",\"reusabilityScore\":8,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"location\",\"user\"],\"type\":\"SEMANTIC\"}]}}"
     },
     "finish_reason" : "stop"
   } ],
   "usage" : {
-    "prompt_tokens" : 1582,
-    "completion_tokens" : 62,
-    "total_tokens" : 1644,
+    "prompt_tokens" : 1431,
+    "completion_tokens" : 97,
+    "total_tokens" : 1528,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 0
+      "cached_tokens" : 1152
     }
   }
 }
