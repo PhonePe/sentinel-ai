@@ -67,7 +67,7 @@ public class AgentRegistry implements AgentExtension {
         return agentSource.save(agentId, fixedConfig);
     }
 
-    @Tool("Get agent metadata")
+    @Tool("Get agent metadata. Use this to get agent id, name, description, input and output schema etc")
     public ExposedAgentMetadata getAgentMetadata(
             @JsonPropertyDescription("ID of the agent to get metadata for") String agentId) {
         return agentSource.read(agentId)
@@ -79,7 +79,7 @@ public class AgentRegistry implements AgentExtension {
                 .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
     }
 
-    @Tool("Invoke an agent with input")
+    @Tool("Invoke an agent with input in the schema as defined in the agent metadata")
     public JsonNode invokeAgent(
             AgentRunContext<JsonNode> context,
             @JsonPropertyDescription("ID of the agent to be invoked") String agentId,

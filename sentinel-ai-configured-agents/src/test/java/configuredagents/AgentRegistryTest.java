@@ -22,6 +22,9 @@ import com.phonepe.sentinelai.toolbox.remotehttp.templating.TemplatizedHttpTool;
 import configuredagents.capabilities.AgentCapabilities;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
+import io.modelcontextprotocol.client.McpClient;
+import io.modelcontextprotocol.client.transport.ServerParameters;
+import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Singular;
@@ -33,10 +36,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -69,7 +69,7 @@ class AgentRegistryTest {
 
     @Test
     @SneakyThrows
-    void test(WireMockRuntimeInfo wiremock) {
+    void testHttp(WireMockRuntimeInfo wiremock) {
         TestUtils.setupMocks(5, "me", getClass());
 
         stubFor(get(urlEqualTo("/api/v1/weather/Bangalore"))
@@ -113,7 +113,7 @@ class AgentRegistryTest {
                                                                       "/api/v1/weather/${location}")).build())
                                             .build()));
         final var agentFactory = ConfiguredAgentFactory.builder()
-                .httpToolboxFactory(new HttpToolboxFactory<>(okHttpClient,
+                .httpToolboxFactory(new HttpToolboxFactory(okHttpClient,
                                                              objectMapper,
                                                              toolSource,
                                                              upstream -> new UpstreamResolver() {
@@ -184,6 +184,102 @@ class AgentRegistryTest {
         log.info("Agent response: {}", objectMapper.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(response.getData()));
         assertTrue(response.getData().matches(".*[sS]unny.*"));
+    }
+
+    @Test
+    @SneakyThrows
+    void testMCP(WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(5, "mc", getClass());
+
+        final var agentSource = new InMemoryAgentConfigurationSource();
+        final var objectMapper = JsonUtils.createMapper();
+        final var okHttpClient = new OkHttpClient.Builder()
+                .callTimeout(Duration.ofSeconds(180))
+                .connectTimeout(Duration.ofSeconds(120))
+                .readTimeout(Duration.ofSeconds(180))
+                .writeTimeout(Duration.ofSeconds(120))
+                .build();
+        final var params = ServerParameters.builder("npx")
+                .args("-y", "@modelcontextprotocol/server-everything")
+                .build();
+        final var transport = new StdioClientTransport(params);
+
+        final var mcpClient = McpClient.sync(transport)
+                .build();
+        mcpClient.initialize();
+        final var agentFactory = ConfiguredAgentFactory.builder()
+                .httpToolboxFactory(new HttpToolboxFactory(okHttpClient,
+                                                             objectMapper,
+                                                             new InMemoryHttpToolSource(),
+                                                             upstream -> new UpstreamResolver() {
+                                                                 @Override
+                                                                 public String resolve(String upstream) {
+                                                                     return wiremock.getHttpBaseUrl();
+                                                                 }
+                                                             }))
+                .mcpToolboxFactory(MCPToolBoxFactory.builder()
+                                           .objectMapper(objectMapper)
+                                           .clientProvider(upstream -> {
+                                                  if (upstream.equals("mcp")) {
+                                                    return Optional.of(mcpClient);
+                                                  }
+                                                  return Optional.empty();
+                                           })
+                                           .build())
+                .build();
+        final var registry = AgentRegistry.builder()
+                .agentSource(agentSource)
+                .agentFactory(agentFactory::createAgent)
+                .build();
+
+        // Let's create weather agent configuration
+
+        final var mathAgentConfig = AgentConfiguration.builder()
+                .agentName("Math Agent")
+                .description("Provides simple math operations.")
+                .prompt("Respond with the answer for provided query.")
+                .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("mcp_add"))))
+                .build();
+        log.info("Math agent id: {}",
+                 registry.configureAgent(mathAgentConfig)
+                         .map(AgentMetadata::getId)
+                         .orElseThrow());
+
+        final var model = new SimpleOpenAIModel<>(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(objectMapper)
+                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                        .build(),
+                objectMapper
+        );
+
+        final var setup = AgentSetup.builder()
+                .mapper(objectMapper)
+                .model(model)
+                .modelSettings(ModelSettings.builder()
+                                       .temperature(0f)
+                                       .seed(0)
+                                       .parallelToolCalls(false)
+                                       .build())
+                .build();
+
+        final var topAgent = PlannerAgent.builder()
+                .setup(setup)
+                .extension(registry)
+                .build();
+        final var response = topAgent.executeAsync(AgentInput.<String>builder()
+                                                           .request("What is the sum of 3 and 6?")
+                                                           .build())
+                .join();
+        log.info("Agent response: {}", objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(response.getData()));
+        assertTrue(response.getData().matches(".*9.*"));
     }
 
     @SneakyThrows

@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- *
+ * Agent configuration source that stores agent configurations in memory.
  */
 public class InMemoryAgentConfigurationSource implements AgentConfigurationSource {
 

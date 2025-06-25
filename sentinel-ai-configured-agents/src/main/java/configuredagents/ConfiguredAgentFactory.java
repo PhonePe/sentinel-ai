@@ -24,7 +24,7 @@ public class ConfiguredAgentFactory {
 
     @Builder
     public ConfiguredAgentFactory(
-            @NonNull final HttpToolboxFactory<?> httpToolboxFactory,
+            @NonNull final HttpToolboxFactory httpToolboxFactory,
             @NonNull final MCPToolBoxFactory mcpToolboxFactory) {
         this.httpToolboxFactory = new SimpleCache<>(upstream -> httpToolboxFactory.create(upstream)
                 .orElseThrow(() -> new IllegalArgumentException("No HTTP tool box found for upstream: " + upstream)));

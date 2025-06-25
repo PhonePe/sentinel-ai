@@ -7,6 +7,7 @@ import com.google.common.base.Strings;
  * This is useful when the upstream URL is not known at compile time or program startup and needs to be resolved dynamically.
  *
  */
+@FunctionalInterface
 public interface UpstreamResolver {
     String resolve(String upstream);
 
