@@ -25,6 +25,7 @@ public class HuggingFaceTokenizerModel implements TokenizerModel, AutoCloseable 
             int maxLength,
             boolean addSpecialTokens,
             boolean padding) {
+        System.setProperty("OPT_OUT_TRACKING", "true"); //DJL DIALS HOME ...
         this.modelName = Objects.requireNonNullElse(modelName,
                                                     "sentence-transformers/all-MiniLM-L6-v2");
 

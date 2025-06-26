@@ -16,7 +16,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <djl.version>0.32.0</djl.version>
+        <djl.version>0.33.0</djl.version>
     </properties>
 
     <dependencies>

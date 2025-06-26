@@ -42,6 +42,7 @@ public class HuggingfaceEmbeddingModel implements EmbeddingModel, AutoCloseable 
                 "djl://ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
 
         this.maxLength = Math.max(maxLength, MAX_LENGTH);
+        System.setProperty("OPT_OUT_TRACKING", "true"); //DJL DIALS HOME ...
 
         Criteria<String, float[]> criteria =
                 Criteria.builder()
