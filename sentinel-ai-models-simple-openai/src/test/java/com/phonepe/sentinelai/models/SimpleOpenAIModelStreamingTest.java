@@ -95,7 +95,7 @@ class SimpleOpenAIModelStreamingTest {
 
         final var httpClient = new OkHttpClient.Builder()
                 .build();
-        final var model = new SimpleOpenAIModel(
+        final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
 //                        .baseUrl("http://localhost:8080") //Wiremock recorder input: $AZURE_ENDPOINT

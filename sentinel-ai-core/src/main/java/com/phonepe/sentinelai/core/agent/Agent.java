@@ -201,7 +201,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                        SentinelError.error(ErrorType.SERIALIZATION_ERROR,
                                                                                            e)));
         }
-        log.debug("Final system prompt: {}", finalSystemPrompt);
         messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(finalSystemPrompt,
                                                                                          false,
                                                                                          null));
@@ -228,27 +227,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     return response;
                 });
     }
-
-    private AgentOutput<T> convertToAgentOutput(
-            ModelOutput modelOutput,
-            AgentSetup mergedAgentSetup) {
-        try {
-            return new AgentOutput<>(null != modelOutput.getData()
-                                     ? translateData(modelOutput, mergedAgentSetup)
-                                     : null,
-                                     modelOutput.getNewMessages(),
-                                     modelOutput.getAllMessages(),
-                                     modelOutput.getUsage(),
-                                     modelOutput.getError());
-        }
-        catch (JsonProcessingException e) {
-            log.error("Error converting model output to agent output. Error: {}", AgentUtils.rootCause(e), e);
-            return AgentOutput.error(modelOutput.getAllMessages(),
-                                     modelOutput.getUsage(),
-                                     SentinelError.error(ErrorType.JSON_ERROR, e));
-        }
-    }
-
 
     /**
      * Streaming execution. This should be used for text streaming applications like chat etc.
@@ -287,7 +265,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                        SentinelError.error(ErrorType.SERIALIZATION_ERROR,
                                                                                            e)));
         }
-        log.debug("Final system prompt: {}", finalSystemPrompt);
         messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(finalSystemPrompt,
                                                                                          false,
                                                                                          null));
@@ -321,6 +298,26 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     protected T translateData(ModelOutput modelOutput, AgentSetup mergedAgentSetup) throws JsonProcessingException {
         return mergedAgentSetup.getMapper().treeToValue(modelOutput.getData(), outputType);
+    }
+
+    private AgentOutput<T> convertToAgentOutput(
+            ModelOutput modelOutput,
+            AgentSetup mergedAgentSetup) {
+        try {
+            return new AgentOutput<>(null != modelOutput.getData()
+                                     ? translateData(modelOutput, mergedAgentSetup)
+                                     : null,
+                                     modelOutput.getNewMessages(),
+                                     modelOutput.getAllMessages(),
+                                     modelOutput.getUsage(),
+                                     modelOutput.getError());
+        }
+        catch (JsonProcessingException e) {
+            log.error("Error converting model output to agent output. Error: {}", AgentUtils.rootCause(e), e);
+            return AgentOutput.error(modelOutput.getAllMessages(),
+                                     modelOutput.getUsage(),
+                                     SentinelError.error(ErrorType.JSON_ERROR, e));
+        }
     }
 
     private String systemPrompt(
@@ -374,8 +371,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                              .setUserId(requestMetadata.getUserId())
                                              .setCustomParams(requestMetadata.getCustomParams()));
         }
-        return xmlMapper.writerWithDefaultPrettyPrinter()
-                .writeValueAsString(prompt);
+        final var generatedSystemPrompt = xmlMapper.writerWithDefaultPrettyPrinter().writeValueAsString(prompt);
+        log.debug("Final system prompt: {}", generatedSystemPrompt);
+        return generatedSystemPrompt;
 
     }
 
