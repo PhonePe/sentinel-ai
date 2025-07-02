@@ -49,11 +49,27 @@ Create the `MCPToolBox` and register the toolbox to the agent:
 
 ```java title="TestAgent.java"
 //Create and register a toolbox to the agent
-final var mcpToolBox = new MCPToolBox(mcpClient, objectMapper);
+final var mcpToolBox = new MCPToolBox("test", mcpClient, objectMapper, Set.of());
 agent.registerToolbox(mcpToolBox);
 ```
 
-This will register all the tools from the mcp server with the agent. The tools can be used as normal tools.
+This will register all the tools from the mcp server with the agent.
+
+!!!note "Toolbox Name"
+    All ToolBoxes should be given a meaningful name. This is used to generate unique ids for all the tools exposed by 
+    the MCPServer
+
+### Filtering tools from MCP server
+One of the major problems with using multiple or large MCP servers is that it will make available a lot of tools that 
+might be irrelevant to the context of the agent, but will still end up taking space in the context and tend to confuse 
+the LLM. To mitigate this, SentinelAI provides a way to filter the tools being exposed to the agent.
+
+The `MCPToolBox` constructor accepts a set of tool names which are the identifiers for the tools.
+
+```java
+//This will expose only the "echo" and "sum" tools to the LLM
+final var mcpToolBox = new MCPToolBox("test", mcpClient, objectMapper, Set.of("echo", "sum"));
+```
 
 ## Calling remote service APIs using HTTP calls
 
