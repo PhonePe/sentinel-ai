@@ -53,6 +53,11 @@ public class HttpToolBox implements ToolBox {
     }
 
     @Override
+    public String name() {
+        return AgentUtils.id(upstream);
+    }
+
+    @Override
     public Map<String, ExecutableTool> tools() {
         if (!knownTools.isEmpty()) {
             return knownTools;

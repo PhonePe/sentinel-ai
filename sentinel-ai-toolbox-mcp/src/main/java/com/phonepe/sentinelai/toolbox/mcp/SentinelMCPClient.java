@@ -14,11 +14,11 @@ import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toMap;
 
@@ -31,7 +31,7 @@ public class SentinelMCPClient implements AutoCloseable {
     private final String name;
     private final McpSyncClient mcpClient;
     private final ObjectMapper mapper;
-    private final Set<String> exposedTools;
+    private final Set<String> exposedTools = new CopyOnWriteArraySet<>();
     private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
 
     @Builder
@@ -43,52 +43,72 @@ public class SentinelMCPClient implements AutoCloseable {
         this.name = name;
         this.mcpClient = mcpClient;
         this.mapper = mapper;
-        this.exposedTools = exposedTools;
+        this.exposeTools(exposedTools);
+    }
+
+    public SentinelMCPClient exposeTools(String... toolId) {
+        exposedTools.addAll(Arrays.asList(toolId));
+        return this;
+    }
+
+    public SentinelMCPClient exposeTools(Collection<String> toolIds) {
+        exposedTools.addAll(Objects.requireNonNullElseGet(toolIds, ArrayList::new));
+        return this;
+    }
+
+    public SentinelMCPClient exposeAllTools() {
+        exposedTools.clear();
+        return this;
     }
 
     public Map<String, ExecutableTool> tools() {
-        if (!knownTools.isEmpty()) {
-            return knownTools;
-        }
-        log.debug("Loading tools from MCP server: {}", name);
-        //The read happens independently and uses putAll to load values into the map in a threadsafe manner
-        knownTools.putAll(mcpClient.listTools()
-                                  .tools()
-                                  .stream()
-                                  .filter(toolDef -> exposedTools.isEmpty() || exposedTools.contains(toolDef.name()))
-                                  .map(toolDef -> {
-                                      final var toolParams = toolDef.inputSchema();
-                                      // The following looks redundant, but it is not
-                                      // The MCP library does not populate all param names as required, openai expects
-                                      // all to be present
-                                      final var params = mapper.createObjectNode();
-                                      params.put("type", "object");
-                                      params.put("additionalProperties", false);
-                                      params.set("properties",
-                                                 mapper.valueToTree(toolParams.properties()
-                                                                            .entrySet()
-                                                                            .stream()
-                                                                            .map(this::convertParameter)
-                                                                            .collect(toMap(Pair::getFirst, Pair::getSecond))
-                                                                   ));
-                                      params.set("required",
-                                                 mapper.valueToTree(toolParams.properties().keySet()));
-                                      return new ExternalTool(ToolDefinition.builder()
-                                                                      .id(AgentUtils.id(name, toolDef.name()))
-                                                                      .name(toolDef.name())
-                                                                      .description(Objects.requireNonNullElseGet(
-                                                                              toolDef.description(),
-                                                                              toolDef::name))
-                                                                      .contextAware(false)
-                                                                      .build(),
-                                                              mapper.valueToTree(params),
-                                                              this::runTool);
+        if(knownTools.isEmpty()) {
+            log.debug("Loading tools from MCP server: {}", name);
+            //The read happens independently and uses putAll to load values into the map in a threadsafe manner
+            knownTools.putAll(mcpClient.listTools()
+                                      .tools()
+                                      .stream()
+                                      .map(toolDef -> {
+                                          final var toolParams = toolDef.inputSchema();
+                                          // The following looks redundant, but it is not
+                                          // The MCP library does not populate all param names as required, openai expects
+                                          // all to be present
+                                          final var params = mapper.createObjectNode();
+                                          params.put("type", "object");
+                                          params.put("additionalProperties", false);
+                                          params.set("properties",
+                                                     mapper.valueToTree(toolParams.properties()
+                                                                                .entrySet()
+                                                                                .stream()
+                                                                                .map(this::convertParameter)
+                                                                                .collect(toMap(Pair::getFirst,
+                                                                                               Pair::getSecond))
+                                                                       ));
+                                          params.set("required",
+                                                     mapper.valueToTree(toolParams.properties().keySet()));
+                                          return new ExternalTool(ToolDefinition.builder()
+                                                                          .id(AgentUtils.id(name, toolDef.name()))
+                                                                          .name(toolDef.name())
+                                                                          .description(Objects.requireNonNullElseGet(
+                                                                                  toolDef.description(),
+                                                                                  toolDef::name))
+                                                                          .contextAware(false)
+                                                                          .build(),
+                                                                  mapper.valueToTree(params),
+                                                                  this::runTool);
 
-                                  })
-                                  .collect(toMap(tool -> tool.getToolDefinition().getId(),
-                                                 Function.identity())));
-        log.info("Loaded {} tools from MCP server: {}", knownTools.size(), name);
-        return knownTools;
+                                      })
+                                      .collect(toMap(tool -> tool.getToolDefinition().getId(),
+                                                     Function.identity())));
+            log.info("Loaded {} tools from MCP server {}: {}", knownTools.size(), name, knownTools.keySet());
+        }
+        final var mapToReturn = exposedTools.isEmpty()
+                ? knownTools
+                                : knownTools.entrySet()
+                                        .stream()
+                                        .filter(entry -> exposedTools.contains(entry.getValue().getToolDefinition().getName()))
+                                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        return Map.copyOf(mapToReturn);
     }
 
     @NotNull

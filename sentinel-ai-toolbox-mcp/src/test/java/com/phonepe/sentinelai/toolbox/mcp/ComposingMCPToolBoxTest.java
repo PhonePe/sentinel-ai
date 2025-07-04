@@ -89,13 +89,9 @@ class ComposingMCPToolBoxTest {
                 .build();
         mcpClient.initialize();
         final var mcpToolBox = ComposingMCPToolBox.builder()
+                .objectMapper(objectMapper)
                 .build()
-                .registerMCPClient(SentinelMCPClient.builder()
-                                           .name("Test MCP")
-                                           .mcpClient(mcpClient)
-                                           .mapper(objectMapper)
-                                           .build())
-                .registerSelectedTool("test_mcp_add");
+                .registerMCP("Test MCP", mcpClient, "add");
         agent.registerToolbox(mcpToolBox);
         final var response = agent.execute(AgentInput.<String>builder()
                                                    .request("Use tool to add the number 3 and -9")

@@ -1,17 +1,15 @@
 package com.phonepe.sentinelai.toolbox.mcp;
 
-import com.google.common.base.Strings;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
+import io.modelcontextprotocol.client.McpSyncClient;
 import lombok.Builder;
 import lombok.NonNull;
-import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.function.Function;
 
 import static java.util.stream.Collectors.toUnmodifiableMap;
 
@@ -21,29 +19,58 @@ import static java.util.stream.Collectors.toUnmodifiableMap;
  */
 @Slf4j
 public class ComposingMCPToolBox implements ToolBox {
+
+    private String name;
+
+    private final ObjectMapper objectMapper;
+
     private final Map<String, SentinelMCPClient> mcpClients = new ConcurrentHashMap<>();
-    private final Set<String> selectedTools = new CopyOnWriteArraySet<>();
 
     @Builder
-    public ComposingMCPToolBox(
-            @Singular final Set<String> selectedTools,
-            @Singular final Collection<SentinelMCPClient> mcpClients) {
-        this.selectedTools.addAll(Objects.requireNonNullElseGet(selectedTools, Set::of));
-        this.mcpClients.putAll(Objects.requireNonNullElseGet(mcpClients, List::<SentinelMCPClient>of)
-                                       .stream()
-                                       .collect(toUnmodifiableMap(SentinelMCPClient::getName, Function.identity())));
+    public ComposingMCPToolBox(@NonNull ObjectMapper objectMapper, String name) {
+        this.objectMapper = objectMapper;
+        this.name = Objects.requireNonNullElseGet(
+                name,
+                () -> "composite-mcp-toolbox-%s".formatted(UUID.randomUUID()
+                                                                    .toString()));
     }
 
-    public ComposingMCPToolBox registerMCPClient(@NonNull SentinelMCPClient client) {
-        mcpClients.put(client.getName(), client);
+    /**
+     * Register an MCP client to the toolbox. Name for client will be what is set as {@link SentinelMCPClient#getName()}
+     *
+     * @param name        Name of the client
+     * @param client      The MCP client to use for communications
+     * @param exposedTool Tools exposed from the MCP server
+     * @return itself
+     */
+    public ComposingMCPToolBox registerMCP(
+            @NonNull String name,
+            @NonNull McpSyncClient client,
+            String... exposedTool) {
+        return this.registerMCP(name, client, Arrays.asList(exposedTool));
+    }
+
+    /**
+     * Register an MCP client to the toolbox. Name for client will be what is set as {@link SentinelMCPClient#getName()}
+     *
+     * @param name         Name of the client
+     * @param client       The MCP client to use for communications
+     * @param exposedTools Tools exposed from the MCP server
+     * @return itself
+     */
+    public ComposingMCPToolBox registerMCP(
+            @NonNull String name,
+            @NonNull McpSyncClient client,
+            @NonNull Collection<String> exposedTools) {
+        mcpClients.put(name,
+                       new SentinelMCPClient(name, client, objectMapper, Set.copyOf(exposedTools)));
         return this;
     }
 
-    public ComposingMCPToolBox registerSelectedTool(String toolName) {
-        if (!Strings.isNullOrEmpty(toolName)) {
-            selectedTools.add(toolName);
-        }
-        return this;
+
+    @Override
+    public String name() {
+        return name;
     }
 
     @Override
@@ -54,9 +81,9 @@ public class ComposingMCPToolBox implements ToolBox {
                                                      .flatMap(client -> client.tools()
                                                              .entrySet()
                                                              .stream())
-                                                     .filter(tool -> selectedTools.isEmpty() || selectedTools.contains(tool.getKey()))
-                                                     .collect(toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue)));
-        log.debug("Found {} tools in ComposingMCPToolBox: {}", relevantTools.size(), relevantTools.keySet());
+                                                     .collect(toUnmodifiableMap(Map.Entry::getKey,
+                                                                                Map.Entry::getValue)));
+        log.debug("Found {} tools in ComposingMCPToolBox [{}]: {}", relevantTools.size(), name, relevantTools.keySet());
         return relevantTools;
     }
 }

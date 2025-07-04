@@ -9,6 +9,7 @@ import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
@@ -274,6 +275,11 @@ class AgentMemoryExtensionTest {
         @Tool("Get  location for user")
         public String getLocationForUser(@JsonPropertyDescription("Name of user") final String name) {
             return name.equalsIgnoreCase("Santanu") ? "Bangalore" : "unknown";
+        }
+
+        @Override
+        public String name() {
+            return AgentUtils.id(user);
         }
     }
 }
