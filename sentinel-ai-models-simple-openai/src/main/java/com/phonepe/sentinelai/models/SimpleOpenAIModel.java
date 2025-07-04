@@ -522,7 +522,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                      new Tool.ToolFunctionDef(toolDefinition.getId(),
                                                                               toolDefinition.getDescription(),
                                                                               tool.accept(parameterMapper),
-                                                                              true));
+                                                                              toolDefinition.isStrictSchema()));
                                          })
                                          .toList());
         }

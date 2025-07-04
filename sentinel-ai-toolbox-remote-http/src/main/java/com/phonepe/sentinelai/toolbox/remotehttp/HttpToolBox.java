@@ -93,6 +93,7 @@ public class HttpToolBox implements ToolBox {
                                                       .name(toolName)
                                                       .description(tool.getDescription())
                                                       .contextAware(false)
+                                                      .strictSchema(true)
                                                       .build(),
                                               paramNodes,
                                               (toolId, arguments) -> {

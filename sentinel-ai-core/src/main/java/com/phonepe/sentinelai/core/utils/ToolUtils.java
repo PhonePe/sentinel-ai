@@ -71,6 +71,7 @@ public class ToolUtils {
                         .name(toolName)
                         .description(toolDef.value())
                         .contextAware(hasContext)
+                        .strictSchema(true)
                         .build(),
                 new ToolMethodInfo(params,
                                    method,

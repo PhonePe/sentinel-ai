@@ -62,51 +62,40 @@ public class SentinelMCPClient implements AutoCloseable {
     }
 
     public Map<String, ExecutableTool> tools() {
-        if(knownTools.isEmpty()) {
+        if (knownTools.isEmpty()) {
             log.debug("Loading tools from MCP server: {}", name);
             //The read happens independently and uses putAll to load values into the map in a threadsafe manner
             knownTools.putAll(mcpClient.listTools()
                                       .tools()
                                       .stream()
-                                      .map(toolDef -> {
-                                          final var toolParams = toolDef.inputSchema();
-                                          // The following looks redundant, but it is not
-                                          // The MCP library does not populate all param names as required, openai expects
-                                          // all to be present
-                                          final var params = mapper.createObjectNode();
-                                          params.put("type", "object");
-                                          params.put("additionalProperties", false);
-                                          params.set("properties",
-                                                     mapper.valueToTree(toolParams.properties()
-                                                                                .entrySet()
-                                                                                .stream()
-                                                                                .map(this::convertParameter)
-                                                                                .collect(toMap(Pair::getFirst,
-                                                                                               Pair::getSecond))
-                                                                       ));
-                                          params.set("required",
-                                                     mapper.valueToTree(toolParams.properties().keySet()));
-                                          return new ExternalTool(ToolDefinition.builder()
-                                                                          .id(AgentUtils.id(name, toolDef.name()))
-                                                                          .name(toolDef.name())
-                                                                          .description(Objects.requireNonNullElseGet(
-                                                                                  toolDef.description(),
-                                                                                  toolDef::name))
-                                                                          .contextAware(false)
-                                                                          .build(),
-                                                                  mapper.valueToTree(params),
-                                                                  this::runTool);
-
-                                      })
+                                      .map(toolDef -> new ExternalTool(
+                                              ToolDefinition.builder()
+                                                      .id(AgentUtils.id(name, toolDef.name()))
+                                                      .name(toolDef.name())
+                                                      .description(
+                                                              Objects.requireNonNullElseGet(
+                                                                      toolDef.description(),
+                                                                      toolDef::name))
+                                                      .contextAware(false)
+                                                      .strictSchema(false)
+                                                      // IMPORTANT::Strict means openai expects all object params to be
+                                                      // present in the required field. This is not something all MCP
+                                                      // servers do properly. So for now we are setting strict false
+                                                      // for tools obtained from mcp servers
+                                                      .build(),
+                                              mapper.valueToTree(toolDef.inputSchema()),
+                                              this::runTool))
                                       .collect(toMap(tool -> tool.getToolDefinition().getId(),
                                                      Function.identity())));
             log.info("Loaded {} tools from MCP server {}: {}", knownTools.size(), name, knownTools.keySet());
         }
         final var mapToReturn = exposedTools.isEmpty()
-                ? knownTools
+                                ? knownTools
                                 : knownTools.entrySet()
                                         .stream()
-                                        .filter(entry -> exposedTools.contains(entry.getValue().getToolDefinition().getName()))
+                                        .filter(entry -> exposedTools.contains(entry.getValue()
+                                                                                       .getToolDefinition()
+                                                                                       .getName()))
                                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         return Map.copyOf(mapToReturn);
     }
