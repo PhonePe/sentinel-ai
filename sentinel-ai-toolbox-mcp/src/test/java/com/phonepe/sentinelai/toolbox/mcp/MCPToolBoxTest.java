@@ -86,7 +86,7 @@ class MCPToolBoxTest {
         final var mcpClient = McpClient.sync(transport)
                 .build();
         mcpClient.initialize();
-        final var mcpToolBox = new MCPToolBox("Test MCP", mcpClient, objectMapper, Set.of("add"));
+        final var mcpToolBox = new MCPToolBox("Test MCP", mcpClient, objectMapper, Set.of());
         agent.registerToolbox(mcpToolBox);
         final var response = agent.execute(AgentInput.<String>builder()
                                                    .request("Use tool to add the number 3 and -9")
