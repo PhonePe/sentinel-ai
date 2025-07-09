@@ -1,103 +1,71 @@
 package com.phonepe.sentinelai.toolbox.mcp;
 
-import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
-import com.github.tomakehurst.wiremock.junit5.WireMockTest;
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentInput;
-import com.phonepe.sentinelai.core.agent.AgentSetup;
-import com.phonepe.sentinelai.core.model.ModelSettings;
-import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.core.utils.TestUtils;
-import com.phonepe.sentinelai.models.SimpleOpenAIModel;
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.openai.SimpleOpenAIAzure;
-import io.modelcontextprotocol.client.McpClient;
-import io.modelcontextprotocol.client.transport.ServerParameters;
-import io.modelcontextprotocol.client.transport.StdioClientTransport;
-import lombok.NonNull;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPConfiguration;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPJsonReader;
 import lombok.SneakyThrows;
-import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.util.List;
-import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Objects;
 
-import static com.phonepe.sentinelai.core.utils.TestUtils.assertNoFailedToolCalls;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
- *
+ * Tests {@link ComposingMCPToolBox}
  */
-@WireMockTest
+@Testcontainers
 class ComposingMCPToolBoxTest {
-    private static class CompositeMCPTestAgent extends Agent<String, String, CompositeMCPTestAgent> {
 
-        public CompositeMCPTestAgent(
-                @NonNull AgentSetup setup,
-                Map<String, ExecutableTool> knownTools) {
-            super(String.class,
-                  """
-                          Respond to user's queries. Use the provided tools to get the correct information.
-                          """, setup, List.of(), knownTools);
-        }
+    @Container
+    static GenericContainer<?> container = new GenericContainer<>("tzolov/mcp-everything-server:v2")
+            .withExposedPorts(3001)
+            .withCommand("node","dist/index.js","sse");
 
-        @Override
-        public String name() {
-            return "composite-mcp-test-agent";
-        }
+    @Test
+    void testBasicCreation() {
+        final var objectMapper = JsonUtils.createMapper();
+        final var composingMCPToolBox = ComposingMCPToolBox.builder()
+                .name("Test Composing MCP")
+                .objectMapper(objectMapper)
+                .mcpJsonPath(Objects.requireNonNull(getClass().getResource("/mcp.json")).getPath())
+                .build();
+        assertNotNull(composingMCPToolBox);
+
+        assertFalse(composingMCPToolBox.tools().isEmpty());
+        assertEquals(8, composingMCPToolBox.tools().size());
+        composingMCPToolBox.exposeTools("test_mcp", "echo");
+        assertEquals(1, composingMCPToolBox.tools().size());
+        composingMCPToolBox.exposeAllTools("test_mcp");
+        assertEquals(8, composingMCPToolBox.tools().size());
     }
 
     @Test
     @SneakyThrows
-    void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(2, "tc", getClass());
-        final var httpClient = new OkHttpClient.Builder()
-                .build();
+    void testSSE() {
         final var objectMapper = JsonUtils.createMapper();
-        final var model = new SimpleOpenAIModel<>(
-                "gpt-4o",
-                SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
-                        .apiVersion("2024-10-21")
-                        .objectMapper(objectMapper)
-                        .clientAdapter(new OkHttpClientAdapter(httpClient))
-                        .build(),
-                objectMapper
-        );
-
-        final var agent = new CompositeMCPTestAgent(
-                AgentSetup.builder()
-                        .mapper(objectMapper)
-                        .model(model)
-                        .modelSettings(ModelSettings.builder()
-                                               .temperature(0.1f)
-                                               .seed(42)
-                                               .build())
-                        .build(),
-                Map.of() // No tools for now
-        );
-        final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything")
-                .build();
-        final var transport = new StdioClientTransport(params);
-
-        final var mcpClient = McpClient.sync(transport)
-                .build();
-        mcpClient.initialize();
-        final var mcpToolBox = ComposingMCPToolBox.builder()
+        final var composingMCPToolBox = ComposingMCPToolBox.builder()
+                .name("Test Composing MCP")
                 .objectMapper(objectMapper)
-                .build()
-                .registerMCP("Test MCP", mcpClient, "add");
-        agent.registerToolbox(mcpToolBox);
-        final var response = agent.execute(AgentInput.<String>builder()
-                                                   .request("Use tool to add the number 3 and -9")
-                                                   .build());
-        assertTrue(response.getData().contains("-6"));
-        assertNoFailedToolCalls(response);
+                .build();
+        assertNotNull(composingMCPToolBox);
+        assertEquals("Test Composing MCP", composingMCPToolBox.name());
+        assertTrue(composingMCPToolBox.tools().isEmpty());
+        final var payload = Files.readString(Path.of(Objects.requireNonNull(getClass().getResource("/mcp-sse.json"))
+                                                             .getPath())).formatted(container.getMappedPort(3001));
+        MCPJsonReader.loadServers(objectMapper.readValue(payload, MCPConfiguration.class),
+                               composingMCPToolBox,
+                               objectMapper);
+        assertFalse(composingMCPToolBox.tools().isEmpty());
+        assertTrue(composingMCPToolBox.tools().size() > 1);
+        composingMCPToolBox.exposeTools("test_mcp", "echo");
+        assertEquals(1, composingMCPToolBox.tools().size());
+        composingMCPToolBox.exposeAllTools("test_mcp");
+        assertTrue(composingMCPToolBox.tools().size() > 1);
     }
 
 }
