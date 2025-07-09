@@ -1,4 +1,4 @@
-# Accessing functionality from remote services
+# Making HTTP Calls to Remote Services
 
 An Agent by itself does very little. Most of the power comes from it's ability to invoke tools or a set of tools to
 perform a task. SentinelAI supports tool calling as a standard feature as seen in the section on [Tools](tools.md).
@@ -12,72 +12,12 @@ ways in which an agent written using SentinelAI can access functionality provide
     If you have not done already, please go through the concept of [ToolBoxes](tools.md#using-toolbox){:target="_blank"}
     and how to register them to an agent.
 
-## Using MCP servers
-
-SentinelAI supports using MCP servers to register tools. This is useful when you want to create a library of tools
-and host them centrally to be used by multiple agents without needing to write them. Right now sentinel supports _only_
-tool calls from mcp servers. (MCP servers also support resources, system prompt templates etc. You can find more details
-at [https://modelcontextprotocol.io](https://modelcontextprotocol.io){:target="_blank"}).
-
-Sentinel provides a special toolbox you can use to register the mcp server. The toolbox can be added to your project
-using the following dependency:
-
-```xml
-
-<dependency>
-    <groupId>com.phonepe.sentinel-ai</groupId>
-    <artifactId>sentinel-ai-toolbox-mcp</artifactId>
-    <version>${sentinel.version}</version>
-</dependency>
-```
-
-Then create the MCP client:
-
-```java title="TestAgent.java"
-// Initialize the MCP client
-final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything")
-                .build();
-final var transport = new StdioClientTransport(params);
-
-final var mcpClient = McpClient.sync(transport)
-        .build();
-mcpClient.initialize();
-```
-
-Create the `MCPToolBox` and register the toolbox to the agent:
-
-```java title="TestAgent.java"
-//Create and register a toolbox to the agent
-final var mcpToolBox = new MCPToolBox("test", mcpClient, objectMapper, Set.of());
-agent.registerToolbox(mcpToolBox);
-```
-
-This will register all the tools from the mcp server with the agent.
-
-!!!note "Toolbox Name"
-    All ToolBoxes should be given a meaningful name. This is used to generate unique ids for all the tools exposed by 
-    the MCPServer
-
-### Filtering tools from MCP server
-One of the major problems with using multiple or large MCP servers is that it will make available a lot of tools that 
-might be irrelevant to the context of the agent, but will still end up taking space in the context and tend to confuse 
-the LLM. To mitigate this, SentinelAI provides a way to filter the tools being exposed to the agent.
-
-The `MCPToolBox` constructor accepts a set of tool names which are the identifiers for the tools.
-
-```java
-//This will expose only the "echo" and "sum" tools to the LLM
-final var mcpToolBox = new MCPToolBox("test", mcpClient, objectMapper, Set.of("echo", "sum"));
-```
-
-## Calling remote service APIs using HTTP calls
-
 While MCP servers provide a quick way to talk to services, one of the major problems with them is that they expose a
-large number of tools to the agent, which can be overwhelming for the LLM. SentinelAI provides a way to call remote
-service APIs using HTTP calls directly from the agent using the `HttpToolBox`.
+large number of tools to the agent, which can be overwhelming for the LLM and additional maintenance headache for 
+service providers etc. SentinelAI provides a way to call remote service APIs using HTTP calls directly from the agent
+using the `HttpToolBox`.
 
-### Nomenclature
+## Nomenclature
 
 We use the following nomenclature in rest of this section:
 
@@ -88,7 +28,7 @@ We use the following nomenclature in rest of this section:
 - **Template** - An object that contains the type and the template for a component of the specification.
   For example: { type: TEXT_SUBSTITUTION, content: "/apis/v1/location/${user}"}.
 
-### Getting started with `HttpToolBox`
+## Getting started with `HttpToolBox`
 
 HttpToolBox is implemented in a separate module called `sentinel-ai-toolbox-remote-http`. You can add it to your project
 using the following dependency:
@@ -110,7 +50,7 @@ A single HTTP toolbox represents calls to a single upstream service. This approa
 * Discovery of the actual service endpoint can be different for upstream to upstream if needed, especially for
   containerized/hybrid environments.
 
-### HTTP Tool Definitions
+## HTTP Tool Definitions
 
 Sentinel provides a convenient way to define remote HTTP calls as simple tools that are exposed to the LLM. The
 complexity of the path, body, headers are completely abstracted out. The LLM sees only simple functions and native
@@ -120,7 +60,7 @@ the following requirements:
 - **metadata** - Consisting of name, description and parameters for the tool
 - **template** - consisting of the HTTP method, path, headers and body templates
 
-#### HTTP Tool Metadata
+### HTTP Tool Metadata
 
 | **Property** | **Type**                             | **Description**                                                                           |
 |--------------|--------------------------------------|-------------------------------------------------------------------------------------------|
@@ -156,14 +96,15 @@ The following parameter types are supported:
 - `SHORT_ARRAY`
 - `CHARACTER_ARRAY`
 
-#### Response Transformation
-The HTTP toolbox supports transformation of the response of the API call. This is currently supported only for JSON 
-responses. Json transformation is achieved using the powerful [JOLT](https://github.com/bazaarvoice/jolt){:target="_blank"} transformation library.
+### Response Transformation
+
+The HTTP toolbox supports transformation of the response of the API call. This is currently supported only for JSON
+responses. Json transformation is achieved using the powerful [JOLT](https://github.com/bazaarvoice/jolt){:target="_ blank"} transformation library.
 
 !!!tip "Testing out JOLT Transformations"
     You can test out JOLT transformations using the [JOLT Transform Tool](https://jolt-demo.appspot.com/){:target="_blank"}.
 
-#### HTTP Tool Template
+### HTTP Tool Template
 
 The template for the HTTP tool is a simple object that contains the following properties:
 
@@ -196,23 +137,23 @@ final var tool = TemplatizedHttpTool.builder()
                                   "Client-ID", List.of(Template.text("Agent-Vinod"))))
                           .build())
         .responseTransformations(ResponseTransformerConfig.builder() //(Optional) Response transformation config
-                                     .type(ResponseTransformerConfig.Type.JOLT)
-                                     .config("""
-                                             [
-                                               {
-                                                  "operation": "shift",
-                                                  "spec": {
-                                                     "location": "userLocation"
-                                                  }
-                                               }
-                                             ]
-                                             """)
-        .build();
+                                         .type(ResponseTransformerConfig.Type.JOLT)
+                                         .config("""
+                                                         [
+                                                           {
+                                                              "operation": "shift",
+                                                              "spec": {
+                                                                 "location": "userLocation"
+                                                              }
+                                                           }
+                                                         ]
+                                                         """)
+                                         .build();
 ```
 
 The above code uses the `Template.text()` and `Template.textSubstitutor()` methods for simplicity.
 
-#### HTTP Tool Source
+### HTTP Tool Source
 
 A `ToolSource` implementation is used to store the definition of the HttpTool instances for the upstreams. A single
 `ToolSource` can handle all definitions for all upstreams. SentinelAI provides a default implementation called
@@ -234,7 +175,7 @@ Parameters:
 | mapper        | ObjectMapper             | No           | Jackson ObjectMapper for JSON serialization. If null, a default mapper is created. Recommended to send                                                                              |
 | expander      | HttpCallTemplateExpander | No           | Expander used to convert templates to HTTP call specs. If null, a default expander is created. Recommended to not send unless a new template engine is being implemented by client. |
 
-#### Bulk loading predefined tools
+### Bulk loading predefined tools
 
 SentinelAI provides a utility class called `HttpToolSourceReader` to read the tool definitions from a file and load them
 into a ToolSource.
@@ -245,10 +186,12 @@ To do this, use the following code:
 //To read from file
 HttpToolReaders.loadToolsFromYAML(Paths.get("/PATH/TO/YAML/FILE"),toolsource);
 //To read from bytes
-HttpToolReaders.loadToolsFromYAMLContent(Files.readAllBytes(Paths.get("/PATH/TO/YAML/FILE")),toolsource);
+        HttpToolReaders.
+
+loadToolsFromYAMLContent(Files.readAllBytes(Paths.get("/PATH/TO/YAML/FILE")),toolsource);
 ```
 
-#### Remote HTTP Tool Definition YAML file format
+### Remote HTTP Tool Definition YAML file format
 
 The remote HTTP tool definitions are stored in a YAML file format. The file contains a map of upstream names to a list
 of tools. Each tool has metadata and a definition that includes the HTTP method, path, headers, and body templates.

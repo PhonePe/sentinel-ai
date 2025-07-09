@@ -2,4 +2,5 @@ nav:
   - index.md
   - basics.md
   - tools.md
+  - using-mcp-servers.md
   - calling-remote-services.md

@@ -119,12 +119,17 @@ public class TestAgent extends Agent<String, String, TestAgent> {
 As seen in the example, tools can be read and registered directly during agent creation, or by calling the
 `registerTools` method.
 
-### Using ToolBox
+## Using ToolBox
 `ToolBox` is a very simple interface to define a set of tools that are related to each other. The tools can be registered
 with the agent all together by registering the toolbox using the `registerToolbox` methods.
 
 ```java title="TestToolBox.java"
 public class TestToolBox implements ToolBox {
+    @Override
+    public String name() {
+        return "test-toolbox";
+    }
+    
     @Tool("Get appropriate greeting for the user")
     public String greet(@JsonProperty(required = true)
                         @JsonPropertyDescription("Name of the user")
