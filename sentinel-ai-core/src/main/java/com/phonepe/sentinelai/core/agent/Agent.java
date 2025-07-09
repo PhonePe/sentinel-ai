@@ -71,6 +71,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final String systemPrompt;
     private final AgentSetup setup;
     private final List<AgentExtension> extensions;
+    private final ToolRunApprovalSeeker<R,T,A> toolRunApprovalSeeker;
     private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
     private final XmlMapper xmlMapper = new XmlMapper();
     private final ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> requestCompleted =
@@ -79,19 +80,30 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     @SuppressWarnings("unchecked")
     private final A self = (A) this;
 
-    @SneakyThrows
     protected Agent(
             @NonNull Class<T> outputType,
             @NonNull String systemPrompt,
             @NonNull AgentSetup setup,
             List<AgentExtension> extensions,
             Map<String, ExecutableTool> knownTools) {
+        this(outputType, systemPrompt, setup, extensions, knownTools, new ApproveAllToolRuns<>());
+    }
+
+    @SneakyThrows
+    protected Agent(
+            @NonNull Class<T> outputType,
+            @NonNull String systemPrompt,
+            @NonNull AgentSetup setup,
+            List<AgentExtension> extensions,
+            Map<String, ExecutableTool> knownTools,
+            ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(systemPrompt), "Please provide a valid system prompt");
 
         this.outputType = outputType;
         this.systemPrompt = systemPrompt;
         this.setup = setup;
         this.extensions = Objects.requireNonNullElseGet(extensions, List::of);
+        this.toolRunApprovalSeeker = Objects.requireNonNullElseGet(toolRunApprovalSeeker, ApproveAllToolRuns::new);
         xmlMapper.registerModule(new JavaTimeModule());
         xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
         xmlMapper.configure(ToXmlGenerator.Feature.WRITE_XML_DECLARATION, true);
@@ -400,6 +412,15 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
             ToolCall toolCall) {
+        if (!toolRunApprovalSeeker.seekApproval(self, context, toolCall)) {
+            log.info("Tool call {} for tool {} was not approved by the user", toolCall.getToolCallId(),
+                     toolCall.getToolName());
+            return new ToolCallResponse(toolCall.getToolCallId(),
+                                        toolCall.getToolName(),
+                                        ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                        "Tool call was not approved by the user",
+                                        LocalDateTime.now());
+        }
         context.getAgentSetup()
                 .getEventBus()
                 .notify(new ToolCalledAgentEvent(name(),

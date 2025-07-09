@@ -10,6 +10,7 @@ import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
+import com.phonepe.sentinelai.core.tools.ToolRunApprovalSeeker;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +42,15 @@ class AgentTest {
                 @NonNull AgentSetup setup,
                 List<AgentExtension> extensions,
                 Map<String, ExecutableTool> knownTools) {
-            super(String.class, "This is irrelevant", setup, extensions, knownTools);
+            this(setup, extensions, knownTools, new ApproveAllToolRuns<>());
+        }
+
+        public TestAgent(
+                @NonNull AgentSetup setup,
+                List<AgentExtension> extensions,
+                Map<String, ExecutableTool> knownTools,
+                ToolRunApprovalSeeker<String, String, TestAgent> toolRunApprovalSeeker) {
+            super(String.class, "This is irrelevant", setup, extensions, knownTools, toolRunApprovalSeeker);
         }
 
         @Override
@@ -134,6 +143,67 @@ class AgentTest {
                                         .userId("ss").build())
                         .build());
         assertTrue(response.getData().contains("Santanu"));
+    }
+
+    @Test
+    void testToolCallNoApproval() {
+        final var objectMapper = JsonUtils.createMapper();
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                                                    .model(new Model() {
+                                                        @Override
+                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
+                                                                AgentRunContext<R> context,
+                                                                JsonNode responseSchema,
+                                                                Map<String, ExecutableTool> tools,
+                                                                ToolRunner<R> toolRunner,
+                                                                List<AgentExtension> extensions,
+                                                                A agent) {
+                                                            return CompletableFuture.supplyAsync(() -> {
+                                                                assertTrue(tools.containsKey("test_agent_get_name"));
+                                                                final var response = toolRunner.runTool(
+                                                                        context,
+                                                                        tools,
+                                                                        new ToolCall("TC1",
+                                                                                     "test_agent_get_name",
+                                                                                     "{}"));
+                                                                assertFalse(response.isSuccess());
+                                                                assertEquals("TC1", response.getToolCallId());
+                                                                final var messages =
+                                                                        new ArrayList<>(context.getOldMessages());
+                                                                final var message =
+                                                                        new ToolCallResponse(response.getToolCallId(),
+                                                                                             response.getToolName(),
+                                                                                             response.getErrorType(),
+                                                                                             response.getResponse(),
+                                                                                             LocalDateTime.now());
+                                                                messages.add(message);
+                                                                return ModelOutput.success(objectMapper.createObjectNode()
+                                                                                                   .textNode("Tool call not approved"),
+                                                                                           List.of(message),
+                                                                                           messages,
+                                                                                           context.getModelUsageStats());
+                                                            });
+                                                        }
+                                                    })
+                                                    .modelSettings(ModelSettings.builder()
+                                                                           .build())
+                                                    .mapper(objectMapper)
+                                                    .build(),
+                                            List.of(),
+                                            Map.of(),
+                                            (agent, runContext, toolCall) -> {
+                                                return !"test_agent_get_name".equals(toolCall.getToolName());
+                                            }
+        );
+        final var response = textAgent.execute(
+                AgentInput.<String>builder()
+                        .request("Hi")
+                        .requestMetadata(
+                                AgentRequestMetadata.builder()
+                                        .sessionId("s1")
+                                        .userId("ss").build())
+                        .build());
+        assertTrue(response.getData().equals("Tool call not approved"));
     }
 
     @Test
