@@ -12,7 +12,7 @@ import java.util.List;
  *
  */
 @Value
-@Builder
+@Builder(builderClassName = "AgentMemoryOutputBuilder")
 @Jacksonized
 @JsonClassDescription("Output for memory extraction from conversations by the model")
 public class AgentMemoryOutput {
@@ -20,4 +20,8 @@ public class AgentMemoryOutput {
             List of memories extracted by the LLM from the conversation. These memories will be saved and retrieved by later by the agent to gain more intelligence over time.
             """)
     List<GeneratedMemoryUnit> generatedMemory;
+
+    public static class AgentMemoryOutputBuilder {
+        public AgentMemoryOutputBuilder() {}
+    }
 }
