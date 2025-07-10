@@ -31,8 +31,8 @@ public class InMemoryMemoryStorage implements AgentMemoryStore {
     @Override
     public Optional<AgentMemory> save(AgentMemory agentMemory) {
         final var key = new Key(agentMemory.getScope(), agentMemory.getScopeId());
-        final var memsInScope = memories.computeIfAbsent(key, k -> new ArrayList<>());
-        memsInScope.add(agentMemory);
+        final var memoriesInScope = memories.computeIfAbsent(key, k -> new ArrayList<>());
+        memoriesInScope.add(agentMemory);
         return Optional.of(agentMemory);
     }
 }
