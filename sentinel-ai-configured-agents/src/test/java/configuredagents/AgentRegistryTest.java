@@ -141,7 +141,7 @@ class AgentRegistryTest {
                 .description("Provides the weather information for a given location.")
                 .prompt("Respond with the current weather for the given location.")
                 .inputSchema(loadSchema(objectMapper, "inputschema.json"))
-                .capability(AgentCapabilities.remoteHttpCalls(Map.of("weatherserver", Set.of("weatherserver_get_weather_for_location"))))
+                .capability(AgentCapabilities.remoteHttpCalls(Map.of("weatherserver", Set.of("get_weather_for_location"))))
                 .outputSchema(loadSchema(objectMapper, "outputschema.json"))
                 .build();
         log.info("Weather agent id: {}",
@@ -238,7 +238,7 @@ class AgentRegistryTest {
                 .agentName("Math Agent")
                 .description("Provides simple math operations.")
                 .prompt("Respond with the answer for provided query.")
-                .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("mcp_add"))))
+                .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
                 .build();
         log.info("Math agent id: {}",
                  registry.configureAgent(mathAgentConfig)

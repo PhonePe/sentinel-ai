@@ -69,7 +69,7 @@ public class ConfiguredAgentFactory {
                                         .map(toolsFromUpstream -> new ComposingToolBox(
                                                 List.of(mcpToolboxFactory.find(toolsFromUpstream.getKey())
                                                                 .orElseThrow(() -> new IllegalArgumentException(
-                                                                        "No HTTP tool box found for: " + toolsFromUpstream.getKey()))),
+                                                                        "No MCP tool box found for: " + toolsFromUpstream.getKey()))),
                                                 toolsFromUpstream.getValue()))
                                         .toList());
                         return null;
