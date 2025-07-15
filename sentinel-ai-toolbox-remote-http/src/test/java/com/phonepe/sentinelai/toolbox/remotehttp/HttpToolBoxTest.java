@@ -71,7 +71,7 @@ class HttpToolBoxTest {
         final var response = tools.get(toolId).accept(new ExecutableToolVisitor<String>() {
             @Override
             public String visit(ExternalTool externalTool) {
-                return (String) externalTool.getCallable().apply(toolId, "").response();
+                return (String) externalTool.getCallable().apply(null, toolId, "").response();
             }
 
             @Override

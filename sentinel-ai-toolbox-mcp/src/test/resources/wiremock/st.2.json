@@ -1,0 +1,28 @@
+{
+  "id" : "chatcmpl-Bt9HusqqWWgZndLM5OrWcJyNBOw0w",
+  "object" : "chat.completion",
+  "created" : 1752483442,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "The answer to 2 + 2 is 4."
+    },
+    "finish_reason" : "stop"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 32,
+    "completion_tokens" : 13,
+    "total_tokens" : 45,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+}

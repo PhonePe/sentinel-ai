@@ -2,6 +2,7 @@ package com.phonepe.sentinelai.core.agentmessages;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
@@ -29,6 +30,9 @@ import lombok.Data;
                 @JsonSubTypes.Type(name = "TEXT_RESPONSE_MESSAGE", value = Text.class),
                 @JsonSubTypes.Type(name = "STRUCTURED_OUTPUT_RESPONSE_MESSAGE", value = StructuredOutput.class),
                 @JsonSubTypes.Type(name = "TOOL_CALL_REQUEST_MESSAGE", value = ToolCall.class),
+
+                //Generic messages
+                @JsonSubTypes.Type(name = "GENERIC_TEXT_MESSAGE", value = GenericText.class),
         }
 )
 public abstract class AgentMessage {

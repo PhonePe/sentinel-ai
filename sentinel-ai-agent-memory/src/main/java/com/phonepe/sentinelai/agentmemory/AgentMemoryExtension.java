@@ -7,6 +7,7 @@ import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
@@ -247,7 +248,7 @@ public class AgentMemoryExtension implements AgentExtension {
                            memorySchema(),
                            messages)
                 .join();
-        if (output.getError() != null) {
+        if (output.getError() != null && !output.getError().getErrorType().equals(ErrorType.SUCCESS)) {
             log.error("Error extracting memory: {}", output.getError());
         }
         else {

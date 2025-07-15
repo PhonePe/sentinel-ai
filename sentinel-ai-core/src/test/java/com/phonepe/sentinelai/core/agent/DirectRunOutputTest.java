@@ -18,7 +18,8 @@ class DirectRunOutputTest {
         final var objectMapper = JsonUtils.createMapper();
         final var success = DirectRunOutput.success(new ModelUsageStats(), objectMapper.createObjectNode());
         assertTrue(success.getData().isObject());
-        assertNull(success.getError());
+        assertNotNull(success.getError());
+        assertEquals(SentinelError.success(), success.getError());
 
         final var error = DirectRunOutput.error(new ModelUsageStats(),
                                                 SentinelError.error(ErrorType.JSON_ERROR, "Test error"));

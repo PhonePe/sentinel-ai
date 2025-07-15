@@ -1,10 +1,14 @@
 package com.phonepe.sentinelai.core.utils;
 
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
+import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.events.EventBus;
 import lombok.experimental.UtilityClass;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -75,4 +79,22 @@ public class AgentUtils {
         return temp.replaceAll("_+", "_");
     }
 
+    public static AgentSetup mergeAgentSetup(final AgentSetup lhs, final AgentSetup rhs) {
+        return AgentSetup.builder()
+                .model(Objects.requireNonNull(value(lhs, rhs, AgentSetup::getModel), "Model is required"))
+                .modelSettings(value(lhs, rhs, AgentSetup::getModelSettings))
+                .mapper(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getMapper), JsonUtils::createMapper))
+                .executorService(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getExecutorService),
+                                                               Executors::newCachedThreadPool))
+                .eventBus(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getEventBus), EventBus::new))
+                .build();
+    }
+
+    public static <T, R> R value(final T lhs, final T rhs, Function<T, R> mapper) {
+        final var obj = lhs == null ? rhs : lhs;
+        if (null != obj) {
+            return mapper.apply(obj);
+        }
+        return null;
+    }
 }

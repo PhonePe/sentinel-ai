@@ -20,6 +20,7 @@ public enum ErrorType {
     SERIALIZATION_ERROR("Error serializing object to JSON. Error: %s", true),
     DESERIALIZATION_ERROR("Error deserializing object to JSON. Error: %s", true),
     UNKNOWN_FINISH_REASON("Unknown finish reason: %s", true),
+    GENERIC_MODEL_CALL_FAILURE("Model call failed with error: %s", true),
     UNKNOWN("Unknown response", true),
     ;
 

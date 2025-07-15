@@ -18,16 +18,15 @@ import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
-import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.events.ToolCallCompletedAgentEvent;
 import com.phonepe.sentinelai.core.events.ToolCalledAgentEvent;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.*;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
-import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 import io.appform.signals.signals.ConsumingFireForgetSignal;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.Value;
@@ -39,7 +38,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -69,6 +67,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     private final Class<T> outputType;
     private final String systemPrompt;
+    @Getter
     private final AgentSetup setup;
     private final List<AgentExtension> extensions;
     private final ToolRunApprovalSeeker<R,T,A> toolRunApprovalSeeker;
@@ -112,10 +111,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         xmlMapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_EMPTY);
         registerTools(ToolUtils.readTools(this));
         registerTools(knownTools);
-        this.extensions.forEach(extension -> {
-            registerTools(extension.tools());
-            extension.onRegistrationCompleted(self);
-        });
+        //            extension.onRegistrationCompleted(self);
+        this.extensions.forEach(this::registerToolbox);
     }
 
     public abstract String name();
@@ -144,6 +141,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      */
     public A registerToolbox(ToolBox toolBox) {
         registerTools(toolBox.tools());
+        toolBox.onRegistrationCompleted(self);
         return self;
     }
 
@@ -189,7 +187,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @return The response from the agent
      */
     public final CompletableFuture<AgentOutput<T>> executeAsync(@NonNull AgentInput<R> input) {
-        final var mergedAgentSetup = mergeAgentSetup(input.getAgentSetup(), this.setup);
+        final var mergedAgentSetup = AgentUtils.mergeAgentSetup(input.getAgentSetup(), this.setup);
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input.getOldMessages(), List.of()));
         final var runId = UUID.randomUUID().toString();
         final var requestMetadata = input.getRequestMetadata();
@@ -249,7 +247,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     public final CompletableFuture<AgentOutput<T>> executeAsyncStreaming(
             AgentInput<R> input,
             Consumer<byte[]> streamHandler) {
-        final var mergedAgentSetup = mergeAgentSetup(input.getAgentSetup(), this.setup);
+        final var mergedAgentSetup = AgentUtils.mergeAgentSetup(input.getAgentSetup(), this.setup);
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input.getOldMessages(), List.<AgentMessage>of())
                                                      .stream()
                                                      .filter(message -> !message.getMessageType()
@@ -389,25 +387,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     }
 
-    private static AgentSetup mergeAgentSetup(final AgentSetup lhs, final AgentSetup rhs) {
-        return AgentSetup.builder()
-                .model(Objects.requireNonNull(value(lhs, rhs, AgentSetup::getModel), "Model is required"))
-                .modelSettings(value(lhs, rhs, AgentSetup::getModelSettings))
-                .mapper(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getMapper), JsonUtils::createMapper))
-                .executorService(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getExecutorService),
-                                                               Executors::newCachedThreadPool))
-                .eventBus(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getEventBus), EventBus::new))
-                .build();
-    }
-
-    private static <T, R> R value(final T lhs, final T rhs, Function<T, R> mapper) {
-        final var obj = lhs == null ? rhs : lhs;
-        if (null != obj) {
-            return mapper.apply(obj);
-        }
-        return null;
-    }
-
     private ToolCallResponse runToolObserved(
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
@@ -465,7 +444,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             @Override
             public ToolCallResponse visit(ExternalTool externalTool) {
                 final var response = externalTool.getCallable()
-                        .apply(toolCall.getToolName(), toolCall.getArguments());
+                        .apply(context, toolCall.getToolName(), toolCall.getArguments());
                 log.debug("Tool response: {}", response);
                 final var error = response.error();
                 if (!error.equals(ErrorType.SUCCESS)) {

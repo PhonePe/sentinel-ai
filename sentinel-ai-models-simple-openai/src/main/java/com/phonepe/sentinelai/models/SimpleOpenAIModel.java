@@ -7,9 +7,8 @@ import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.*;
+import com.phonepe.sentinelai.core.agentmessages.requests.*;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
-import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
-import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
@@ -39,6 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
 import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
@@ -86,11 +86,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
     @Override
     public <R, T, A extends Agent<R, T, A>> CompletableFuture<DirectRunOutput> runDirect(
-            AgentRunContext<R> context,
+            ModelSettings modelSettings,
+            ExecutorService executorService,
             String prompt,
             AgentExtension.AgentExtensionOutputDefinition outputDefinition,
             List<AgentMessage> messages) {
-        final var modelSettings = context.getAgentSetup().getModelSettings();
         final var openAiMessages = new ArrayList<>(convertToOpenAIMessages(messages));
         final var stats = new ModelUsageStats();
         return CompletableFuture.supplyAsync(() -> {
@@ -98,11 +98,13 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             do {
                 final var builder = createChatRequestBuilder(openAiMessages);
                 applyModelSettings(modelSettings, builder, Map.of());
-                builder.responseFormat(ResponseFormat.jsonSchema(ResponseFormat.JsonSchema.builder()
-                                                                         .name(OUTPUT_VARIABLE_NAME)
-                                                                         .schema(outputDefinition.getSchema())
-                                                                         .strict(true)
-                                                                         .build()));
+                if (outputDefinition != null) {
+                    builder.responseFormat(ResponseFormat.jsonSchema(ResponseFormat.JsonSchema.builder()
+                                                                             .name(OUTPUT_VARIABLE_NAME)
+                                                                             .schema(outputDefinition.getSchema())
+                                                                             .strict(true)
+                                                                             .build()));
+                }
                 stats.incrementRequestsForRun();
                 final var request = builder.build();
                 logModelRequest(request);
@@ -117,7 +119,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }
                 final var message = response.getMessage();
                 output = switch (response.getFinishReason()) {
-                    case FinishReasons.STOP -> processOutput(message, stats);
+                    case FinishReasons.STOP -> processOutput(message, stats, outputDefinition != null);
                     case FinishReasons.FUNCTION_CALL,
                          FinishReasons.TOOL_CALLS -> DirectRunOutput.error(
                             stats,
@@ -130,9 +132,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     default -> DirectRunOutput.error(
                             stats, SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
                 };
-            } while (output == null || (output.getData() == null && output.getError() == null));
+            } while (output == null
+                    || (output.getData() == null
+                    && (output.getError() == null || output.getError().getErrorType().equals(ErrorType.SUCCESS))));
             return output;
-        }, context.getAgentSetup().getExecutorService());
+        }, executorService);
     }
 
     @Override
@@ -392,7 +396,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 function);
     }
 
-    private DirectRunOutput processOutput(ChatMessage.ResponseMessage message, ModelUsageStats stats) {
+    private DirectRunOutput processOutput(ChatMessage.ResponseMessage message, ModelUsageStats stats, boolean process) {
         final var refusal = message.getRefusal();
         if (!Strings.isNullOrEmpty(refusal)) {
             return DirectRunOutput.error(stats,
@@ -401,7 +405,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         final var content = message.getContent();
         if (!Strings.isNullOrEmpty(content)) {
             try {
-                return DirectRunOutput.success(stats, mapper.readTree(content));
+                return DirectRunOutput.success(stats,
+                                               process ? mapper.readTree(content)
+                                                       : mapper.createObjectNode().textNode(content));
             }
             catch (JsonProcessingException e) {
                 return DirectRunOutput.error(stats,
@@ -454,7 +460,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     /*
-        * Process the streaming output from the model. This method is called when the model sends a response in chunks.
+     * Process the streaming output from the model. This method is called when the model sends a response in chunks.
      */
     @SuppressWarnings("java:S107")
     private <R, T, A extends Agent<R, T, A>> @NonNull ModelOutput processStreamingOutput(
@@ -824,6 +830,33 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                 toolCall.getToolCallId(),
                                 ToolType.FUNCTION,
                                 new FunctionCall(toolCall.getToolName(), toolCall.getArguments()))));
+                    }
+                });
+            }
+
+            @Override
+            public ChatMessage visit(AgentGenericMessage genericMessage) {
+                return genericMessage.accept(new AgentGenericMessageVisitor<>() {
+                    @Override
+                    public ChatMessage visit(GenericText genericText) {
+                        return switch (genericText.getRole()) {
+                            case SYSTEM -> ChatMessage.SystemMessage.of(genericText.getText());
+                            case USER -> ChatMessage.UserMessage.of(genericText.getText());
+                            case ASSISTANT -> ChatMessage.AssistantMessage.of(genericText.getText());
+                            case TOOL_CALL -> throw new UnsupportedOperationException(
+                                    "Tool calls are unsupported in this context");
+                        };
+                    }
+
+                    @Override
+                    public ChatMessage visit(GenericResource genericResource) {
+                        return switch (genericResource.getRole()) {
+                            case SYSTEM -> ChatMessage.SystemMessage.of(genericResource.getSerializedJson());
+                            case USER -> ChatMessage.UserMessage.of(genericResource.getSerializedJson());
+                            case ASSISTANT -> ChatMessage.AssistantMessage.of(genericResource.getSerializedJson());
+                            case TOOL_CALL -> throw new UnsupportedOperationException(
+                                    "Tool calls are unsupported in this context");
+                        };
                     }
                 });
             }

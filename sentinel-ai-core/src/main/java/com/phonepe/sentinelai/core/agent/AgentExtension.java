@@ -32,5 +32,4 @@ public interface AgentExtension extends ToolBox {
             R request, AgentRequestMetadata metadata, A agent, ProcessingMode processingMode);
     Optional<AgentExtensionOutputDefinition> outputSchema(ProcessingMode processingMode);
     <R, T, A extends Agent<R, T, A>> void consume(final JsonNode output, A agent);
-    <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent);
 }

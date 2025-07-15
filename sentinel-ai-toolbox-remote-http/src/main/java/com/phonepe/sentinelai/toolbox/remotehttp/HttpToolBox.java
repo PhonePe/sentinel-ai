@@ -96,7 +96,7 @@ public class HttpToolBox implements ToolBox {
                                                       .strictSchema(true)
                                                       .build(),
                                               paramNodes,
-                                              (toolId, arguments) -> {
+                                              (context, toolId, arguments) -> {
                                                   final var toolDef = knownTools.get(toolId);
                                                   if (null == toolDef) {
                                                       throw new IllegalArgumentException("Unknown tool %s".formatted(

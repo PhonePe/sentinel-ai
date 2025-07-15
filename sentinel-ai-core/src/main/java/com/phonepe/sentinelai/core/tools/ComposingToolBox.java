@@ -1,5 +1,6 @@
 package com.phonepe.sentinelai.core.tools;
 
+import com.phonepe.sentinelai.core.agent.Agent;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,5 +49,10 @@ public class ComposingToolBox implements ToolBox {
                 .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
         log.debug("Tools exposed from composing tool box {}: {}", name, discoveredTools.keySet());
         return discoveredTools;
+    }
+
+    @Override
+    public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
+        upstreams.forEach(toolBox -> toolBox.onRegistrationCompleted(agent));
     }
 }

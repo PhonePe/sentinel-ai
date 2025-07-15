@@ -1,7 +1,7 @@
 package com.phonepe.sentinelai.core.agentmessages;
 
 /**
- * Different inp[ut and output message types
+ * Different input and output message types
  */
 public enum AgentMessageType {
     //Request types as sent by agent
@@ -14,5 +14,10 @@ public enum AgentMessageType {
     //Response types as received from LLM
     TEXT_RESPONSE_MESSAGE,
     STRUCTURED_OUTPUT_RESPONSE_MESSAGE,
-    TOOL_CALL_RESPONSE_MESSAGE
+    TOOL_CALL_RESPONSE_MESSAGE,
+
+    //Generic message types
+    GENERIC_TEXT_MESSAGE,
+    GENERIC_RESOURCE_MESSAGE,
+
 }
