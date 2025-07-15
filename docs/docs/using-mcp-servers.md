@@ -199,8 +199,8 @@ final val toolBox = ComposingMCPToolBox.builder()
         .objectMapper(objectMapper)
         .build();
         
-toolBox.registerMCP("everythingServer", mcpClient, "add");
-toolBox.registerMCP("someOtherServer", otherServerMcpClient, Set.of("getUserLocation", "getUserName"));
+toolBox.registerExistingMCP("everythingServer", mcpClient, "add");
+toolBox.registerExistingMCP("someOtherServer", otherServerMcpClient, Set.of("getUserLocation", "getUserName"));
 ```
 
 To override the exposed tools from a server, use the `exposeTools` method as follows: 

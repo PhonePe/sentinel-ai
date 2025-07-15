@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.phonepe.sentinel-ai</groupId>
         <artifactId>sentinel-ai</artifactId>
-        <version>1.0.0-alpha4</version>
+        <version>1.0.0-alpha5</version>
     </parent>
 
     <artifactId>sentinel-ai-toolbox-mcp</artifactId>
