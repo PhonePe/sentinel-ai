@@ -7,4 +7,6 @@ public interface AgentMessageVisitor<T> {
     T visit(AgentRequest request);
 
     T visit(AgentResponse response);
+
+    T visit(AgentGenericMessage genericMessage);
 }

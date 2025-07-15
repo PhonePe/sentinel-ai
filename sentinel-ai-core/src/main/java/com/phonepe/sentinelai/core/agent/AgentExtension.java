@@ -36,5 +36,8 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
 
     void consume(final JsonNode output, A agent);
 
-    void onRegistrationCompleted(A agent);
+    default void onExtensionRegistrationCompleted(A agent) {
+        //Nothing to do here for now
+    }
+
 }

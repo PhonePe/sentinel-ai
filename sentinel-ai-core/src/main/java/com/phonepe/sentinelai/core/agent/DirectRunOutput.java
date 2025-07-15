@@ -17,7 +17,7 @@ public class DirectRunOutput {
     SentinelError error;
 
     public static DirectRunOutput success(final ModelUsageStats stats, final JsonNode data) {
-        return new DirectRunOutput(data, stats, null);
+        return new DirectRunOutput(data, stats, SentinelError.success());
     }
 
     public static DirectRunOutput error(final ModelUsageStats stats, final SentinelError error) {

@@ -1,0 +1,35 @@
+{
+  "id" : "chatcmpl-Bt9HtczvHXppt6y86tsM4nd4vJhUM",
+  "object" : "chat.completion",
+  "created" : 1752483441,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_jyPoXdpTr3wtZEJOxiHhNw1N",
+        "type" : "function",
+        "function" : {
+          "name" : "test_mcp_sample_llm",
+          "arguments" : "{\"prompt\":\"What is 2 + 2?\"}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 859,
+    "completion_tokens" : 26,
+    "total_tokens" : 885,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+}

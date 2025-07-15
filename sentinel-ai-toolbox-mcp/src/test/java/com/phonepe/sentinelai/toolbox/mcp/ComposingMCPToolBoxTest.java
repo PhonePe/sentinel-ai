@@ -2,7 +2,6 @@ package com.phonepe.sentinelai.toolbox.mcp;
 
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPConfiguration;
-import com.phonepe.sentinelai.toolbox.mcp.config.MCPJsonReader;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
@@ -29,10 +28,10 @@ class ComposingMCPToolBoxTest {
     @Test
     void testBasicCreation() {
         final var objectMapper = JsonUtils.createMapper();
-        final var composingMCPToolBox = ComposingMCPToolBox.builder()
+        final var composingMCPToolBox = ComposingMCPToolBox.buildFromFile()
                 .name("Test Composing MCP")
                 .objectMapper(objectMapper)
-                .mcpJsonPath(Objects.requireNonNull(getClass().getResource("/mcp.json")).getPath())
+                .mcpJsonFilePath(Objects.requireNonNull(getClass().getResource("/mcp.json")).getPath())
                 .build();
         assertNotNull(composingMCPToolBox);
 
@@ -48,7 +47,7 @@ class ComposingMCPToolBoxTest {
     @SneakyThrows
     void testSSE() {
         final var objectMapper = JsonUtils.createMapper();
-        final var composingMCPToolBox = ComposingMCPToolBox.builder()
+        final var composingMCPToolBox = ComposingMCPToolBox.buildEmpty()
                 .name("Test Composing MCP")
                 .objectMapper(objectMapper)
                 .build();
@@ -57,9 +56,7 @@ class ComposingMCPToolBoxTest {
         assertTrue(composingMCPToolBox.tools().isEmpty());
         final var payload = Files.readString(Path.of(Objects.requireNonNull(getClass().getResource("/mcp-sse.json"))
                                                              .getPath())).formatted(container.getMappedPort(3001));
-        MCPJsonReader.loadServers(objectMapper.readValue(payload, MCPConfiguration.class),
-                               composingMCPToolBox,
-                               objectMapper);
+        MCPJsonReader.loadServers(objectMapper.readValue(payload, MCPConfiguration.class), composingMCPToolBox);
         assertFalse(composingMCPToolBox.tools().isEmpty());
         assertTrue(composingMCPToolBox.tools().size() > 1);
         composingMCPToolBox.exposeTools("test_mcp", "echo");

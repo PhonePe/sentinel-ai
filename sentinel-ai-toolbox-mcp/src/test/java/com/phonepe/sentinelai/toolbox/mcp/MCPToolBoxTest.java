@@ -10,6 +10,7 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import io.modelcontextprotocol.client.McpClient;
@@ -95,4 +96,54 @@ class MCPToolBoxTest {
         assertNoFailedToolCalls(response);
     }
 
+    @Test
+    @SneakyThrows
+    void testSampling(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(3, "st", getClass());
+        final var httpClient = new OkHttpClient.Builder()
+                .build();
+        final var objectMapper = JsonUtils.createMapper();
+        final var model = new SimpleOpenAIModel<>(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(objectMapper)
+                        .clientAdapter(new OkHttpClientAdapter(httpClient))
+                        .build(),
+                objectMapper
+        );
+        final var toolBox = new MCPToolBox("test_mcp",
+                                           objectMapper,
+                                           MCPStdioServerConfig.builder()
+                                                   .command("npx")
+                                                   .args(List.of("-y", "@modelcontextprotocol/server-everything"))
+                                                   .exposedTools(Set.of())
+                                                   .build()
+        );
+
+        final var agent = new MCPTestAgent(
+                AgentSetup.builder()
+                        .mapper(objectMapper)
+                        .model(model)
+                        .modelSettings(ModelSettings.builder()
+                                               .temperature(0.1f)
+                                               .seed(42)
+                                               .build())
+                        .build(),
+                Map.of() // No tools for now
+        );
+        agent.registerToolbox(toolBox);
+
+        final var response = agent.execute(AgentInput.<String>builder()
+                                                   .request(
+                                                           "make sampling call with prompt 'What is 2 + 2?' and " +
+                                                                   "return the result")
+                                                   .build());
+        assertTrue(response.getData().contains("4"));
+        assertNoFailedToolCalls(response);
+    }
 }

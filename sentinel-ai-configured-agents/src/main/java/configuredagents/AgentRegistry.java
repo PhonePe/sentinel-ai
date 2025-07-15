@@ -177,7 +177,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
     }
 
     @Override
-    public  void onRegistrationCompleted(A agent) {
+    public  void onExtensionRegistrationCompleted(A agent) {
         //Nothing to do here
     }
 }

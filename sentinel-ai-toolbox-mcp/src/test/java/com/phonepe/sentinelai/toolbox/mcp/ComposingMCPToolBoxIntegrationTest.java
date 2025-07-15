@@ -11,7 +11,7 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
-import com.phonepe.sentinelai.toolbox.mcp.config.MCPJsonReader;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPConfiguration;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import io.modelcontextprotocol.client.McpClient;
@@ -22,6 +22,8 @@ import lombok.SneakyThrows;
 import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -119,28 +121,27 @@ class ComposingMCPToolBoxIntegrationTest {
         final var mcpClient = McpClient.sync(transport)
                 .build();
         mcpClient.initialize();
-        return ComposingMCPToolBox.builder()
+        return ComposingMCPToolBox.buildEmpty()
                 .objectMapper(objectMapper)
                 .build()
-                .registerMCP("Test MCP", mcpClient, "add");
+                .registerExistingMCP("Test MCP", mcpClient, "add");
     }
 
     private ComposingMCPToolBox buildToolBoxFromFile(JsonMapper objectMapper) {
-        final var mcpToolBox = ComposingMCPToolBox.builder()
+        return ComposingMCPToolBox.buildFromFile()
                 .objectMapper(objectMapper)
+                .mcpJsonFilePath(Objects.requireNonNull(getClass().getResource("/mcp.json")).getPath())
                 .build();
-        MCPJsonReader.loadFile(Objects.requireNonNull(getClass().getResource("/mcp.json")).getPath(),
-                               mcpToolBox, objectMapper);
-        return mcpToolBox;
     }
 
+    @SneakyThrows
     private ComposingMCPToolBox buildToolBoxFromFileWithTools(JsonMapper objectMapper) {
-        final var mcpToolBox = ComposingMCPToolBox.builder()
+        final var fileContents = Files.readAllBytes(Paths.get(Objects.requireNonNull(getClass().getResource(
+                "/mcp-with-tools.json")).getPath()));
+        return ComposingMCPToolBox.buildFromConfig()
                 .objectMapper(objectMapper)
+                .configuration(objectMapper.readValue(fileContents, MCPConfiguration.class))
                 .build();
-        MCPJsonReader.loadFile(Objects.requireNonNull(getClass().getResource("/mcp-with-tools.json")).getPath(),
-                               mcpToolBox, objectMapper);
-        return mcpToolBox;
     }
 
 }

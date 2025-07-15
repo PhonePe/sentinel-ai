@@ -82,7 +82,8 @@ class HttpCallTemplateExpanderTest {
                 .accept(new ExecutableToolVisitor<String>() {
                     @Override
                     public String visit(ExternalTool externalTool) {
-                        return (String) externalTool.getCallable().apply(toolId, """
+                        return (String) externalTool.getCallable().apply(null,
+                                                                         toolId, """
                                 {
                                     "name" : "santanu"
                                 }
