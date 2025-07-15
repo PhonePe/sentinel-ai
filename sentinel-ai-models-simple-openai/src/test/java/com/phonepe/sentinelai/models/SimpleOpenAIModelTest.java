@@ -48,7 +48,7 @@ class SimpleOpenAIModelTest {
 
     public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, ExecutableTool> tools) {
+        public SimpleAgent(AgentSetup setup, List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions, Map<String, ExecutableTool> tools) {
             super(OutputObject.class, "greet the user", setup, extensions, tools);
         }
 

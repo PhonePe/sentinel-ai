@@ -11,7 +11,7 @@ import java.util.Optional;
 /**
  * Can be used to extend the functionality of an agent. This can be used to add additional system prompts and facts.
  */
-public interface AgentExtension extends ToolBox {
+public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox {
 
     @Value
     class ExtensionPromptSchema {
@@ -27,10 +27,14 @@ public interface AgentExtension extends ToolBox {
         JsonNode schema;
     }
 
-    <R, T, A extends Agent<R, T, A>> List<FactList> facts(R request, AgentRequestMetadata metadata, A agent);
-    <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
+    List<FactList> facts(R request, AgentRequestMetadata metadata, A agent);
+
+    ExtensionPromptSchema additionalSystemPrompts(
             R request, AgentRequestMetadata metadata, A agent, ProcessingMode processingMode);
+
     Optional<AgentExtensionOutputDefinition> outputSchema(ProcessingMode processingMode);
-    <R, T, A extends Agent<R, T, A>> void consume(final JsonNode output, A agent);
-    <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent);
+
+    void consume(final JsonNode output, A agent);
+
+    void onRegistrationCompleted(A agent);
 }

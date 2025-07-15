@@ -53,7 +53,7 @@ class AgentMemoryExtensionTest {
 
     public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, ExecutableTool> tools) {
+        public SimpleAgent(AgentSetup setup, List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions, Map<String, ExecutableTool> tools) {
             super(OutputObject.class,
                   """
                           greet the user and respond to queries being posted.
@@ -148,7 +148,7 @@ class AgentMemoryExtensionTest {
                                                       .parallelToolCalls(false)
                                                       .build())
                                .build())
-                .extensions(List.of(AgentMemoryExtension.builder()
+                .extensions(List.of(AgentMemoryExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                             .objectMapper(objectMapper)
                                             .memoryStore(memoryStore)
                                             .memoryExtractionMode(MemoryExtractionMode.INLINE)
@@ -221,7 +221,7 @@ class AgentMemoryExtensionTest {
                                                       .build())
                                .executorService(Executors.newFixedThreadPool(2))
                                .build())
-                .extensions(List.of(AgentMemoryExtension.builder()
+                .extensions(List.of(AgentMemoryExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                             .objectMapper(objectMapper)
                                             .memoryStore(memoryStore)
                                             .memoryExtractionMode(MemoryExtractionMode.OUT_OF_BAND)

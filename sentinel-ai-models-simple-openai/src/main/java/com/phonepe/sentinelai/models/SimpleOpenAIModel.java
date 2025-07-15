@@ -141,7 +141,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             JsonNode responseSchema,
             Map<String, ExecutableTool> tools,
             ToolRunner<R> toolRunner,
-            List<AgentExtension> extensions,
+            List<AgentExtension<R,T,A>> extensions,
             A agent) {
         final var oldMessages = context.getOldMessages();
         final var modelSettings = context.getAgentSetup().getModelSettings();
@@ -230,7 +230,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
             ToolRunner<R> toolRunner,
-            List<AgentExtension> extensions,
+            List<AgentExtension<R,T,A>> extensions,
             A agent,
             Consumer<byte[]> streamHandler) {
         final var oldMessages = context.getOldMessages();
@@ -414,7 +414,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     @SuppressWarnings("java:S107")
     private <R, T, A extends Agent<R, T, A>> ModelOutput processOutput(
             AgentRunContext<R> context,
-            List<AgentExtension> extensions,
+            List<AgentExtension<R,T,A>> extensions,
             A agent,
             ChatMessage.ResponseMessage message,
             List<AgentMessage> oldMessages,
@@ -459,7 +459,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     @SuppressWarnings("java:S107")
     private <R, T, A extends Agent<R, T, A>> @NonNull ModelOutput processStreamingOutput(
             AgentRunContext<R> context,
-            List<AgentExtension> extensions,
+            List<AgentExtension<R,T,A>> extensions,
             A agent,
             ChatMessage.ResponseMessage message,
             List<AgentMessage> oldMessages,
@@ -697,7 +697,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      */
     private <R, T, A extends Agent<R, T, A>> JsonNode convertToResponse(
             String content,
-            List<AgentExtension> extensions, A agent,
+            List<AgentExtension<R,T,A>> extensions, A agent,
             ProcessingMode processingMode) throws JsonProcessingException {
         final var outputNode = mapper.readTree(content);
         extensions.forEach(extension -> {
@@ -730,9 +730,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      * @param processingMode Processing mode for the agent run
      * @return ResponseFormat.JsonSchema containing the structured output schema
      */
-    private ResponseFormat.JsonSchema structuredOutputSchema(
+    private <R, T, A extends Agent<R, T, A>> ResponseFormat.JsonSchema structuredOutputSchema(
             JsonNode outputSchema,
-            List<AgentExtension> extensions,
+            List<AgentExtension<R,T,A>> extensions,
             ProcessingMode processingMode) {
         final var schema = mapper.createObjectNode();
         schema.put("type", "object");

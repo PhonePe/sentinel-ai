@@ -59,7 +59,7 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
 
     public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, ExecutableTool> tools) {
+        public SimpleAgent(AgentSetup setup, List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions, Map<String, ExecutableTool> tools) {
             super(OutputObject.class,
                   "greet the user. extract memories about the user to make conversations easier in the future.",
                   setup,
@@ -121,12 +121,12 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
 
         final var memoryStorage = new ESAgentMemoryStorage(client, new HuggingfaceEmbeddingModel(), indexPrefix(this));
         final var sessionStorage = new ESSessionStore(client, indexPrefix(this), IndexSettings.DEFAULT);
-        final var extensions = List.of(AgentMemoryExtension.builder()
+        final var extensions = List.of(AgentMemoryExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                                .objectMapper(objectMapper)
                                                .memoryStore(memoryStorage)
                                                .memoryExtractionMode(MemoryExtractionMode.INLINE)
                                                .build(),
-                                       AgentSessionExtension.builder()
+                                       AgentSessionExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                                .sessionStore(sessionStorage)
                                                .updateSummaryAfterSession(true)
                                                .build());

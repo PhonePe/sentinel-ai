@@ -50,7 +50,7 @@ class AgentRegistryTest {
 
     private static final class PlannerAgent extends Agent<String, String, PlannerAgent> {
         @Builder
-        public PlannerAgent(@NonNull AgentSetup setup, @Singular List<AgentExtension> extensions) {
+        public PlannerAgent(@NonNull AgentSetup setup, @Singular List<AgentExtension<String, String, PlannerAgent>> extensions) {
             super(String.class,
                   """
                           Your role is to perform complex tasks as specified by the user. You can achieve this by using
@@ -129,7 +129,7 @@ class AgentRegistryTest {
                                            })
                                            .build())
                 .build();
-        final var registry = AgentRegistry.builder()
+        final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
                 .agentSource(agentSource)
                 .agentFactory(agentFactory::createAgent)
                 .build();
@@ -227,7 +227,7 @@ class AgentRegistryTest {
                                            })
                                            .build())
                 .build();
-        final var registry = AgentRegistry.builder()
+        final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
                 .agentSource(agentSource)
                 .agentFactory(agentFactory::createAgent)
                 .build();

@@ -40,14 +40,14 @@ class AgentTest {
 
         public TestAgent(
                 @NonNull AgentSetup setup,
-                List<AgentExtension> extensions,
+                List<AgentExtension<String, String, TestAgent>> extensions,
                 Map<String, ExecutableTool> knownTools) {
             this(setup, extensions, knownTools, new ApproveAllToolRuns<>());
         }
 
         public TestAgent(
                 @NonNull AgentSetup setup,
-                List<AgentExtension> extensions,
+                List<AgentExtension<String, String, TestAgent>> extensions,
                 Map<String, ExecutableTool> knownTools,
                 ToolRunApprovalSeeker<String, String, TestAgent> toolRunApprovalSeeker) {
             super(String.class, "This is irrelevant", setup, extensions, knownTools, toolRunApprovalSeeker);
@@ -91,48 +91,49 @@ class AgentTest {
     void testToolCall() {
         final var objectMapper = JsonUtils.createMapper();
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
-                                                        @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
-                                                                AgentRunContext<R> context,
-                                                                JsonNode responseSchema,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner<R> toolRunner,
-                                                                List<AgentExtension> extensions,
-                                                                A agent) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("test_agent_get_name"));
-                                                                final var response = toolRunner.runTool(
-                                                                        context,
-                                                                        tools,
-                                                                        new ToolCall("TC1",
-                                                                                     "test_agent_get_name",
-                                                                                     "{}"));
-                                                                assertTrue(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(context.getOldMessages());
-                                                                final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.success(objectMapper.createObjectNode()
-                                                                                                   .textNode("Hello " + response.getResponse()),
-                                                                                           List.of(message),
-                                                                                           messages,
-                                                                                           context.getModelUsageStats());
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(objectMapper)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
+                .model(new Model() {
+
+                    @Override
+                    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
+                            AgentRunContext<R> context,
+                            JsonNode responseSchema,
+                            Map<String, ExecutableTool> tools,
+                            ToolRunner<R> toolRunner,
+                            List<AgentExtension<R, T, A>> extensions,
+                            A agent) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey("test_agent_get_name"));
+                            final var response = toolRunner.runTool(
+                                    context,
+                                    tools,
+                                    new ToolCall("TC1",
+                                            "test_agent_get_name",
+                                            "{}"));
+                            assertTrue(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages =
+                                    new ArrayList<>(context.getOldMessages());
+                            final var message =
+                                    new ToolCallResponse(response.getToolCallId(),
+                                            response.getToolName(),
+                                            response.getErrorType(),
+                                            response.getResponse(),
+                                            LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.success(objectMapper.createObjectNode()
+                                            .textNode("Hello " + response.getResponse()),
+                                    List.of(message),
+                                    messages,
+                                    context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder()
+                        .build())
+                .mapper(objectMapper)
+                .build(),
+                List.of(),
+                Map.of()
         );
         final var response = textAgent.execute(
                 AgentInput.<String>builder()
@@ -149,51 +150,51 @@ class AgentTest {
     void testToolCallNoApproval() {
         final var objectMapper = JsonUtils.createMapper();
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
-                                                        @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
-                                                                AgentRunContext<R> context,
-                                                                JsonNode responseSchema,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner<R> toolRunner,
-                                                                List<AgentExtension> extensions,
-                                                                A agent) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("test_agent_get_name"));
-                                                                final var response = toolRunner.runTool(
-                                                                        context,
-                                                                        tools,
-                                                                        new ToolCall("TC1",
-                                                                                     "test_agent_get_name",
-                                                                                     "{}"));
-                                                                assertFalse(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(context.getOldMessages());
-                                                                final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.success(objectMapper.createObjectNode()
-                                                                                                   .textNode("Tool call not approved"),
-                                                                                           List.of(message),
-                                                                                           messages,
-                                                                                           context.getModelUsageStats());
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(objectMapper)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of(),
-                                            (agent, runContext, toolCall) -> {
-                                                return !"test_agent_get_name".equals(toolCall.getToolName());
-                                            }
+                .model(new Model() {
+                    @Override
+                    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
+                            AgentRunContext<R> context,
+                            JsonNode responseSchema,
+                            Map<String, ExecutableTool> tools,
+                            ToolRunner<R> toolRunner,
+                            List<AgentExtension<R, T, A>> extensions,
+                            A agent) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey("test_agent_get_name"));
+                            final var response = toolRunner.runTool(
+                                    context,
+                                    tools,
+                                    new ToolCall("TC1",
+                                            "test_agent_get_name",
+                                            "{}"));
+                            assertFalse(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages =
+                                    new ArrayList<>(context.getOldMessages());
+                            final var message =
+                                    new ToolCallResponse(response.getToolCallId(),
+                                            response.getToolName(),
+                                            response.getErrorType(),
+                                            response.getResponse(),
+                                            LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.success(objectMapper.createObjectNode()
+                                            .textNode("Tool call not approved"),
+                                    List.of(message),
+                                    messages,
+                                    context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder()
+                        .build())
+                .mapper(objectMapper)
+                .build(),
+                List.of(),
+                Map.of(),
+                (agent, runContext, toolCall) -> {
+                    return !"test_agent_get_name".equals(toolCall.getToolName());
+                }
         );
         final var response = textAgent.execute(
                 AgentInput.<String>builder()
@@ -210,52 +211,52 @@ class AgentTest {
     void testContextAwareToolCall() {
         final var objectMapper = JsonUtils.createMapper();
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
-                                                        @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
-                                                                AgentRunContext<R> context,
-                                                                JsonNode responseSchema,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner<R> toolRunner,
-                                                                List<AgentExtension> extensions,
-                                                                A agent) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey(
-                                                                        "test_agent_session_summary"));
-                                                                final var response = toolRunner.runTool(
-                                                                        context,
-                                                                        tools,
-                                                                        new ToolCall("TC1",
-                                                                                     "test_agent_session_summary",
-                                                                                     """
-                                                                                             { "input": "Test Data" }
-                                                                                             """));
-                                                                assertTrue(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(context.getOldMessages());
-                                                                final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.success(objectMapper.createObjectNode()
-                                                                                                   .textNode("Hello " + response.getResponse()),
-                                                                                           List.of(message),
-                                                                                           messages,
-                                                                                           context.getModelUsageStats());
-                                                            });
-                                                        }
+                .model(new Model() {
+                    @Override
+                    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
+                            AgentRunContext<R> context,
+                            JsonNode responseSchema,
+                            Map<String, ExecutableTool> tools,
+                            ToolRunner<R> toolRunner,
+                            List<AgentExtension<R, T, A>> extensions,
+                            A agent) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                    "test_agent_session_summary"));
+                            final var response = toolRunner.runTool(
+                                    context,
+                                    tools,
+                                    new ToolCall("TC1",
+                                            "test_agent_session_summary",
+                                            """
+                                                    { "input": "Test Data" }
+                                                    """));
+                            assertTrue(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages =
+                                    new ArrayList<>(context.getOldMessages());
+                            final var message =
+                                    new ToolCallResponse(response.getToolCallId(),
+                                            response.getToolName(),
+                                            response.getErrorType(),
+                                            response.getResponse(),
+                                            LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.success(objectMapper.createObjectNode()
+                                            .textNode("Hello " + response.getResponse()),
+                                    List.of(message),
+                                    messages,
+                                    context.getModelUsageStats());
+                        });
+                    }
 
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(objectMapper)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
+                })
+                .modelSettings(ModelSettings.builder()
+                        .build())
+                .mapper(objectMapper)
+                .build(),
+                List.of(),
+                Map.of()
         );
         final var response = textAgent.execute(
                 AgentInput.<String>builder()
@@ -272,49 +273,49 @@ class AgentTest {
     void testVoidToolCall() {
         final var objectMapper = JsonUtils.createMapper();
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
+                .model(new Model() {
 
-                                                        @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
-                                                                AgentRunContext<R> context,
-                                                                JsonNode responseSchema,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner<R> toolRunner,
-                                                                List<AgentExtension> extensions,
-                                                                A agent) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("test_agent_void_tool"));
-                                                                final var response = toolRunner.runTool(
-                                                                        context,
-                                                                        tools,
-                                                                        new ToolCall("TC1",
-                                                                                     "test_agent_void_tool",
-                                                                                     "{}"));
-                                                                assertTrue(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(context.getOldMessages());
-                                                                final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.success(objectMapper.createObjectNode()
-                                                                                                   .textNode("Hello " + response.getResponse()),
-                                                                                           List.of(message),
-                                                                                           messages,
-                                                                                           context.getModelUsageStats());
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(objectMapper)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
+                    @Override
+                    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
+                            AgentRunContext<R> context,
+                            JsonNode responseSchema,
+                            Map<String, ExecutableTool> tools,
+                            ToolRunner<R> toolRunner,
+                            List<AgentExtension<R, T, A>> extensions,
+                            A agent) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey("test_agent_void_tool"));
+                            final var response = toolRunner.runTool(
+                                    context,
+                                    tools,
+                                    new ToolCall("TC1",
+                                            "test_agent_void_tool",
+                                            "{}"));
+                            assertTrue(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages =
+                                    new ArrayList<>(context.getOldMessages());
+                            final var message =
+                                    new ToolCallResponse(response.getToolCallId(),
+                                            response.getToolName(),
+                                            response.getErrorType(),
+                                            response.getResponse(),
+                                            LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.success(objectMapper.createObjectNode()
+                                            .textNode("Hello " + response.getResponse()),
+                                    List.of(message),
+                                    messages,
+                                    context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder()
+                        .build())
+                .mapper(objectMapper)
+                .build(),
+                List.of(),
+                Map.of()
         );
         final var response = textAgent.execute(
                 AgentInput.<String>builder()
@@ -331,55 +332,55 @@ class AgentTest {
     void testStructuredToolCall() {
         final var objectMapper = JsonUtils.createMapper();
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
-                                                        @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
-                                                                AgentRunContext<R> context,
-                                                                JsonNode responseSchema,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner<R> toolRunner,
-                                                                List<AgentExtension> extensions,
-                                                                A agent) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey(
-                                                                        "test_agent_structured_tool"));
-                                                                final var response = toolRunner.runTool(
-                                                                        context,
-                                                                        tools,
-                                                                        new ToolCall("TC1",
-                                                                                     "test_agent_structured_tool",
-                                                                                     """
-                                                                                             {
-                                                                                                "input": {
-                                                                                                    "data" : "Test Data"
-                                                                                                }
-                                                                                             }
-                                                                                             """));
-                                                                assertTrue(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(context.getOldMessages());
-                                                                final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.success(objectMapper.createObjectNode()
-                                                                                                   .textNode("Hello " + response.getResponse()),
-                                                                                           List.of(message),
-                                                                                           messages,
-                                                                                           context.getModelUsageStats());
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(objectMapper)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
+                .model(new Model() {
+                    @Override
+                    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
+                            AgentRunContext<R> context,
+                            JsonNode responseSchema,
+                            Map<String, ExecutableTool> tools,
+                            ToolRunner<R> toolRunner,
+                            List<AgentExtension<R, T, A>> extensions,
+                            A agent) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                    "test_agent_structured_tool"));
+                            final var response = toolRunner.runTool(
+                                    context,
+                                    tools,
+                                    new ToolCall("TC1",
+                                            "test_agent_structured_tool",
+                                            """
+                                                    {
+                                                       "input": {
+                                                           "data" : "Test Data"
+                                                       }
+                                                    }
+                                                    """));
+                            assertTrue(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages =
+                                    new ArrayList<>(context.getOldMessages());
+                            final var message =
+                                    new ToolCallResponse(response.getToolCallId(),
+                                            response.getToolName(),
+                                            response.getErrorType(),
+                                            response.getResponse(),
+                                            LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.success(objectMapper.createObjectNode()
+                                            .textNode("Hello " + response.getResponse()),
+                                    List.of(message),
+                                    messages,
+                                    context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder()
+                        .build())
+                .mapper(objectMapper)
+                .build(),
+                List.of(),
+                Map.of()
         );
         final var response = textAgent.execute(
                 AgentInput.<String>builder()
@@ -397,49 +398,49 @@ class AgentTest {
     void testToolCallFailure() {
         final var objectMapper = JsonUtils.createMapper();
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
+                .model(new Model() {
 
-                                                        @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
-                                                                AgentRunContext<R> context,
-                                                                JsonNode responseSchema,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner<R> toolRunner,
-                                                                List<AgentExtension> extensions,
-                                                                A agent) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("test_agent_throw_tool"));
-                                                                final var response = toolRunner.runTool(
-                                                                        context,
-                                                                        tools,
-                                                                        new ToolCall("TC1",
-                                                                                     "test_agent_throw_tool",
-                                                                                     "{}"));
-                                                                assertFalse(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(context.getOldMessages());
-                                                                final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.error(messages,
-                                                                                         context.getModelUsageStats(),
-                                                                                         SentinelError.error(
-                                                                                                 ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                                                                                 response.getResponse()));
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(objectMapper)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
+                    @Override
+                    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
+                            AgentRunContext<R> context,
+                            JsonNode responseSchema,
+                            Map<String, ExecutableTool> tools,
+                            ToolRunner<R> toolRunner,
+                            List<AgentExtension<R, T, A>> extensions,
+                            A agent) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey("test_agent_throw_tool"));
+                            final var response = toolRunner.runTool(
+                                    context,
+                                    tools,
+                                    new ToolCall("TC1",
+                                            "test_agent_throw_tool",
+                                            "{}"));
+                            assertFalse(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages =
+                                    new ArrayList<>(context.getOldMessages());
+                            final var message =
+                                    new ToolCallResponse(response.getToolCallId(),
+                                            response.getToolName(),
+                                            response.getErrorType(),
+                                            response.getResponse(),
+                                            LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.error(messages,
+                                    context.getModelUsageStats(),
+                                    SentinelError.error(
+                                            ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                            response.getResponse()));
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder()
+                        .build())
+                .mapper(objectMapper)
+                .build(),
+                List.of(),
+                Map.of()
         );
         final var response = textAgent.execute(
                 AgentInput.<String>builder()
@@ -458,47 +459,47 @@ class AgentTest {
     void testToolCallWrongName() {
         final var objectMapper = JsonUtils.createMapper();
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
-                                                        @Override
-                                                        public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
-                                                                AgentRunContext<R> context,
-                                                                JsonNode responseSchema,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner<R> toolRunner,
-                                                                List<AgentExtension> extensions,
-                                                                A agent) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                final var response = toolRunner.runTool(
-                                                                        context,
-                                                                        tools,
-                                                                        new ToolCall("TC1",
-                                                                                     "getUnknown",
-                                                                                     "{}"));
-                                                                assertFalse(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(context.getOldMessages());
-                                                                final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.error(messages,
-                                                                                            context.getModelUsageStats(),
-                                                                                            SentinelError.error(
-                                                                                                    ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                                                                                    response.getResponse()));
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(objectMapper)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
+                .model(new Model() {
+                    @Override
+                    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
+                            AgentRunContext<R> context,
+                            JsonNode responseSchema,
+                            Map<String, ExecutableTool> tools,
+                            ToolRunner<R> toolRunner,
+                            List<AgentExtension<R, T, A>> extensions,
+                            A agent) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            final var response = toolRunner.runTool(
+                                    context,
+                                    tools,
+                                    new ToolCall("TC1",
+                                            "getUnknown",
+                                            "{}"));
+                            assertFalse(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages =
+                                    new ArrayList<>(context.getOldMessages());
+                            final var message =
+                                    new ToolCallResponse(response.getToolCallId(),
+                                            response.getToolName(),
+                                            response.getErrorType(),
+                                            response.getResponse(),
+                                            LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.error(messages,
+                                    context.getModelUsageStats(),
+                                    SentinelError.error(
+                                            ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                            response.getResponse()));
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder()
+                        .build())
+                .mapper(objectMapper)
+                .build(),
+                List.of(),
+                Map.of()
         );
         final var response = textAgent.execute(
                 AgentInput.<String>builder()

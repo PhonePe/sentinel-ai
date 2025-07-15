@@ -22,7 +22,7 @@ import java.util.Optional;
 @Value
 @Builder
 @Slf4j
-public class AgentSessionExtension implements AgentExtension {
+public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R,T,A> {
     private static final String OUTPUT_KEY = "sessionOutput";
     ObjectMapper mapper;
     SessionStore sessionStore;
@@ -43,7 +43,7 @@ public class AgentSessionExtension implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> List<FactList> facts(
+    public  List<FactList> facts(
             R request,
             AgentRequestMetadata metadata,
             A agent) {
@@ -59,7 +59,7 @@ public class AgentSessionExtension implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
+    public  ExtensionPromptSchema additionalSystemPrompts(
             R request,
             AgentRequestMetadata metadata,
             A agent, ProcessingMode processingMode) {
@@ -104,7 +104,7 @@ public class AgentSessionExtension implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> void consume(JsonNode output, A agent) {
+    public  void consume(JsonNode output, A agent) {
         if (!updateSummaryAfterSession) {
             return;
         }
@@ -120,7 +120,7 @@ public class AgentSessionExtension implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
+    public  void onRegistrationCompleted(A agent) {
         //Nothing to do here for now
     }
 }

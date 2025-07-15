@@ -70,7 +70,7 @@ class AgentSessionExtensionTest {
 
     public static class SimpleAgent extends Agent<UserInput, String, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, ExecutableTool> tools) {
+        public SimpleAgent(AgentSetup setup, List<AgentExtension<UserInput, String, SimpleAgent>> extensions, Map<String, ExecutableTool> tools) {
             super(String.class, "greet the user", setup, extensions, tools);
         }
 
@@ -122,7 +122,7 @@ class AgentSessionExtensionTest {
                                                       .seed(1)
                                                       .build())
                                .build())
-                .extensions(List.of(AgentSessionExtension.builder()
+                .extensions(List.of(AgentSessionExtension.<UserInput, String, SimpleAgent>builder()
                                             .sessionStore(new InMemorySessionStore())
                                             .updateSummaryAfterSession(true)
                                             .mapper(objectMapper)
