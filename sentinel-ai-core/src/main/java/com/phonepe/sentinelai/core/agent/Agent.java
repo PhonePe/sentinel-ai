@@ -57,7 +57,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     @Value
     public static class ProcessingCompletedData<R, T, A extends Agent<R, T, A>> {
-        Agent<R, T, A> agent;
+        A agent;
         AgentSetup agentSetup;
         AgentRunContext<R> context;
         AgentInput<R> input;
@@ -69,8 +69,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final String systemPrompt;
     @Getter
     private final AgentSetup setup;
-    private final List<AgentExtension> extensions;
-    private final ToolRunApprovalSeeker<R,T,A> toolRunApprovalSeeker;
+    private final List<AgentExtension<R, T, A>> extensions;
+    private final ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker;
     private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
     private final XmlMapper xmlMapper = new XmlMapper();
     private final ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> requestCompleted =
@@ -83,7 +83,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             @NonNull Class<T> outputType,
             @NonNull String systemPrompt,
             @NonNull AgentSetup setup,
-            List<AgentExtension> extensions,
+            List<AgentExtension<R, T, A>> extensions,
             Map<String, ExecutableTool> knownTools) {
         this(outputType, systemPrompt, setup, extensions, knownTools, new ApproveAllToolRuns<>());
     }
@@ -93,7 +93,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             @NonNull Class<T> outputType,
             @NonNull String systemPrompt,
             @NonNull AgentSetup setup,
-            List<AgentExtension> extensions,
+            List<AgentExtension<R, T, A>> extensions,
             Map<String, ExecutableTool> knownTools,
             ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(systemPrompt), "Please provide a valid system prompt");
@@ -111,8 +111,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         xmlMapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_EMPTY);
         registerTools(ToolUtils.readTools(this));
         registerTools(knownTools);
-        //            extension.onRegistrationCompleted(self);
-        this.extensions.forEach(this::registerToolbox);
+        this.extensions.forEach(extension -> {
+            registerToolbox(extension);
+            extension.onExtensionRegistrationCompleted(self);
+        });
     }
 
     public abstract String name();
@@ -141,7 +143,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      */
     public A registerToolbox(ToolBox toolBox) {
         registerTools(toolBox.tools());
-        toolBox.onRegistrationCompleted(self);
+        toolBox.onToolBoxRegistrationCompleted(self);
         return self;
     }
 
@@ -228,7 +230,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
                         requestMetadata.getUsageStats().merge(response.getUsage());
                     }
-                    requestCompleted.dispatch(new ProcessingCompletedData<>(this,
+                    requestCompleted.dispatch(new ProcessingCompletedData<>(self,
                                                                             mergedAgentSetup,
                                                                             context,
                                                                             input,
@@ -292,7 +294,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
                         requestMetadata.getUsageStats().merge(response.getUsage());
                     }
-                    requestCompleted.dispatch(new ProcessingCompletedData<>(this,
+                    requestCompleted.dispatch(new ProcessingCompletedData<>(self,
                                                                             mergedAgentSetup,
                                                                             context,
                                                                             input,
@@ -460,7 +462,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     return new ToolCallResponse(toolCall.getToolCallId(),
                                                 toolCall.getToolName(),
                                                 ErrorType.SUCCESS,
-                                                context.getAgentSetup().getMapper().writeValueAsString(response.response()),
+                                                context.getAgentSetup()
+                                                        .getMapper()
+                                                        .writeValueAsString(response.response()),
                                                 LocalDateTime.now());
                 }
                 catch (JsonProcessingException e) {

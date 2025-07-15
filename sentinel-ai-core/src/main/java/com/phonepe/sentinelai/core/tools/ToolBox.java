@@ -15,7 +15,7 @@ public interface ToolBox {
         return ToolUtils.readTools(this);
     }
 
-    default <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
+    default <R, T, A extends Agent<R, T, A>> void onToolBoxRegistrationCompleted(A agent) {
         // Do nothing by default
     }
 

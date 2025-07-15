@@ -64,7 +64,7 @@ public class MCPToolBox implements ToolBox {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
+    public <R, T, A extends Agent<R, T, A>> void onToolBoxRegistrationCompleted(A agent) {
         this.mcpClient.onRegistrationCompleted(agent);
         log.info("MCP ToolBox {} registered for agent: {}", name(), agent.name());
     }

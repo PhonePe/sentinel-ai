@@ -24,7 +24,7 @@ import java.util.function.Predicate;
  * requirement.
  */
 @Slf4j
-public class AgentRegistry implements AgentExtension {
+public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExtension<R,T,A> {
 
     /**
      * Storage for agent configurations.
@@ -131,7 +131,7 @@ public class AgentRegistry implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> List<FactList> facts(R request, AgentRequestMetadata metadata, A agent) {
+    public  List<FactList> facts(R request, AgentRequestMetadata metadata, A agent) {
         return List.of(new FactList(
                 "List of agents registered in the system and can be invoked",
                 agentSource.list()
@@ -143,7 +143,7 @@ public class AgentRegistry implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
+    public  ExtensionPromptSchema additionalSystemPrompts(
             R request,
             AgentRequestMetadata metadata,
             A agent,
@@ -172,12 +172,12 @@ public class AgentRegistry implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> void consume(JsonNode output, A agent) {
+    public  void consume(JsonNode output, A agent) {
         //Nothing to do here
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
+    public  void onExtensionRegistrationCompleted(A agent) {
         //Nothing to do here
     }
 }

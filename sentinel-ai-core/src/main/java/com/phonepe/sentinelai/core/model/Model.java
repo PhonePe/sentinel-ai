@@ -44,14 +44,14 @@ public interface Model {
             JsonNode responseSchema,
             Map<String, ExecutableTool> tools,
             ToolRunner<R> toolRunner,
-            List<AgentExtension> extensions,
+            List<AgentExtension<R,T,A>> extensions,
             A agent);
 
     default <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessagesStreaming(
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
             ToolRunner<R> toolRunner,
-            List<AgentExtension> extensions,
+            List<AgentExtension<R,T,A>> extensions,
             A agent,
             Consumer<byte[]> streamHandler) {
         throw new NotImplementedException();

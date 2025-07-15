@@ -19,8 +19,13 @@ import java.util.concurrent.CompletableFuture;
 @SuppressWarnings("unused")
 public class ConfiguredAgent {
 
+    private final String name;
+    private final String description;
+    private final RootAgent rootAgent;
+    private final JsonNode inputSchema;
+    private final JsonNode outputSchema;
 
-    private static final class RootAgent extends Agent<String, String, RootAgent> {
+    public static final class RootAgent extends Agent<String, String, RootAgent> {
 
         private final String name;
         private final JsonNode outputSchema;
@@ -29,13 +34,13 @@ public class ConfiguredAgent {
                 final String name,
                 final String prompt,
                 final JsonNode outputSchema,
-                final List<AgentExtension> extensions,
+                final List<AgentExtension<String, String, RootAgent>> extensions,
                 final ToolBox toolBox) {
             super(String.class,
-                  prompt,
-                  AgentSetup.builder().build(),
-                  extensions,
-                  Map.of());
+                    prompt,
+                    AgentSetup.builder().build(),
+                    extensions,
+                    Map.of());
             this.name = name;
             this.outputSchema = outputSchema;
             this.registerToolbox(toolBox);
@@ -60,17 +65,11 @@ public class ConfiguredAgent {
         }
     }
 
-    private final String name;
-    private final String description;
-    private final RootAgent rootAgent;
-    private final JsonNode inputSchema;
-    private final JsonNode outputSchema;
-
     public ConfiguredAgent(
             final String name,
             String description,
             final String prompt,
-            final List<AgentExtension> extensions,
+            final List<AgentExtension<String, String, RootAgent>> rootAgentExtensions,
             final ToolBox availableTools,
             JsonNode inputSchema,
             JsonNode outputSchema) {
@@ -78,7 +77,7 @@ public class ConfiguredAgent {
         this.description = description;
         this.inputSchema = inputSchema;
         this.outputSchema = outputSchema;
-        this.rootAgent = new RootAgent(name, prompt, outputSchema, extensions, availableTools);
+        this.rootAgent = new RootAgent(name, prompt, outputSchema, rootAgentExtensions, availableTools);
     }
 
     @SneakyThrows

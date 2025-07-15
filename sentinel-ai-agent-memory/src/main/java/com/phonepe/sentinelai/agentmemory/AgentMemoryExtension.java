@@ -28,7 +28,7 @@ import java.util.*;
  * If output has memory store it. No tools are needed.
  */
 @Slf4j
-public class AgentMemoryExtension implements AgentExtension {
+public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R,T,A> {
     private static final String OUTPUT_KEY = "memoryOutput";
 
     /**
@@ -73,7 +73,7 @@ public class AgentMemoryExtension implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> List<FactList> facts(
+    public  List<FactList> facts(
             R request,
             AgentRequestMetadata metadata,
             A agent) {
@@ -94,7 +94,7 @@ public class AgentMemoryExtension implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> ExtensionPromptSchema additionalSystemPrompts(
+    public  ExtensionPromptSchema additionalSystemPrompts(
             R request,
             AgentRequestMetadata metadata,
             A agent,
@@ -169,7 +169,7 @@ public class AgentMemoryExtension implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> void consume(JsonNode output, A agent) {
+    public  void consume(JsonNode output, A agent) {
         try {
             final var memoryOutput = objectMapper.treeToValue(output, AgentMemoryOutput.class);
             final var memories = Objects.requireNonNullElseGet(
@@ -204,14 +204,13 @@ public class AgentMemoryExtension implements AgentExtension {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
+    public  void onExtensionRegistrationCompleted(A agent) {
         agent.onRequestCompleted()
                 .connect(this::extractMemory);
     }
 
     @SneakyThrows
-    @SuppressWarnings("unchecked")
-    private <T, A extends Agent<R, T, A>, R> void extractMemory(Agent.ProcessingCompletedData<R, T, A> data) {
+    private void extractMemory(Agent.ProcessingCompletedData<R, T, A> data) {
         if (memoryExtractionMode.equals(MemoryExtractionMode.DISABLED)) {
             log.debug("Memory extraction is disabled");
             return;
@@ -255,7 +254,7 @@ public class AgentMemoryExtension implements AgentExtension {
             final var outputData = output.getData();
             if (!outputData.isEmpty()) {
                 log.debug("Extracted memory output: {}", outputData);
-                consume(output.getData(), (A) data.getAgent());
+                consume(output.getData(), data.getAgent());
             }
             else {
                 log.debug("No memory extracted from the output");

@@ -52,7 +52,7 @@ public class ComposingToolBox implements ToolBox {
     }
 
     @Override
-    public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
-        upstreams.forEach(toolBox -> toolBox.onRegistrationCompleted(agent));
+    public <R, T, A extends Agent<R, T, A>> void onToolBoxRegistrationCompleted(A agent) {
+        upstreams.forEach(toolBox -> toolBox.onToolBoxRegistrationCompleted(agent));
     }
 }

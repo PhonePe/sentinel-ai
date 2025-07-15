@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HttpToolBoxIntegrationTest {
     public static class SimpleAgent extends Agent<String, String, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, List<AgentExtension> extensions, Map<String, ExecutableTool> tools) {
+        public SimpleAgent(AgentSetup setup, List<AgentExtension<String, String, SimpleAgent>> extensions, Map<String, ExecutableTool> tools) {
             super(String.class, "Greet the user and Respond to user queries.", setup, extensions, tools);
         }
 
