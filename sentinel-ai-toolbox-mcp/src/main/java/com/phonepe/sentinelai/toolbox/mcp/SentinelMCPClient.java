@@ -13,8 +13,16 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPSSEServerConfig;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPServerConfig;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPServerConfigVisitor;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
+import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
+import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
+import io.modelcontextprotocol.client.transport.ServerParameters;
+import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.Getter;
 import lombok.NonNull;
@@ -22,6 +30,7 @@ import lombok.Singular;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -52,12 +61,7 @@ public class SentinelMCPClient implements AutoCloseable {
             @Singular final Set<String> exposedTools) {
         this.name = name;
         this.mapper = mapper;
-        final var clientData = MCPJsonReader.createMcpClient(mapper,
-                                                             name,
-                                                             mcpServerConfig,
-                                                             this::handleSamplingRequest);
-
-        this.mcpClient = clientData.getClient();
+        this.mcpClient = createMcpClient(mcpServerConfig);
         this.exposeTools(exposedTools);
     }
 
@@ -95,28 +99,7 @@ public class SentinelMCPClient implements AutoCloseable {
         if (knownTools.isEmpty()) {
             log.debug("Loading tools from MCP server: {}", name);
             //The read happens independently and uses putAll to load values into the map in a threadsafe manner
-            knownTools.putAll(mcpClient.listTools()
-                                      .tools()
-                                      .stream()
-                                      .map(toolDef -> new ExternalTool(
-                                              ToolDefinition.builder()
-                                                      .id(AgentUtils.id(name, toolDef.name()))
-                                                      .name(toolDef.name())
-                                                      .description(
-                                                              Objects.requireNonNullElseGet(
-                                                                      toolDef.description(),
-                                                                      toolDef::name))
-                                                      .contextAware(false)
-                                                      .strictSchema(false)
-                                                      // IMPORTANT::Strict means openai expects all object params to be
-                                                      // present in the required field. This is not something all MCP
-                                                      // servers do properly. So for now we are setting strict false
-                                                      // for tools obtained from mcp servers
-                                                      .build(),
-                                              mapper.valueToTree(toolDef.inputSchema()),
-                                              this::runTool))
-                                      .collect(toMap(tool -> tool.getToolDefinition().getId(),
-                                                     Function.identity())));
+            knownTools.putAll(toolsList(mcpClient.listTools().tools()));
             log.info("Loaded {} tools from MCP server {}: {}", knownTools.size(), name, knownTools.keySet());
         }
         final var mapToReturn = exposedTools.isEmpty()
@@ -154,6 +137,64 @@ public class SentinelMCPClient implements AutoCloseable {
                     ErrorType.GENERIC_MODEL_CALL_FAILURE);
         }
 
+    }
+
+    private McpSyncClient createMcpClient(MCPServerConfig serverConfig) {
+        final var transport =  serverConfig.accept(new MCPServerConfigVisitor<McpClientTransport>() {
+            @Override
+            public McpClientTransport visit(MCPStdioServerConfig stdioServerConfig) {
+                final var serverParameters = ServerParameters.builder(stdioServerConfig.getCommand())
+                        .args(Objects.requireNonNullElseGet(stdioServerConfig.getArgs(), List::of))
+                        .env(Objects.requireNonNullElseGet(stdioServerConfig.getEnv(), Map::of))
+                        .build();
+                return new StdioClientTransport(serverParameters, mapper);
+            }
+
+            @Override
+            public McpClientTransport visit(MCPSSEServerConfig sseServerConfig) {
+                final var timeout = Objects.requireNonNullElse(sseServerConfig.getTimeout(), 5_000);
+                return HttpClientSseClientTransport.builder(sseServerConfig.getUrl())
+                        .objectMapper(mapper)
+                        .customizeClient(builder -> builder.connectTimeout(Duration.ofMillis(timeout)))
+                        .build();
+            }
+        });
+        final var client = McpClient.sync(transport)
+                .clientInfo(new McpSchema.Implementation("sentinel-ai-toolbox-mcp", "X.X.X"))
+                .sampling(this::handleSamplingRequest)
+                .toolsChangeConsumer(tools -> {
+                    knownTools.clear();
+                    log.info("Received tools change notification from MCP server: {}. " +
+                                     "Will reload on next tools call", name);
+                })
+                .build();
+        final var result = client.initialize();
+        log.debug("Initialized MCP client for server: {} with result: {}", name, result);
+        return client;
+    }
+
+    private Map<String, ExternalTool> toolsList(final List<McpSchema.Tool> tools) {
+        return tools
+                .stream()
+                .map(toolDef -> new ExternalTool(
+                        ToolDefinition.builder()
+                                .id(AgentUtils.id(name, toolDef.name()))
+                                .name(toolDef.name())
+                                .description(
+                                        Objects.requireNonNullElseGet(
+                                                toolDef.description(),
+                                                toolDef::name))
+                                .contextAware(false)
+                                .strictSchema(false)
+                                // IMPORTANT::Strict means openai expects all object params to be
+                                // present in the required field. This is not something all MCP
+                                // servers do properly. So for now we are setting strict false
+                                // for tools obtained from mcp servers
+                                .build(),
+                        mapper.valueToTree(toolDef.inputSchema()),
+                        this::runTool))
+                .collect(toMap(tool -> tool.getToolDefinition().getId(),
+                               Function.identity()));
     }
 
     private McpSchema.CreateMessageResult handleSamplingRequest(McpSchema.CreateMessageRequest createMessageRequest) {
