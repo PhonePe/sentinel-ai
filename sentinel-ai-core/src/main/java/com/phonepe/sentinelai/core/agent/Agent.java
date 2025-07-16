@@ -197,14 +197,16 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var inputRequest = input.getRequest();
         final var context = new AgentRunContext<>(runId,
                                                   inputRequest,
-                                                  requestMetadata,
+                                                  Objects.requireNonNullElseGet(
+                                                        requestMetadata,
+                                                        AgentRequestMetadata::new),
                                                   mergedAgentSetup,
                                                   messages,
                                                   new ModelUsageStats(),
                                                   ProcessingMode.DIRECT);
         var finalSystemPrompt = "";
         try {
-            finalSystemPrompt = systemPrompt(inputRequest, facts, requestMetadata, messages, ProcessingMode.DIRECT);
+            finalSystemPrompt = systemPrompt(context, facts);
         }
         catch (JsonProcessingException e) {
             log.error("Error serializing system prompt", e);
@@ -261,14 +263,16 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var facts = input.getFacts();
         final var context = new AgentRunContext<>(runId,
                                                   request,
-                                                  requestMetadata,
+                                                  Objects.requireNonNullElseGet(
+                                                        requestMetadata,
+                                                        AgentRequestMetadata::new),
                                                   mergedAgentSetup,
                                                   messages,
                                                   new ModelUsageStats(),
                                                   ProcessingMode.STREAMING);
         var finalSystemPrompt = "";
         try {
-            finalSystemPrompt = systemPrompt(request, facts, requestMetadata, messages, ProcessingMode.STREAMING);
+            finalSystemPrompt = systemPrompt(context, facts);
         }
         catch (JsonProcessingException e) {
             log.error("Error serializing system prompt", e);
@@ -333,21 +337,19 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     }
 
     private String systemPrompt(
-            R request,
-            List<FactList> facts,
-            final AgentRequestMetadata requestMetadata,
-            List<AgentMessage> messages,
-            ProcessingMode processingMode) throws JsonProcessingException {
+            AgentRunContext<R> context,
+            List<FactList> facts
+           ) throws JsonProcessingException {
         final var secondaryTasks = this.extensions
                 .stream()
                 .flatMap(extension -> extension
-                        .additionalSystemPrompts(request, requestMetadata, self, processingMode)
+                        .additionalSystemPrompts(context.getRequest(), context, self, context.getProcessingMode())
                         .getTask()
                         .stream())
                 .toList();
         final var knowledgeFromExtensions = this.extensions
                 .stream()
-                .flatMap(extension -> extension.facts(request, requestMetadata, self).stream())
+                .flatMap(extension -> extension.facts(context.getRequest(), context, self).stream())
                 .toList();
         final var knowledge = new ArrayList<>(knowledgeFromExtensions);
         knowledge.addAll(Objects.requireNonNullElseGet(facts, List::of));
@@ -355,7 +357,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 .setName(name())
                 .setCoreInstructions(
                         "Your main job is to answer the user query as provided in user prompt in the `user_input` tag. "
-                                + (!messages.isEmpty()
+                                + (!context.getOldMessages().isEmpty()
                                    ? "Use the provided old messages for extra context and information. " : "")
                                 + ((!secondaryTasks.isEmpty())
                                    ? "Perform the provided secondary tasks as well and populate the output in " +
@@ -377,11 +379,11 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                         .build())
                 .setSecondaryTask(secondaryTasks)
                 .setFacts(knowledge);
-        if (null != requestMetadata) {
+        if (null != context.getRequestMetadata()) {
             prompt.setAdditionalData(new SystemPrompt.AdditionalData()
-                                             .setSessionId(requestMetadata.getSessionId())
-                                             .setUserId(requestMetadata.getUserId())
-                                             .setCustomParams(requestMetadata.getCustomParams()));
+                                             .setSessionId(context.getRequestMetadata().getSessionId())
+                                             .setUserId(context.getRequestMetadata().getUserId())
+                                             .setCustomParams(context.getRequestMetadata().getCustomParams()));
         }
         final var generatedSystemPrompt = xmlMapper.writerWithDefaultPrettyPrinter().writeValueAsString(prompt);
         log.debug("Final system prompt: {}", generatedSystemPrompt);

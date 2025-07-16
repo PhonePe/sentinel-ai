@@ -27,10 +27,10 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
         JsonNode schema;
     }
 
-    List<FactList> facts(R request, AgentRequestMetadata metadata, A agent);
+    List<FactList> facts(R request, AgentRunContext<R> metadata, A agent);
 
     ExtensionPromptSchema additionalSystemPrompts(
-            R request, AgentRequestMetadata metadata, A agent, ProcessingMode processingMode);
+            R request, AgentRunContext<R> metadata, A agent, ProcessingMode processingMode);
 
     Optional<AgentExtensionOutputDefinition> outputSchema(ProcessingMode processingMode);
 
