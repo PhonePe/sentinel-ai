@@ -12,14 +12,13 @@ and host them centrally to be used by multiple agents without needing to write t
 useful MCP servers available on the internet.
 
 !!!note "Support for MCP functionality"
-    MCP servers are servers that implement the [Model Context Protocol](https://modelcontextprotocol.org/) (MCP) and
-    expose tools that can be used by agents. These servers can be run locally or remotely and can be used to register
-    tools with the agent.
+    Currently Sentinel AI supports making tool calls (with dynamic tool list changes tracking) and sampling. Other MCP
+    features like prompt templates, resources and elicitation etc. are not supported. 
 
 !!!note "MCP Transport"
     SentinelAI supports two types of MCP transports: `stdio` and `sse`. The `stdio` transport is used for local servers
-    that can be run using a command line interface, while the `sse` transport is used for remote servers that support
-    Server-Sent Events (SSE).
+    that can be run using a command line interface, while the `sse` transport is used for remote servers (or servers
+    hosted locally using containers) that support Server-Sent Events (SSE).
 
 !!!danger "MCP Server security"
     Please ensure MCP servers you decide to use off the internet are secure and come from trusted sources. Also scope
@@ -162,7 +161,7 @@ To create and use `ComposingToolBox`, you can use the following code:
 
 ```java title="TestAgent.java"
 // Create a ComposingToolBox using the mcp.json file
-final var composingMCPToolBox = ComposingMCPToolBox.builder()
+final var composingMCPToolBox = ComposingMCPToolBox.buildFromFile()
                 .name("MCP Servers for Test Agent")
                 .objectMapper(objectMapper)
                 .mcpJsonPath("/path/to/mcp.json")
@@ -195,7 +194,7 @@ final var mcpClient = McpClient.sync(transport)
 mcpClient.initialize();
 
 // Build toolbox
-final val toolBox = ComposingMCPToolBox.builder()
+final val toolBox = ComposingMCPToolBox.buildEmpty()
         .objectMapper(objectMapper)
         .build();
         
