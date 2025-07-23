@@ -1,32 +1,37 @@
 {
-  "id" : "chatcmpl-BFEV9hXD9r8KbRO6jnWYkUaLSSlxG",
-  "choices" : [ {
-    "finish_reason" : "stop",
-    "index" : 0,
-    "logprobs" : null,
-    "message" : {
-      "content" : "{\"output\":\"Hello Mr Santanu! How are you today?\",\"sessionOutput\":{\"sessionId\":\"s1\",\"summary\":\"The user greeted the assistant with a 'Hi'.\",\"topics\":[\"Greeting the user\",\"User's name and location\"]}}",
-      "refusal" : null,
-      "role" : "assistant"
-    }
-  } ],
-  "created" : 1742970363,
-  "model" : "gpt-4o-mini-2024-07-18",
+  "id" : "chatcmpl-BwNatyxZq6k1e9XsGBB40gSYdceqY",
   "object" : "chat.completion",
-  "system_fingerprint" : "fp_b705f0c291",
+  "created" : 1753253419,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_px9kH95O8zqPm25lC9kTx4S9",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":\"Hello Mr. Santanu! How can I assist you today?\",\"sessionOutput\":{\"sessionId\":\"s1\",\"summary\":\"User greeted with a salutation.\",\"topics\":[\"greeting\",\"user assistance\"]}}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
   "usage" : {
-    "completion_tokens" : 55,
-    "prompt_tokens" : 717,
-    "total_tokens" : 772,
+    "prompt_tokens" : 721,
+    "completion_tokens" : 56,
+    "total_tokens" : 777,
     "completion_tokens_details" : {
-      "accepted_prediction_tokens" : 0,
       "audio_tokens" : 0,
-      "reasoning_tokens" : 0,
-      "rejected_prediction_tokens" : 0
+      "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
       "cached_tokens" : 0
     }
   }
-}
+} 
+
+

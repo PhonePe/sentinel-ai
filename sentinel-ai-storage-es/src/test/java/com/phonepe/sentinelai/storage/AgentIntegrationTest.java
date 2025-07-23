@@ -34,6 +34,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -88,7 +89,7 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(7, "me", getClass());
+        TestUtils.setupMocks(13, "me", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
@@ -156,6 +157,7 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
                                                        .requestMetadata(requestMetadata)
                                                        .build());
             log.debug("Agent response: {}", response.getData().message());
+            ensureOutputGenerated(response);
         }
         {
             final var response2 = agent.execute(
@@ -169,6 +171,7 @@ public class AgentIntegrationTest extends ESIntegrationTestBase {
                         .writeValueAsString(response2.getAllMessages()));
             }
             assertTrue(response2.getData().message().contains("sunny"));
+            ensureOutputGenerated(response2);
         }
         final var mems = memoryStorage.findMemoriesAboutUser("ss", null, 5);
         log.info("Memories: {}", mems);

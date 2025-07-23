@@ -1,0 +1,37 @@
+{
+  "id" : "chatcmpl-BwNaysRSVVLbN0jaFcoqTcCyIpvRC",
+  "object" : "chat.completion",
+  "created" : 1753253424,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_QlmM1pl5EuXdH7cUv6bLbT92",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":\"The weather in Bangalore is sunny today!\",\"sessionOutput\":{\"sessionId\":\"s1\",\"summary\":\"User inquired about the weather at their location.\",\"topics\":[\"weather inquiry\",\"Bangalore weather\"]}}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1451,
+    "completion_tokens" : 55,
+    "total_tokens" : 1506,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+

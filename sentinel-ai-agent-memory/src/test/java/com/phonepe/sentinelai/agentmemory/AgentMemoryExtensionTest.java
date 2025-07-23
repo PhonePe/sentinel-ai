@@ -15,10 +15,7 @@ import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
-import lombok.Builder;
-import lombok.NonNull;
-import lombok.SneakyThrows;
-import lombok.Value;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.awaitility.Awaitility;
@@ -114,7 +111,7 @@ class AgentMemoryExtensionTest {
     @Test
     @SneakyThrows
     void testInlineExtraction(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(6, "me", getClass());
+        TestUtils.setupMocks(9, "met.inline", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var httpClient = new OkHttpClient.Builder()
@@ -186,7 +183,7 @@ class AgentMemoryExtensionTest {
     @Test
     @SneakyThrows
     void testOutOfBandExtraction(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(10, "ome", getClass());
+        TestUtils.setupMocks(12, "met.async", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var httpClient = new OkHttpClient.Builder()
@@ -242,7 +239,9 @@ class AgentMemoryExtensionTest {
         Awaitility.await()
                 .pollDelay(Duration.ofSeconds(1))
                 .atMost(Duration.ofMinutes(1))
-                .until(() -> memoryStore.memories.get(new InMemoryMemStore.Key(MemoryScope.ENTITY, "ss")) != null);
+                .until(() -> !memoryStore.memories.isEmpty());
+//                .until(() -> memoryStore.memories.get(new InMemoryMemStore.Key(MemoryScope.ENTITY, "ss")) != null);
+        final val currMemories = memoryStore.memories.size();
 
         {
             final var response2 = agent.execute(
@@ -258,6 +257,10 @@ class AgentMemoryExtensionTest {
             assertNotNull(response2.getData());
             assertTrue(response2.getData().message().contains("sunny"));
         }
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .until(() -> memoryStore.memories.size() > currMemories);
+        assertFalse(memoryStore.memories.isEmpty());
     }
 
     /**

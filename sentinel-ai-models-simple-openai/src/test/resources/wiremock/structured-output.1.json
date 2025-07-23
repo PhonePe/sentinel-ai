@@ -1,40 +1,37 @@
 {
-  "id" : "chatcmpl-BCHtH6PSNiEhg3aPpKlUvRCrqxVEH",
+  "id" : "chatcmpl-Bvdp5rmtD5e5wMNkhPYkigh34wvzZ",
+  "object" : "chat.completion",
+  "created" : 1753077475,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
-    "finish_reason" : "tool_calls",
     "index" : 0,
-    "logprobs" : null,
     "message" : {
-      "content" : null,
-      "refusal" : null,
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_4v6nwNwMD5TIbe4uk6a3RygZ",
+        "id" : "call_PqPR7R6ueMHA71WNOnsMHDOQ",
+        "type" : "function",
         "function" : {
-          "arguments" : "{}",
-          "name" : "getName"
-        },
-        "type" : "function"
+          "name" : "simple_agent_get_name",
+          "arguments" : "{}"
+        }
       } ]
-    }
+    },
+    "finish_reason" : "tool_calls"
   } ],
-  "created" : 1742268407,
-  "model" : "gpt-4o-mini-2024-07-18",
-  "object" : "chat.completion",
-  "system_fingerprint" : "fp_ded0d14823",
   "usage" : {
-    "completion_tokens" : 28,
-    "prompt_tokens" : 252,
-    "total_tokens" : 280,
+    "prompt_tokens" : 277,
+    "completion_tokens" : 13,
+    "total_tokens" : 290,
     "completion_tokens_details" : {
-      "accepted_prediction_tokens" : 0,
       "audio_tokens" : 0,
-      "reasoning_tokens" : 0,
-      "rejected_prediction_tokens" : 0
+      "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
       "cached_tokens" : 0
     }
   }
-}
+} 
+
+

@@ -2,6 +2,7 @@ package com.phonepe.sentinelai.models;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.*;
@@ -70,7 +71,7 @@ class SimpleOpenAIModelTest {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(3, "structured-output", getClass());
+        TestUtils.setupMocks(4, "structured-output", getClass());
         final var objectMapper = JsonUtils.createMapper();
 
         final var httpClient = new OkHttpClient.Builder()
@@ -89,6 +90,18 @@ class SimpleOpenAIModelTest {
                 objectMapper
         );
         final var eventBus = new EventBus();
+        eventBus.onEvent()
+                .connect(event -> {
+                    if (log.isDebugEnabled()) {
+                        try {
+                            log.debug("Event: {}", objectMapper.writerWithDefaultPrettyPrinter()
+                                    .writeValueAsString(event));
+                        }
+                        catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                });
 
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
@@ -125,5 +138,6 @@ class SimpleOpenAIModelTest {
                     .writeValueAsString(response2.getAllMessages()));
         }
         assertTrue(response2.getData().message().contains("Santanu"));
+
     }
 }

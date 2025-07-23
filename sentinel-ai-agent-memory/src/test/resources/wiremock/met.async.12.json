@@ -1,0 +1,30 @@
+{
+  "id" : "chatcmpl-BwNWO2ItupQD1LXMK3DfsZdvSw35y",
+  "object" : "chat.completion",
+  "created" : 1753253140,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "{\"generatedMemory\":[{\"content\":\"The user's name is Santanu.\",\"name\":\"UserName\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"Santanu\",\"topics\":[\"user\",\"identity\",\"name\"],\"type\":\"SEMANTIC\"},{\"content\":\"The user Santanu is located in Bangalore.\",\"name\":\"UserLocation\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"Santanu\",\"topics\":[\"user\",\"location\",\"Bangalore\"],\"type\":\"SEMANTIC\"},{\"content\":\"The weather in Bangalore today is sunny.\",\"name\":\"WeatherBangalore\",\"reusabilityScore\":10,\"scope\":\"AGENT\",\"scopeId\":\"weather\",\"topics\":[\"weather\",\"Bangalore\",\"sunny\"],\"type\":\"SEMANTIC\"},{\"content\":\"To greet the user Santanu, use the salutation 'Mr', 'Dr', or 'Prof'.\",\"name\":\"UserSalutation\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"Santanu\",\"topics\":[\"user\",\"salutation\"],\"type\":\"PROCEDURAL\"}]}"
+    },
+    "finish_reason" : "stop"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1566,
+    "completion_tokens" : 213,
+    "total_tokens" : 1779,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+

@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.phonepe.sentinelai.core.utils.TestUtils.assertNoFailedToolCalls;
+import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @WireMockTest
@@ -94,6 +95,7 @@ class MCPToolBoxTest {
                                                    .build());
         assertTrue(response.getData().contains("-6"));
         assertNoFailedToolCalls(response);
+        ensureOutputGenerated(response);
     }
 
     @Test
@@ -145,5 +147,6 @@ class MCPToolBoxTest {
                                                    .build());
         assertTrue(response.getData().contains("4"));
         assertNoFailedToolCalls(response);
+        ensureOutputGenerated(response);
     }
 }

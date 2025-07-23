@@ -1,0 +1,37 @@
+{
+  "id" : "chatcmpl-BvemcZkYVLksrSqzTIo5cbIF7YQZ3",
+  "object" : "chat.completion",
+  "created" : 1753081166,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_KZq7GGu0ISp7fX6fICbRqULf",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":{\"message\":\"Hello Mr. Santanu! The weather in Bangalore is sunny today. How can I assist you further?\",\"username\":\"Santanu\"},\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"User's name is Santanu.\",\"name\":\"UserName\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"user\",\"name\"],\"type\":\"SEMANTIC\"},{\"content\":\"User is located in Bangalore.\",\"name\":\"UserLocation\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"user\",\"location\",\"Bangalore\"],\"type\":\"SEMANTIC\"}]},\"sessionOutput\":{\"sessionId\":\"s1\",\"summary\":\"User asked about the weather.\",\"topics\":[\"weather\",\"Bangalore\"]}}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1506,
+    "completion_tokens" : 167,
+    "total_tokens" : 1673,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 1280
+    }
+  }
+} 
+
+
