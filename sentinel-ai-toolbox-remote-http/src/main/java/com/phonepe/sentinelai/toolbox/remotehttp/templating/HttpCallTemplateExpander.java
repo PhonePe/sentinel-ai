@@ -1,7 +1,7 @@
 package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
-import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.HandlebarHttpCallTemplatingEngine;
+import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.handlebar.HandlebarHttpCallTemplatingEngine;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.TextHttpCallTemplatingEngine;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.TextSubstitutorHttpCallTemplatingEngine;
 import lombok.AllArgsConstructor;
