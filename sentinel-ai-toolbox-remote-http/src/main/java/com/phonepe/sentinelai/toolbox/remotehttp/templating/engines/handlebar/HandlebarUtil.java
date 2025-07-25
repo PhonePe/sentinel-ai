@@ -17,9 +17,6 @@ import java.util.concurrent.ExecutionException;
 
 @UtilityClass
 public class HandlebarUtil {
-
-    private static final Handlebars handlebars;
-
     /**
      * For use by Handlebars.java internally.
      */
@@ -27,20 +24,17 @@ public class HandlebarUtil {
             .newBuilder()
             .build();
 
-
     private static final LoadingCache<String, Template> compilationCache = CacheBuilder
             .newBuilder()
             .build(new CacheLoader<>() {
                 @Override
-                public Template load(String template) throws Exception {
-                    return handlebars.compileInline(template);
+                public Template load(String input) throws Exception {
+                    return handlebars.compileInline(input);
                 }
             });
 
-    static {
-        handlebars = new Handlebars()
-                .with(new GuavaTemplateCache(templateCache));
-    }
+    private static final Handlebars handlebars = new Handlebars()
+            .with(new GuavaTemplateCache(templateCache));
 
     public <H> void registerHelper(String name, Helper<H> helper) {
         handlebars.registerHelper(name, helper);
