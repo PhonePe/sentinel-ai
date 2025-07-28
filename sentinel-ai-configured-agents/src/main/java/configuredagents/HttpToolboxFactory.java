@@ -6,7 +6,6 @@ import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolSource;
 import com.phonepe.sentinelai.toolbox.remotehttp.UpstreamResolver;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.TemplatizedHttpTool;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.TemplatizedHttpToolSource;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NonNull;
 import okhttp3.OkHttpClient;
@@ -20,11 +19,8 @@ import java.util.function.Function;
  * and an endpoint provider factory. We do not apply tool filters here, that is done in the
  * {@link ConfiguredAgentFactory} where we can apply filters based on the agent configuration.
  */
-@AllArgsConstructor
-@Builder
 public class HttpToolboxFactory {
-    @NonNull
-    private final OkHttpClient okHttpClient;
+    private final Function<String, OkHttpClient> okHttpClientProvider;
 
     @NonNull
     private final ObjectMapper objectMapper;
@@ -35,13 +31,37 @@ public class HttpToolboxFactory {
     @NonNull
     private final Function<String, UpstreamResolver> upstreamResolver;
 
+    @Builder(builderClassName = "DefaultHttpToolboxFactoryBuilder")
+    public HttpToolboxFactory(
+            @NonNull OkHttpClient okHttpClient,
+            @NonNull ObjectMapper objectMapper,
+            @NonNull HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource,
+            @NonNull Function<String, UpstreamResolver> upstreamResolver) {
+        this(name -> okHttpClient,
+             objectMapper,
+             toolConfigSource,
+             upstreamResolver);
+    }
+
+    @Builder(builderClassName = "ProvidingHttpToolboxFactoryBuilder", builderMethodName = "httpClientProvidingBuilder")
+    public HttpToolboxFactory(
+            @NonNull Function<String, OkHttpClient> okHttpClientProvider,
+            @NonNull ObjectMapper objectMapper,
+            @NonNull HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource,
+            @NonNull Function<String, UpstreamResolver> upstreamResolver) {
+        this.okHttpClientProvider = okHttpClientProvider;
+        this.objectMapper = objectMapper;
+        this.toolConfigSource = toolConfigSource;
+        this.upstreamResolver = upstreamResolver;
+    }
+
     public Optional<HttpToolBox> create(@NonNull final String upstream) {
         if (!toolConfigSource.upstreams().contains(upstream)) {
             return Optional.empty();
         }
         return Optional.of(new HttpToolBox(
                 upstream,
-                okHttpClient,
+                okHttpClientProvider.apply(upstream),
                 toolConfigSource,
                 objectMapper,
                 upstreamResolver.apply(upstream)));
