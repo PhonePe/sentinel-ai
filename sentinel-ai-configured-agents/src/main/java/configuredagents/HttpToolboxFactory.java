@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.NonNull;
 import okhttp3.OkHttpClient;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -26,7 +27,7 @@ public class HttpToolboxFactory {
     private final ObjectMapper objectMapper;
 
     @NonNull
-    private final HttpToolSource<TemplatizedHttpTool,?> toolConfigSource;
+    private final HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource;
 
     @NonNull
     private final Function<String, UpstreamResolver> upstreamResolver;
@@ -61,7 +62,8 @@ public class HttpToolboxFactory {
         }
         return Optional.of(new HttpToolBox(
                 upstream,
-                okHttpClientProvider.apply(upstream),
+                Objects.requireNonNull(okHttpClientProvider.apply(upstream),
+                                       "Could not resolve http client for upstream: " + upstream),
                 toolConfigSource,
                 objectMapper,
                 upstreamResolver.apply(upstream)));
