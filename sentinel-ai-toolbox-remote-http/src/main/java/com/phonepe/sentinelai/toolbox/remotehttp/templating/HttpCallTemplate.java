@@ -32,6 +32,8 @@ public class HttpCallTemplate {
          * Variable values are received from LLM as parameters to the actual tool that is exposed to it.
          */
         TEXT_SUBSTITUTOR,
+
+        HANDLEBARS
     }
 
     /**
@@ -68,6 +70,13 @@ public class HttpCallTemplate {
         public static Template textSubstitutor(String content) {
             return Template.builder()
                     .type(TemplateType.TEXT_SUBSTITUTOR)
+                    .content(content)
+                    .build();
+        }
+
+        public static Template handlebars(String content) {
+            return Template.builder()
+                    .type(TemplateType.HANDLEBARS)
                     .content(content)
                     .build();
         }
