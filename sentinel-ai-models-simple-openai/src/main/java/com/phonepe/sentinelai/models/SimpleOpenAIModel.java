@@ -90,12 +90,27 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     private final M openAIProvider;
     private final ObjectMapper mapper;
     private final ParameterMapper parameterMapper;
+    private final SimpleOpenAIModelOptions modelOptions;
 
     public SimpleOpenAIModel(String modelName, M openAIProvider, ObjectMapper mapper) {
+        this(modelName,
+             openAIProvider,
+             mapper,
+             new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.ToolChoice.REQUIRED));
+    }
+
+    public SimpleOpenAIModel(
+            final String modelName,
+            final M openAIProvider,
+            final ObjectMapper mapper,
+            final SimpleOpenAIModelOptions modelOptions) {
         this.modelName = modelName;
         this.openAIProvider = openAIProvider;
         this.mapper = mapper;
         this.parameterMapper = new ParameterMapper(mapper);
+        this.modelOptions = Objects.requireNonNullElse(
+                modelOptions,
+                new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.DEFAULT_TOOL_CHOICE));
     }
 
     @Override
@@ -206,8 +221,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                         extensions,
                                                                                         context.getProcessingMode()))
                                                                                         );*/
-//                builder.toolChoice(ToolChoice.function(outputGeneratorId));
-                builder.toolChoice(ToolChoiceOption.REQUIRED);
+                builder.toolChoice(switch (this.modelOptions.getToolChoice()) {
+                    case REQUIRED -> ToolChoiceOption.REQUIRED;
+                    case AUTO -> ToolChoiceOption.AUTO;
+                });
                 raiseMessageSentEvent(context, agent, oldMessages);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
@@ -867,7 +884,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      * @return List of OpenAI messages
      */
     private List<ChatMessage> convertToOpenAIMessages(List<AgentMessage> agentMessages) {
-        return Objects.requireNonNullElseGet(agentMessages, java.util.List::<AgentMessage>of)
+        return Objects.requireNonNullElseGet(agentMessages, List::<AgentMessage>of)
                 .stream()
                 .map(SimpleOpenAIModel::convertIndividualMessageToOpenIDFormat)
                 .toList();

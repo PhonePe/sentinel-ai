@@ -49,7 +49,10 @@ class SimpleOpenAIModelTest {
 
     public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions, Map<String, ExecutableTool> tools) {
+        public SimpleAgent(
+                AgentSetup setup,
+                List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions,
+                Map<String, ExecutableTool> tools) {
             super(OutputObject.class, "greet the user", setup, extensions, tools);
         }
 
@@ -120,9 +123,9 @@ class SimpleOpenAIModelTest {
                 .userId("ss")
                 .build();
         final var response = agent.execute(AgentInput.<UserInput>builder()
-                .request(new UserInput("Hi?"))
-                .requestMetadata(requestMetadata)
-                .build());
+                                                   .request(new UserInput("Hi?"))
+                                                   .requestMetadata(requestMetadata)
+                                                   .build());
         log.info("Agent response: {}", response.getData());
 
 
@@ -130,10 +133,10 @@ class SimpleOpenAIModelTest {
                 AgentInput.<UserInput>builder()
                         .request(new UserInput("What is my name?"))
                         .requestMetadata(requestMetadata)
-                                .oldMessages(response.getAllMessages())
+                        .oldMessages(response.getAllMessages())
                         .build());
         log.info("Second call: {}", response2.getData());
-        if(log.isTraceEnabled()) {
+        if (log.isTraceEnabled()) {
             log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
                     .writeValueAsString(response2.getAllMessages()));
         }
