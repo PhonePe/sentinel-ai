@@ -232,6 +232,31 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                     stats,
                                                     SentinelError.error(ErrorType.REFUSED, refusal));
                         }
+                        final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(),
+                                                                            List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
+
+                        if (!toolCalls.isEmpty()) {
+                            handleToolCalls(agent,
+                                            context,
+                                            toolsForExecution,
+                                            toolRunner,
+                                            toolCalls,
+                                            new AgentMessages(openAiMessages, allMessages, newMessages),
+                                            stats,
+                                            stopwatch);
+                            if (generatedOutput.get() != null) {
+                                //If the output generator was called, we use the generated output
+                                yield processOutput(context,
+                                                    extensions,
+                                                    agent,
+                                                    generatedOutput.get(),
+                                                    oldMessages,
+                                                    stats,
+                                                    allMessages,
+                                                    newMessages,
+                                                    stopwatch);
+                            }
+                        }
                         yield processOutput(context,
                                             extensions,
                                             agent,
