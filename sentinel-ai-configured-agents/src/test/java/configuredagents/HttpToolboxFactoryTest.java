@@ -51,6 +51,25 @@ class HttpToolboxFactoryTest {
     }
 
     @Test
+    void testHttpToolboxFactoryWithProvidingClientFail() {
+        final var objectMapper = JsonUtils.createMapper();
+        final var toolSource = mock(HttpToolSource.class);
+        final var callSpec = createSpec();
+        final var factory = HttpToolboxFactory.httpClientProvidingBuilder()
+                .okHttpClientProvider(upstream -> null)
+                .objectMapper(objectMapper)
+                .toolConfigSource(toolSource)
+                .upstreamResolver(UpstreamResolver::direct)
+                .build();
+        final var upstream = "test-upstream";
+        when(toolSource.upstreams()).thenReturn(List.of(upstream));
+        when(toolSource.resolve(upstream, "testFunc", ""))
+                .thenReturn(callSpec);
+        assertThrows(NullPointerException.class,
+                     () -> factory.create(upstream).orElseThrow());
+    }
+
+    @Test
     void testNonNullGuards() {
         final var objectMapper = JsonUtils.createMapper();
         final var toolSource = mock(HttpToolSource.class);
