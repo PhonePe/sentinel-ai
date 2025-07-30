@@ -8,9 +8,9 @@ import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.function.Function;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +48,58 @@ class HttpToolboxFactoryTest {
                 .upstreamResolver(UpstreamResolver::direct)
                 .build();
         ensureResolution(toolSource, callSpec, factory);
+    }
+
+    @Test
+    void testNonNullGuards() {
+        final var objectMapper = JsonUtils.createMapper();
+        final var toolSource = mock(HttpToolSource.class);
+        final var okHttpClient = mock(OkHttpClient.class);
+        Function<String, UpstreamResolver> upstreamResolver = UpstreamResolver::direct;
+
+        // okHttpClient null
+        assertThrows(NullPointerException.class,
+                     () -> HttpToolboxFactory.builder()
+                             .okHttpClient(null)
+                             .objectMapper(objectMapper)
+                             .toolConfigSource(toolSource)
+                             .upstreamResolver(upstreamResolver)
+                             .build());
+
+        // objectMapper null
+        assertThrows(NullPointerException.class,
+                     () -> HttpToolboxFactory.builder()
+                             .okHttpClient(okHttpClient)
+                             .objectMapper(null)
+                             .toolConfigSource(toolSource)
+                             .upstreamResolver(upstreamResolver)
+                             .build());
+
+        // toolConfigSource null
+        assertThrows(NullPointerException.class,
+                     () -> HttpToolboxFactory.builder()
+                             .okHttpClient(okHttpClient)
+                             .objectMapper(objectMapper)
+                             .toolConfigSource(null)
+                             .upstreamResolver(upstreamResolver)
+                             .build());
+
+        // upstreamResolver null
+        assertThrows(NullPointerException.class,
+                     () -> HttpToolboxFactory.builder()
+                             .okHttpClient(okHttpClient)
+                             .objectMapper(objectMapper)
+                             .toolConfigSource(toolSource)
+                             .upstreamResolver(null)
+                             .build());
+
+        assertThrows(NullPointerException.class,
+                     () -> HttpToolboxFactory.httpClientProvidingBuilder()
+                             .okHttpClientProvider(null)
+                             .objectMapper(objectMapper)
+                             .toolConfigSource(toolSource)
+                             .upstreamResolver(upstreamResolver)
+                             .build());
     }
 
     private static HttpCallSpec createSpec() {
