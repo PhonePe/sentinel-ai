@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
 import lombok.NonNull;
@@ -48,11 +49,11 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             R request,
             AgentRunContext<R> context,
             A agent) {
-        final var metadata = context.getRequestMetadata();
-        if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
-            return sessionStore.session(metadata.getSessionId())
+        final var sessionId = AgentUtils.sessionId(context);
+        if (!Strings.isNullOrEmpty(sessionId)) {
+            return sessionStore.session(sessionId)
                     .map(sessionSummary -> List.of(
-                            new FactList("Information about session %s".formatted(metadata.getSessionId()),
+                            new FactList("Information about session %s".formatted(sessionId),
                                          List.of(new Fact(
                                                  "Session Summary", sessionSummary.toString())))))
                     .orElse(List.of());
@@ -88,7 +89,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
 
         final var hints = new ArrayList<>();
-        if (!Strings.isNullOrEmpty(context.getRequestMetadata().getSessionId())) {
+        if (!Strings.isNullOrEmpty(AgentUtils.sessionId(context))) {
             hints.add("USE SESSION INFORMATION TO CONTEXTUALIZE RESPONSES");
         }
         return new ExtensionPromptSchema(prompts, hints);

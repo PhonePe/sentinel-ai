@@ -78,13 +78,13 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
             AgentRunContext<R> context,
             A agent) {
         final var memories = new ArrayList<FactList>();
-        final var requestMetadata = context.getRequestMetadata();
 
         //Add relevant existing memories to the prompt
-        if (!Strings.isNullOrEmpty(requestMetadata.getUserId())) {
+        final var userId = AgentUtils.userId(context);
+        if (!Strings.isNullOrEmpty(userId)) {
 
             final var memoriesAboutUser = memoryStore
-                    .findMemoriesAboutUser(requestMetadata.getUserId(), null, 5);
+                    .findMemoriesAboutUser(userId, null, 5);
             if (!memoriesAboutUser.isEmpty()) {
                 final var factList = new FactList("Memories about user", memoriesAboutUser.stream()
                         .map(agentMemory -> new Fact(agentMemory.getName(), agentMemory.getContent()))
