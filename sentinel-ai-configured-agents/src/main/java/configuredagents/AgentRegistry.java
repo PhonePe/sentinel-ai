@@ -131,7 +131,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
     }
 
     @Override
-    public  List<FactList> facts(R request, AgentRequestMetadata metadata, A agent) {
+    public  List<FactList> facts(R request, AgentRunContext<R> context, A agent) {
         return List.of(new FactList(
                 "List of agents registered in the system and can be invoked",
                 agentSource.list()
@@ -145,7 +145,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
     @Override
     public  ExtensionPromptSchema additionalSystemPrompts(
             R request,
-            AgentRequestMetadata metadata,
+            AgentRunContext<R> context,
             A agent,
             ProcessingMode processingMode) {
         return new ExtensionPromptSchema(
