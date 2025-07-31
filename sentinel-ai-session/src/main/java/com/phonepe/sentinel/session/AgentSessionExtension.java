@@ -5,11 +5,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,12 +47,13 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     @Override
     public List<FactList> facts(
             R request,
-            AgentRequestMetadata metadata,
+            AgentRunContext<R> context,
             A agent) {
-        if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
-            return sessionStore.session(metadata.getSessionId())
+        final var sessionId = AgentUtils.sessionId(context);
+        if (!Strings.isNullOrEmpty(sessionId)) {
+            return sessionStore.session(sessionId)
                     .map(sessionSummary -> List.of(
-                            new FactList("Information about session %s".formatted(metadata.getSessionId()),
+                            new FactList("Information about session %s".formatted(sessionId),
                                          List.of(new Fact(
                                                  "Session Summary", sessionSummary.toString())))))
                     .orElse(List.of());
@@ -61,7 +64,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     @Override
     public ExtensionPromptSchema additionalSystemPrompts(
             R request,
-            AgentRequestMetadata metadata,
+            AgentRunContext<R> context,
             A agent, ProcessingMode processingMode) {
         final var prompts = new ArrayList<SystemPrompt.Task>();
         if (updateSummaryAfterSession) {
@@ -86,7 +89,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
 
         final var hints = new ArrayList<>();
-        if (!Strings.isNullOrEmpty(metadata.getSessionId())) {
+        if (!Strings.isNullOrEmpty(AgentUtils.sessionId(context))) {
             hints.add("USE SESSION INFORMATION TO CONTEXTUALIZE RESPONSES");
         }
         return new ExtensionPromptSchema(prompts, hints);

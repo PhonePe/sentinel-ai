@@ -75,14 +75,16 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
     @Override
     public  List<FactList> facts(
             R request,
-            AgentRequestMetadata metadata,
+            AgentRunContext<R> context,
             A agent) {
         final var memories = new ArrayList<FactList>();
-//        //Add relevant existing memories to the prompt
-        if (!Strings.isNullOrEmpty(metadata.getUserId())) {
+
+        //Add relevant existing memories to the prompt
+        final var userId = AgentUtils.userId(context);
+        if (!Strings.isNullOrEmpty(userId)) {
 
             final var memoriesAboutUser = memoryStore
-                    .findMemoriesAboutUser(metadata.getUserId(), null, 5);
+                    .findMemoriesAboutUser(userId, null, 5);
             if (!memoriesAboutUser.isEmpty()) {
                 final var factList = new FactList("Memories about user", memoriesAboutUser.stream()
                         .map(agentMemory -> new Fact(agentMemory.getName(), agentMemory.getContent()))
@@ -96,7 +98,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
     @Override
     public  ExtensionPromptSchema additionalSystemPrompts(
             R request,
-            AgentRequestMetadata metadata,
+            AgentRunContext<R> context,
             A agent,
             ProcessingMode processingMode) {
         final var prompts = new ArrayList<SystemPrompt.Task>();

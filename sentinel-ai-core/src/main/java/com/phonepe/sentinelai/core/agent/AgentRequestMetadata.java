@@ -1,8 +1,10 @@
 package com.phonepe.sentinelai.core.agent;
 
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.Map;
 
@@ -11,6 +13,8 @@ import java.util.Map;
  */
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AgentRequestMetadata {
     /**
      * Session ID for the current conversation. This is passed to LLM as additional data in system prompt.
