@@ -60,4 +60,10 @@ public class ModelSettings {
      * Map of logit bias for tokens. Controls the likelihood of tokens being generated.
      */
     Map<String, Integer> logitBias;
+
+    /**
+     * Output generation mode to use for this model. Typically, other than OpenAI models, it is safer to leave it at
+     * the default {@link OutputGenerationMode#TOOL_BASED}.
+     */
+    OutputGenerationMode outputGenerationMode;
 }

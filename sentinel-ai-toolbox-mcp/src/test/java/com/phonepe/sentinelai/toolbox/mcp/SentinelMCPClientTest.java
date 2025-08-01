@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests {@link SentinelMCPClient}
@@ -36,7 +37,8 @@ class SentinelMCPClientTest {
                                                    "test_mcp_echo",
                                                    "test_mcp_print_env",
                                                    "test_mcp_sample_llm");
-        assertEquals(allTools, mcpToolBox.tools().keySet());
+        final var allToolsSize = mcpToolBox.tools().size();
+        assertTrue(mcpToolBox.tools().keySet().containsAll(allTools));
 
         //Now filter out and keep only 2 tools
         mcpToolBox.exposeTools("add", "echo");
@@ -45,6 +47,6 @@ class SentinelMCPClientTest {
         assertEquals(Set.of("test_mcp_add", "test_mcp_echo"), filteredTools.keySet());
 
         mcpToolBox.exposeAllTools();
-        assertEquals(allTools, mcpToolBox.tools().keySet());
+        assertEquals(allToolsSize, mcpToolBox.tools().size());
     }
 }

@@ -15,10 +15,7 @@ import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
-import com.phonepe.sentinelai.core.model.Model;
-import com.phonepe.sentinelai.core.model.ModelOutput;
-import com.phonepe.sentinelai.core.model.ModelSettings;
-import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.model.*;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.ParameterMapper;
@@ -188,28 +185,34 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
         //Stats for the run
         final var stats = new ModelUsageStats();
+        final var outputGenerationMode
+                = Objects.requireNonNullElse(modelSettings.getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
         final var outputGenerator = new OutputGenerator<R>();
         final var toolsForExecution = new HashMap<>(tools);
         final var generatedOutput = new AtomicReference<String>(null);
-        toolsForExecution.put(Agent.OUTPUT_GENERATOR_ID,
-                              new ExternalTool(ToolDefinition.builder()
-                                                       .id(Agent.OUTPUT_GENERATOR_ID)
-                                                       .name(Agent.OUTPUT_GENERATOR_ID)
-                                                       .description("Generates output to be used by user")
-                                                       .contextAware(true)
-                                                       .strictSchema(true)
-                                                       .build(),
-                                               compliantSchema(responseSchema, extensions, context.getProcessingMode()),
-                                               (runContext, toolCallId, args) -> {
-                                                   final var output = outputGenerator.apply(
-                                                           (AgentRunContext<R>) runContext, args);
-                                                   if (!Strings.isNullOrEmpty(output)) {
-                                                       generatedOutput.set(output);
-                                                   }
-                                                   return new ExternalTool.ExternalToolResponse(
-                                                           output,
-                                                           ErrorType.SUCCESS);
-                                               }));
+        if (outputGenerationMode.equals(OutputGenerationMode.TOOL_BASED)) {
+            toolsForExecution.put(Agent.OUTPUT_GENERATOR_ID,
+                                  new ExternalTool(ToolDefinition.builder()
+                                                           .id(Agent.OUTPUT_GENERATOR_ID)
+                                                           .name(Agent.OUTPUT_GENERATOR_ID)
+                                                           .description("Generates output to be used by user")
+                                                           .contextAware(true)
+                                                           .strictSchema(true)
+                                                           .build(),
+                                                   compliantSchema(responseSchema,
+                                                                   extensions,
+                                                                   context.getProcessingMode()),
+                                                   (runContext, toolCallId, args) -> {
+                                                       final var output = outputGenerator.apply(
+                                                               (AgentRunContext<R>) runContext, args);
+                                                       if (!Strings.isNullOrEmpty(output)) {
+                                                           generatedOutput.set(output);
+                                                       }
+                                                       return new ExternalTool.ExternalToolResponse(
+                                                               output,
+                                                               ErrorType.SUCCESS);
+                                                   }));
+        }
         return CompletableFuture.supplyAsync(() -> {
             ModelOutput output = null;
             do {
@@ -217,10 +220,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var builder = createChatRequestBuilder(openAiMessages);
                 applyModelSettings(modelSettings, builder, toolsForExecution);
                 addToolList(toolsForExecution, builder);
-/*                builder.responseFormat(ResponseFormat.jsonSchema(structuredOutputSchema(responseSchema,
-                                                                                        extensions,
-                                                                                        context.getProcessingMode()))
-                                                                                        );*/
+                if (outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
+                    builder.responseFormat(ResponseFormat.jsonSchema(structuredOutputSchema(responseSchema,
+                                                                                            extensions,
+                                                                                            context.getProcessingMode())));
+                }
                 builder.toolChoice(switch (this.modelOptions.getToolChoice()) {
                     case REQUIRED -> ToolChoiceOption.REQUIRED;
                     case AUTO -> ToolChoiceOption.AUTO;
