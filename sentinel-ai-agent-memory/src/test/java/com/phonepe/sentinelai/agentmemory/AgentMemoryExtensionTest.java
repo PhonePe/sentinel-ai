@@ -241,7 +241,7 @@ class AgentMemoryExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> !memoryStore.memories.isEmpty());
 //                .until(() -> memoryStore.memories.get(new InMemoryMemStore.Key(MemoryScope.ENTITY, "ss")) != null);
-        final val currMemories = memoryStore.memories.size();
+        final var currMemories = memoryStore.memories.size();
 
         {
             final var response2 = agent.execute(

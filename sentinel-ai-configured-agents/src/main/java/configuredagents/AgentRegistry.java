@@ -167,7 +167,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
     }
 
     @Override
-    public Optional<AgentExtensionOutputDefinition> outputSchema(ProcessingMode processingMode) {
+    public Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode) {
         return Optional.empty();
     }
 

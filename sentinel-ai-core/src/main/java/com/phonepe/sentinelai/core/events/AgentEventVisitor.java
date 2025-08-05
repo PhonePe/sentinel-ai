@@ -8,9 +8,12 @@ public interface AgentEventVisitor<T> {
 
     T visit(MessageSentAgentEvent messageSent);
 
+    T visit(ToolCallApprovalDeniedAgentEvent toolCallApprovalDenied);
+
     T visit(ToolCalledAgentEvent toolCalled);
 
     T visit(ToolCallCompletedAgentEvent toolCallCompleted);
 
     T visit(OutputGeneratedAgentEvent outputGeneratedAgentEvent);
+
 }

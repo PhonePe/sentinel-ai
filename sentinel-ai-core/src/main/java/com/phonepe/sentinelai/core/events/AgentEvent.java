@@ -16,6 +16,7 @@ import java.util.UUID;
 @JsonSubTypes({
         @JsonSubTypes.Type(name = EventType.Values.MESSAGE_RECEIVED, value = MessageReceivedAgentEvent.class),
         @JsonSubTypes.Type(name = EventType.Values.MESSAGE_SENT, value = MessageSentAgentEvent.class),
+        @JsonSubTypes.Type(name = EventType.Values.TOOL_CALL_APPROVAL_DENIED, value = ToolCallApprovalDeniedAgentEvent.class),
         @JsonSubTypes.Type(name = EventType.Values.TOOL_CALLED, value = ToolCalledAgentEvent.class),
         @JsonSubTypes.Type(name = EventType.Values.TOOL_CALL_COMPLETED, value = ToolCallCompletedAgentEvent.class)
 })

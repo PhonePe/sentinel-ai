@@ -8,7 +8,7 @@ import lombok.Value;
 import java.util.List;
 
 /**
- * Output model for {@link com.phonepe.sentinelai.core.model.Model#runDirect(AgentRunContext, String, AgentExtension.AgentExtensionOutputDefinition, List)}
+ * Output model for {@link #runDirect(AgentRunContext, ModelOutputDefinition, List)}
  */
 @Value
 public class DirectRunOutput {

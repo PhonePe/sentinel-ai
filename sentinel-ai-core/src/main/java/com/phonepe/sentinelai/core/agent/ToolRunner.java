@@ -10,6 +10,6 @@ import java.util.Map;
  *
  */
 @FunctionalInterface
-public interface ToolRunner<S> {
-    ToolCallResponse runTool(AgentRunContext<S> context, Map<String, ExecutableTool> tool, ToolCall toolCall);
+public interface ToolRunner {
+    ToolCallResponse runTool(Map<String, ExecutableTool> tools, ToolCall toolCall);
 }

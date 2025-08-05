@@ -20,6 +20,7 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.ParameterMapper;
 import com.phonepe.sentinelai.core.tools.ToolDefinition;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
 import io.github.sashirestela.openai.common.ResponseFormat;
 import io.github.sashirestela.openai.common.Usage;
@@ -43,6 +44,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
 import static com.phonepe.sentinelai.core.utils.EventUtils.*;
@@ -63,6 +65,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
         @Override
         public String apply(final AgentRunContext<R> context, final String content) {
+            return content;
+        }
+    }
+
+    private static final class JsonNodeOutputGenerator implements Function<String, String> {
+
+        @Override
+        public String apply(final String content) {
             return content;
         }
     }
@@ -114,8 +124,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     public <R, T, A extends Agent<R, T, A>> CompletableFuture<DirectRunOutput> runDirect(
             ModelSettings modelSettings,
             ExecutorService executorService,
-            String prompt,
-            AgentExtension.AgentExtensionOutputDefinition outputDefinition,
+            ModelOutputDefinition outputDefinition,
             List<AgentMessage> messages) {
         final var openAiMessages = new ArrayList<>(convertToOpenAIMessages(messages));
         final var stats = new ModelUsageStats();
@@ -165,12 +174,13 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }, executorService);
     }
 
+/*
     @Override
     public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
             AgentRunContext<R> context,
             JsonNode responseSchema,
             Map<String, ExecutableTool> tools,
-            ToolRunner<R> toolRunner,
+            ToolRunner toolRunner,
             List<AgentExtension<R, T, A>> extensions,
             A agent) {
         final var oldMessages = context.getOldMessages();
@@ -333,12 +343,13 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             return output;
         }, context.getAgentSetup().getExecutorService());
     }
+*/
 
     @Override
     public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessagesStreaming(
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
-            ToolRunner<R> toolRunner,
+            ToolRunner toolRunner,
             List<AgentExtension<R, T, A>> extensions,
             A agent,
             Consumer<byte[]> streamHandler) {
@@ -480,6 +491,170 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }, context.getAgentSetup().getExecutorService());
     }
 
+    @Override
+    public CompletableFuture<ModelOutput> process(
+            ModelRunContext context,
+            Collection<ModelOutputDefinition> outputDefinitions,
+            List<AgentMessage> oldMessages,
+            Map<String, ExecutableTool> tools,
+            ToolRunner toolRunner) {
+        final var modelSettings = context.getAgentSetup().getModelSettings();
+        //This keeps getting
+        // augmented with tool calls and reused across all iterations
+        final var openAiMessages = new ArrayList<>(convertToOpenAIMessages(oldMessages));
+
+        //There are for final model response
+        final var allMessages = new ArrayList<>(oldMessages);
+        final var newMessages = new ArrayList<AgentMessage>();
+
+        //Stats for the run
+        final var stats = new ModelUsageStats();
+        final var outputGenerationMode
+                = Objects.requireNonNullElse(modelSettings.getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
+        final var outputGenerator = new JsonNodeOutputGenerator();
+        final var toolsForExecution = new HashMap<>(Objects.requireNonNullElseGet(tools, Map::of));
+        final var generatedOutput = new AtomicReference<String>(null);
+        final var schema = compliantSchema(outputDefinitions);
+        if (outputGenerationMode.equals(OutputGenerationMode.TOOL_BASED)) {
+            toolsForExecution.put(Agent.OUTPUT_GENERATOR_ID,
+                                  new ExternalTool(ToolDefinition.builder()
+                                                           .id(Agent.OUTPUT_GENERATOR_ID)
+                                                           .name(Agent.OUTPUT_GENERATOR_ID)
+                                                           .description("Generates output to be used by user")
+                                                           .contextAware(true)
+                                                           .strictSchema(true)
+                                                           .build(),
+                                                   schema,
+                                                   (runContext, toolCallId, args) -> {
+                                                       final var output = outputGenerator.apply(args);
+                                                       if (!Strings.isNullOrEmpty(output)) {
+                                                           generatedOutput.set(output);
+                                                       }
+                                                       return new ExternalTool.ExternalToolResponse(
+                                                               output,
+                                                               ErrorType.SUCCESS);
+                                                   }));
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            ModelOutput output = null;
+            do {
+                generatedOutput.set(null);
+                final var builder = createChatRequestBuilder(openAiMessages);
+                applyModelSettings(modelSettings, builder, toolsForExecution);
+                addToolList(toolsForExecution, builder);
+                if (outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
+                    builder.responseFormat(ResponseFormat.jsonSchema(ResponseFormat.JsonSchema.builder()
+                                                                             .name("model_output")
+                                                                             .schema(schema)
+                                                                             .strict(true)
+                                                                             .build()));
+                }
+                builder.toolChoice(switch (this.modelOptions.getToolChoice()) {
+                    case REQUIRED -> ToolChoiceOption.REQUIRED;
+                    case AUTO -> ToolChoiceOption.AUTO;
+                });
+                raiseMessageSentEvent(context.getAgentName(),
+                                      context.getRunId(),
+                                      context.getSessionId(),
+                                      context.getRunId(),
+                                      context.getAgentSetup(),
+                                      oldMessages);
+                final var stopwatch = Stopwatch.createStarted();
+                stats.incrementRequestsForRun();
+
+                final var request = builder.build();
+                logModelRequest(request);
+                final var completionResponse = openAIProvider.chatCompletions()
+                        .create(request)
+                        .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
+                logModelResponse(completionResponse);
+                mergeUsage(stats, completionResponse.getUsage());
+                final var response = extractResponse(completionResponse);
+                if (null == response) {
+                    return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.NO_RESPONSE));
+                }
+                final var message = response.getMessage();
+                output = switch (response.getFinishReason()) {
+                    case FinishReasons.STOP -> {
+                        final var refusal = message.getRefusal();
+                        if (!Strings.isNullOrEmpty(refusal)) {
+                            yield ModelOutput.error(oldMessages,
+                                                    stats,
+                                                    SentinelError.error(ErrorType.REFUSED, refusal));
+                        }
+                        final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(),
+                                                                            List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
+
+                        if (!toolCalls.isEmpty()) {
+                            handleToolCalls(context,
+                                            toolsForExecution,
+                                            toolRunner,
+                                            toolCalls,
+                                            new AgentMessages(openAiMessages, allMessages, newMessages),
+                                            stats,
+                                            stopwatch);
+                            if (generatedOutput.get() != null) {
+                                //If the output generator was called, we use the generated output
+                                yield processOutput(context,
+                                                    generatedOutput.get(),
+                                                    oldMessages,
+                                                    stats,
+                                                    allMessages,
+                                                    newMessages,
+                                                    stopwatch);
+                            }
+                        }
+                        yield processOutput(context,
+                                            message.getContent(),
+                                            oldMessages,
+                                            stats,
+                                            allMessages,
+                                            newMessages,
+                                            stopwatch);
+                    }
+                    case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
+                        final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(),
+                                                                            List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
+
+                        if (!toolCalls.isEmpty()) {
+                            handleToolCalls(context,
+                                            toolsForExecution,
+                                            toolRunner,
+                                            toolCalls,
+                                            new AgentMessages(openAiMessages, allMessages, newMessages),
+                                            stats,
+                                            stopwatch);
+                            if (generatedOutput.get() != null) {
+                                //If the output generator was called, we use the generated output
+                                yield processOutput(context,
+                                                    generatedOutput.get(),
+                                                    oldMessages,
+                                                    stats,
+                                                    allMessages,
+                                                    newMessages,
+                                                    stopwatch);
+                            }
+                        }
+                        yield null;
+                    }
+                    case FinishReasons.LENGTH -> ModelOutput.error(
+                            oldMessages,
+                            stats,
+                            SentinelError.error(ErrorType.LENGTH_EXCEEDED));
+                    case FinishReasons.CONTENT_FILTER -> ModelOutput.error(
+                            oldMessages,
+                            stats,
+                            SentinelError.error(ErrorType.FILTERED));
+                    default -> ModelOutput.error(
+                            oldMessages,
+                            stats,
+                            SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
+                };
+            } while (output == null || (output.getData() == null && output.getError() == null));
+            return output;
+        }, context.getAgentSetup().getExecutorService());
+    }
+
     private static Chat.Choice extractResponse(Chat completionResponse) {
         return completionResponse
                 .getChoices()
@@ -534,6 +709,35 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             }
         }
         return DirectRunOutput.error(stats, SentinelError.error(ErrorType.NO_RESPONSE));
+    }
+
+    private <R, T, A extends Agent<R, T, A>> ModelOutput processOutput(
+            ModelRunContext context,
+            String content,
+            List<AgentMessage> oldMessages,
+            ModelUsageStats stats,
+            ArrayList<AgentMessage> allMessages,
+            ArrayList<AgentMessage> newMessages,
+            Stopwatch stopwatch) {
+        if (!Strings.isNullOrEmpty(content)) {
+            final var newMessage = new StructuredOutput(content);
+            allMessages.add(newMessage);
+            newMessages.add(newMessage);
+            raiseMessageReceivedEvent(context, newMessage, stopwatch);
+            raiseOutputGeneratedEvent(context, content, stopwatch);
+            try {
+                return ModelOutput.success(mapper.readTree(content),
+                                           newMessages,
+                                           allMessages,
+                                           stats);
+            }
+            catch (JsonProcessingException e) {
+                return ModelOutput.error(oldMessages,
+                                         stats,
+                                         SentinelError.error(ErrorType.JSON_ERROR, e));
+            }
+        }
+        return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.NO_RESPONSE));
     }
 
     @SuppressWarnings("java:S107")
@@ -751,7 +955,54 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             A agent,
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
-            ToolRunner<R> toolRunner,
+            ToolRunner toolRunner,
+            List<io.github.sashirestela.openai.common.tool.ToolCall> toolCalls,
+            AgentMessages agentMessages,
+            ModelUsageStats stats,
+            Stopwatch stopwatch) {
+        handleToolCalls(agent.name(),
+                        context.getRunId(),
+                        AgentUtils.sessionId(context),
+                        AgentUtils.userId(context),
+                        context.getAgentSetup(),
+                        tools,
+                        toolRunner,
+                        toolCalls,
+                        agentMessages,
+                        stats,
+                        stopwatch);
+    }
+
+    private static <R, T, A extends Agent<R, T, A>> void handleToolCalls(
+            ModelRunContext context,
+            Map<String, ExecutableTool> tools,
+            ToolRunner toolRunner,
+            List<io.github.sashirestela.openai.common.tool.ToolCall> toolCalls,
+            AgentMessages agentMessages,
+            ModelUsageStats stats,
+            Stopwatch stopwatch) {
+        handleToolCalls(context.getAgentName(),
+                        context.getRunId(),
+                        context.getSessionId(),
+                        context.getUserId(),
+                        context.getAgentSetup(),
+                        tools,
+                        toolRunner,
+                        toolCalls,
+                        agentMessages,
+                        stats,
+                        stopwatch);
+    }
+
+    @SuppressWarnings("java:S107")
+    private static <R, T, A extends Agent<R, T, A>> void handleToolCalls(
+            String agentName,
+            String runId,
+            String sessionId,
+            String userId,
+            AgentSetup agentSetup,
+            Map<String, ExecutableTool> tools,
+            ToolRunner toolRunner,
             List<io.github.sashirestela.openai.common.tool.ToolCall> toolCalls,
             AgentMessages agentMessages,
             ModelUsageStats stats,
@@ -763,10 +1014,17 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             final var toolCallMessage = new ToolCall(toolCall.getId(),
                                                                      toolCall.getFunction().getName(),
                                                                      toolCall.getFunction().getArguments());
-                            raiseMessageReceivedEvent(context, agent, toolCallMessage, stopwatch);
-                            final var toolCallResponse = toolRunner.runTool(context, tools, toolCallMessage);
+                            raiseMessageReceivedEvent(
+                                    agentName,
+                                    runId,
+                                    sessionId,
+                                    userId,
+                                    agentSetup,
+                                    toolCallMessage,
+                                    stopwatch);
+                            final var toolCallResponse = toolRunner.runTool(tools, toolCallMessage);
                             return Pair.of(toolCallMessage, toolCallResponse);
-                        }, context.getAgentSetup().getExecutorService()))
+                        }, agentSetup.getExecutorService()))
                 .toList();
         log.debug("Running {} tool calls in parallel", jobs.size());
         jobs.stream()
@@ -809,7 +1067,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      */
     private <R, T, A extends Agent<R, T, A>> JsonNode convertToResponse(
             String content,
-            List<AgentExtension<R, T, A>> extensions, A agent,
+            List<AgentExtension<R, T, A>> extensions,
+            A agent,
             ProcessingMode processingMode) throws JsonProcessingException {
         final var outputNode = mapper.readTree(content);
         extensions.forEach(extension -> {
@@ -818,7 +1077,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 log.debug("No output required for extension: {}", extension.name());
                 return;
             }
-            final var dataKey = outputDef.getKey();
+            final var dataKey = outputDef.getName();
             if (!outputNode.has(dataKey)) {
                 log.error("Model output does not have required key '{}' for extension: {}", dataKey, extension.name());
                 return;
@@ -874,8 +1133,25 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 log.debug("No output expected by extension: {}", extension.name());
                 return;
             }
-            fields.add(outputDefinition.getKey());
-            propertiesNode.set(outputDefinition.getKey(), outputDefinition.getSchema());
+            fields.add(outputDefinition.getName());
+            propertiesNode.set(outputDefinition.getName(), outputDefinition.getSchema());
+        });
+        return schema;
+    }
+
+    private ObjectNode compliantSchema(
+            Collection<ModelOutputDefinition> outputDefinitions) {
+        final var schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        schema.put("additionalProperties", false);
+        final var fields = mapper.createArrayNode();
+        schema.set("required", fields);
+        final var propertiesNode = mapper.createObjectNode();
+        schema.set("properties", propertiesNode);
+
+        outputDefinitions.forEach(outputDefinition -> {
+            fields.add(outputDefinition.getName());
+            propertiesNode.set(outputDefinition.getName(), outputDefinition.getSchema());
         });
         return schema;
     }

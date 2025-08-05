@@ -155,7 +155,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
     }
 
     @Override
-    public Optional<AgentExtensionOutputDefinition> outputSchema(ProcessingMode processingMode) {
+    public Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode) {
         if (memoryExtractionMode.equals(MemoryExtractionMode.INLINE) && processingMode.equals(ProcessingMode.DIRECT)) {
             return Optional.of(memorySchema());
         }
@@ -164,10 +164,10 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
     }
 
     @NotNull
-    private static AgentExtensionOutputDefinition memorySchema() {
-        return new AgentExtensionOutputDefinition(OUTPUT_KEY,
-                                                  "Extracted memory",
-                                                  JsonUtils.schema(AgentMemoryOutput.class));
+    private static ModelOutputDefinition memorySchema() {
+        return new ModelOutputDefinition(OUTPUT_KEY,
+                                         "Extracted memory",
+                                         JsonUtils.schema(AgentMemoryOutput.class));
     }
 
     @Override
@@ -247,7 +247,6 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
         final var output = data.getAgentSetup()
                 .getModel()
                 .runDirect(data.getContext().withOldMessages(messages),
-                           objectMapper.writeValueAsString(extractionTaskPrompt()),
                            memorySchema(),
                            messages)
                 .join();

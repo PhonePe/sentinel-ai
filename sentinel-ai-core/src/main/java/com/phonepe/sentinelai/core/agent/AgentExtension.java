@@ -20,19 +20,12 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
         List<Object> hints;
     }
 
-    @Value
-    class AgentExtensionOutputDefinition {
-        String key;
-        String description;
-        JsonNode schema;
-    }
-
     List<FactList> facts(R request, AgentRunContext<R> metadata, A agent);
 
     ExtensionPromptSchema additionalSystemPrompts(
             R request, AgentRunContext<R> metadata, A agent, ProcessingMode processingMode);
 
-    Optional<AgentExtensionOutputDefinition> outputSchema(ProcessingMode processingMode);
+    Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode);
 
     void consume(final JsonNode output, A agent);
 

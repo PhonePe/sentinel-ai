@@ -211,7 +211,6 @@ public class SentinelMCPClient implements AutoCloseable {
                     .runDirect(setup,
                                Objects.requireNonNullElseGet(agentSetup.getExecutorService(),
                                                              Executors::newCachedThreadPool),
-                               createMessageRequest.systemPrompt(),
                                null,
                                messages)
                     .join();
