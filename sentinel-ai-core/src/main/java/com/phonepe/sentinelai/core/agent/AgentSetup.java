@@ -6,6 +6,7 @@ import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import lombok.Builder;
 import lombok.Value;
+import lombok.With;
 
 import java.util.concurrent.ExecutorService;
 
@@ -17,6 +18,7 @@ import java.util.concurrent.ExecutorService;
  */
 @Value
 @Builder
+@With
 public class AgentSetup {
     /**
      * The object mapper to use for serialization/deserialization. If not provided, a default one will be created.

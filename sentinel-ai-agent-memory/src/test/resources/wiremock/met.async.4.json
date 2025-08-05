@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-BwNWAquDEUMC2tIp2wocYuXmPfUqd",
+  "id" : "chatcmpl-C16Ceg8ZIxcq8OBzYYTMHzGozxh2Y",
   "object" : "chat.completion",
-  "created" : 1753253126,
+  "created" : 1754378208,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
@@ -9,20 +9,20 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_LUIuXXrZkY8pGjeYMnF5WG16",
+        "id" : "call_2CCYKZwSQEP253fOobifUgyw",
         "type" : "function",
         "function" : {
           "name" : "__output_generator__",
-          "arguments" : "{\"output\":{\"message\":\"Hello Mr. Santanu! How can I assist you today?\",\"username\":\"Santanu\"}}"
+          "arguments" : "{\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"The user's name is Santanu.\",\"name\":\"UserName\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"Santanu\",\"topics\":[\"user\",\"name\"],\"type\":\"SEMANTIC\"},{\"content\":\"The user can be addressed with the salutations Mr, Dr, or Prof.\",\"name\":\"UserSalutations\",\"reusabilityScore\":8,\"scope\":\"ENTITY\",\"scopeId\":\"Santanu\",\"topics\":[\"user\",\"salutation\"],\"type\":\"SEMANTIC\"},{\"content\":\"The agent greeted the user with the message: 'Hello Mr. Santanu! How can I assist you today?'\",\"name\":\"GreetingMessage\",\"reusabilityScore\":7,\"scope\":\"AGENT\",\"scopeId\":\"simple_agent\",\"topics\":[\"greeting\",\"interaction\"],\"type\":\"EPISODIC\"}]}}"
         }
       } ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 811,
-    "completion_tokens" : 36,
-    "total_tokens" : 847,
+    "prompt_tokens" : 1132,
+    "completion_tokens" : 185,
+    "total_tokens" : 1317,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

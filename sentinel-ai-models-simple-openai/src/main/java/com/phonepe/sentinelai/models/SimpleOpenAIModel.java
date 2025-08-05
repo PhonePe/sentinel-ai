@@ -38,11 +38,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -60,14 +59,6 @@ import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Model {
 
     private static final String OUTPUT_VARIABLE_NAME = "output";
-
-    private static final class OutputGenerator<R> implements BiFunction<AgentRunContext<R>, String, String> {
-
-        @Override
-        public String apply(final AgentRunContext<R> context, final String content) {
-            return content;
-        }
-    }
 
     private static final class JsonNodeOutputGenerator implements Function<String, String> {
 
@@ -119,231 +110,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 modelOptions,
                 new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.DEFAULT_TOOL_CHOICE));
     }
-
-    @Override
-    public <R, T, A extends Agent<R, T, A>> CompletableFuture<DirectRunOutput> runDirect(
-            ModelSettings modelSettings,
-            ExecutorService executorService,
-            ModelOutputDefinition outputDefinition,
-            List<AgentMessage> messages) {
-        final var openAiMessages = new ArrayList<>(convertToOpenAIMessages(messages));
-        final var stats = new ModelUsageStats();
-        return CompletableFuture.supplyAsync(() -> {
-            DirectRunOutput output = null;
-            do {
-                final var builder = createChatRequestBuilder(openAiMessages);
-                applyModelSettings(modelSettings, builder, Map.of());
-                if (outputDefinition != null) {
-                    builder.responseFormat(ResponseFormat.jsonSchema(ResponseFormat.JsonSchema.builder()
-                                                                             .name(OUTPUT_VARIABLE_NAME)
-                                                                             .schema(outputDefinition.getSchema())
-                                                                             .strict(true)
-                                                                             .build()));
-                }
-                stats.incrementRequestsForRun();
-                final var request = builder.build();
-                logModelRequest(request);
-                final var completionResponse = openAIProvider.chatCompletions()
-                        .create(request)
-                        .join();
-                logModelResponse(completionResponse);
-                mergeUsage(stats, completionResponse.getUsage());
-                final var response = extractResponse(completionResponse);
-                if (null == response) {
-                    return DirectRunOutput.error(stats, SentinelError.error(ErrorType.NO_RESPONSE));
-                }
-                final var message = response.getMessage();
-                output = switch (response.getFinishReason()) {
-                    case FinishReasons.STOP -> processOutput(message, stats, outputDefinition != null);
-                    case FinishReasons.FUNCTION_CALL,
-                         FinishReasons.TOOL_CALLS -> DirectRunOutput.error(
-                            stats,
-                            SentinelError.error(
-                                    ErrorType.TOOL_CALL_PERMANENT_FAILURE, "Tools calls are not supported"));
-                    case FinishReasons.LENGTH -> DirectRunOutput.error(stats,
-                                                                       SentinelError.error(ErrorType.LENGTH_EXCEEDED));
-                    case FinishReasons.CONTENT_FILTER -> DirectRunOutput.error(stats,
-                                                                               SentinelError.error(ErrorType.FILTERED));
-                    default -> DirectRunOutput.error(
-                            stats, SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
-                };
-            } while (output == null
-                    || (output.getData() == null
-                    && (output.getError() == null || output.getError().getErrorType().equals(ErrorType.SUCCESS))));
-            return output;
-        }, executorService);
-    }
-
-/*
-    @Override
-    public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessages(
-            AgentRunContext<R> context,
-            JsonNode responseSchema,
-            Map<String, ExecutableTool> tools,
-            ToolRunner toolRunner,
-            List<AgentExtension<R, T, A>> extensions,
-            A agent) {
-        final var oldMessages = context.getOldMessages();
-        final var modelSettings = context.getAgentSetup().getModelSettings();
-        //This keeps getting
-        // augmented with tool calls and reused across all iterations
-        final var openAiMessages = new ArrayList<>(convertToOpenAIMessages(oldMessages));
-
-        //There are for final model response
-        final var allMessages = new ArrayList<>(oldMessages);
-        final var newMessages = new ArrayList<AgentMessage>();
-
-        //Stats for the run
-        final var stats = new ModelUsageStats();
-        final var outputGenerationMode
-                = Objects.requireNonNullElse(modelSettings.getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
-        final var outputGenerator = new OutputGenerator<R>();
-        final var toolsForExecution = new HashMap<>(tools);
-        final var generatedOutput = new AtomicReference<String>(null);
-        if (outputGenerationMode.equals(OutputGenerationMode.TOOL_BASED)) {
-            toolsForExecution.put(Agent.OUTPUT_GENERATOR_ID,
-                                  new ExternalTool(ToolDefinition.builder()
-                                                           .id(Agent.OUTPUT_GENERATOR_ID)
-                                                           .name(Agent.OUTPUT_GENERATOR_ID)
-                                                           .description("Generates output to be used by user")
-                                                           .contextAware(true)
-                                                           .strictSchema(true)
-                                                           .build(),
-                                                   compliantSchema(responseSchema,
-                                                                   extensions,
-                                                                   context.getProcessingMode()),
-                                                   (runContext, toolCallId, args) -> {
-                                                       final var output = outputGenerator.apply(
-                                                               (AgentRunContext<R>) runContext, args);
-                                                       if (!Strings.isNullOrEmpty(output)) {
-                                                           generatedOutput.set(output);
-                                                       }
-                                                       return new ExternalTool.ExternalToolResponse(
-                                                               output,
-                                                               ErrorType.SUCCESS);
-                                                   }));
-        }
-        return CompletableFuture.supplyAsync(() -> {
-            ModelOutput output = null;
-            do {
-                generatedOutput.set(null);
-                final var builder = createChatRequestBuilder(openAiMessages);
-                applyModelSettings(modelSettings, builder, toolsForExecution);
-                addToolList(toolsForExecution, builder);
-                if (outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
-                    builder.responseFormat(ResponseFormat.jsonSchema(structuredOutputSchema(responseSchema,
-                                                                                            extensions,
-                                                                                            context.getProcessingMode())));
-                }
-                builder.toolChoice(switch (this.modelOptions.getToolChoice()) {
-                    case REQUIRED -> ToolChoiceOption.REQUIRED;
-                    case AUTO -> ToolChoiceOption.AUTO;
-                });
-                raiseMessageSentEvent(context, agent, oldMessages);
-                final var stopwatch = Stopwatch.createStarted();
-                stats.incrementRequestsForRun();
-
-                final var request = builder.build();
-                logModelRequest(request);
-                final var completionResponse = openAIProvider.chatCompletions()
-                        .create(request)
-                        .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
-                logModelResponse(completionResponse);
-                mergeUsage(stats, completionResponse.getUsage());
-                final var response = extractResponse(completionResponse);
-                if (null == response) {
-                    return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.NO_RESPONSE));
-                }
-                final var message = response.getMessage();
-                output = switch (response.getFinishReason()) {
-                    case FinishReasons.STOP -> {
-                        final var refusal = message.getRefusal();
-                        if (!Strings.isNullOrEmpty(refusal)) {
-                            yield ModelOutput.error(oldMessages,
-                                                    stats,
-                                                    SentinelError.error(ErrorType.REFUSED, refusal));
-                        }
-                        final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(),
-                                                                            List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
-
-                        if (!toolCalls.isEmpty()) {
-                            handleToolCalls(agent,
-                                            context,
-                                            toolsForExecution,
-                                            toolRunner,
-                                            toolCalls,
-                                            new AgentMessages(openAiMessages, allMessages, newMessages),
-                                            stats,
-                                            stopwatch);
-                            if (generatedOutput.get() != null) {
-                                //If the output generator was called, we use the generated output
-                                yield processOutput(context,
-                                                    extensions,
-                                                    agent,
-                                                    generatedOutput.get(),
-                                                    oldMessages,
-                                                    stats,
-                                                    allMessages,
-                                                    newMessages,
-                                                    stopwatch);
-                            }
-                        }
-                        yield processOutput(context,
-                                            extensions,
-                                            agent,
-                                            message.getContent(),
-                                            oldMessages,
-                                            stats,
-                                            allMessages,
-                                            newMessages,
-                                            stopwatch);
-                    }
-                    case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
-                        final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(),
-                                                                            List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
-
-                        if (!toolCalls.isEmpty()) {
-                            handleToolCalls(agent,
-                                            context,
-                                            toolsForExecution,
-                                            toolRunner,
-                                            toolCalls,
-                                            new AgentMessages(openAiMessages, allMessages, newMessages),
-                                            stats,
-                                            stopwatch);
-                            if (generatedOutput.get() != null) {
-                                //If the output generator was called, we use the generated output
-                                yield processOutput(context,
-                                                    extensions,
-                                                    agent,
-                                                    generatedOutput.get(),
-                                                    oldMessages,
-                                                    stats,
-                                                    allMessages,
-                                                    newMessages,
-                                                    stopwatch);
-                            }
-                        }
-                        yield null;
-                    }
-                    case FinishReasons.LENGTH -> ModelOutput.error(
-                            oldMessages,
-                            stats,
-                            SentinelError.error(ErrorType.LENGTH_EXCEEDED));
-                    case FinishReasons.CONTENT_FILTER -> ModelOutput.error(
-                            oldMessages,
-                            stats,
-                            SentinelError.error(ErrorType.FILTERED));
-                    default -> ModelOutput.error(
-                            oldMessages,
-                            stats,
-                            SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
-                };
-            } while (output == null || (output.getData() == null && output.getError() == null));
-            return output;
-        }, context.getAgentSetup().getExecutorService());
-    }
-*/
 
     @Override
     public <R, T, A extends Agent<R, T, A>> CompletableFuture<ModelOutput> exchangeMessagesStreaming(
@@ -492,7 +258,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     @Override
-    public CompletableFuture<ModelOutput> process(
+    public CompletableFuture<ModelOutput> processAsync(
             ModelRunContext context,
             Collection<ModelOutputDefinition> outputDefinitions,
             List<AgentMessage> oldMessages,
@@ -1022,7 +788,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                     agentSetup,
                                     toolCallMessage,
                                     stopwatch);
-                            final var toolCallResponse = toolRunner.runTool(tools, toolCallMessage);
+                            final var toolCallResponse = callTool(tools, toolRunner, toolCallMessage);
                             return Pair.of(toolCallMessage, toolCallResponse);
                         }, agentSetup.getExecutorService()))
                 .toList();
@@ -1055,6 +821,20 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     agentMessages.getNewMessages().add(toolCallResponse);
                     stats.incrementToolCallsForRun();
                 });
+    }
+
+    private static ToolCallResponse callTool(
+            Map<String, ExecutableTool> tools,
+            ToolRunner toolRunner,
+            ToolCall toolCallMessage) {
+        return null != toolRunner
+               ? toolRunner.runTool(tools, toolCallMessage)
+               : new ToolCallResponse(toolCallMessage.getToolCallId(),
+                                      toolCallMessage.getToolName(),
+                                      ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                      "Tool runner not provided for tool call %s[%s]".formatted(toolCallMessage.getToolCallId(),
+                                                                                                toolCallMessage.getToolName()),
+                                      LocalDateTime.now());
     }
 
     /**

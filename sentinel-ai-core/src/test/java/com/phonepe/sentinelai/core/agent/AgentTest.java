@@ -100,7 +100,7 @@ class AgentTest {
                                                     .model(new Model() {
 
                                                         @Override
-                                                        public CompletableFuture<ModelOutput> process(
+                                                        public CompletableFuture<ModelOutput> processAsync(
                                                                 ModelRunContext context,
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
@@ -157,7 +157,7 @@ class AgentTest {
                                                     .model(new Model() {
 
                                                         @Override
-                                                        public CompletableFuture<ModelOutput> process(
+                                                        public CompletableFuture<ModelOutput> processAsync(
                                                                 ModelRunContext context,
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
@@ -217,7 +217,7 @@ class AgentTest {
                                                     .model(new Model() {
 
                                                         @Override
-                                                        public CompletableFuture<ModelOutput> process(
+                                                        public CompletableFuture<ModelOutput> processAsync(
                                                                 ModelRunContext context,
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
@@ -278,7 +278,7 @@ class AgentTest {
                                                     .model(new Model() {
 
                                                         @Override
-                                                        public CompletableFuture<ModelOutput> process(
+                                                        public CompletableFuture<ModelOutput> processAsync(
                                                                 ModelRunContext context,
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
@@ -334,7 +334,7 @@ class AgentTest {
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
                                                         @Override
-                                                        public CompletableFuture<ModelOutput> process(
+                                                        public CompletableFuture<ModelOutput> processAsync(
                                                                 ModelRunContext context,
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
@@ -399,7 +399,7 @@ class AgentTest {
                                                     .model(new Model() {
 
                                                         @Override
-                                                        public CompletableFuture<ModelOutput> process(
+                                                        public CompletableFuture<ModelOutput> processAsync(
                                                                 ModelRunContext context,
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
@@ -457,7 +457,7 @@ class AgentTest {
         final var textAgent = new TestAgent(AgentSetup.builder()
                                                     .model(new Model() {
                                                         @Override
-                                                        public CompletableFuture<ModelOutput> process(
+                                                        public CompletableFuture<ModelOutput> processAsync(
                                                                 ModelRunContext context,
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,

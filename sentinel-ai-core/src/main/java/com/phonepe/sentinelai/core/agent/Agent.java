@@ -16,6 +16,7 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
+import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
@@ -36,6 +37,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -102,7 +104,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
         this.outputType = outputType;
         this.systemPrompt = systemPrompt;
-        this.setup = setup;
+        this.setup = setup
+                .withExecutorService(Objects.requireNonNullElseGet(setup.getExecutorService(), Executors::newCachedThreadPool))
+                .withEventBus(Objects.requireNonNullElseGet(setup.getEventBus(), EventBus::new));
         this.extensions = Objects.requireNonNullElseGet(extensions, List::of);
         this.toolRunApprovalSeeker = Objects.requireNonNullElseGet(toolRunApprovalSeeker, ApproveAllToolRuns::new);
         xmlMapper.registerModule(new JavaTimeModule());
@@ -250,11 +254,11 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                         this.extensions,
                         self)
                 .thenApply(modelOutput -> convertToAgentOutput(modelOutput, mergedAgentSetup))*/
-                .process(modelRunContext,
-                         outputDefinitions,
-                         messages,
-                         knownTools,
-                         new AgentToolRunner<>(self,
+                .processAsync(modelRunContext,
+                              outputDefinitions,
+                              messages,
+                              knownTools,
+                              new AgentToolRunner<>(self,
                                                mergedAgentSetup,
                                                toolRunApprovalSeeker,
                                                context))

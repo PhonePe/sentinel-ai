@@ -8,7 +8,10 @@ import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.model.ModelRunContext;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
+import com.phonepe.sentinelai.core.tools.NonContextualDefaultExternalToolRunner;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
@@ -52,6 +55,8 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
     private final int minRelevantReusabilityScore;
 
     private final Map<String, ExecutableTool> tools;
+
+    private A agent;
 
     @Builder
     public AgentMemoryExtension(
@@ -244,20 +249,34 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                 Map.of("conversation", objectMapper.writeValueAsString(data.getOutput().getNewMessages())
                       )),
                                     LocalDateTime.now()));
+        final var modelRunContext = new ModelRunContext(agent.name(),
+                                                        "mem-extraction-" + UUID.randomUUID(),
+                                                        null,
+                                                        null,
+                                                        agent.getSetup(),
+                                                        new ModelUsageStats(),
+                                                        ProcessingMode.DIRECT);
         final var output = data.getAgentSetup()
                 .getModel()
+/*
                 .runDirect(data.getContext().withOldMessages(messages),
                            memorySchema(),
                            messages)
+*/
+                .processAsync(modelRunContext,
+                              List.of(memorySchema()),
+                              messages,
+                              Map.of(),
+                              new NonContextualDefaultExternalToolRunner(objectMapper))
                 .join();
         if (output.getError() != null && !output.getError().getErrorType().equals(ErrorType.SUCCESS)) {
             log.error("Error extracting memory: {}", output.getError());
         }
         else {
-            final var outputData = output.getData();
-            if (!outputData.isEmpty()) {
-                log.debug("Extracted memory output: {}", outputData);
-                consume(output.getData(), data.getAgent());
+            final var extractedMemoryData = output.getData().get(OUTPUT_KEY);
+            if (extractedMemoryData != null && !extractedMemoryData.isNull() && !extractedMemoryData.isMissingNode()) {
+                log.debug("Extracted memory output: {}", extractedMemoryData);
+                consume(extractedMemoryData, data.getAgent());
             }
             else {
                 log.debug("No memory extracted from the output");
@@ -288,5 +307,11 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
     @Override
     public Map<String, ExecutableTool> tools() {
         return this.tools;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <M, N, O extends Agent<M, N, O>> void onToolBoxRegistrationCompleted(O agent) {
+        this.agent = (A) agent;
     }
 }
