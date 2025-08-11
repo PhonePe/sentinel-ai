@@ -222,17 +222,17 @@ public class SentinelMCPClient implements AutoCloseable {
                                                              Executors::newCachedThreadPool),
                                null,
                                messages)*/
-                    .processAsync(modelRunContext,
-                                  List.of(new ModelOutputDefinition(SAMPLING_OUTPUT_KEY,
+                    .compute(modelRunContext,
+                             List.of(new ModelOutputDefinition(SAMPLING_OUTPUT_KEY,
                                                                "Response to sampling calls",
                                                                JsonUtils.schema(String.class))),
-                                  messages,
-                                  Map.of(),
-                                  new NonContextualDefaultExternalToolRunner(mapper))
+                             messages,
+                             Map.of(),
+                             new NonContextualDefaultExternalToolRunner(mapper))
                     .join();
 
             final var responseNode = response.getData().get(SAMPLING_OUTPUT_KEY);
-            if(null == responseNode || responseNode.isNull()) {
+            if(JsonUtils.empty(responseNode)) {
                 return new McpSchema.CreateMessageResult(
                         McpSchema.Role.ASSISTANT,
                         new McpSchema.TextContent("Sampling call failed. No content was generated"),

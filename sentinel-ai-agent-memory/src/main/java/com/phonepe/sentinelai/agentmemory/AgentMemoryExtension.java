@@ -263,23 +263,23 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                            memorySchema(),
                            messages)
 */
-                .processAsync(modelRunContext,
-                              List.of(memorySchema()),
-                              messages,
-                              Map.of(),
-                              new NonContextualDefaultExternalToolRunner(objectMapper))
+                .compute(modelRunContext,
+                         List.of(memorySchema()),
+                         messages,
+                         Map.of(),
+                         new NonContextualDefaultExternalToolRunner(objectMapper))
                 .join();
         if (output.getError() != null && !output.getError().getErrorType().equals(ErrorType.SUCCESS)) {
             log.error("Error extracting memory: {}", output.getError());
         }
         else {
             final var extractedMemoryData = output.getData().get(OUTPUT_KEY);
-            if (extractedMemoryData != null && !extractedMemoryData.isNull() && !extractedMemoryData.isMissingNode()) {
-                log.debug("Extracted memory output: {}", extractedMemoryData);
-                consume(extractedMemoryData, data.getAgent());
+            if (JsonUtils.empty(extractedMemoryData)) {
+                log.debug("No memory extracted from the output");
             }
             else {
-                log.debug("No memory extracted from the output");
+                log.debug("Extracted memory output: {}", extractedMemoryData);
+                consume(extractedMemoryData, data.getAgent());
             }
         }
     }

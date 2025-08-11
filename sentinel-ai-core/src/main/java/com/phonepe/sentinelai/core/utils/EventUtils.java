@@ -112,6 +112,18 @@ public class EventUtils {
                 oldMessages);
     }
 
+    public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(
+            ModelRunContext modelRunContext,
+            List<AgentMessage> oldMessages) {
+        raiseMessageSentEvent(
+                modelRunContext.getAgentName(),
+                modelRunContext.getRunId(),
+                modelRunContext.getSessionId(),
+                modelRunContext.getUserId(),
+                modelRunContext.getAgentSetup(),
+                oldMessages);
+    }
+
     public static void raiseMessageSentEvent(
             String agentName,
             String runId,

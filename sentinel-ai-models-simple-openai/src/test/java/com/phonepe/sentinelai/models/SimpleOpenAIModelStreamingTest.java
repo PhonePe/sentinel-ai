@@ -10,6 +10,7 @@ import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
@@ -25,6 +26,7 @@ import java.io.PrintStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
@@ -109,9 +111,13 @@ class SimpleOpenAIModelStreamingTest {
                         .objectMapper(objectMapper)
                         .clientAdapter(new OkHttpClientAdapter(httpClient))
                         .build(),
-                objectMapper
+                objectMapper,
+                SimpleOpenAIModelOptions.builder()
+                        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
+                        .build()
         );
         final var stats = new ModelUsageStats(); //We want to collect stats from the whole session
+        final var executor = Executors.newCachedThreadPool();
         final var agent = new TestAgent(AgentSetup.builder()
                                                 .model(model)
                                                 .mapper(objectMapper)
@@ -119,7 +125,9 @@ class SimpleOpenAIModelStreamingTest {
                                                                        .parallelToolCalls(false)
                                                                        .temperature(0.1f)
                                                                        .seed(1)
+                                                                       .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                                                                        .build())
+                                                .executorService(executor)
                                                 .build());
         final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
         final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
@@ -131,7 +139,7 @@ class SimpleOpenAIModelStreamingTest {
                                                                                  .usageStats(stats)
                                                                                  .build())
                                                                  .build(),
-                                                         data -> print(data, outputStream))
+                                                         new TextStreamer(objectMapper, executor, data -> print(data, outputStream)))
                 .join();
         var responseString = response.getData();
         log.info("Agent response: {}", responseString);
@@ -141,7 +149,7 @@ class SimpleOpenAIModelStreamingTest {
         final var sunnyFound = new AtomicBoolean(responseString.contains("sunny"));
         final var nameFound = new AtomicBoolean(responseString.contains("Santanu"));
         assertTrue(response.getUsage().getTotalTokens() > 1); //This ensures that all chunks have been consumed
-        final var response2 = agent.executeAsyncStreaming(
+        final var response2 = agent.executeAsyncTextStreaming(
                         AgentInput.<String>builder()
                                 .request("How is the weather?")
                                 .requestMetadata(
@@ -152,7 +160,7 @@ class SimpleOpenAIModelStreamingTest {
                                                 .build())
                                 .oldMessages(response.getAllMessages())
                                 .build(),
-                        data -> print(data, outputStream))
+                        new TextStreamer(objectMapper, executor, data -> print(data, outputStream)))
                 .join();
         responseString = response2.getData();
         log.info("Agent response: {}", responseString);
@@ -168,6 +176,7 @@ class SimpleOpenAIModelStreamingTest {
         try {
             outputStream.write(data);
             outputStream.flush();
+            log.info("RECEIVED: {}", new String(data));
         }
         catch (Exception e) {
             throw new RuntimeException(e);

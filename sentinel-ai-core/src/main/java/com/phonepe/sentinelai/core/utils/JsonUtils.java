@@ -27,6 +27,14 @@ public class JsonUtils {
         return mapper;
     }
 
+    public static boolean empty(final JsonNode node) {
+        return node == null
+                || node.isNull()
+                || node.isMissingNode()
+                || (node.isObject() && node.isEmpty())
+                || (node.isArray() && node.isEmpty());
+    }
+
     private static class JacksonTitleModule extends JacksonModule {
         @Override
         public void applyToConfigBuilder(SchemaGeneratorConfigBuilder builder) {
