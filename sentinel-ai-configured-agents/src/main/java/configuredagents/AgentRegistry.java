@@ -51,7 +51,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
             log.info("Building new agent for: {}", agentId);
             return agentFactory.apply(
                     agentSource.read(agentId)
-                            .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId)));
+                            .orElseThrow(() -> agentNotFoundError(agentId)));
         });
     }
 
@@ -76,7 +76,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
                                                           metadata.getConfiguration().getDescription(),
                                                           metadata.getConfiguration().getInputSchema(),
                                                           metadata.getConfiguration().getOutputSchema()))
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+                .orElseThrow(() -> agentNotFoundError(agentId));
     }
 
     @Tool("Invoke an agent with input in the schema as defined in the agent metadata")
@@ -180,4 +180,9 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
     public  void onExtensionRegistrationCompleted(A agent) {
         //Nothing to do here
     }
+
+    private static IllegalArgumentException agentNotFoundError(String agentId) {
+        return new IllegalArgumentException("Agent not found: " + agentId);
+    }
+
 }

@@ -64,12 +64,12 @@ public class ConfiguredAgent {
 
     public ConfiguredAgent(
             final String name,
-            String description,
+            final String description,
             final String prompt,
             final List<AgentExtension<String, String, RootAgent>> rootAgentExtensions,
             final ToolBox availableTools,
-            JsonNode inputSchema,
-            JsonNode outputSchema) {
+            final JsonNode inputSchema,
+            final JsonNode outputSchema) {
         this.name = name;
         this.description = description;
         this.inputSchema = inputSchema;
