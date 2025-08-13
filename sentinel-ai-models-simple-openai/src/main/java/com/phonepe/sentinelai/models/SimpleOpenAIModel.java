@@ -515,25 +515,28 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         if (null == existing) {
             return call;
         }
-        final var id = !Strings.isNullOrEmpty(call.getId()) ? call.getId()
-                                                            :
-                       existing.getId();
+        final var id = !Strings.isNullOrEmpty(call.getId())
+                       ? call.getId()
+                       : existing.getId();
 
-        final var function = null != existing.getFunction()
-                             ? existing.getFunction() : new FunctionCall();
-        if (!Strings.isNullOrEmpty(call.getFunction().getName())) {
-            function.setName(function.getName() + call.getFunction()
-                    .getName());
+        final var function = Objects.requireNonNullElseGet(existing.getFunction(),FunctionCall::new);
+        final var name = call.getFunction().getName();
+        if (!Strings.isNullOrEmpty(name)) {
+            function.setName(existingString(function.getName()) + name);
         }
-        if (!Strings.isNullOrEmpty(call.getFunction().getArguments())) {
-            function.setArguments(function.getArguments() + call.getFunction()
-                    .getArguments());
+        final var arguments = call.getFunction().getArguments();
+        if (!Strings.isNullOrEmpty(arguments)) {
+            function.setArguments(existingString(function.getArguments()) + arguments);
         }
         return new io.github.sashirestela.openai.common.tool.ToolCall(
                 existing.getIndex(),
                 id,
                 existing.getType(),
                 function);
+    }
+
+    private static String existingString(String input) {
+        return Strings.isNullOrEmpty(input) ? "" : input;
     }
 
     private ModelOutput processOutput(

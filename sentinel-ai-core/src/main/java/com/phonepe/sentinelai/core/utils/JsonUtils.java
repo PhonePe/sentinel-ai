@@ -11,7 +11,7 @@ import com.github.victools.jsonschema.module.jackson.JacksonModule;
 import lombok.experimental.UtilityClass;
 
 /**
- *
+ * Uti
  */
 @UtilityClass
 public class JsonUtils {
