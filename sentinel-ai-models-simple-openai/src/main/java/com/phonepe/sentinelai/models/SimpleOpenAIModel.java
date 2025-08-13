@@ -148,10 +148,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              .strict(true)
                                                                              .build()));
                 }
-                builder.toolChoice(switch (this.modelOptions.getToolChoice()) {
-                    case REQUIRED -> ToolChoiceOption.REQUIRED;
-                    case AUTO -> ToolChoiceOption.AUTO;
-                });
+                builder.toolChoice(computeToolChoice(outputGenerationMode));
                 raiseMessageSentEvent(context, oldMessages);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
@@ -325,10 +322,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              .strict(true)
                                                                              .build()));
                 }
-                builder.toolChoice(switch (this.modelOptions.getToolChoice()) {
-                    case REQUIRED -> ToolChoiceOption.REQUIRED;
-                    case AUTO -> ToolChoiceOption.AUTO;
-                });
+                builder.toolChoice(computeToolChoice(outputGenerationMode));
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
 
@@ -942,4 +936,15 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             }
         });
     }
+
+    private ToolChoiceOption computeToolChoice(OutputGenerationMode outputGenerationMode) {
+        return switch (this.modelOptions.getToolChoice()) {
+            case REQUIRED -> switch (outputGenerationMode) {
+                case TOOL_BASED -> ToolChoiceOption.REQUIRED;
+                case STRUCTURED_OUTPUT -> ToolChoiceOption.AUTO;
+            };
+            case AUTO -> ToolChoiceOption.AUTO;
+        };
+    }
+
 }

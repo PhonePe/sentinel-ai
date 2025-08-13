@@ -20,7 +20,6 @@ import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -168,7 +167,6 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
         return Optional.empty();
     }
 
-    @NotNull
     private static ModelOutputDefinition memorySchema() {
         return new ModelOutputDefinition(OUTPUT_KEY,
                                          "Extracted memory",
