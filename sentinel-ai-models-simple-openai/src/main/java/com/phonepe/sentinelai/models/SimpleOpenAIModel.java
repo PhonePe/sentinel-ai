@@ -21,6 +21,7 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.ParameterMapper;
 import com.phonepe.sentinelai.core.tools.ToolDefinition;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
 import io.github.sashirestela.openai.common.ResponseFormat;
 import io.github.sashirestela.openai.common.Usage;
@@ -55,14 +56,6 @@ import static com.phonepe.sentinelai.core.utils.EventUtils.*;
  */
 @Slf4j
 public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Model {
-
-    private static final class IdentityOutputGenerator implements UnaryOperator<String> {
-
-        @Override
-        public String apply(final String content) {
-            return content;
-        }
-    }
 
     @Value
     private static class AgentMessages {
@@ -114,7 +107,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner) {
-        final var modelSettings = context.getAgentSetup().getModelSettings();
+        final var agentSetup = context.getAgentSetup();
+        final var modelSettings = agentSetup.getModelSettings();
         //This keeps getting
         // augmented with tool calls and reused across all iterations
         final var openAiMessages = new ArrayList<>(convertToOpenAIMessages(oldMessages));
@@ -126,8 +120,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         //Stats for the run
         final var stats = new ModelUsageStats();
         final var outputGenerationMode
-                = Objects.requireNonNullElse(modelSettings.getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
-        final var outputGenerator = new IdentityOutputGenerator();
+                = Objects.requireNonNullElse(agentSetup.getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
+        final var outputGenerator = Objects.requireNonNullElseGet(
+                agentSetup.getOutputGenerationTool(), IdentityOutputGenerator::new);
         final var toolsForExecution = new HashMap<>(Objects.requireNonNullElseGet(tools, Map::of));
         final var generatedOutput = new AtomicReference<String>(null);
         final var schema = compliantSchema(outputDefinitions);
@@ -243,7 +238,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 };
             } while (output == null || (output.getData() == null && output.getError() == null));
             return output;
-        }, context.getAgentSetup().getExecutorService());
+        }, agentSetup.getExecutorService());
     }
 
     @Override
@@ -287,7 +282,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             ToolRunner toolRunner,
             Consumer<byte[]> streamHandler,
             Agent.StreamProcessingMode streamProcessingMode) {
-        final var modelSettings = context.getAgentSetup().getModelSettings();
+        final var agentSetup = context.getAgentSetup();
+        final var modelSettings = agentSetup.getModelSettings();
         //This keeps getting
         // augmented with tool calls and reused across all iterations
         final var openAiMessages = new ArrayList<>(convertToOpenAIMessages(oldMessages));
@@ -300,8 +296,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         final var stats = new ModelUsageStats();
         final var toolsForExecution = new HashMap<>(Objects.requireNonNullElseGet(tools, Map::of));
         final var outputGenerationMode
-                = Objects.requireNonNullElse(modelSettings.getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
-        final var outputGenerator = new IdentityOutputGenerator();
+                = Objects.requireNonNullElse(agentSetup.getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
+        final var outputGenerator = Objects.requireNonNullElseGet(
+                agentSetup.getOutputGenerationTool(), IdentityOutputGenerator::new);
         final var generatedOutput = new AtomicReference<String>(null);
         final var schema = compliantSchema(outputDefinitions);
         if (streamProcessingMode.equals(Agent.StreamProcessingMode.TYPED)
@@ -466,7 +463,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 output = outputs.stream().findAny().orElse(null);
             } while (output == null || (output.getData() == null && output.getError() == null));
             return output;
-        }, context.getAgentSetup().getExecutorService());
+        }, agentSetup.getExecutorService());
     }
 
 
@@ -485,13 +482,23 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                        .build(),
                                                schema,
                                                (runContext, toolCallId, args) -> {
-                                                   final var output = outputGenerator.apply(args);
-                                                   if (!Strings.isNullOrEmpty(output)) {
-                                                       generatedOutput.set(output);
+                                                   try {
+                                                       final var output = outputGenerator.apply(args);
+                                                       if (!Strings.isNullOrEmpty(output)) {
+                                                           generatedOutput.set(output);
+                                                       }
+                                                       return new ExternalTool.ExternalToolResponse(
+                                                               output,
+                                                               ErrorType.SUCCESS);
                                                    }
-                                                   return new ExternalTool.ExternalToolResponse(
-                                                           output,
-                                                           ErrorType.SUCCESS);
+                                                   catch (Throwable t) {
+                                                       final var rootCause = AgentUtils.rootCause(t);
+                                                       log.error("Error generating output: " + rootCause.getMessage(),
+                                                                 t);
+                                                       return new ExternalTool.ExternalToolResponse(
+                                                               "Error running tool: " + rootCause.getMessage(),
+                                                               ErrorType.TOOL_CALL_PERMANENT_FAILURE);
+                                                   }
                                                }));
     }
 
@@ -513,7 +520,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                        ? call.getId()
                        : existing.getId();
 
-        final var function = Objects.requireNonNullElseGet(existing.getFunction(),FunctionCall::new);
+        final var function = Objects.requireNonNullElseGet(existing.getFunction(), FunctionCall::new);
         final var name = call.getFunction().getName();
         if (!Strings.isNullOrEmpty(name)) {
             function.setName(existingString(function.getName()) + name);

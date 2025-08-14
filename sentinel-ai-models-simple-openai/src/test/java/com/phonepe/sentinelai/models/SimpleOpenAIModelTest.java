@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -75,13 +77,15 @@ class SimpleOpenAIModelTest {
     @Test
     @SneakyThrows
     void testToolOutput(final WireMockRuntimeInfo wiremock) {
+        final var outputToolCalled = new AtomicBoolean(false);
         testInternal(wiremock,
                      4,
                      "tool-output",
-                     ModelSettings.builder()
-                             .temperature(0.1f)
-                             .seed(42)
-                             .build());
+                     setup -> setup.outputGenerationTool(output -> {
+                         outputToolCalled.set(true);
+                         return output;
+                     }));
+        assertTrue(outputToolCalled.get());
     }
 
     @Test
@@ -90,15 +94,16 @@ class SimpleOpenAIModelTest {
         testInternal(wiremock,
                      3,
                      "structured-output",
-                     ModelSettings.builder()
-                             .temperature(0.1f)
-                             .seed(42)
-                             .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
-                             .build());
+                     setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT));
     }
 
+
     @SneakyThrows
-    void testInternal(final WireMockRuntimeInfo wiremock, int numStubs, final String stubFilePrefix, ModelSettings modelSettings) {
+    void testInternal(
+            final WireMockRuntimeInfo wiremock,
+            final int numStubs,
+            final String stubFilePrefix,
+            final UnaryOperator<AgentSetup.AgentSetupBuilder> agentSetupUpdater) {
         TestUtils.setupMocks(numStubs, stubFilePrefix, getClass());
         final var objectMapper = JsonUtils.createMapper();
 
@@ -132,11 +137,14 @@ class SimpleOpenAIModelTest {
                 });
 
         final var agent = SimpleAgent.builder()
-                .setup(AgentSetup.builder()
-                               .mapper(objectMapper)
-                               .model(model)
-                               .modelSettings(modelSettings)
-                               .eventBus(eventBus)
+                .setup(agentSetupUpdater.apply(AgentSetup.builder()
+                                                       .mapper(objectMapper)
+                                                       .model(model)
+                                                       .modelSettings(ModelSettings.builder()
+                                                                              .temperature(0.1f)
+                                                                              .seed(42)
+                                                                              .build())
+                                                       .eventBus(eventBus))
                                .build())
                 .build();
 

@@ -3,6 +3,8 @@ package com.phonepe.sentinelai.core.utils;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.events.EventBus;
+import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import lombok.experimental.UtilityClass;
 
 import java.util.Arrays;
@@ -87,6 +89,10 @@ public class AgentUtils {
                 .executorService(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getExecutorService),
                                                                Executors::newCachedThreadPool))
                 .eventBus(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getEventBus), EventBus::new))
+                .outputGenerationMode(Objects.requireNonNullElse(value(lhs, rhs, AgentSetup::getOutputGenerationMode),
+                                                                    OutputGenerationMode.TOOL_BASED))
+                .outputGenerationTool(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getOutputGenerationTool),
+                                                                    IdentityOutputGenerator::new))
                 .build();
     }
 

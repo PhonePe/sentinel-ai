@@ -125,9 +125,9 @@ class SimpleOpenAIModelStreamingTest {
                                                                        .parallelToolCalls(false)
                                                                        .temperature(0.1f)
                                                                        .seed(1)
-                                                                       .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                                                                        .build())
                                                 .executorService(executor)
+                                                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                                                 .build());
         final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
         final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
