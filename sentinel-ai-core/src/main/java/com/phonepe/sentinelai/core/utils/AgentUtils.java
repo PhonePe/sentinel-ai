@@ -2,6 +2,7 @@ package com.phonepe.sentinelai.core.utils;
 
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.RetrySetup;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
@@ -93,6 +94,7 @@ public class AgentUtils {
                                                                     OutputGenerationMode.TOOL_BASED))
                 .outputGenerationTool(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getOutputGenerationTool),
                                                                     IdentityOutputGenerator::new))
+                .retrySetup(Objects.requireNonNullElse(value(lhs, rhs, AgentSetup::getRetrySetup), RetrySetup.DEFAULT))
                 .build();
     }
 

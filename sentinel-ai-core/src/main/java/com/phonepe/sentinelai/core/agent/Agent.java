@@ -8,6 +8,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Primitives;
@@ -20,6 +21,9 @@ import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.outputvalidation.DefaultOutputValidator;
+import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
+import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
@@ -27,6 +31,8 @@ import com.phonepe.sentinelai.core.tools.ToolRunApprovalSeeker;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import io.appform.signals.signals.ConsumingFireForgetSignal;
 import lombok.Getter;
 import lombok.NonNull;
@@ -38,6 +44,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -82,6 +89,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final AgentSetup setup;
     private final List<AgentExtension<R, T, A>> extensions;
     private final ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker;
+    private final OutputValidator<R, T> outputValidator;
     private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
     private final XmlMapper xmlMapper = new XmlMapper();
     private final ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> requestCompleted =
@@ -91,22 +99,29 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final A self = (A) this;
 
     protected Agent(
-            @NonNull Class<T> outputType,
-            @NonNull String systemPrompt,
-            @NonNull AgentSetup setup,
-            List<AgentExtension<R, T, A>> extensions,
-            Map<String, ExecutableTool> knownTools) {
-        this(outputType, systemPrompt, setup, extensions, knownTools, new ApproveAllToolRuns<>());
+            @NonNull final Class<T> outputType,
+            @NonNull final String systemPrompt,
+            @NonNull final AgentSetup setup,
+            final List<AgentExtension<R, T, A>> extensions,
+            final Map<String, ExecutableTool> knownTools) {
+        this(outputType,
+             systemPrompt,
+             setup,
+             extensions,
+             knownTools,
+             new ApproveAllToolRuns<>(),
+             new DefaultOutputValidator<>());
     }
 
     @SneakyThrows
     protected Agent(
-            @NonNull Class<T> outputType,
-            @NonNull String systemPrompt,
-            @NonNull AgentSetup setup,
-            List<AgentExtension<R, T, A>> extensions,
-            Map<String, ExecutableTool> knownTools,
-            ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker) {
+            @NonNull final Class<T> outputType,
+            @NonNull final String systemPrompt,
+            @NonNull final AgentSetup setup,
+            final List<AgentExtension<R, T, A>> extensions,
+            final Map<String, ExecutableTool> knownTools,
+            final ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker,
+            final OutputValidator<R, T> outputValidator) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(systemPrompt), "Please provide a valid system prompt");
 
         this.outputType = outputType;
@@ -117,6 +132,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 .withEventBus(Objects.requireNonNullElseGet(setup.getEventBus(), EventBus::new));
         this.extensions = Objects.requireNonNullElseGet(extensions, List::of);
         this.toolRunApprovalSeeker = Objects.requireNonNullElseGet(toolRunApprovalSeeker, ApproveAllToolRuns::new);
+        this.outputValidator = Objects.requireNonNullElseGet(outputValidator, DefaultOutputValidator::new);
+
         xmlMapper.registerModule(new JavaTimeModule());
         xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
         xmlMapper.configure(ToXmlGenerator.Feature.WRITE_XML_DECLARATION, true);
@@ -243,18 +260,62 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                         mergedAgentSetup,
                                                         modelUsageStats,
                                                         processingMode);
-        final var outputDefinitions = new ArrayList<>(List.of(new ModelOutputDefinition(OUTPUT_VARIABLE_NAME,
-                                                                                        "Output generated by the agent",
-                                                                                        outputSchema())));
-        outputDefinitions.addAll(
-                extensions.stream()
-                        .map(extension -> extension.outputSchema(processingMode))
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .toList());
+        final var outputDefinitions = populateOutputDefinitions(processingMode);
+        final var retrySetup = mergedAgentSetup.getRetrySetup();
+        final var retryPolicy = RetryPolicy.<AgentOutput<T>>builder()
+                .withMaxAttempts(retrySetup.getStopAfterAttempt())
+                .withDelay(retrySetup.getDelayAfterFailedAttempt())
+                .handleResultIf(response -> retrySetup.getRetriableErrorTypes()
+                        .contains(response.getError().getErrorType()))
+                .build();
+        return Failsafe.with(List.of(retryPolicy))
+                .with(mergedAgentSetup.getExecutorService())
+                .getAsync(executionContext -> {
+                    log.debug("Model call attempt: {}", executionContext.getAttemptCount());
+                    final var modelOutput = makeModelCall(
+                            mergedAgentSetup,
+                            modelRunContext,
+                            outputDefinitions,
+                            messages,
+                            context);
+                    final var errorResponse = Agent.<T>handleErrorResponse(modelOutput).orElse(null);
+                    if (errorResponse != null) {
+                        return errorResponse;
+                    }
+                    final var data = Objects.requireNonNullElseGet(modelOutput.getData(),
+                                                                   () -> setup.getMapper().createObjectNode());
+                    final var agentOutputData = data.get(OUTPUT_VARIABLE_NAME);
+                    if (JsonUtils.empty(agentOutputData)) {
+                        logEmptyData();
+                        return AgentOutput.error(
+                                modelOutput.getNewMessages(),
+                                modelOutput.getAllMessages(),
+                                modelOutput.getUsage(),
+                                SentinelError.error(ErrorType.NO_RESPONSE, "Did not get output from model"));
+                    }
+                    final var translatedData = translateData(agentOutputData, mergedAgentSetup);
+                    final var validationOutput = outputValidator.validate(context, translatedData);
+                    if (validationOutput.isSuccessful()) {
+                        processExtensionData(data);
+                        return AgentOutput.success(translatedData,
+                                                   modelOutput.getNewMessages(),
+                                                   modelOutput.getAllMessages(),
+                                                   modelOutput.getUsage());
+                    }
+                    return AgentOutput.error(modelOutput.getNewMessages(),
+                                             modelOutput.getNewMessages(),
+                                             modelOutput.getUsage(),
+                                             SentinelError.error(
+                                                     ErrorType.DATA_VALIDATION_FAILURE,
+                                                     Joiner.on(",")
+                                                             .join(validationOutput.getFailures()
+                                                                           .stream()
+                                                                           .map(OutputValidationResults.ValidationFailure::getMessage)
+                                                                           .toList())));
+                })
 
-        return mergedAgentSetup.getModel()
-/*                .exchangeMessages(
+/*        return mergedAgentSetup.getModel()
+                .exchangeMessages(
                         context,
                         outputSchema(),
                         knownTools,
@@ -264,7 +325,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                               context),
                         this.extensions,
                         self)
-                .thenApply(modelOutput -> convertToAgentOutput(modelOutput, mergedAgentSetup))*/
+                .thenApply(modelOutput -> convertToAgentOutput(modelOutput, mergedAgentSetup))*//*
+
                 .compute(modelRunContext,
                          outputDefinitions,
                          messages,
@@ -274,8 +336,16 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                toolRunApprovalSeeker,
                                                context))
                 .thenApply(modelOutput -> processModelOutput(modelOutput, mergedAgentSetup))
-                .thenApplyAsync(response -> {
-                    if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
+                .thenApply(response -> {
+                    final var validationResult = outputValidator.validate(context, response.getData());
+                    if (validationResult.isSuccessful()) {
+                        return response;
+                    }
+
+                })*/
+                .thenApply(response -> {
+                    if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() !=
+                    null) {
                         requestMetadata.getUsageStats().merge(response.getUsage());
                     }
                     requestCompleted.dispatch(new ProcessingCompletedData<>(self,
@@ -286,6 +356,78 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                             ProcessingMode.DIRECT));
                     return response;
                 });
+
+    }
+
+    private void processExtensionData(JsonNode data) {
+        extensions.forEach(extension -> {
+            final var outputDefinition = extension.outputSchema(ProcessingMode.DIRECT);
+            final var outputName = outputDefinition
+                    .map(ModelOutputDefinition::getName)
+                    .orElse(null);
+            if (outputDefinition.isEmpty() || Strings.isNullOrEmpty(outputName)) {
+                log.error("Empty output name found. Definition: {}", outputDefinition);
+                return;
+            }
+            final var extensionOutputData = data.get(outputName);
+            if (JsonUtils.empty(extensionOutputData)) {
+                log.warn("No output from model for extension data named: {}", outputName);
+                return;
+            }
+            try {
+                extension.consume(extensionOutputData, self);
+            }
+            catch (Exception e) {
+                log.error("Error processing model output by extension {}: {}",
+                          extension.name(), AgentUtils.rootCause(e).getMessage());
+            }
+        });
+    }
+
+    private ArrayList<ModelOutputDefinition> populateOutputDefinitions(ProcessingMode processingMode) {
+        final var outputDefinitions = new ArrayList<>(List.of(new ModelOutputDefinition(
+                OUTPUT_VARIABLE_NAME, "Output generated by the agent", outputSchema())));
+        outputDefinitions.addAll(
+                extensions.stream()
+                        .map(extension -> extension.outputSchema(processingMode))
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .toList());
+        return outputDefinitions;
+    }
+
+    private ModelOutput makeModelCall(
+            AgentSetup mergedAgentSetup,
+            ModelRunContext modelRunContext,
+            ArrayList<ModelOutputDefinition> outputDefinitions,
+            ArrayList<AgentMessage> messages,
+            AgentRunContext<R> context) {
+        try {
+            return mergedAgentSetup.getModel()
+                    .compute(modelRunContext,
+                             outputDefinitions,
+                             messages,
+                             knownTools,
+                             new AgentToolRunner<>(self,
+                                                   mergedAgentSetup,
+                                                   toolRunApprovalSeeker,
+                                                   context))
+                    .get();
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ModelOutput.error(
+                    context.getOldMessages(),
+                    context.getModelUsageStats(),
+                    SentinelError.error(ErrorType.NO_RESPONSE, "Model run interrupted."));
+        }
+        catch (ExecutionException e) {
+            return ModelOutput.error(
+                    context.getOldMessages(),
+                    context.getModelUsageStats(),
+                    SentinelError.error(ErrorType.UNKNOWN,
+                                        "Error in model run: " + AgentUtils.rootCause(e).getMessage()));
+        }
     }
 
     /**
@@ -336,8 +478,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * Translate the model output to the agent output type. This is used to convert the model output to the agent
      * output type.
      *
-     * @param output      The model output
-     * @param agentSetup  The agent setup
+     * @param output     The model output
+     * @param agentSetup The agent setup
      * @return The translated data
      * @throws JsonProcessingException If there is an error processing the JSON
      */
@@ -348,11 +490,11 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     /**
      * Internal method to execute the agent asynchronously with streaming support.
      *
-     * @param input            The input to the agent
-     * @param streamHandler    The handler for the streamed output
-     * @param isTextStreaming  Whether the streaming is for text or structured output
-     * @param outputProcessor  Function to process the model output into agent output
-     * @param <U>              The type of the agent output
+     * @param input           The input to the agent
+     * @param streamHandler   The handler for the streamed output
+     * @param isTextStreaming Whether the streaming is for text or structured output
+     * @param outputProcessor Function to process the model output into agent output
+     * @param <U>             The type of the agent output
      * @return A CompletableFuture that will complete with the agent output
      */
     private <U> CompletableFuture<AgentOutput<U>> executeAsyncStreamingInternal(
@@ -414,16 +556,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                             streamHandler);
         }
         else {
-            final var agentOutputDefinition = new ModelOutputDefinition(OUTPUT_VARIABLE_NAME,
-                                                                        "Output generated by the agent",
-                                                                        outputSchema());
-            final var outputDefinitions = new ArrayList<>(List.of(agentOutputDefinition));
-            outputDefinitions.addAll(
-                    extensions.stream()
-                            .map(extension -> extension.outputSchema(processingMode))
-                            .filter(Optional::isPresent)
-                            .map(Optional::get)
-                            .toList());
+            final var outputDefinitions = populateOutputDefinitions(processingMode);
             modelFuture = mergedAgentSetup.getModel()
                     .stream(modelRunContext,
                             outputDefinitions,
@@ -459,28 +592,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             //Creating an empty object here as we don't want to waste time doing null checks
             final var data = Objects.requireNonNullElseGet(modelOutput.getData(),
                                                            () -> setup.getMapper().createObjectNode());
-            extensions.forEach(extension -> {
-                final var outputDefinition = extension.outputSchema(ProcessingMode.DIRECT);
-                final var outputName = outputDefinition
-                        .map(ModelOutputDefinition::getName)
-                        .orElse(null);
-                if (outputDefinition.isEmpty() || Strings.isNullOrEmpty(outputName)) {
-                    log.error("Empty output name found. Definition: {}", outputDefinition);
-                    return;
-                }
-                final var extensionOutputData = data.get(outputName);
-                if (JsonUtils.empty(extensionOutputData)) {
-                    log.warn("No output from model for extension data named: {}", outputName);
-                    return;
-                }
-                try {
-                    extension.consume(extensionOutputData, self);
-                }
-                catch (Exception e) {
-                    log.error("Error processing model output by extension {}: {}",
-                              extension.name(), AgentUtils.rootCause(e).getMessage());
-                }
-            });
+            processExtensionData(data);
             final var agentOutputData = data.get(OUTPUT_VARIABLE_NAME);
             if (JsonUtils.empty(agentOutputData)) {
                 logEmptyData();
