@@ -11,7 +11,7 @@ import com.github.victools.jsonschema.module.jackson.JacksonModule;
 import lombok.experimental.UtilityClass;
 
 /**
- *
+ * Uti
  */
 @UtilityClass
 public class JsonUtils {
@@ -25,6 +25,14 @@ public class JsonUtils {
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
         return mapper;
+    }
+
+    public static boolean empty(final JsonNode node) {
+        return node == null
+                || node.isNull()
+                || node.isMissingNode()
+                || (node.isObject() && node.isEmpty())
+                || (node.isArray() && node.isEmpty());
     }
 
     private static class JacksonTitleModule extends JacksonModule {

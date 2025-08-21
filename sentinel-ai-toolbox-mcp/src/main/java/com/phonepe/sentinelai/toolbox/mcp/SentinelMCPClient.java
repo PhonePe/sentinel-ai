@@ -1,18 +1,18 @@
 package com.phonepe.sentinelai.toolbox.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
+import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.core.tools.ExecutableTool;
-import com.phonepe.sentinelai.core.tools.ExternalTool;
-import com.phonepe.sentinelai.core.tools.ToolDefinition;
+import com.phonepe.sentinelai.core.model.ModelRunContext;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.tools.*;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPSSEServerConfig;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPServerConfig;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPServerConfigVisitor;
@@ -34,7 +34,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -45,6 +44,8 @@ import static java.util.stream.Collectors.toMap;
  */
 @Slf4j
 public class SentinelMCPClient implements AutoCloseable {
+    private static final String SAMPLING_OUTPUT_KEY = "mcpSamplingOutput";
+
     @Getter
     private final String name;
     private final McpSyncClient mcpClient;
@@ -140,7 +141,7 @@ public class SentinelMCPClient implements AutoCloseable {
     }
 
     private McpSyncClient createMcpClient(MCPServerConfig serverConfig) {
-        final var transport =  serverConfig.accept(new MCPServerConfigVisitor<McpClientTransport>() {
+        final var transport = serverConfig.accept(new MCPServerConfigVisitor<McpClientTransport>() {
             @Override
             public McpClientTransport visit(MCPStdioServerConfig stdioServerConfig) {
                 final var serverParameters = ServerParameters.builder(stdioServerConfig.getCommand())
@@ -202,28 +203,53 @@ public class SentinelMCPClient implements AutoCloseable {
         final var agentSetup = agent.getSetup();
         final var setup = agentSetup.getModelSettings()
                 .withMaxTokens(createMessageRequest.maxTokens())
-                .withTemperature(Objects.requireNonNullElse(createMessageRequest.temperature(), 0.1f).floatValue());
+                .withTemperature(Objects.requireNonNullElse(createMessageRequest.temperature(), 0.0f).floatValue());
         final var messages = new ArrayList<AgentMessage>();
         messages.add(new SystemPrompt(createMessageRequest.systemPrompt(), true, null));
         messages.addAll(convertFromSamplingToAgentMessages(createMessageRequest.messages()));
+        final var runId = "sampling-" + UUID.randomUUID();
+        final var modelRunContext = new ModelRunContext(agent.name(),
+                                                        runId,
+                                                        null,
+                                                        null,
+                                                        agentSetup.withModelSettings(setup),
+                                                        new ModelUsageStats(),
+                                                        ProcessingMode.DIRECT);
         try {
             final var response = agentSetup.getModel()
-                    .runDirect(setup,
+/*                    .runDirect(setup,
                                Objects.requireNonNullElseGet(agentSetup.getExecutorService(),
                                                              Executors::newCachedThreadPool),
-                               createMessageRequest.systemPrompt(),
                                null,
-                               messages)
+                               messages)*/
+                    .compute(modelRunContext,
+                             List.of(new ModelOutputDefinition(SAMPLING_OUTPUT_KEY,
+                                                               "Response to sampling calls",
+                                                               JsonUtils.schema(String.class))),
+                             messages,
+                             Map.of(),
+                             new NonContextualDefaultExternalToolRunner(mapper))
                     .join();
 
+            final var responseNode = response.getData().get(SAMPLING_OUTPUT_KEY);
+            if(JsonUtils.empty(responseNode)) {
+                return new McpSchema.CreateMessageResult(
+                        McpSchema.Role.ASSISTANT,
+                        new McpSchema.TextContent("Sampling call failed. No content was generated"),
+                        agentSetup.getModel().getClass().getSimpleName(),
+                        McpSchema.CreateMessageResult.StopReason.END_TURN);
+            }
             return new McpSchema.CreateMessageResult(
                     McpSchema.Role.ASSISTANT,
-                    new McpSchema.TextContent(response.getData().asText()),
+                    new McpSchema.TextContent(responseNode.asText()),
                     agentSetup.getModel().getClass().getSimpleName(),
                     toStopReason(response.getError().getErrorType()));
         }
         catch (Exception e) {
             final var message = AgentUtils.rootCause(e).getMessage();
+            if(log.isDebugEnabled()) {
+                log.error("Error running sampling call: ", e);
+            }
             return new McpSchema.CreateMessageResult(
                     McpSchema.Role.ASSISTANT,
                     new McpSchema.TextContent("Error processing request: " + message),

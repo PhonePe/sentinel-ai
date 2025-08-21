@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-BwNWMXA8j9yPXv17L7310QuDJbWnw",
+  "id" : "chatcmpl-C16Cq207fXEKyskZK7ImDuYgbZgws",
   "object" : "chat.completion",
-  "created" : 1753253138,
+  "created" : 1754378220,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
@@ -9,20 +9,20 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_gAgasGC8ZYRwQFuAPwZvEJaW",
+        "id" : "call_gIM4pwbrD7f4IudbeQU0xieD",
         "type" : "function",
         "function" : {
           "name" : "__output_generator__",
-          "arguments" : "{\"output\":{\"message\":\"Hello Mr Santanu! The weather in Bangalore today is sunny.\",\"username\":\"Santanu\"}}"
+          "arguments" : "{\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"The user's name is Santanu.\",\"name\":\"UserName\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"Santanu\",\"topics\":[\"user\",\"name\"],\"type\":\"SEMANTIC\"},{\"content\":\"The user is located in Bangalore.\",\"name\":\"UserLocation\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"Santanu\",\"topics\":[\"user\",\"location\"],\"type\":\"SEMANTIC\"},{\"content\":\"The weather in Bangalore today is sunny.\",\"name\":\"WeatherBangalore\",\"reusabilityScore\":10,\"scope\":\"AGENT\",\"scopeId\":\"weather\",\"topics\":[\"weather\",\"Bangalore\"],\"type\":\"SEMANTIC\"},{\"content\":\"To greet the user, use the salutation 'Mr', 'Dr', or 'Prof'.\",\"name\":\"UserSalutation\",\"reusabilityScore\":10,\"scope\":\"AGENT\",\"scopeId\":\"Santanu\",\"topics\":[\"user\",\"salutation\"],\"type\":\"PROCEDURAL\"}]}}"
         }
       } ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 881,
-    "completion_tokens" : 35,
-    "total_tokens" : 916,
+    "prompt_tokens" : 1553,
+    "completion_tokens" : 217,
+    "total_tokens" : 1770,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

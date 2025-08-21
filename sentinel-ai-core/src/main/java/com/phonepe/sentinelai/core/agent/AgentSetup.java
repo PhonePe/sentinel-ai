@@ -4,10 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import lombok.Builder;
 import lombok.Value;
+import lombok.With;
 
 import java.util.concurrent.ExecutorService;
+import java.util.function.UnaryOperator;
 
 /**
  * Details to setup an agent.
@@ -17,6 +20,7 @@ import java.util.concurrent.ExecutorService;
  */
 @Value
 @Builder
+@With
 public class AgentSetup {
     /**
      * The object mapper to use for serialization/deserialization. If not provided, a default one will be created.
@@ -44,5 +48,16 @@ public class AgentSetup {
      * EventBus to be used for the agent. Ifn ot provided a default event bus is created.
      */
     EventBus eventBus;
+
+    /**
+     * Output generation mode to use for this model. Typically, other than OpenAI models, it is safer to leave it at
+     * the default {@link OutputGenerationMode#TOOL_BASED}.
+     */
+    OutputGenerationMode outputGenerationMode;
+
+    /**
+     * Output generation tool to be used for tool based output
+     */
+    UnaryOperator<String> outputGenerationTool;
 
 }

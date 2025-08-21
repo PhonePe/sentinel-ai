@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @Slf4j
 @WireMockTest
-public class AgentIntegrationTest extends ESIntegrationTestBase {
+class AgentIntegrationTest extends ESIntegrationTestBase {
     public record OutputObject(String username, String message) {
     }
 

@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-BwNWKqA6HsKTmd8iCgASCawQs3IJl",
+  "id" : "chatcmpl-C16CofFnXeJEIojICp5Ux4wKVt8C4",
   "object" : "chat.completion",
-  "created" : 1753253136,
+  "created" : 1754378218,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
@@ -9,20 +9,20 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_mSeiDq561uPKgA1naKUgYDey",
+        "id" : "call_PANsLI7xhwV50HDcAm4L2P5Z",
         "type" : "function",
         "function" : {
-          "name" : "simple_agent_get_salutation",
-          "arguments" : "{\"params\":{\"name\":\"Santanu\"}}"
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":{\"message\":\"Hello Mr Santanu! The weather in Bangalore today is sunny.\",\"username\":\"Santanu\"}}"
         }
       } ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 839,
-    "completion_tokens" : 21,
-    "total_tokens" : 860,
+    "prompt_tokens" : 881,
+    "completion_tokens" : 35,
+    "total_tokens" : 916,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

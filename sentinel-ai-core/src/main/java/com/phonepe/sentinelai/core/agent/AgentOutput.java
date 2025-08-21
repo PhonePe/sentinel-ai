@@ -41,4 +41,8 @@ public class AgentOutput<T> {
     public static <T> AgentOutput<T> error(List<AgentMessage> oldMessages, ModelUsageStats stats, SentinelError error) {
         return new AgentOutput<>(null, List.of(), oldMessages, stats, error);
     }
+
+    public static <T> AgentOutput<T> error(List<AgentMessage> newMessages, List<AgentMessage> oldMessages, ModelUsageStats stats, SentinelError error) {
+        return new AgentOutput<>(null, newMessages, oldMessages, stats, error);
+    }
 }

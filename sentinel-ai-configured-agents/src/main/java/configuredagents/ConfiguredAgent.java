@@ -3,7 +3,6 @@ package configuredagents;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.phonepe.sentinelai.core.agent.*;
-import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.SneakyThrows;
@@ -16,7 +15,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  *
  */
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "FieldCanBeLocal"})
 public class ConfiguredAgent {
 
     private final String name;
@@ -37,10 +36,10 @@ public class ConfiguredAgent {
                 final List<AgentExtension<String, String, RootAgent>> extensions,
                 final ToolBox toolBox) {
             super(String.class,
-                    prompt,
-                    AgentSetup.builder().build(),
-                    extensions,
-                    Map.of());
+                  prompt,
+                  AgentSetup.builder().build(),
+                  extensions,
+                  Map.of());
             this.name = name;
             this.outputSchema = outputSchema;
             this.registerToolbox(toolBox);
@@ -57,22 +56,20 @@ public class ConfiguredAgent {
         }
 
         @Override
-        protected String translateData(
-                ModelOutput modelOutput,
-                AgentSetup mergedAgentSetup) throws JsonProcessingException {
-            return mergedAgentSetup.getMapper()
-                    .writeValueAsString(modelOutput.getData());
+        protected String translateData(JsonNode output, AgentSetup agentSetup) throws JsonProcessingException {
+            return agentSetup.getMapper()
+                    .writeValueAsString(output);
         }
     }
 
     public ConfiguredAgent(
             final String name,
-            String description,
+            final String description,
             final String prompt,
             final List<AgentExtension<String, String, RootAgent>> rootAgentExtensions,
             final ToolBox availableTools,
-            JsonNode inputSchema,
-            JsonNode outputSchema) {
+            final JsonNode inputSchema,
+            final JsonNode outputSchema) {
         this.name = name;
         this.description = description;
         this.inputSchema = inputSchema;

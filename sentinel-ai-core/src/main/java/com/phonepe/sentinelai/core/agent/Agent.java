@@ -7,23 +7,25 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Primitives;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
-import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
-import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
-import com.phonepe.sentinelai.core.events.ToolCallCompletedAgentEvent;
-import com.phonepe.sentinelai.core.events.ToolCalledAgentEvent;
+import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.ModelOutput;
+import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
-import com.phonepe.sentinelai.core.tools.*;
+import com.phonepe.sentinelai.core.tools.ExecutableTool;
+import com.phonepe.sentinelai.core.tools.InternalTool;
+import com.phonepe.sentinelai.core.tools.ToolBox;
+import com.phonepe.sentinelai.core.tools.ToolRunApprovalSeeker;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 import io.appform.signals.signals.ConsumingFireForgetSignal;
 import lombok.Getter;
@@ -32,13 +34,12 @@ import lombok.SneakyThrows;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
-import java.lang.reflect.InvocationTargetException;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executors;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -56,6 +57,14 @@ import static java.util.stream.Collectors.toMap;
 public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     public static final String OUTPUT_GENERATOR_ID = "__output_generator__";
+
+    @VisibleForTesting
+    public static final String OUTPUT_VARIABLE_NAME = "output";
+
+    public enum StreamProcessingMode {
+        TYPED,
+        TEXT
+    }
 
     @Value
     public static class ProcessingCompletedData<R, T, A extends Agent<R, T, A>> {
@@ -102,7 +111,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
         this.outputType = outputType;
         this.systemPrompt = systemPrompt;
-        this.setup = setup;
+        this.setup = setup
+                .withExecutorService(Objects.requireNonNullElseGet(setup.getExecutorService(),
+                                                                   Executors::newCachedThreadPool))
+                .withEventBus(Objects.requireNonNullElseGet(setup.getEventBus(), EventBus::new));
         this.extensions = Objects.requireNonNullElseGet(extensions, List::of);
         this.toolRunApprovalSeeker = Objects.requireNonNullElseGet(toolRunApprovalSeeker, ApproveAllToolRuns::new);
         xmlMapper.registerModule(new JavaTimeModule());
@@ -121,6 +133,11 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     public abstract String name();
 
+
+    public ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> onRequestCompleted() {
+        return requestCompleted;
+    }
+
     /**
      * Register toolboxes with the agent
      *
@@ -131,10 +148,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         Objects.requireNonNullElseGet(toolbox, List::<ToolBox>of)
                 .forEach(this::registerToolbox);
         return self;
-    }
-
-    public ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> onRequestCompleted() {
-        return requestCompleted;
     }
 
     /**
@@ -197,14 +210,15 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var requestMetadata = input.getRequestMetadata();
         final var facts = input.getFacts();
         final var inputRequest = input.getRequest();
+        final var modelUsageStats = new ModelUsageStats();
         final var context = new AgentRunContext<>(runId,
                                                   inputRequest,
                                                   Objects.requireNonNullElseGet(
-                                                        requestMetadata,
-                                                        AgentRequestMetadata::new),
+                                                          requestMetadata,
+                                                          AgentRequestMetadata::new),
                                                   mergedAgentSetup,
                                                   messages,
-                                                  new ModelUsageStats(),
+                                                  modelUsageStats,
                                                   ProcessingMode.DIRECT);
         var finalSystemPrompt = "";
         try {
@@ -221,15 +235,45 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                          false,
                                                                                          null));
         messages.add(new UserPrompt(toXmlContent(inputRequest), LocalDateTime.now()));
+        final var processingMode = ProcessingMode.DIRECT;
+        final var modelRunContext = new ModelRunContext(name(),
+                                                        runId,
+                                                        AgentUtils.sessionId(context),
+                                                        AgentUtils.userId(context),
+                                                        mergedAgentSetup,
+                                                        modelUsageStats,
+                                                        processingMode);
+        final var outputDefinitions = new ArrayList<>(List.of(new ModelOutputDefinition(OUTPUT_VARIABLE_NAME,
+                                                                                        "Output generated by the agent",
+                                                                                        outputSchema())));
+        outputDefinitions.addAll(
+                extensions.stream()
+                        .map(extension -> extension.outputSchema(processingMode))
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .toList());
+
         return mergedAgentSetup.getModel()
-                .exchangeMessages(
+/*                .exchangeMessages(
                         context,
                         outputSchema(),
                         knownTools,
-                        this::runToolObserved,
+                        new AgentToolRunner<>(self,
+                                              mergedAgentSetup,
+                                              toolRunApprovalSeeker,
+                                              context),
                         this.extensions,
                         self)
-                .thenApply(modelOutput -> convertToAgentOutput(modelOutput, mergedAgentSetup))
+                .thenApply(modelOutput -> convertToAgentOutput(modelOutput, mergedAgentSetup))*/
+                .compute(modelRunContext,
+                         outputDefinitions,
+                         messages,
+                         knownTools,
+                         new AgentToolRunner<>(self,
+                                               mergedAgentSetup,
+                                               toolRunApprovalSeeker,
+                                               context))
+                .thenApply(modelOutput -> processModelOutput(modelOutput, mergedAgentSetup))
                 .thenApplyAsync(response -> {
                     if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
                         requestMetadata.getUsageStats().merge(response.getUsage());
@@ -245,14 +289,77 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     }
 
     /**
-     * Streaming execution. This should be used for text streaming applications like chat etc.
+     * Streaming execution. This should be used for streaming applications like chat etc. When using reasoning models
+     * that have a longer first byte to response, some gateways might time out, it is better to use htis mode
      *
-     * @param input The input to the agent
+     * @param input         The input to the agent
+     * @param streamHandler Client method for raw data stream
      * @return The response to be consumed by the client
      */
     public final CompletableFuture<AgentOutput<T>> executeAsyncStreaming(
             AgentInput<R> input,
             Consumer<byte[]> streamHandler) {
+        return executeAsyncStreamingInternal(input,
+                                             streamHandler,
+                                             false,
+                                             this::processModelOutput);
+
+    }
+
+    /**
+     * Streaming execution. This should be used for text streaming applications like chat etc.
+     *
+     * @param input         The input to the agent
+     * @param streamHandler Client method for raw text stream
+     * @return The response to be consumed by the client
+     */
+    public final CompletableFuture<AgentOutput<String>> executeAsyncTextStreaming(
+            AgentInput<R> input,
+            Consumer<byte[]> streamHandler) {
+        return executeAsyncStreamingInternal(input,
+                                             streamHandler,
+                                             true,
+                                             this::processTextStreamingOutput);
+    }
+
+    /**
+     * Schema for the agent output. Usually generated from the provided type, but can be overridden for more exotic
+     * cases.
+     *
+     * @return A schema for the agent output
+     */
+    protected JsonNode outputSchema() {
+        return schema(outputType);
+    }
+
+    /**
+     * Translate the model output to the agent output type. This is used to convert the model output to the agent
+     * output type.
+     *
+     * @param output      The model output
+     * @param agentSetup  The agent setup
+     * @return The translated data
+     * @throws JsonProcessingException If there is an error processing the JSON
+     */
+    protected T translateData(JsonNode output, AgentSetup agentSetup) throws JsonProcessingException {
+        return agentSetup.getMapper().treeToValue(output, outputType);
+    }
+
+    /**
+     * Internal method to execute the agent asynchronously with streaming support.
+     *
+     * @param input            The input to the agent
+     * @param streamHandler    The handler for the streamed output
+     * @param isTextStreaming  Whether the streaming is for text or structured output
+     * @param outputProcessor  Function to process the model output into agent output
+     * @param <U>              The type of the agent output
+     * @return A CompletableFuture that will complete with the agent output
+     */
+    private <U> CompletableFuture<AgentOutput<U>> executeAsyncStreamingInternal(
+            AgentInput<R> input,
+            Consumer<byte[]> streamHandler,
+            boolean isTextStreaming,
+            BiFunction<ModelOutput, AgentSetup, AgentOutput<U>> outputProcessor) {
         final var mergedAgentSetup = AgentUtils.mergeAgentSetup(input.getAgentSetup(), this.setup);
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input.getOldMessages(), List.<AgentMessage>of())
                                                      .stream()
@@ -263,15 +370,17 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var requestMetadata = input.getRequestMetadata();
         final var request = input.getRequest();
         final var facts = input.getFacts();
+        final var processingMode = ProcessingMode.STREAMING;
+        final var modelUsageStats = new ModelUsageStats();
         final var context = new AgentRunContext<>(runId,
                                                   request,
                                                   Objects.requireNonNullElseGet(
-                                                        requestMetadata,
-                                                        AgentRequestMetadata::new),
+                                                          requestMetadata,
+                                                          AgentRequestMetadata::new),
                                                   mergedAgentSetup,
                                                   messages,
-                                                  new ModelUsageStats(),
-                                                  ProcessingMode.STREAMING);
+                                                  modelUsageStats,
+                                                  processingMode);
         var finalSystemPrompt = "";
         try {
             finalSystemPrompt = systemPrompt(context, facts);
@@ -283,19 +392,48 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                        SentinelError.error(ErrorType.SERIALIZATION_ERROR,
                                                                                            e)));
         }
-        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(finalSystemPrompt,
-                                                                                         false,
-                                                                                         null));
+        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
+                finalSystemPrompt, false, null));
         messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
-        return mergedAgentSetup.getModel()
-                .exchangeMessagesStreaming(
-                        context,
-                        knownTools,
-                        this::runToolObserved,
-                        this.extensions,
-                        self,
-                        streamHandler)
-                .thenApply(modelOutput -> convertToAgentOutput(modelOutput, mergedAgentSetup))
+        final var modelRunContext = new ModelRunContext(name(),
+                                                        runId,
+                                                        AgentUtils.sessionId(context),
+                                                        AgentUtils.userId(context),
+                                                        mergedAgentSetup,
+                                                        modelUsageStats,
+                                                        processingMode);
+        CompletableFuture<ModelOutput> modelFuture;
+        final var toolRunner = new AgentToolRunner<>(self, mergedAgentSetup, toolRunApprovalSeeker, context);
+        if (isTextStreaming) {
+            modelFuture = mergedAgentSetup.getModel()
+                    .streamText(
+                            modelRunContext,
+                            messages,
+                            knownTools,
+                            toolRunner,
+                            streamHandler);
+        }
+        else {
+            final var agentOutputDefinition = new ModelOutputDefinition(OUTPUT_VARIABLE_NAME,
+                                                                        "Output generated by the agent",
+                                                                        outputSchema());
+            final var outputDefinitions = new ArrayList<>(List.of(agentOutputDefinition));
+            outputDefinitions.addAll(
+                    extensions.stream()
+                            .map(extension -> extension.outputSchema(processingMode))
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .toList());
+            modelFuture = mergedAgentSetup.getModel()
+                    .stream(modelRunContext,
+                            outputDefinitions,
+                            messages,
+                            knownTools,
+                            toolRunner,
+                            streamHandler);
+        }
+        return modelFuture
+                .thenApply(output -> outputProcessor.apply(output, mergedAgentSetup))
                 .thenApply(response -> {
                     if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() != null) {
                         requestMetadata.getUsageStats().merge(response.getUsage());
@@ -305,43 +443,112 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                             context,
                                                                             input,
                                                                             response,
-                                                                            ProcessingMode.STREAMING));
+                                                                            processingMode));
                     return response;
                 });
     }
 
-    protected JsonNode outputSchema() {
-        return schema(outputType);
-    }
-
-    protected T translateData(ModelOutput modelOutput, AgentSetup mergedAgentSetup) throws JsonProcessingException {
-        return mergedAgentSetup.getMapper().treeToValue(modelOutput.getData(), outputType);
-    }
-
-    private AgentOutput<T> convertToAgentOutput(
+    private AgentOutput<T> processModelOutput(
             ModelOutput modelOutput,
             AgentSetup mergedAgentSetup) {
         try {
-            return new AgentOutput<>(null != modelOutput.getData()
-                                     ? translateData(modelOutput, mergedAgentSetup)
-                                     : null,
-                                     modelOutput.getNewMessages(),
-                                     modelOutput.getAllMessages(),
-                                     modelOutput.getUsage(),
-                                     modelOutput.getError());
+            final var errorResponse = Agent.<T>handleErrorResponse(modelOutput).orElse(null);
+            if (errorResponse != null) {
+                return errorResponse;
+            }
+            //Creating an empty object here as we don't want to waste time doing null checks
+            final var data = Objects.requireNonNullElseGet(modelOutput.getData(),
+                                                           () -> setup.getMapper().createObjectNode());
+            extensions.forEach(extension -> {
+                final var outputDefinition = extension.outputSchema(ProcessingMode.DIRECT);
+                final var outputName = outputDefinition
+                        .map(ModelOutputDefinition::getName)
+                        .orElse(null);
+                if (outputDefinition.isEmpty() || Strings.isNullOrEmpty(outputName)) {
+                    log.error("Empty output name found. Definition: {}", outputDefinition);
+                    return;
+                }
+                final var extensionOutputData = data.get(outputName);
+                if (JsonUtils.empty(extensionOutputData)) {
+                    log.warn("No output from model for extension data named: {}", outputName);
+                    return;
+                }
+                try {
+                    extension.consume(extensionOutputData, self);
+                }
+                catch (Exception e) {
+                    log.error("Error processing model output by extension {}: {}",
+                              extension.name(), AgentUtils.rootCause(e).getMessage());
+                }
+            });
+            final var agentOutputData = data.get(OUTPUT_VARIABLE_NAME);
+            if (JsonUtils.empty(agentOutputData)) {
+                logEmptyData();
+                return AgentOutput.error(
+                        modelOutput.getNewMessages(),
+                        modelOutput.getAllMessages(),
+                        modelOutput.getUsage(),
+                        SentinelError.error(ErrorType.NO_RESPONSE,
+                                            "Did not get output from model"));
+            }
+            return AgentOutput.success(translateData(agentOutputData, mergedAgentSetup),
+                                       modelOutput.getNewMessages(),
+                                       modelOutput.getAllMessages(),
+                                       modelOutput.getUsage());
         }
         catch (JsonProcessingException e) {
             log.error("Error converting model output to agent output. Error: {}", AgentUtils.rootCause(e), e);
-            return AgentOutput.error(modelOutput.getAllMessages(),
-                                     modelOutput.getUsage(),
-                                     SentinelError.error(ErrorType.JSON_ERROR, e));
+            return AgentOutput.error(
+                    modelOutput.getNewMessages(),
+                    modelOutput.getAllMessages(),
+                    modelOutput.getUsage(),
+                    SentinelError.error(ErrorType.JSON_ERROR, e));
         }
+    }
+
+    @SuppressWarnings("unused")
+    private AgentOutput<String> processTextStreamingOutput(ModelOutput modelOutput, AgentSetup agentSetup) {
+        final var errorResponse = Agent.<String>handleErrorResponse(modelOutput).orElse(null);
+        if (errorResponse != null) {
+            return errorResponse;
+        }
+        final var data = modelOutput.getData();
+        if (JsonUtils.empty(data) || !data.isTextual()) {
+            logEmptyData();
+            return AgentOutput.error(
+                    modelOutput.getNewMessages(),
+                    modelOutput.getAllMessages(),
+                    modelOutput.getUsage(),
+                    SentinelError.error(ErrorType.NO_RESPONSE,
+                                        "Did not get output from model"));
+        }
+        return AgentOutput.success(data.asText(),
+                                   modelOutput.getNewMessages(),
+                                   modelOutput.getAllMessages(),
+                                   modelOutput.getUsage());
+    }
+
+    private static void logEmptyData() {
+        log.warn("No output data found in model output. Returning empty agent output.");
+    }
+
+    private static <T> Optional<AgentOutput<T>> handleErrorResponse(ModelOutput modelOutput) {
+        if (modelOutput.getError() != null
+                && !modelOutput.getError().getErrorType().equals(ErrorType.SUCCESS)) {
+            log.error("Error returned in model run: {}", modelOutput.getError().getMessage());
+            return Optional.of(AgentOutput.error(
+                    modelOutput.getNewMessages(),
+                    modelOutput.getAllMessages(),
+                    modelOutput.getUsage(),
+                    modelOutput.getError()));
+        }
+        return Optional.empty();
     }
 
     private String systemPrompt(
             AgentRunContext<R> context,
             List<FactList> facts
-           ) throws JsonProcessingException {
+                               ) throws JsonProcessingException {
         final var secondaryTasks = this.extensions
                 .stream()
                 .flatMap(extension -> extension
@@ -393,169 +600,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     }
 
-    private ToolCallResponse runToolObserved(
-            AgentRunContext<R> context,
-            Map<String, ExecutableTool> tools,
-            ToolCall toolCall) {
-        if (!toolRunApprovalSeeker.seekApproval(self, context, toolCall)) {
-            log.info("Tool call {} for tool {} was not approved by the user", toolCall.getToolCallId(),
-                     toolCall.getToolName());
-            return new ToolCallResponse(toolCall.getToolCallId(),
-                                        toolCall.getToolName(),
-                                        ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                        "Tool call was not approved by the user",
-                                        LocalDateTime.now());
-        }
-        context.getAgentSetup()
-                .getEventBus()
-                .notify(new ToolCalledAgentEvent(name(),
-                                                 context.getRunId(),
-                                                 AgentUtils.sessionId(context),
-                                                 AgentUtils.userId(context),
-                                                 toolCall.getToolCallId(),
-                                                 toolCall.getToolName()));
-        final var stopwatch = Stopwatch.createStarted();
-        final var response = runTool(context, tools, toolCall);
-        context.getAgentSetup()
-                .getEventBus()
-                .notify(new ToolCallCompletedAgentEvent(name(),
-                                                        context.getRunId(),
-                                                        AgentUtils.sessionId(context),
-                                                        AgentUtils.userId(context),
-                                                        toolCall.getToolCallId(),
-                                                        toolCall.getToolName(),
-                                                        response.getErrorType(),
-                                                        response.getResponse(),
-                                                        Duration.ofMillis(stopwatch.elapsed(TimeUnit.MILLISECONDS))));
-        return response;
-    }
-
-    @SuppressWarnings("java:S3011")
-    private ToolCallResponse runTool(
-            AgentRunContext<R> context,
-            Map<String, ExecutableTool> tools,
-            ToolCall toolCall) {
-        //TODO::RETRY LOGIC
-        final var tool = tools.get(toolCall.getToolName());
-        if (null == tool) {
-            return new ToolCallResponse(toolCall.getToolCallId(),
-                                        toolCall.getToolName(),
-                                        ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                        "Tool call failed. Invalid tool: %s".
-
-                                                formatted(toolCall.getToolName()),
-                                        LocalDateTime.now());
-        }
-        return tool.accept(new ExecutableToolVisitor<>() {
-            @Override
-            public ToolCallResponse visit(ExternalTool externalTool) {
-                final var response = externalTool.getCallable()
-                        .apply(context, toolCall.getToolName(), toolCall.getArguments());
-                log.debug("Tool response: {}", response);
-                final var error = response.error();
-                if (!error.equals(ErrorType.SUCCESS)) {
-                    log.error("Error calling external tool {}: {}", toolCall.getToolName(), response.response());
-                    return new ToolCallResponse(
-                            toolCall.getToolCallId(),
-                            toolCall.getToolName(),
-                            error,
-                            "Tool call failed. External tool error: %s".formatted(Objects.toString(response.response())),
-                            LocalDateTime.now());
-                }
-                try {
-                    return new ToolCallResponse(toolCall.getToolCallId(),
-                                                toolCall.getToolName(),
-                                                ErrorType.SUCCESS,
-                                                context.getAgentSetup()
-                                                        .getMapper()
-                                                        .writeValueAsString(response.response()),
-                                                LocalDateTime.now());
-                }
-                catch (JsonProcessingException e) {
-                    return new ToolCallResponse(toolCall.getToolCallId(),
-                                                toolCall.getToolName(),
-                                                ErrorType.SERIALIZATION_ERROR,
-                                                "Error serializing external tool response: %s".
-                                                        formatted(Objects.toString(response.response())),
-                                                LocalDateTime.now());
-                }
-            }
-
-            @Override
-            public ToolCallResponse visit(InternalTool internalTool) {
-                try {
-                    final var args = new ArrayList<>();
-                    if (internalTool.getToolDefinition().isContextAware()) {
-                        args.add(context);
-                    }
-                    args.addAll(params(internalTool.getMethodInfo(), toolCall.getArguments()));
-                    final var callable = internalTool.getMethodInfo().callable();
-                    callable.setAccessible(true);
-                    log.debug("Calling tool: {} Tool call ID: {}", toolCall.getToolName(), toolCall.getToolCallId());
-                    var resultObject = callable.invoke(internalTool.getInstance(), args.toArray());
-                    return new ToolCallResponse(toolCall.getToolCallId(),
-                                                toolCall.getToolName(),
-                                                ErrorType.SUCCESS,
-                                                toStringContent(internalTool, resultObject),
-                                                LocalDateTime.now());
-                }
-                catch (InvocationTargetException e) {
-                    log.error("Local error making tool call " + toolCall.getToolCallId(), e);
-                    final var rootCause = AgentUtils.rootCause(e);
-                    return new ToolCallResponse(toolCall.getToolCallId(),
-                                                toolCall.getToolName(),
-                                                ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                                "Tool call local failure: %s".formatted(rootCause.getMessage()),
-                                                LocalDateTime.now());
-                }
-                catch (Exception e) {
-                    log.info("Error making tool call " + toolCall.getToolCallId(), e);
-                    final var rootCause = AgentUtils.rootCause(e);
-                    return new ToolCallResponse(toolCall.getToolCallId(),
-                                                toolCall.getToolName(),
-                                                ErrorType.TOOL_CALL_TEMPORARY_FAILURE,
-                                                "Tool call failed. Threw exception: %s".formatted(rootCause.getMessage()),
-                                                LocalDateTime.now());
-                }
-
-            }
-        });
-
-    }
-
-    /**
-     * Convert parameters string received from LLM to actual parameters for tool call
-     *
-     * @param methodInfo Method information for the tool
-     * @param params     Parameters string to be converted
-     * @return List of parameters to be passed to the tool/function
-     */
-    @SneakyThrows
-    private List<Object> params(ToolMethodInfo methodInfo, String params) {
-        final var objectMapper = setup.getMapper();
-        return ToolUtils.convertToRealParams(methodInfo, params, objectMapper);
-    }
-
-    /**
-     * Convert tool response to string to send to LLM. For void return type a fixed success string is sent to LLM.
-     *
-     * @param tool   Tool being called, we use this to derive the return type
-     * @param result Actual result from the tool
-     * @return JSON serialized result
-     */
-    @SneakyThrows
-    private String toStringContent(InternalTool tool, Object result) {
-        final var returnType = tool.getMethodInfo().returnType();
-        if (returnType.equals(Void.TYPE)) {
-            return "success"; //This is recommended by OpenAI
-        }
-        else {
-            if (returnType.isAssignableFrom(String.class) || Primitives.isWrapperType(returnType)) {
-                return Objects.toString(result);
-            }
-        }
-        return setup.getMapper().writeValueAsString(result);
-    }
 
     @SneakyThrows
     private <U> String toXmlContent(U object) {

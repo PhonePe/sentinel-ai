@@ -15,7 +15,10 @@ import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
-import lombok.*;
+import lombok.Builder;
+import lombok.NonNull;
+import lombok.SneakyThrows;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.awaitility.Awaitility;
@@ -183,7 +186,7 @@ class AgentMemoryExtensionTest {
     @Test
     @SneakyThrows
     void testOutOfBandExtraction(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(12, "met.async", getClass());
+        TestUtils.setupMocks(11, "met.async", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var httpClient = new OkHttpClient.Builder()
@@ -241,7 +244,7 @@ class AgentMemoryExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> !memoryStore.memories.isEmpty());
 //                .until(() -> memoryStore.memories.get(new InMemoryMemStore.Key(MemoryScope.ENTITY, "ss")) != null);
-        final val currMemories = memoryStore.memories.size();
+        final var currMemories = memoryStore.memories.size();
 
         {
             final var response2 = agent.execute(

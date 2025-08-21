@@ -1,21 +1,28 @@
 {
-  "id" : "chatcmpl-BveLXj9Qu7k2xDaXq0pGvr3h15v06",
+  "id" : "chatcmpl-C15myFQRMRIehKn1Ae8jft10BudRr",
   "object" : "chat.completion",
-  "created" : 1753079487,
+  "created" : 1754376616,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
-      "content" : "The answer to 2 + 2 is 4."
+      "tool_calls" : [ {
+        "id" : "call_zqs3Ujygfo6b2ROKF9BpfJ3t",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"mcpSamplingOutput\":\"2 + 2 equals 4.\"}"
+        }
+      } ]
     },
-    "finish_reason" : "stop"
+    "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 32,
-    "completion_tokens" : 13,
-    "total_tokens" : 45,
+    "prompt_tokens" : 71,
+    "completion_tokens" : 27,
+    "total_tokens" : 98,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

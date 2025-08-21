@@ -8,6 +8,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
@@ -24,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -73,8 +76,35 @@ class SimpleOpenAIModelTest {
 
     @Test
     @SneakyThrows
-    void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(4, "structured-output", getClass());
+    void testToolOutput(final WireMockRuntimeInfo wiremock) {
+        final var outputToolCalled = new AtomicBoolean(false);
+        testInternal(wiremock,
+                     4,
+                     "tool-output",
+                     setup -> setup.outputGenerationTool(output -> {
+                         outputToolCalled.set(true);
+                         return output;
+                     }));
+        assertTrue(outputToolCalled.get());
+    }
+
+    @Test
+    @SneakyThrows
+    void testStructuredOutput(final WireMockRuntimeInfo wiremock) {
+        testInternal(wiremock,
+                     3,
+                     "structured-output",
+                     setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT));
+    }
+
+
+    @SneakyThrows
+    void testInternal(
+            final WireMockRuntimeInfo wiremock,
+            final int numStubs,
+            final String stubFilePrefix,
+            final UnaryOperator<AgentSetup.AgentSetupBuilder> agentSetupUpdater) {
+        TestUtils.setupMocks(numStubs, stubFilePrefix, getClass());
         final var objectMapper = JsonUtils.createMapper();
 
         final var httpClient = new OkHttpClient.Builder()
@@ -107,14 +137,14 @@ class SimpleOpenAIModelTest {
                 });
 
         final var agent = SimpleAgent.builder()
-                .setup(AgentSetup.builder()
-                               .mapper(objectMapper)
-                               .model(model)
-                               .modelSettings(ModelSettings.builder()
-                                                      .temperature(0.1f)
-                                                      .seed(42)
-                                                      .build())
-                               .eventBus(eventBus)
+                .setup(agentSetupUpdater.apply(AgentSetup.builder()
+                                                       .mapper(objectMapper)
+                                                       .model(model)
+                                                       .modelSettings(ModelSettings.builder()
+                                                                              .temperature(0.1f)
+                                                                              .seed(42)
+                                                                              .build())
+                                                       .eventBus(eventBus))
                                .build())
                 .build();
 
