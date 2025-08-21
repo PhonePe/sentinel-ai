@@ -1,21 +1,28 @@
 {
-  "id" : "chatcmpl-BPLkHYMZx8A8lxEPVqFkpFRQW9FVE",
+  "id" : "chatcmpl-BveJJb47piALlLKrsFK08P6GdUJec",
   "object" : "chat.completion",
-  "created" : 1745381489,
+  "created" : 1753079349,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_ded0d14823",
+  "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
-      "content" : "{\"output\":\"The sum of 3 and -9 is -6.\"}"
+      "tool_calls" : [ {
+        "id" : "call_eV5ckfmieqYl3bsQKhmrCC0T",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":\"The sum of 3 and -9 is -6.\"}"
+        }
+      } ]
     },
-    "finish_reason" : "stop"
+    "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 782,
-    "completion_tokens" : 22,
-    "total_tokens" : 804,
+    "prompt_tokens" : 901,
+    "completion_tokens" : 28,
+    "total_tokens" : 929,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
@@ -25,4 +32,6 @@
       "cached_tokens" : 0
     }
   }
-}
+} 
+
+

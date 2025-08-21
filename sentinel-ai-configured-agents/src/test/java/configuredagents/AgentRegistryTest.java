@@ -39,6 +39,7 @@ import java.time.Duration;
 import java.util.*;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -70,7 +71,7 @@ class AgentRegistryTest {
     @Test
     @SneakyThrows
     void testHttp(WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(5, "me", getClass());
+        TestUtils.setupMocks(5, "art.http", getClass());
 
         stubFor(get(urlEqualTo("/api/v1/weather/Bangalore"))
                         .willReturn(jsonResponse("""
@@ -184,12 +185,13 @@ class AgentRegistryTest {
         log.info("Agent response: {}", objectMapper.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(response.getData()));
         assertTrue(response.getData().matches(".*[sS]unny.*"));
+        ensureOutputGenerated(response);
     }
 
     @Test
     @SneakyThrows
     void testMCP(WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(5, "mc", getClass());
+        TestUtils.setupMocks(6, "art.mcp", getClass());
 
         final var agentSource = new InMemoryAgentConfigurationSource();
         final var objectMapper = JsonUtils.createMapper();
@@ -280,6 +282,7 @@ class AgentRegistryTest {
         log.info("Agent response: {}", objectMapper.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(response.getData()));
         assertTrue(response.getData().matches(".*9.*"));
+        ensureOutputGenerated(response);
     }
 
     @SneakyThrows

@@ -3,6 +3,7 @@ package com.phonepe.sentinelai.models;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.*;
@@ -14,36 +15,37 @@ import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
-import com.phonepe.sentinelai.core.model.Model;
-import com.phonepe.sentinelai.core.model.ModelOutput;
-import com.phonepe.sentinelai.core.model.ModelSettings;
-import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.model.*;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
+import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.ParameterMapper;
+import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.utils.Pair;
 import io.github.sashirestela.openai.common.ResponseFormat;
 import io.github.sashirestela.openai.common.Usage;
 import io.github.sashirestela.openai.common.function.FunctionCall;
 import io.github.sashirestela.openai.common.tool.Tool;
+import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
 import io.github.sashirestela.openai.common.tool.ToolType;
 import io.github.sashirestela.openai.domain.chat.Chat;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
 import io.github.sashirestela.openai.domain.chat.ChatRequest;
 import io.github.sashirestela.openai.service.ChatCompletionServices;
-import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
-import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageReceivedEvent;
-import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageSentEvent;
+import static com.phonepe.sentinelai.core.utils.EventUtils.*;
 import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 
 /**
@@ -54,7 +56,16 @@ import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
  */
 @Slf4j
 public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Model {
+
     private static final String OUTPUT_VARIABLE_NAME = "output";
+
+    private static final class OutputGenerator<R> implements BiFunction<AgentRunContext<R>, String, String> {
+
+        @Override
+        public String apply(final AgentRunContext<R> context, final String content) {
+            return content;
+        }
+    }
 
     @Value
     private static class AgentMessages {
@@ -76,12 +87,27 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     private final M openAIProvider;
     private final ObjectMapper mapper;
     private final ParameterMapper parameterMapper;
+    private final SimpleOpenAIModelOptions modelOptions;
 
     public SimpleOpenAIModel(String modelName, M openAIProvider, ObjectMapper mapper) {
+        this(modelName,
+             openAIProvider,
+             mapper,
+             new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.ToolChoice.REQUIRED));
+    }
+
+    public SimpleOpenAIModel(
+            final String modelName,
+            final M openAIProvider,
+            final ObjectMapper mapper,
+            final SimpleOpenAIModelOptions modelOptions) {
         this.modelName = modelName;
         this.openAIProvider = openAIProvider;
         this.mapper = mapper;
         this.parameterMapper = new ParameterMapper(mapper);
+        this.modelOptions = Objects.requireNonNullElse(
+                modelOptions,
+                new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.DEFAULT_TOOL_CHOICE));
     }
 
     @Override
@@ -145,7 +171,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             JsonNode responseSchema,
             Map<String, ExecutableTool> tools,
             ToolRunner<R> toolRunner,
-            List<AgentExtension<R,T,A>> extensions,
+            List<AgentExtension<R, T, A>> extensions,
             A agent) {
         final var oldMessages = context.getOldMessages();
         final var modelSettings = context.getAgentSetup().getModelSettings();
@@ -159,16 +185,50 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
         //Stats for the run
         final var stats = new ModelUsageStats();
-
+        final var outputGenerationMode
+                = Objects.requireNonNullElse(modelSettings.getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
+        final var outputGenerator = new OutputGenerator<R>();
+        final var toolsForExecution = new HashMap<>(tools);
+        final var generatedOutput = new AtomicReference<String>(null);
+        if (outputGenerationMode.equals(OutputGenerationMode.TOOL_BASED)) {
+            toolsForExecution.put(Agent.OUTPUT_GENERATOR_ID,
+                                  new ExternalTool(ToolDefinition.builder()
+                                                           .id(Agent.OUTPUT_GENERATOR_ID)
+                                                           .name(Agent.OUTPUT_GENERATOR_ID)
+                                                           .description("Generates output to be used by user")
+                                                           .contextAware(true)
+                                                           .strictSchema(true)
+                                                           .build(),
+                                                   compliantSchema(responseSchema,
+                                                                   extensions,
+                                                                   context.getProcessingMode()),
+                                                   (runContext, toolCallId, args) -> {
+                                                       final var output = outputGenerator.apply(
+                                                               (AgentRunContext<R>) runContext, args);
+                                                       if (!Strings.isNullOrEmpty(output)) {
+                                                           generatedOutput.set(output);
+                                                       }
+                                                       return new ExternalTool.ExternalToolResponse(
+                                                               output,
+                                                               ErrorType.SUCCESS);
+                                                   }));
+        }
         return CompletableFuture.supplyAsync(() -> {
             ModelOutput output = null;
             do {
+                generatedOutput.set(null);
                 final var builder = createChatRequestBuilder(openAiMessages);
-                applyModelSettings(modelSettings, builder, tools);
-                addToolList(tools, builder);
-                builder.responseFormat(ResponseFormat.jsonSchema(structuredOutputSchema(responseSchema,
-                                                                                        extensions,
-                                                                                        context.getProcessingMode())));
+                applyModelSettings(modelSettings, builder, toolsForExecution);
+                addToolList(toolsForExecution, builder);
+                if (outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
+                    builder.responseFormat(ResponseFormat.jsonSchema(structuredOutputSchema(responseSchema,
+                                                                                            extensions,
+                                                                                            context.getProcessingMode())));
+                }
+                builder.toolChoice(switch (this.modelOptions.getToolChoice()) {
+                    case REQUIRED -> ToolChoiceOption.REQUIRED;
+                    case AUTO -> ToolChoiceOption.AUTO;
+                });
                 raiseMessageSentEvent(context, agent, oldMessages);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
@@ -186,15 +246,48 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }
                 final var message = response.getMessage();
                 output = switch (response.getFinishReason()) {
-                    case FinishReasons.STOP -> processOutput(context,
-                                                             extensions,
-                                                             agent,
-                                                             message,
-                                                             oldMessages,
-                                                             stats,
-                                                             allMessages,
-                                                             newMessages,
-                                                             stopwatch);
+                    case FinishReasons.STOP -> {
+                        final var refusal = message.getRefusal();
+                        if (!Strings.isNullOrEmpty(refusal)) {
+                            yield ModelOutput.error(oldMessages,
+                                                    stats,
+                                                    SentinelError.error(ErrorType.REFUSED, refusal));
+                        }
+                        final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(),
+                                                                            List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
+
+                        if (!toolCalls.isEmpty()) {
+                            handleToolCalls(agent,
+                                            context,
+                                            toolsForExecution,
+                                            toolRunner,
+                                            toolCalls,
+                                            new AgentMessages(openAiMessages, allMessages, newMessages),
+                                            stats,
+                                            stopwatch);
+                            if (generatedOutput.get() != null) {
+                                //If the output generator was called, we use the generated output
+                                yield processOutput(context,
+                                                    extensions,
+                                                    agent,
+                                                    generatedOutput.get(),
+                                                    oldMessages,
+                                                    stats,
+                                                    allMessages,
+                                                    newMessages,
+                                                    stopwatch);
+                            }
+                        }
+                        yield processOutput(context,
+                                            extensions,
+                                            agent,
+                                            message.getContent(),
+                                            oldMessages,
+                                            stats,
+                                            allMessages,
+                                            newMessages,
+                                            stopwatch);
+                    }
                     case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
                         final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(),
                                                                             List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
@@ -202,12 +295,24 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                         if (!toolCalls.isEmpty()) {
                             handleToolCalls(agent,
                                             context,
-                                            tools,
+                                            toolsForExecution,
                                             toolRunner,
                                             toolCalls,
                                             new AgentMessages(openAiMessages, allMessages, newMessages),
                                             stats,
                                             stopwatch);
+                            if (generatedOutput.get() != null) {
+                                //If the output generator was called, we use the generated output
+                                yield processOutput(context,
+                                                    extensions,
+                                                    agent,
+                                                    generatedOutput.get(),
+                                                    oldMessages,
+                                                    stats,
+                                                    allMessages,
+                                                    newMessages,
+                                                    stopwatch);
+                            }
                         }
                         yield null;
                     }
@@ -234,7 +339,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             AgentRunContext<R> context,
             Map<String, ExecutableTool> tools,
             ToolRunner<R> toolRunner,
-            List<AgentExtension<R,T,A>> extensions,
+            List<AgentExtension<R, T, A>> extensions,
             A agent,
             Consumer<byte[]> streamHandler) {
         final var oldMessages = context.getOldMessages();
@@ -262,8 +367,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
 
+                final var request = builder.build();
+                logModelRequest(request);
                 final var completionResponseStream = openAIProvider.chatCompletions()
-                        .createStream(builder.build())
+                        .createStream(request)
                         .join();
                 //We use the following to merge the pieces of response we get from stream into final output
                 final var responseData = new StringBuilder();
@@ -305,16 +412,28 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             }
                             //Model has stopped for some reason. Find out reason and handle
                             return switch (finishReason) {
-                                case FinishReasons.STOP -> processStreamingOutput(context,
-                                                                                  extensions,
-                                                                                  agent,
-                                                                                  message,
-                                                                                  oldMessages,
-                                                                                  stats,
-                                                                                  responseData,
-                                                                                  allMessages,
-                                                                                  newMessages,
-                                                                                  stopwatch);
+                                case FinishReasons.STOP -> {
+                                    final var refusal = message.getRefusal();
+                                    if (!Strings.isNullOrEmpty(refusal)) {
+                                        yield ModelOutput.error(oldMessages,
+                                                                stats,
+                                                                SentinelError.error(ErrorType.REFUSED,
+                                                                                    refusal));
+                                    }
+                                    // Output handling is a little different for streaming and non-streaming cases
+                                    // For streaming it looks like VLLM etc are not sup[porting tool calls properly
+                                    // So we do the old way and use the way way instead of using outputfunction to
+                                    yield processStreamingOutput(context,
+                                                                 extensions,
+                                                                 agent,
+                                                                 message,
+                                                                 oldMessages,
+                                                                 stats,
+                                                                 responseData.toString(),
+                                                                 allMessages,
+                                                                 newMessages,
+                                                                 stopwatch);
+                                }
                                 case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
                                     //Model is waiting for us to run tools and respond back
                                     final var toolCalls = toolCallData.values()
@@ -420,26 +539,20 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     @SuppressWarnings("java:S107")
     private <R, T, A extends Agent<R, T, A>> ModelOutput processOutput(
             AgentRunContext<R> context,
-            List<AgentExtension<R,T,A>> extensions,
+            List<AgentExtension<R, T, A>> extensions,
             A agent,
-            ChatMessage.ResponseMessage message,
+            String content,
             List<AgentMessage> oldMessages,
             ModelUsageStats stats,
             ArrayList<AgentMessage> allMessages,
             ArrayList<AgentMessage> newMessages,
             Stopwatch stopwatch) {
-        final var refusal = message.getRefusal();
-        if (!Strings.isNullOrEmpty(refusal)) {
-            return ModelOutput.error(oldMessages,
-                                     stats,
-                                     SentinelError.error(ErrorType.REFUSED, refusal));
-        }
-        final var content = message.getContent();
         if (!Strings.isNullOrEmpty(content)) {
             final var newMessage = new StructuredOutput(content);
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, agent, newMessage, stopwatch);
+            raiseOutputGeneratedEvent(context, agent, content, stopwatch);
             try {
                 return ModelOutput.success(convertToResponse(
                                                    content,
@@ -463,31 +576,24 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      * Process the streaming output from the model. This method is called when the model sends a response in chunks.
      */
     @SuppressWarnings("java:S107")
-    private <R, T, A extends Agent<R, T, A>> @NonNull ModelOutput processStreamingOutput(
+    private <R, T, A extends Agent<R, T, A>> ModelOutput processStreamingOutput(
             AgentRunContext<R> context,
-            List<AgentExtension<R,T,A>> extensions,
+            List<AgentExtension<R, T, A>> extensions,
             A agent,
             ChatMessage.ResponseMessage message,
             List<AgentMessage> oldMessages,
             ModelUsageStats stats,
-            StringBuilder responseData,
+            String content,
             ArrayList<AgentMessage> allMessages,
             ArrayList<AgentMessage> newMessages,
             Stopwatch stopwatch) {
         //Model has sent all response
-        final var refusal = message.getRefusal();
-        if (!Strings.isNullOrEmpty(refusal)) {
-            return ModelOutput.error(oldMessages,
-                                     stats,
-                                     SentinelError.error(ErrorType.REFUSED,
-                                                         refusal));
-        }
-        final var content = responseData.toString();
         if (!Strings.isNullOrEmpty(content)) {
             final var newMessage = new Text(content);
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, agent, newMessage, stopwatch);
+            raiseOutputGeneratedEvent(context, agent, content, stopwatch);
             try {
                 return ModelOutput.success(convertToResponse(
                                                    content,
@@ -608,8 +714,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         if (modelSettings.getTopP() != null) {
             builder.topP(Double.valueOf(modelSettings.getTopP()));
         }
-        if (modelSettings.getParallelToolCalls() != null && !tools.isEmpty()) {
-            builder.parallelToolCalls(modelSettings.getParallelToolCalls());
+        if (!tools.isEmpty()) {
+            builder.parallelToolCalls(Objects.requireNonNullElse(modelSettings.getParallelToolCalls(), true));
         }
         if (modelSettings.getSeed() != null) {
             builder.seed(modelSettings.getSeed());
@@ -657,6 +763,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             final var toolCallMessage = new ToolCall(toolCall.getId(),
                                                                      toolCall.getFunction().getName(),
                                                                      toolCall.getFunction().getArguments());
+                            raiseMessageReceivedEvent(context, agent, toolCallMessage, stopwatch);
                             final var toolCallResponse = toolRunner.runTool(context, tools, toolCallMessage);
                             return Pair.of(toolCallMessage, toolCallResponse);
                         }, context.getAgentSetup().getExecutorService()))
@@ -686,7 +793,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     agentMessages.getOpenAiMessages().add(convertIndividualMessageToOpenIDFormat(toolCallResponse));
                     agentMessages.getAllMessages().add(toolCallMessage);
                     agentMessages.getNewMessages().add(toolCallMessage);
-                    raiseMessageReceivedEvent(context, agent, toolCallMessage, stopwatch);
                     agentMessages.getAllMessages().add(toolCallResponse);
                     agentMessages.getNewMessages().add(toolCallResponse);
                     stats.incrementToolCallsForRun();
@@ -703,7 +809,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      */
     private <R, T, A extends Agent<R, T, A>> JsonNode convertToResponse(
             String content,
-            List<AgentExtension<R,T,A>> extensions, A agent,
+            List<AgentExtension<R, T, A>> extensions, A agent,
             ProcessingMode processingMode) throws JsonProcessingException {
         final var outputNode = mapper.readTree(content);
         extensions.forEach(extension -> {
@@ -738,7 +844,19 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      */
     private <R, T, A extends Agent<R, T, A>> ResponseFormat.JsonSchema structuredOutputSchema(
             JsonNode outputSchema,
-            List<AgentExtension<R,T,A>> extensions,
+            List<AgentExtension<R, T, A>> extensions,
+            ProcessingMode processingMode) {
+        final var schema = compliantSchema(outputSchema, extensions, processingMode);
+        return ResponseFormat.JsonSchema.builder()
+                .name("model_output")
+                .schema(schema)
+                .strict(true)
+                .build();
+    }
+
+    private <R, T, A extends Agent<R, T, A>> @NotNull ObjectNode compliantSchema(
+            JsonNode outputSchema,
+            List<AgentExtension<R, T, A>> extensions,
             ProcessingMode processingMode) {
         final var schema = mapper.createObjectNode();
         schema.put("type", "object");
@@ -759,11 +877,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             fields.add(outputDefinition.getKey());
             propertiesNode.set(outputDefinition.getKey(), outputDefinition.getSchema());
         });
-        return ResponseFormat.JsonSchema.builder()
-                .name("model_output")
-                .schema(schema)
-                .strict(true)
-                .build();
+        return schema;
     }
 
 
@@ -774,7 +888,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      * @return List of OpenAI messages
      */
     private List<ChatMessage> convertToOpenAIMessages(List<AgentMessage> agentMessages) {
-        return Objects.requireNonNullElseGet(agentMessages, java.util.List::<AgentMessage>of)
+        return Objects.requireNonNullElseGet(agentMessages, List::<AgentMessage>of)
                 .stream()
                 .map(SimpleOpenAIModel::convertIndividualMessageToOpenIDFormat)
                 .toList();

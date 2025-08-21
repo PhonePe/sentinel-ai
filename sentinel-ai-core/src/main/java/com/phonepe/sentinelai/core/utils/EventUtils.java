@@ -7,6 +7,7 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.events.MessageReceivedAgentEvent;
 import com.phonepe.sentinelai.core.events.MessageSentAgentEvent;
+import com.phonepe.sentinelai.core.events.OutputGeneratedAgentEvent;
 import lombok.experimental.UtilityClass;
 
 import java.time.Duration;
@@ -18,6 +19,22 @@ import java.util.concurrent.TimeUnit;
  */
 @UtilityClass
 public class EventUtils {
+
+    public static <R, T, A extends Agent<R, T, A>> void raiseOutputGeneratedEvent(
+            AgentRunContext<R> context,
+            A agent,
+            String content,
+            Stopwatch stopwatch) {
+        context.getAgentSetup()
+                .getEventBus()
+                .notify(new OutputGeneratedAgentEvent(agent.name(),
+                                                      context.getRunId(),
+                                                      AgentUtils.sessionId(context),
+                                                      AgentUtils.userId(context),
+                                                      content,
+                                                      Duration.ofMillis(stopwatch.elapsed(TimeUnit.MILLISECONDS))));
+    }
+
     public static <R, T, A extends Agent<R, T, A>> void raiseMessageReceivedEvent(
             AgentRunContext<R> context,
             A agent,

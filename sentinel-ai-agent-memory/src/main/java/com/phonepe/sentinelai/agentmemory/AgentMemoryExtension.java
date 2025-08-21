@@ -28,7 +28,7 @@ import java.util.*;
  * If output has memory store it. No tools are needed.
  */
 @Slf4j
-public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R,T,A> {
+public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
     private static final String OUTPUT_KEY = "memoryOutput";
 
     /**
@@ -73,7 +73,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
     }
 
     @Override
-    public  List<FactList> facts(
+    public List<FactList> facts(
             R request,
             AgentRunContext<R> context,
             A agent) {
@@ -96,7 +96,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
     }
 
     @Override
-    public  ExtensionPromptSchema additionalSystemPrompts(
+    public ExtensionPromptSchema additionalSystemPrompts(
             R request,
             AgentRunContext<R> context,
             A agent,
@@ -143,7 +143,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                                        - AGENT: Memory that is relevant to the agent's own actions and decisions. For example, if the agent is used to query an analytics store, a relevant agent level memory would be the interpretation of a particular field in the db.
                                        - ENTITY: Memory that is relevant to the entity being interacted with by the agent. For example, if the agent is a customer service agent, this would be the memory relevant to the customer.
                                       
-                                      scopeId will be set to agent name for AGENT scope and userId or relevant entity id for ENTITY scope.
+                                      scopeId will be set to agent name for AGENT scope and userId or relevant entity id for ENTITY scope. Check additional data for ids. 
                                       """)
                 .additionalInstructions("""
                                                 IMPORTANT INSTRUCTION FOR MEMORY EXTRACTION:
@@ -171,7 +171,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
     }
 
     @Override
-    public  void consume(JsonNode output, A agent) {
+    public void consume(JsonNode output, A agent) {
         try {
             final var memoryOutput = objectMapper.treeToValue(output, AgentMemoryOutput.class);
             final var memories = Objects.requireNonNullElseGet(
@@ -206,7 +206,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
     }
 
     @Override
-    public  void onExtensionRegistrationCompleted(A agent) {
+    public void onExtensionRegistrationCompleted(A agent) {
         agent.onRequestCompleted()
                 .connect(this::extractMemory);
     }
@@ -238,9 +238,11 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
         //Add system prompt to the messages
         messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
                 objectMapper.writeValueAsString(
-                extractionTaskPrompt()), false, null));
-        messages.add(new UserPrompt("You must extract memory from the following conversation between user and agent : " + objectMapper.writeValueAsString(Map.of("conversation", objectMapper.writeValueAsString(data.getContext().getOldMessages())
-                                           )),
+                        extractionTaskPrompt()), false, null));
+        messages.add(new UserPrompt("You must extract memory from the following conversation between user and agent :" +
+                                            " " + objectMapper.writeValueAsString(
+                Map.of("conversation", objectMapper.writeValueAsString(data.getOutput().getNewMessages())
+                      )),
                                     LocalDateTime.now()));
         final var output = data.getAgentSetup()
                 .getModel()

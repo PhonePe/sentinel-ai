@@ -95,7 +95,7 @@ class AgentSessionExtensionTest {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(5, "se", getClass());
+        TestUtils.setupMocks(6, "se", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var model = new SimpleOpenAIModel(

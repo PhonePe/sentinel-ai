@@ -55,6 +55,8 @@ import static java.util.stream.Collectors.toMap;
 @Slf4j
 public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
+    public static final String OUTPUT_GENERATOR_ID = "__output_generator__";
+
     @Value
     public static class ProcessingCompletedData<R, T, A extends Agent<R, T, A>> {
         A agent;

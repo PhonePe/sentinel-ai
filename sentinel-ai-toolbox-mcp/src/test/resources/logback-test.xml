@@ -25,9 +25,6 @@
     <logger name="com.phonepe.sentinelai">
         <level value="DEBUG" />
     </logger>
-    <logger name="com.phonepe.sentinelai.models.SimpleOpenAIModel">
-        <level value="INFO" />
-    </logger>
 
     <root>
         <level value="INFO" />

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -85,5 +86,6 @@ class SimpleOpenAIModelTextIOTest {
                                                    .build());
         assertTrue(response.getData().contains("Santanu"));
         assertTrue(response.getUsage().getTotalTokens() > 1);
+        ensureOutputGenerated(response);
     }
 }

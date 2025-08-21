@@ -1,21 +1,28 @@
 {
-  "id" : "chatcmpl-BjflE8tMHiMxnU6Xc94KZ8p0a1rRS",
+  "id" : "chatcmpl-Bveg62Am4OdNALOkUphUup1kiOZdW",
   "object" : "chat.completion",
-  "created" : 1750224988,
+  "created" : 1753080762,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_ded0d14823",
+  "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
-      "content" : "{\"output\":\"The weather in Bangalore is sunny.\"}"
+      "tool_calls" : [ {
+        "id" : "call_Ejnv7rNLKEhxZjlj0Seqxa6Q",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":\"The weather in Bangalore is sunny.\"}"
+        }
+      } ]
     },
-    "finish_reason" : "stop"
+    "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 598,
-    "completion_tokens" : 17,
-    "total_tokens" : 615,
+    "prompt_tokens" : 599,
+    "completion_tokens" : 23,
+    "total_tokens" : 622,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
@@ -25,4 +32,6 @@
       "cached_tokens" : 0
     }
   }
-}
+} 
+
+

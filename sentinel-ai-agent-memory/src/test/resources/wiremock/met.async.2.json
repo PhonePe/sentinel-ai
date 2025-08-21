@@ -1,0 +1,37 @@
+{
+  "id" : "chatcmpl-BwNW77YulLW47qPKQAD5g43EidTFR",
+  "object" : "chat.completion",
+  "created" : 1753253123,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_IEgfJzsX6W4bPQG17U0Nkmiz",
+        "type" : "function",
+        "function" : {
+          "name" : "simple_agent_get_salutation",
+          "arguments" : "{\"params\":{\"name\":\"Santanu\"}}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 737,
+    "completion_tokens" : 21,
+    "total_tokens" : 758,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+

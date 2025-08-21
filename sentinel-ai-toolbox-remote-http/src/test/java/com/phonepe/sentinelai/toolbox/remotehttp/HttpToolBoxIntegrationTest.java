@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -108,6 +109,7 @@ class HttpToolBoxIntegrationTest {
                                                    .build());
         log.info("Response: {}", response.getData());
         assertTrue(response.getData().contains("sunny"));
+        ensureOutputGenerated(response);
     }
 
     private static void setupApiMocks() {

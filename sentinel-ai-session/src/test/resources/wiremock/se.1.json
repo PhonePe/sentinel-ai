@@ -1,47 +1,44 @@
 {
-  "id" : "chatcmpl-BFEUlJzFsW95iNL4Mx0mHgf1OT3Lz",
+  "id" : "chatcmpl-BwNar1Srtqt8C1C9P7Apn6btAygQr",
+  "object" : "chat.completion",
+  "created" : 1753253417,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
-    "finish_reason" : "tool_calls",
     "index" : 0,
-    "logprobs" : null,
     "message" : {
-      "content" : null,
-      "refusal" : null,
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_SX3X6HYcoH6h1jir6k7Gp26m",
+        "id" : "call_T3duEdzXPjUwIq5ipzqVxkUN",
+        "type" : "function",
         "function" : {
-          "arguments" : "{}",
-          "name" : "getName"
-        },
-        "type" : "function"
+          "name" : "simple_agent_get_name",
+          "arguments" : "{}"
+        }
       }, {
-        "id" : "call_38CL3as3Dx1uZgobZEmHKixd",
+        "id" : "call_xW5Dpvuy32a2Zqwkc9V6Xpwp",
+        "type" : "function",
         "function" : {
-          "arguments" : "{\"params\": {\"name\": \"User\"}}",
-          "name" : "getSalutation"
-        },
-        "type" : "function"
+          "name" : "simple_agent_get_salutation",
+          "arguments" : "{\"params\": {\"name\": \"\"}}"
+        }
       } ]
-    }
+    },
+    "finish_reason" : "tool_calls"
   } ],
-  "created" : 1742970339,
-  "model" : "gpt-4o-mini-2024-07-18",
-  "object" : "chat.completion",
-  "system_fingerprint" : "fp_ded0d14823",
   "usage" : {
-    "completion_tokens" : 46,
-    "prompt_tokens" : 631,
-    "total_tokens" : 677,
+    "prompt_tokens" : 614,
+    "completion_tokens" : 50,
+    "total_tokens" : 664,
     "completion_tokens_details" : {
-      "accepted_prediction_tokens" : 0,
       "audio_tokens" : 0,
-      "reasoning_tokens" : 0,
-      "rejected_prediction_tokens" : 0
+      "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
       "cached_tokens" : 0
     }
   }
-}
+} 
+
+

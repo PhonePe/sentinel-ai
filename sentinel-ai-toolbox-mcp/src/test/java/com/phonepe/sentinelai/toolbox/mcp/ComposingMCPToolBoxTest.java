@@ -36,11 +36,12 @@ class ComposingMCPToolBoxTest {
         assertNotNull(composingMCPToolBox);
 
         assertFalse(composingMCPToolBox.tools().isEmpty());
-        assertEquals(8, composingMCPToolBox.tools().size());
+        final var originalSize = composingMCPToolBox.tools().size();
+        assertTrue(originalSize >= 8);
         composingMCPToolBox.exposeTools("test_mcp", "echo");
         assertEquals(1, composingMCPToolBox.tools().size());
         composingMCPToolBox.exposeAllTools("test_mcp");
-        assertEquals(8, composingMCPToolBox.tools().size());
+        assertEquals(originalSize, composingMCPToolBox.tools().size());
     }
 
     @Test

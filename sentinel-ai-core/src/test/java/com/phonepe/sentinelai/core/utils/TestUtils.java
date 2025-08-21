@@ -1,8 +1,10 @@
 package com.phonepe.sentinelai.core.utils;
 
+import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 
@@ -42,7 +44,8 @@ public class TestUtils {
 
     public static void assertNoFailedToolCalls(AgentOutput<String> response) {
         final var failedCall = response.getNewMessages().stream()
-                .filter(agentMessage -> agentMessage.getMessageType().equals(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE))
+                .filter(agentMessage -> agentMessage.getMessageType()
+                        .equals(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE))
                 .map(ToolCallResponse.class::cast)
                 .filter(Predicate.not(ToolCallResponse::isSuccess))
                 .toList();
@@ -50,5 +53,15 @@ public class TestUtils {
                    "Expected no failed tool calls, but found: " + failedCall.stream()
                            .map(ToolCallResponse::getToolName)
                            .toList());
+    }
+
+    public static void ensureOutputGenerated(final AgentOutput<?> response) {
+        assertTrue(response.getNewMessages()
+                           .stream()
+                           .anyMatch(message -> message.getMessageType()
+                                           .equals(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE)
+                                   && message instanceof ToolCall toolCall
+                                   && toolCall.getToolName().equals(Agent.OUTPUT_GENERATOR_ID)),
+                   "Expected at least one output function call, but found none.");
     }
 }

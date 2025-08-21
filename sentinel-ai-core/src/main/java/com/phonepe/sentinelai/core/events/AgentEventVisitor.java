@@ -11,4 +11,6 @@ public interface AgentEventVisitor<T> {
     T visit(ToolCalledAgentEvent toolCalled);
 
     T visit(ToolCallCompletedAgentEvent toolCallCompleted);
+
+    T visit(OutputGeneratedAgentEvent outputGeneratedAgentEvent);
 }

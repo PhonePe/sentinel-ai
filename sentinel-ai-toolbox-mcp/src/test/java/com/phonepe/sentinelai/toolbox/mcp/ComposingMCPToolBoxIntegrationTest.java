@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import static com.phonepe.sentinelai.core.utils.TestUtils.assertNoFailedToolCalls;
+import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -110,6 +111,7 @@ class ComposingMCPToolBoxIntegrationTest {
                                                    .build());
         assertTrue(response.getData().contains("-6"));
         assertNoFailedToolCalls(response);
+        ensureOutputGenerated(response);
     }
 
     private ComposingMCPToolBox buildToolBox(JsonMapper objectMapper) {
