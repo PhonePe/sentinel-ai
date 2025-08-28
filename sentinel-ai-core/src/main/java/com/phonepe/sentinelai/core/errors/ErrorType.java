@@ -12,8 +12,8 @@ public enum ErrorType {
     SUCCESS("Success", false),
     NO_RESPONSE("No response", true),
     REFUSED("Refused: Reason: %s", false),
-    FILTERED("Content filtered", true),
-    LENGTH_EXCEEDED("Content length exceeded", true),
+    FILTERED("Content filtered", false),
+    LENGTH_EXCEEDED("Content length exceeded", false),
     TOOL_CALL_PERMANENT_FAILURE("Tool call failed permanently for tool: %s", false),
     TOOL_CALL_TEMPORARY_FAILURE("Tool call failed temporarily for tool: %s", true),
     JSON_ERROR("Error parsing JSON. Error: %s", true),
@@ -21,6 +21,7 @@ public enum ErrorType {
     DESERIALIZATION_ERROR("Error deserializing object to JSON. Error: %s", true),
     UNKNOWN_FINISH_REASON("Unknown finish reason: %s", true),
     GENERIC_MODEL_CALL_FAILURE("Model call failed with error: %s", true),
+    DATA_VALIDATION_FAILURE("Model data validation failed. Errors: %s", true),
     UNKNOWN("Unknown response", true),
     ;
 

@@ -60,4 +60,8 @@ public class AgentSetup {
      */
     UnaryOperator<String> outputGenerationTool;
 
+    /**
+     * Retry setup for model calls
+     */
+    RetrySetup retrySetup;
 }
