@@ -168,61 +168,37 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                     stats,
                                                     SentinelError.error(ErrorType.REFUSED, refusal));
                         }
-                        final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(),
-                                                                            List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
-
-                        if (!toolCalls.isEmpty()) {
-                            handleToolCalls(context,
-                                            toolsForExecution,
-                                            toolRunner,
-                                            toolCalls,
-                                            new AgentMessages(openAiMessages, allMessages, newMessages),
-                                            stats,
-                                            stopwatch);
-                            if (generatedOutput.get() != null) {
-                                //If the output generator was called, we use the generated output
-                                yield processOutput(context,
-                                                    generatedOutput.get(),
-                                                    oldMessages,
-                                                    stats,
-                                                    allMessages,
-                                                    newMessages,
-                                                    stopwatch);
-                            }
-                        }
-                        yield processOutput(context,
-                                            message.getContent(),
-                                            oldMessages,
-                                            stats,
-                                            allMessages,
-                                            newMessages,
-                                            stopwatch);
+                        yield runTools(message.getToolCalls(),
+                                       context,
+                                       toolsForExecution,
+                                       toolRunner,
+                                       stats,
+                                       stopwatch,
+                                       generatedOutput,
+                                       openAiMessages,
+                                       allMessages,
+                                       newMessages,
+                                       oldMessages)
+                                .orElseGet(() -> processOutput(context,
+                                                               message.getContent(),
+                                                               oldMessages,
+                                                               stats,
+                                                               allMessages,
+                                                               newMessages,
+                                                               stopwatch));
                     }
-                    case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
-                        final var toolCalls = Objects.requireNonNullElseGet(message.getToolCalls(),
-                                                                            List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
-
-                        if (!toolCalls.isEmpty()) {
-                            handleToolCalls(context,
-                                            toolsForExecution,
-                                            toolRunner,
-                                            toolCalls,
-                                            new AgentMessages(openAiMessages, allMessages, newMessages),
-                                            stats,
-                                            stopwatch);
-                            if (generatedOutput.get() != null) {
-                                //If the output generator was called, we use the generated output
-                                yield processOutput(context,
-                                                    generatedOutput.get(),
-                                                    oldMessages,
-                                                    stats,
-                                                    allMessages,
-                                                    newMessages,
-                                                    stopwatch);
-                            }
-                        }
-                        yield null;
-                    }
+                    case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> runTools(message.getToolCalls(),
+                                                                                       context,
+                                                                                       toolsForExecution,
+                                                                                       toolRunner,
+                                                                                       stats,
+                                                                                       stopwatch,
+                                                                                       generatedOutput,
+                                                                                       openAiMessages,
+                                                                                       allMessages,
+                                                                                       newMessages,
+                                                                                       oldMessages)
+                            .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(
                             oldMessages,
                             stats,
@@ -466,6 +442,43 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }, agentSetup.getExecutorService());
     }
 
+    @SuppressWarnings("java:S107")
+    private Optional<ModelOutput> runTools(
+            List<io.github.sashirestela.openai.common.tool.ToolCall> receivedCalls,
+            ModelRunContext context,
+            Map<String, ExecutableTool> toolsForExecution,
+            ToolRunner toolRunner,
+            ModelUsageStats stats,
+            Stopwatch stopwatch,
+            AtomicReference<String> generatesOutput,
+            ArrayList<ChatMessage> openAiMessages,
+            ArrayList<AgentMessage> allMessages,
+            ArrayList<AgentMessage> newMessages,
+            List<AgentMessage> oldMessages) {
+        final var toolCalls = Objects.requireNonNullElseGet(receivedCalls,
+                                                            List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
+
+        if (!toolCalls.isEmpty()) {
+            handleToolCalls(context,
+                            toolsForExecution,
+                            toolRunner,
+                            toolCalls,
+                            new AgentMessages(openAiMessages, allMessages, newMessages),
+                            stats,
+                            stopwatch);
+            return Optional.ofNullable(generatesOutput.get())
+                    .map(data -> processOutput(
+                            context,
+                            data,
+                            oldMessages,
+                            stats,
+                            allMessages,
+                            newMessages,
+                            stopwatch));
+
+        }
+        return Optional.empty();
+    }
 
     private static void addOutputExtractionTool(
             HashMap<String, ExecutableTool> toolsForExecution,
