@@ -24,6 +24,7 @@ import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.outputvalidation.DefaultOutputValidator;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
+import com.phonepe.sentinelai.core.outputvalidation.ValidationErrorFixPrompt;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
@@ -44,7 +45,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -291,7 +291,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                 modelOutput.getNewMessages(),
                                 modelOutput.getAllMessages(),
                                 modelOutput.getUsage(),
-                                SentinelError.error(ErrorType.NO_RESPONSE, "Did not get output from model"));
+                                SentinelError.error(ErrorType.NO_RESPONSE));
                     }
                     final var translatedData = translateData(agentOutputData, mergedAgentSetup);
                     final var validationOutput = outputValidator.validate(context, translatedData);
@@ -302,50 +302,26 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                    modelOutput.getAllMessages(),
                                                    modelOutput.getUsage());
                     }
+                    final var validationErrors = Joiner.on(",")
+                            .join(validationOutput.getFailures()
+                                          .stream()
+                                          .map(OutputValidationResults.ValidationFailure::getMessage)
+                                          .toList());
+                    messages.add(new UserPrompt(toXmlContent(
+                            new ValidationErrorFixPrompt(validationErrors,
+                                                         mergedAgentSetup.getMapper()
+                                                                  .writeValueAsString(agentOutputData))),
+                                                LocalDateTime.now()));
                     return AgentOutput.error(modelOutput.getNewMessages(),
                                              modelOutput.getNewMessages(),
                                              modelOutput.getUsage(),
                                              SentinelError.error(
                                                      ErrorType.DATA_VALIDATION_FAILURE,
-                                                     Joiner.on(",")
-                                                             .join(validationOutput.getFailures()
-                                                                           .stream()
-                                                                           .map(OutputValidationResults.ValidationFailure::getMessage)
-                                                                           .toList())));
+                                                     validationErrors));
                 })
-
-/*        return mergedAgentSetup.getModel()
-                .exchangeMessages(
-                        context,
-                        outputSchema(),
-                        knownTools,
-                        new AgentToolRunner<>(self,
-                                              mergedAgentSetup,
-                                              toolRunApprovalSeeker,
-                                              context),
-                        this.extensions,
-                        self)
-                .thenApply(modelOutput -> convertToAgentOutput(modelOutput, mergedAgentSetup))*//*
-
-                .compute(modelRunContext,
-                         outputDefinitions,
-                         messages,
-                         knownTools,
-                         new AgentToolRunner<>(self,
-                                               mergedAgentSetup,
-                                               toolRunApprovalSeeker,
-                                               context))
-                .thenApply(modelOutput -> processModelOutput(modelOutput, mergedAgentSetup))
-                .thenApply(response -> {
-                    final var validationResult = outputValidator.validate(context, response.getData());
-                    if (validationResult.isSuccessful()) {
-                        return response;
-                    }
-
-                })*/
                 .thenApply(response -> {
                     if (null != response.getUsage() && requestMetadata != null && requestMetadata.getUsageStats() !=
-                    null) {
+                            null) {
                         requestMetadata.getUsageStats().merge(response.getUsage());
                     }
                     requestCompleted.dispatch(new ProcessingCompletedData<>(self,
@@ -358,6 +334,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 });
 
     }
+
 
     private void processExtensionData(JsonNode data) {
         extensions.forEach(extension -> {
@@ -421,12 +398,11 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     context.getModelUsageStats(),
                     SentinelError.error(ErrorType.NO_RESPONSE, "Model run interrupted."));
         }
-        catch (ExecutionException e) {
+        catch (Exception e) {
             return ModelOutput.error(
                     context.getOldMessages(),
                     context.getModelUsageStats(),
-                    SentinelError.error(ErrorType.UNKNOWN,
-                                        "Error in model run: " + AgentUtils.rootCause(e).getMessage()));
+                    SentinelError.error(ErrorType.GENERIC_MODEL_CALL_FAILURE, AgentUtils.rootCause(e).getMessage()));
         }
     }
 
