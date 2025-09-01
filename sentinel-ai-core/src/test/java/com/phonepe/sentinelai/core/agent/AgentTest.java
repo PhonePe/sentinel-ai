@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.Model;
@@ -63,7 +64,8 @@ class AgentTest {
                   extensions,
                   knownTools,
                   toolRunApprovalSeeker,
-                  new DefaultOutputValidator<>());
+                  new DefaultOutputValidator<>(),
+                  new DefaultErrorHandler<>());
         }
 
         @Override
