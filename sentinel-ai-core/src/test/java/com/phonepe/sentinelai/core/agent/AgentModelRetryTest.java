@@ -225,15 +225,6 @@ class AgentModelRetryTest {
                            anyMap(),
                            any(ToolRunner.class)))
                 .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocationOnMock -> {
-                    /*if (callCount.getAndIncrement() < 2) {
-                        return CompletableFuture.completedFuture(
-                                ModelOutput.success(mapper.createObjectNode()
-                                                            .set(Agent.OUTPUT_VARIABLE_NAME,
-                                                                 mapper.createObjectNode().textNode("")),
-                                                    List.of(),
-                                                    List.of(),
-                                                    new ModelUsageStats()));
-                    }*/
                     callCount.incrementAndGet();
                     return CompletableFuture.completedFuture(
                             ModelOutput.success(mapper.createObjectNode().set(Agent.OUTPUT_VARIABLE_NAME, output),
