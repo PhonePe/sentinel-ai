@@ -311,7 +311,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     /**
      * Streaming execution. This should be used for streaming applications like chat etc. When using reasoning models
-     * that have a longer first byte to response, some gateways might time out, it is better to use htis mode
+     * that have a longer first byte to response, some gateways might time out, it is better to use this mode
      *
      * @param input         The input to the agent
      * @param streamHandler Client method for raw data stream
@@ -613,7 +613,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             return ModelOutput.error(
                     context.getOldMessages(),
                     context.getModelUsageStats(),
-                    SentinelError.error(ErrorType.NO_RESPONSE, "Model run interrupted."));
+                    SentinelError.error(ErrorType.GENERIC_MODEL_CALL_FAILURE, "Model run interrupted."));
         }
         catch (Exception e) {
             return ModelOutput.error(

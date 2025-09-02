@@ -22,6 +22,7 @@ public enum ErrorType {
     UNKNOWN_FINISH_REASON("Unknown finish reason: %s", true),
     GENERIC_MODEL_CALL_FAILURE("Model call failed with error: %s", true),
     DATA_VALIDATION_FAILURE("Model data validation failed. Errors: %s", true),
+    FORCED_RETRY("Retry has been forced", true),
     UNKNOWN("Unknown response", true),
     ;
 

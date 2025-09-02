@@ -1,5 +1,7 @@
 package com.phonepe.sentinelai.core.agent;
 
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.errorhandling.ErrorResponseHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
@@ -72,6 +74,26 @@ class AgentModelRetryTest {
                         ModelOutput.error(List.of(),
                                           new ModelUsageStats(),
                                           SentinelError.error(ErrorType.NO_RESPONSE, "Test error"))));
+        when(model.stream(any(),
+                          anyCollection(),
+                          anyList(),
+                          anyMap(),
+                          any(ToolRunner.class),
+                          any()))
+                .thenReturn(CompletableFuture.completedFuture(
+                        ModelOutput.error(List.of(),
+                                          new ModelUsageStats(),
+                                          SentinelError.error(ErrorType.NO_RESPONSE, "Test error"))));
+        when(model.streamText(any(),
+                              anyList(),
+                              anyMap(),
+                              any(ToolRunner.class),
+                              any()))
+                .thenReturn(CompletableFuture.completedFuture(
+                        ModelOutput.error(List.of(),
+                                          new ModelUsageStats(),
+                                          SentinelError.error(ErrorType.NO_RESPONSE, "Test error"))));
+
         final var agent = TestAgent.builder()
                 .setup(AgentSetup.builder()
                                .mapper(JsonUtils.createMapper())
@@ -82,12 +104,33 @@ class AgentModelRetryTest {
                                                    .build())
                                .build())
                 .build();
-        final var response = agent.executeAsync(AgentInput.<String>builder()
-                                                        .request("Hello")
-                                                        .build())
-                .get();
-        assertNull(response.getData());
-        assertEquals(ErrorType.NO_RESPONSE, response.getError().getErrorType());
+        {
+            final var response = agent.executeAsync(AgentInput.<String>builder()
+                                                            .request("Hello")
+                                                            .build())
+                    .get();
+            assertNull(response.getData());
+            assertEquals(ErrorType.NO_RESPONSE, response.getError().getErrorType());
+        }
+        {
+            final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                                                                     .request("Hello")
+                                                                     .build(),
+                                                             data -> {})
+                    .get();
+            assertNull(response.getData());
+            assertEquals(ErrorType.NO_RESPONSE, response.getError().getErrorType());
+        }
+        {
+            final var response = agent.executeAsyncTextStreaming(AgentInput.<String>builder()
+                                                                         .request("Hello")
+                                                                         .build(),
+                                                                 data -> {})
+                    .get();
+            assertNull(response.getData());
+            assertEquals(ErrorType.NO_RESPONSE, response.getError().getErrorType());
+        }
+
     }
 
     @Test
@@ -131,6 +174,7 @@ class AgentModelRetryTest {
                 .get();
         assertNotNull(response.getData());
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertEquals(3, callCount.get());
     }
 
     @Test
@@ -143,6 +187,20 @@ class AgentModelRetryTest {
                            anyMap(),
                            any(ToolRunner.class)))
                 .thenThrow(new IllegalArgumentException("Test error"));
+        when(model.stream(any(),
+                          anyCollection(),
+                          anyList(),
+                          anyMap(),
+                          any(ToolRunner.class),
+                          any()))
+                .thenThrow(new IllegalArgumentException("Test error"));
+        when(model.streamText(any(),
+                              anyList(),
+                              anyMap(),
+                              any(ToolRunner.class),
+                              any()))
+                .thenThrow(new IllegalArgumentException("Test error"));
+
         final var agent = TestAgent.builder()
                 .setup(AgentSetup.builder()
                                .mapper(JsonUtils.createMapper())
@@ -153,12 +211,32 @@ class AgentModelRetryTest {
                                                    .build())
                                .build())
                 .build();
-        final var response = agent.executeAsync(AgentInput.<String>builder()
-                                                        .request("Hello")
-                                                        .build())
-                .get();
-        assertNull(response.getData());
-        assertEquals(ErrorType.GENERIC_MODEL_CALL_FAILURE, response.getError().getErrorType());
+        {
+            final var response = agent.executeAsync(AgentInput.<String>builder()
+                                                            .request("Hello")
+                                                            .build())
+                    .get();
+            assertNull(response.getData());
+            assertEquals(ErrorType.GENERIC_MODEL_CALL_FAILURE, response.getError().getErrorType());
+        }
+        {
+            final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                                                                     .request("Hello")
+                                                                     .build(),
+                                                             data -> {})
+                    .get();
+            assertNull(response.getData());
+            assertEquals(ErrorType.GENERIC_MODEL_CALL_FAILURE, response.getError().getErrorType());
+        }
+        {
+            final var response = agent.executeAsyncTextStreaming(AgentInput.<String>builder()
+                                                                         .request("Hello")
+                                                                         .build(),
+                                                                 data -> {})
+                    .get();
+            assertNull(response.getData());
+            assertEquals(ErrorType.GENERIC_MODEL_CALL_FAILURE, response.getError().getErrorType());
+        }
     }
 
     @Test
@@ -173,22 +251,24 @@ class AgentModelRetryTest {
                            anyList(),
                            anyMap(),
                            any(ToolRunner.class)))
-                .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocationOnMock -> {
-                    if (callCount.getAndIncrement() < 2) {
-                        return CompletableFuture.completedFuture(
-                                ModelOutput.success(mapper.createObjectNode()
-                                                            .set(Agent.OUTPUT_VARIABLE_NAME,
-                                                                 mapper.createObjectNode().textNode("")),
-                                                    List.of(),
-                                                    List.of(),
-                                                    new ModelUsageStats()));
-                    }
-                    return CompletableFuture.completedFuture(
-                            ModelOutput.success(mapper.createObjectNode().set(Agent.OUTPUT_VARIABLE_NAME, output),
-                                                List.of(),
-                                                List.of(),
-                                                new ModelUsageStats()));
-                });
+                .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocationOnMock -> generateOutput(
+                        callCount, mapper, output));
+        when(model.stream(any(),
+                          anyCollection(),
+                          anyList(),
+                          anyMap(),
+                          any(ToolRunner.class),
+                          any()))
+                .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocationOnMock -> generateOutput(
+                        callCount, mapper, output));
+        when(model.streamText(any(),
+                              anyList(),
+                              anyMap(),
+                              any(ToolRunner.class),
+                              any()))
+                .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocationOnMock -> generateTextOutput(
+                        callCount, mapper, output));
+
         final var agent = TestAgent.builder()
                 .setup(AgentSetup.builder()
                                .mapper(JsonUtils.createMapper())
@@ -203,12 +283,41 @@ class AgentModelRetryTest {
                         "Empty output is not acceptable")
                                                          : OutputValidationResults.success())
                 .build();
-        final var response = agent.executeAsync(AgentInput.<String>builder()
-                                                        .request("Hello")
-                                                        .build())
-                .get();
-        assertNotNull(response.getData());
-        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        {
+            final var response = agent.executeAsync(
+                            AgentInput.<String>builder()
+                                    .request("Hello")
+                                    .build())
+                    .get();
+            assertNotNull(response.getData());
+            assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+            assertEquals(3, callCount.get());
+            callCount.set(0);
+        }
+        {
+            final var response = agent.executeAsyncStreaming(
+                            AgentInput.<String>builder()
+                                    .request("Hello")
+                                    .build(),
+                            data -> {})
+                    .get();
+            assertNotNull(response.getData());
+            assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+            assertEquals(3, callCount.get());
+            callCount.set(0);
+        }
+        {
+            final var response = agent.executeAsyncTextStreaming(
+                            AgentInput.<String>builder()
+                                    .request("Hello")
+                                    .build(),
+                            data -> {})
+                    .get();
+            assertNotNull(response.getData());
+            assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+            assertEquals(3, callCount.get());
+            callCount.set(0);
+        }
     }
 
     @Test
@@ -248,7 +357,7 @@ class AgentModelRetryTest {
                             return AgentOutput.error(agentOutput.getAllMessages(),
                                                      context.getOldMessages(),
                                                      agentOutput.getUsage(),
-                                                     SentinelError.error(ErrorType.GENERIC_MODEL_CALL_FAILURE, "Test error"));
+                                                     SentinelError.error(ErrorType.FORCED_RETRY));
                         }
                         return agentOutput;
                     }
@@ -261,5 +370,43 @@ class AgentModelRetryTest {
         assertNotNull(response.getData());
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertEquals(3, callCount.get());
+    }
+
+    private static CompletableFuture<ModelOutput> generateOutput(
+            AtomicInteger callCount,
+            JsonMapper mapper,
+            TextNode output) {
+        if (callCount.getAndIncrement() < 2) {
+            return CompletableFuture.completedFuture(
+                    ModelOutput.success(mapper.createObjectNode()
+                                                .set(Agent.OUTPUT_VARIABLE_NAME,
+                                                     mapper.createObjectNode().textNode("")),
+                                        List.of(),
+                                        List.of(),
+                                        new ModelUsageStats()));
+        }
+        return CompletableFuture.completedFuture(
+                ModelOutput.success(mapper.createObjectNode().set(Agent.OUTPUT_VARIABLE_NAME, output),
+                                    List.of(),
+                                    List.of(),
+                                    new ModelUsageStats()));
+    }
+
+    private static CompletableFuture<ModelOutput> generateTextOutput(
+            AtomicInteger callCount,
+            JsonMapper mapper,
+            TextNode output) {
+        if (callCount.getAndIncrement() < 2) {
+            return CompletableFuture.completedFuture(
+                    ModelOutput.success(mapper.nullNode(),
+                                        List.of(),
+                                        List.of(),
+                                        new ModelUsageStats()));
+        }
+        return CompletableFuture.completedFuture(
+                ModelOutput.success(output,
+                                    List.of(),
+                                    List.of(),
+                                    new ModelUsageStats()));
     }
 }
