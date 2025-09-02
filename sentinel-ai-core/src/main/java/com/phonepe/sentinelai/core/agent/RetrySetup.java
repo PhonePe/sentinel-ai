@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @Value
 @With
 public class RetrySetup {
-    public static final int DEFAULT_MAX_ATTEMPTS = 3;
+    public static final int DEFAULT_TOTAL_ATTEMPTS = 3;
     public static final Duration DEFAULT_RETRY_INTERVAL = Duration.ofSeconds(1);
     public static final Set<ErrorType> DEFAULT_RETRYABLE_ERROR_TYPES = Arrays.stream(ErrorType.values())
             .filter(ErrorType::isRetryable)
@@ -27,7 +27,7 @@ public class RetrySetup {
     /**
      * Number of attempts to stop after if calls keep failing.
      */
-    int stopAfterAttempt;
+    int totalAttempts;
 
     /**
      * Time to wait before making the next attempt.
@@ -42,8 +42,8 @@ public class RetrySetup {
 
 
     @Builder
-    public RetrySetup(int stopAfterAttempt, Duration delayAfterFailedAttempt, Set<ErrorType> retriableErrorTypes) {
-        this.stopAfterAttempt = stopAfterAttempt <= 0 ? DEFAULT_MAX_ATTEMPTS : stopAfterAttempt;
+    public RetrySetup(int totalAttempts, Duration delayAfterFailedAttempt, Set<ErrorType> retriableErrorTypes) {
+        this.totalAttempts = totalAttempts <= 0 ? DEFAULT_TOTAL_ATTEMPTS : totalAttempts;
         this.delayAfterFailedAttempt = Objects.requireNonNullElse(delayAfterFailedAttempt, DEFAULT_RETRY_INTERVAL);
         this.retriableErrorTypes = Objects.requireNonNullElse(retriableErrorTypes, DEFAULT_RETRYABLE_ERROR_TYPES);
     }

@@ -462,7 +462,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private static <U> RetryPolicy<AgentOutput<U>> buildRetryPolicy(AgentSetup mergedAgentSetup) {
         final var retrySetup = mergedAgentSetup.getRetrySetup();
         return RetryPolicy.<AgentOutput<U>>builder()
-                .withMaxAttempts(retrySetup.getStopAfterAttempt())
+                .withMaxAttempts(retrySetup.getTotalAttempts())
                 .withDelay(retrySetup.getDelayAfterFailedAttempt())
                 .handleResultIf(response -> retrySetup.getRetriableErrorTypes()
                         .contains(response.getError().getErrorType()))
