@@ -5,12 +5,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.outputvalidation.DefaultOutputValidator;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolRunApprovalSeeker;
@@ -56,7 +58,14 @@ class AgentTest {
                 List<AgentExtension<String, String, TestAgent>> extensions,
                 Map<String, ExecutableTool> knownTools,
                 ToolRunApprovalSeeker<String, String, TestAgent> toolRunApprovalSeeker) {
-            super(String.class, "This is irrelevant", setup, extensions, knownTools, toolRunApprovalSeeker);
+            super(String.class,
+                  "This is irrelevant",
+                  setup,
+                  extensions,
+                  knownTools,
+                  toolRunApprovalSeeker,
+                  new DefaultOutputValidator<>(),
+                  new DefaultErrorHandler<>());
         }
 
         @Override

@@ -219,7 +219,7 @@ class AgentMemoryExtensionTest {
                                                       .seed(42)
                                                       .parallelToolCalls(false)
                                                       .build())
-                               .executorService(Executors.newFixedThreadPool(2))
+                               .executorService(Executors.newFixedThreadPool(5))
                                .build())
                 .extensions(List.of(AgentMemoryExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                             .objectMapper(objectMapper)
