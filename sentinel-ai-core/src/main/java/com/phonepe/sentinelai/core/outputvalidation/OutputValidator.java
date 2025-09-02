@@ -7,5 +7,5 @@ import com.phonepe.sentinelai.core.agent.AgentRunContext;
  */
 @FunctionalInterface
 public interface OutputValidator<R,T> {
-    OutputValidationResults validate(AgentRunContext<R> context, T modelOutput);
+    OutputValidationResults validate(AgentRunContext<R> context, T agentOutput);
 }
