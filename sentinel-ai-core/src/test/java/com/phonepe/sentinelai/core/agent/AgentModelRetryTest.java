@@ -100,7 +100,7 @@ class AgentModelRetryTest {
                                .model(model)
                                .retrySetup(RetrySetup.builder()
                                                    .delayAfterFailedAttempt(Duration.ofMillis(100))
-                                                   .stopAfterAttempt(1)
+                                                   .totalAttempts(1)
                                                    .build())
                                .build())
                 .build();
@@ -164,7 +164,7 @@ class AgentModelRetryTest {
                                .model(model)
                                .retrySetup(RetrySetup.builder()
                                                    .delayAfterFailedAttempt(Duration.ofMillis(100))
-                                                   .stopAfterAttempt(3)
+                                                   .totalAttempts(3)
                                                    .build())
                                .build())
                 .build();
@@ -207,7 +207,7 @@ class AgentModelRetryTest {
                                .model(model)
                                .retrySetup(RetrySetup.builder()
                                                    .delayAfterFailedAttempt(Duration.ofMillis(100))
-                                                   .stopAfterAttempt(1)
+                                                   .totalAttempts(1)
                                                    .build())
                                .build())
                 .build();
@@ -275,7 +275,7 @@ class AgentModelRetryTest {
                                .model(model)
                                .retrySetup(RetrySetup.builder()
                                                    .delayAfterFailedAttempt(Duration.ofMillis(100))
-                                                   .stopAfterAttempt(3)
+                                                   .totalAttempts(3)
                                                    .build())
                                .build())
                 .outputValidator((context, strOutput) -> Strings.isNullOrEmpty(strOutput)
@@ -347,7 +347,7 @@ class AgentModelRetryTest {
                                .model(model)
                                .retrySetup(RetrySetup.builder()
                                                    .delayAfterFailedAttempt(Duration.ofMillis(100))
-                                                   .stopAfterAttempt(3)
+                                                   .totalAttempts(3)
                                                    .build())
                                .build())
                 .errorHandler(new ErrorResponseHandler<String>() {
