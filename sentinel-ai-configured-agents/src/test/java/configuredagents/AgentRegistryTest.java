@@ -70,6 +70,71 @@ class AgentRegistryTest {
 
     @Test
     @SneakyThrows
+    void testSimpleAgent(WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(4, "art.sa", getClass());
+        final var agentSource = new InMemoryAgentConfigurationSource();
+        final var objectMapper = JsonUtils.createMapper();
+        final var okHttpClient = new OkHttpClient.Builder()
+                .callTimeout(Duration.ofSeconds(180))
+                .connectTimeout(Duration.ofSeconds(120))
+                .readTimeout(Duration.ofSeconds(180))
+                .writeTimeout(Duration.ofSeconds(120))
+                .build();
+        final var agentFactory = ConfiguredAgentFactory.builder() //Nothing is specified
+                .build();
+        final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
+                .agentSource(agentSource)
+                .agentFactory(agentFactory::createAgent)
+                .build();
+        final var summarizerAgentConfig = AgentConfiguration.builder()
+                .agentName("Summarizer Agent")
+                .description("Summarizes input text")
+                .prompt("Provide a 140 character summary for the provided input text")
+                .capability(AgentCapabilities.remoteHttpCalls(Map.of("weatherserver", Set.of("get_weather_for_location"))))
+                .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
+                .build();
+        log.info("Summarizing agent id: {}",
+                 registry.configureAgent(summarizerAgentConfig)
+                         .map(AgentMetadata::getId)
+                         .orElseThrow());
+        final var model = new SimpleOpenAIModel<>(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(objectMapper)
+                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                        .build(),
+                objectMapper
+        );
+
+        final var setup = AgentSetup.builder()
+                .mapper(objectMapper)
+                .model(model)
+                .modelSettings(ModelSettings.builder()
+                                       .temperature(0f)
+                                       .seed(0)
+                                       .parallelToolCalls(false)
+                                       .build())
+                .build();
+
+        final var topAgent = PlannerAgent.builder()
+                .setup(setup)
+                .extension(registry)
+                .build();
+        final var response = topAgent.executeAsync(AgentInput.<String>builder()
+                                                           .request("Summarize the story of War and Peace")
+                                                           .build())
+                .join();
+        log.info("Agent response: {}", objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(response.getData()));
+    }
+
+    @Test
+    @SneakyThrows
     void testHttp(WireMockRuntimeInfo wiremock) {
         TestUtils.setupMocks(5, "art.http", getClass());
 
