@@ -66,8 +66,10 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
                 configuration.getAgentName(),
                 configuration.getDescription(),
                 configuration.getPrompt(),
-                Objects.requireNonNullElseGet(configuration.getInputSchema(), () -> JsonUtils.openAISchema(String.class, "data", mapper)),
-                Objects.requireNonNullElseGet(configuration.getOutputSchema(), () -> JsonUtils.openAISchema(String.class, Agent.OUTPUT_VARIABLE_NAME, mapper)),
+                Objects.requireNonNullElseGet(configuration.getInputSchema(),
+                                              () -> JsonUtils.openAISchema(String.class, "data", mapper)),
+                Objects.requireNonNullElseGet(configuration.getOutputSchema(),
+                                              () -> JsonUtils.openAISchema(String.class, Agent.OUTPUT_VARIABLE_NAME, mapper)),
                 Objects.requireNonNullElseGet(configuration.getCapabilities(), List::of));
         final var agentId = AgentUtils.id(fixedConfig.getAgentName());
         return agentSource.save(agentId, fixedConfig);

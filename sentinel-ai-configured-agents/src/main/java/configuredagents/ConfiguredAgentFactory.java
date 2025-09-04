@@ -7,10 +7,7 @@ import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
 import configuredagents.capabilities.AgentCapability;
 import configuredagents.capabilities.AgentCapabilityVisitor;
-import configuredagents.capabilities.impl.AgentMCPCapability;
-import configuredagents.capabilities.impl.AgentMemoryCapability;
-import configuredagents.capabilities.impl.AgentRemoteHttpCallCapability;
-import configuredagents.capabilities.impl.AgentSessionManagementCapability;
+import configuredagents.capabilities.impl.*;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -24,11 +21,13 @@ import java.util.*;
 public class ConfiguredAgentFactory {
     private final SimpleCache<HttpToolBox> httpToolboxFactory;
     private final SimpleCache<MCPToolBox> mcpToolboxFactory;
+    private final CustomToolBox customToolBox;
 
     @Builder
     public ConfiguredAgentFactory(
             final HttpToolboxFactory httpToolboxFactory,
-            final MCPToolBoxFactory mcpToolboxFactory) {
+            final MCPToolBoxFactory mcpToolboxFactory,
+            final CustomToolBox customToolBox) {
         this.httpToolboxFactory = null != httpToolboxFactory
                                   ? new SimpleCache<>(upstream -> httpToolboxFactory.create(upstream)
                 .orElseThrow(() -> new IllegalArgumentException("No HTTP tool box found for upstream: " + upstream)))
@@ -37,6 +36,7 @@ public class ConfiguredAgentFactory {
                                  ? new SimpleCache<>(upstream -> mcpToolboxFactory.create(upstream)
                 .orElseThrow(() -> new IllegalArgumentException("No MCP tool box found for upstream: " + upstream)))
                                  : null;
+        this.customToolBox = customToolBox;
     }
 
     public final ConfiguredAgent createAgent(@NonNull final AgentMetadata agentMetadata) {
@@ -50,7 +50,7 @@ public class ConfiguredAgentFactory {
                 agentCapability -> agentCapability.accept(new AgentCapabilityVisitor<Void>() {
                     @Override
                     public Void visit(AgentRemoteHttpCallCapability remoteHttpCallCapability) {
-                        if(null == httpToolboxFactory) {
+                        if (null == httpToolboxFactory) {
                             log.warn("HTTP Tool Box Factory is not configured. HTTP call capability will not be added");
                             return null;
                         }
@@ -72,7 +72,7 @@ public class ConfiguredAgentFactory {
 
                     @Override
                     public Void visit(AgentMCPCapability mcpCapability) {
-                        if(null == mcpToolboxFactory) {
+                        if (null == mcpToolboxFactory) {
                             log.warn("MCP Tool Box Factory is not configured. MCP call capability will not be added");
                             return null;
                         }
@@ -88,6 +88,21 @@ public class ConfiguredAgentFactory {
                                                                         "No MCP tool box found for: " + toolsFromUpstream.getKey()))),
                                                 toolsFromUpstream.getValue()))
                                         .toList());
+                        return null;
+                    }
+
+                    @Override
+                    public Void visit(AgentCustomToolCapability customToolCapability) {
+                        if (null == customToolBox) {
+                            log.warn("custom tools have not been registered, but capability provided");
+                            return null;
+                        }
+                        final var exposedTools = Objects.requireNonNullElseGet(customToolCapability.getSelectedTools(),
+                                                                               Set::<String>of);
+                        toolBoxes.add(
+                                CustomToolBox.filter(agentConfiguration.getAgentName(),
+                                                     customToolBox,
+                                                     exposedTools));
                         return null;
                     }
 
