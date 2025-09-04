@@ -1,10 +1,7 @@
 package com.phonepe.sentinelai.core.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.github.victools.jsonschema.generator.*;
 import com.github.victools.jsonschema.module.jackson.JacksonModule;
@@ -57,6 +54,19 @@ public class JsonUtils {
             // skip description look-up, to avoid duplicating the title
             return null;
         }
+    }
+
+    public static JsonNode openAISchema(final Class<?> clazz, String fieldName, ObjectMapper mapper) {
+        final var schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        schema.put("additionalProperties", false);
+        final var fields = mapper.createArrayNode();
+        schema.set("required", fields);
+        final var propertiesNode = mapper.createObjectNode();
+        schema.set("properties", propertiesNode);
+        fields.add(mapper.createObjectNode().textNode(fieldName));
+        propertiesNode.set(fieldName, schema(clazz));
+        return schema;
     }
 
     public static JsonNode schema(final Class<?> clazz) {

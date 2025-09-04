@@ -1,5 +1,6 @@
 package configuredagents.capabilities;
 
+import configuredagents.capabilities.impl.AgentCustomToolCapability;
 import configuredagents.capabilities.impl.AgentMCPCapability;
 import configuredagents.capabilities.impl.AgentRemoteHttpCallCapability;
 import lombok.experimental.UtilityClass;
@@ -18,5 +19,9 @@ public class AgentCapabilities {
 
     public static AgentCapability mcpCalls(Map<String, Set<String>> selectedUpstreams) {
         return new AgentMCPCapability(selectedUpstreams);
+    }
+
+    public static AgentCapability genericToolCalls(Set<String> selectedTools) {
+        return new AgentCustomToolCapability(selectedTools);
     }
 }

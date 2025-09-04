@@ -1,0 +1,37 @@
+{
+  "id" : "chatcmpl-CBxyXSmY42XlyzndIbFmKOIuOhFhD",
+  "object" : "chat.completion",
+  "created" : 1756968189,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_SsQjewI7WNuXN0FDKQflk8Vf",
+        "type" : "function",
+        "function" : {
+          "name" : "agent_registry_invoke_agent",
+          "arguments" : "{\"agentId\":\"weather_agent\",\"agentInput\":\"{\\\"location\\\":\\\"Bangalore\\\"}\"}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 744,
+    "completion_tokens" : 31,
+    "total_tokens" : 775,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+

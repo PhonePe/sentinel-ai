@@ -1,0 +1,37 @@
+{
+  "id" : "chatcmpl-CBDE4bO95xhciBzmOqT0HzIcFOLzP",
+  "object" : "chat.completion",
+  "created" : 1756788484,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_S4DLTkmzOMl6nQ0ELOPYDEmo",
+        "type" : "function",
+        "function" : {
+          "name" : "agent_registry_invoke_agent",
+          "arguments" : "{\"agentId\":\"summarizer_agent\",\"agentInput\":\"{\\\"data\\\":\\\"War and Peace is a historical novel by Leo Tolstoy, first published in 1869. It is set during the Napoleonic Wars and follows the lives of several aristocratic families in Russia, particularly focusing on Pierre Bezukhov, Prince Andrei Bolkonsky, and Natasha Rostova. The novel explores themes of fate, free will, and the impact of war on society. Through the intertwining stories of its characters, it examines the complexities of love, family, and the search for meaning in life. The narrative shifts between personal struggles and historical events, culminating in a reflection on the nature of history and the human experience.\\\"}\"}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 731,
+    "completion_tokens" : 160,
+    "total_tokens" : 891,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+
