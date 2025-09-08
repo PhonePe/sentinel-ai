@@ -2,6 +2,7 @@ package configuredagents;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.tools.Tool;
@@ -38,16 +39,21 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
      */
     private final Predicate<AgentMessage> parentMessageFilter;
 
+    private final ObjectMapper mapper;
+
     private final SimpleCache<ConfiguredAgent> agentCache;
+
 
     @Builder
     public AgentRegistry(
             @NonNull AgentConfigurationSource agentSource,
             @NonNull Function<AgentMetadata, ConfiguredAgent> agentFactory,
-            final Predicate<AgentMessage> parentMessageFilter) {
+            final Predicate<AgentMessage> parentMessageFilter,
+            final ObjectMapper mapper) {
         this.agentSource = agentSource;
         this.parentMessageFilter = Objects.requireNonNullElseGet(parentMessageFilter, () -> message -> false);
-        agentCache = new SimpleCache<>(agentId -> {
+        this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
+        this.agentCache = new SimpleCache<>(agentId -> {
             log.info("Building new agent for: {}", agentId);
             return agentFactory.apply(
                     agentSource.read(agentId)
@@ -60,8 +66,10 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
                 configuration.getAgentName(),
                 configuration.getDescription(),
                 configuration.getPrompt(),
-                Objects.requireNonNullElseGet(configuration.getInputSchema(), () -> JsonUtils.schema(String.class)),
-                Objects.requireNonNullElseGet(configuration.getOutputSchema(), () -> JsonUtils.schema(String.class)),
+                Objects.requireNonNullElseGet(configuration.getInputSchema(),
+                                              () -> JsonUtils.openAISchema(String.class, "data", mapper)),
+                Objects.requireNonNullElseGet(configuration.getOutputSchema(),
+                                              () -> JsonUtils.openAISchema(String.class, Agent.OUTPUT_VARIABLE_NAME, mapper)),
                 Objects.requireNonNullElseGet(configuration.getCapabilities(), List::of));
         final var agentId = AgentUtils.id(fixedConfig.getAgentName());
         return agentSource.save(agentId, fixedConfig);

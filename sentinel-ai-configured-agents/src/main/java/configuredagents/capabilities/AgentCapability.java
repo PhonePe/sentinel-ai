@@ -11,6 +11,7 @@ public abstract class AgentCapability {
     public enum Type {
         REMOTE_HTTP_CALLS,
         MCP,
+        CUSTOM_TOOLS,
         AGENT_MEMORY,
         SESSION_MANAGEMENT,
     }
