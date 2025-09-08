@@ -197,12 +197,6 @@ class AgentRegistryTest {
                                                                    return wiremock.getHttpBaseUrl();
                                                                }
                                                            }))
-                .mcpToolboxFactory(MCPToolBoxFactory.builder()
-                                           .objectMapper(MAPPER)
-                                           .clientProvider(upstream -> {
-                                               throw new IllegalStateException("MCP is not supported in this test");
-                                           })
-                                           .build())
                 .build();
         final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
                 .agentSource(agentSource)
@@ -284,15 +278,6 @@ class AgentRegistryTest {
                 .build();
         mcpClient.initialize();
         final var agentFactory = ConfiguredAgentFactory.builder()
-                .httpToolboxFactory(new HttpToolboxFactory(okHttpClient,
-                                                           MAPPER,
-                                                           new InMemoryHttpToolSource(),
-                                                           upstream -> new UpstreamResolver() {
-                                                               @Override
-                                                               public String resolve(String upstream) {
-                                                                   return wiremock.getHttpBaseUrl();
-                                                               }
-                                                           }))
                 .mcpToolboxFactory(MCPToolBoxFactory.builder()
                                            .objectMapper(MAPPER)
                                            .clientProvider(upstream -> {
