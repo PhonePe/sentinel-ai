@@ -79,7 +79,7 @@ public class MCPToolBoxFactory {
      * @return this factory with loaded MCPToolBox instances
      */
     @SneakyThrows
-    private MCPToolBoxFactory loadFromContent(byte[] contents) {
+    public MCPToolBoxFactory loadFromContent(byte[] contents) {
         final var config = objectMapper.readValue(contents, MCPConfiguration.class);
         MCPJsonReader.loadServers(config, this::addConfig);
         return this;
