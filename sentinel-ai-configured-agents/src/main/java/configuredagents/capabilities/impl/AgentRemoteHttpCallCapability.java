@@ -20,13 +20,13 @@ public class AgentRemoteHttpCallCapability extends AgentCapability {
      * A map of upstreams, vs the set of tools selected form that upstream. To select all available tools, the Set
      * can be left as empty.
      */
-    Map<String, Set<String>> selectedRemoteTools;
+    Map<String, Set<String>> selectedTools;
 
     @Builder
     @Jacksonized
-    public AgentRemoteHttpCallCapability(@NonNull Map<String, Set<String>> selectedRemoteTools) {
+    public AgentRemoteHttpCallCapability(@NonNull Map<String, Set<String>> selectedTools) {
         super(Type.REMOTE_HTTP_CALLS);
-        this.selectedRemoteTools = selectedRemoteTools;
+        this.selectedTools = selectedTools;
     }
 
     @Override

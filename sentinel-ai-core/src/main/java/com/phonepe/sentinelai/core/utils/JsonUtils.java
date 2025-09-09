@@ -56,7 +56,7 @@ public class JsonUtils {
         }
     }
 
-    public static JsonNode openAISchema(final Class<?> clazz, String fieldName, ObjectMapper mapper) {
+    public static JsonNode schemaForPrimitive(final Class<?> clazz, String fieldName, ObjectMapper mapper) {
         final var schema = mapper.createObjectNode();
         schema.put("type", "object");
         schema.put("additionalProperties", false);

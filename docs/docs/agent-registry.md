@@ -1,8 +1,13 @@
 # Configured Agents and Registry
 
-Sentinel AI provides a way to configure and manage multiple agents through a centralized registry. This allows for easy
-access and management of different agents that can perform various tasks. The registry is implemented as an
-`AgentExtension`.
+As powerful as single agents can be,  due to a variety of limitations like context window length, chances of hallucination
+when large number of tools are exposed to the model etc., it is better to have agents that specialize in doing specific
+tasks. A common pattern that works out well in a variety of scenarios is to have a high level agent that does the
+planning and/or orchestration and delegates specific tasks to specialized agents.
+
+To allow developers to implement this pattern easily, Sentinel AI provides a way to configure and manage multiple agents
+through a centralized registry. This allows for easy access and management of different agents that can perform various 
+tasks. The registry is implemented as an `AgentExtension` and can be added to any top-level agent implementation.
 
 ## Nomenclature
 
@@ -73,7 +78,7 @@ final var agentFactory = ConfiguredAgentFactory.builder()
         .customToolBox(...)   // Optional, if you want to provide custom/local capabilities
         .build();
 ```
-## Agent Registry Extension
+## Agent Registry
 The `AgentRegistry` extension is used to manage and provide access to configured agents. It needs to be provided with
 an `AgentConfigurationSource` to read agent configurations and an `ConfiguredAgentFactory` to create instances of configured
 agents.
@@ -130,7 +135,7 @@ agents and to invoke them to get work done.
         }
     ```
 
-## Configuring Agents
+### Configuring Agents
 Agents can be configured using the `AgentConfiguration` class. Such agents need to be registered with the `AgentRegistry`
 by calling the `configureAgent` method. The registry in-turn invokes the `AgentConfigurationSource::save` method to 
 persist the configuration and the `ConfiguredAgentFactory` to create an instance of the agent on the fly as and when
@@ -142,8 +147,8 @@ final var summarizerAgentConfig = AgentConfiguration.builder()
         .agentName("Summarizer Agent") //(1)!
         .description("Summarizes input text") //(2)!
         .prompt("Provide a 140 character summary for the provided input text") //(3)!
-        .inputSchema(JsonUtils.openAISchema(String.class, "data", mapper)) //(4)!
-        .outputSchema(JsonUtils.openAISchema(String.class, Agent.OUTPUT_VARIABLE_NAME, mapper)) //(5)!
+        .inputSchema(JsonUtils.schemaForPrimitive(String.class, "rawTextInput", mapper)) //(4)!
+        .outputSchema(JsonUtils.schema(SummarizerAgentOutput.class)) //(5)!
         .capability(AgentCapabilities.remoteHttpCalls(Map.of("weatherserver", //(6)!
                                                              Set.of("get_weather_for_location"))))
         .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
@@ -160,7 +165,11 @@ agentRegistry.configureAgent(summarizerAgentConfig);
 5. Output schema for the agent (Optional, defaults to a simple string output schema)
 6. Capabilities of the agent (Optional, defaults to no capabilities). See section on [Tools for Configured Agents](#tools-for-configured-agents) for more details.
 
-### Agent Configuration Parameters
+!!!tip "Schema generation"
+    You can use the `JsonUtils.schemaForPrimitive` and `JsonUtils.schema` utility functions to generate schema in the
+    required format for primitive types/string and classes/records respectively.
+
+#### Agent Configuration Parameters
 The following parameters can be configured using the `AgentConfiguration` builder.
 
 | Builder Parameter | Mandatory | Description                                                 |
@@ -171,6 +180,106 @@ The following parameters can be configured using the `AgentConfiguration` builde
 | inputSchema       | No        | Input schema for the agent. Defaults to String if missing.  |
 | outputSchema      | No        | Output schema for the agent. Defaults to String if missing. |
 | capabilities      | No        | Extra capabilities of the agent.                            |
+
+### Loading Agent configurations from file
+Agent Configurations can be leaded into the registry directly into registry from serialized JSON using the following
+functions:
+
+- `loadAgentsFromContent(byte[] content)` - Load agent configurations from serialized JSON content.
+- `loadAgentsFromFile(final String agentConfig)` - Load agent configurations from a file containing serialized JSON
+
+Both methods return the list of agents that were loaded into the registry.
+
+```java
+// Load agent configurations from file
+final var agents = agentRegistry.loadAgentsFromFile("path/to/agent_config.json");
+```
+
+#### Agent Configuration File Format
+
+Sample file format can be found below:
+```json
+[
+  {
+    "agentName": "All-in-One Agent", //(1)!
+    "description": "Agent with HTTP, MCP, and Custom Tool capabilities.", //(2)!
+    "prompt": "Use all available tools to answer the query.", //(3)!
+    "inputSchema": { //(4)!
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "location"
+      ],
+      "properties": {
+        "location": {
+          "description": "Location to know weather for",
+          "type": "string"
+        }
+      }
+    },
+    "outputSchema": { //(5)!
+      "type": "object",
+      "properties": {
+        "condition": {
+          "type": "string"
+        },
+        "temperature": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "condition",
+        "temperature"
+      ],
+      "additionalProperties": false
+    },
+    "capabilities": [ //(6)!
+      {
+        "type": "REMOTE_HTTP_CALLS", //(7)!
+        "selectedTools": { //(8)!
+          "weatherserver": [ //(9)!
+            "get_weather_for_location" //(10)!
+          ]
+        }
+      },
+      {
+        "type": "MCP", //(11)!
+        "selectedTools": { //(12)!
+          "mcp": [ //(13)!
+            "add", //(14)!
+            "subtract"
+          ]
+        }
+      },
+      {
+        "type": "CUSTOM_TOOLS", //(15)!
+        "selectedTools": [//(16)!
+          "getWeather",
+          "doSomethingCustom"
+        ]
+      }
+    ]
+  },
+  ... //more agents
+]
+```
+
+1. Name of the agent (Mandatory)
+2. Description of the agent (Mandatory)
+3. Prompt to be used by the agent (Mandatory)
+4. Input schema for the agent. (Optional, defaults to a simple string input schema)
+5. Output schema for the agent (Optional, defaults to a simple string output schema)
+6. Capabilities of the agent (Optional, defaults to no capabilities).
+7. Fixed for Remote HTTP calls.
+8. HTTP tools exposed to this agent.
+9. Name of HTTP upstream as specified in [HTTPToolboxFactory](#making-remote-http-calls){:target="_blank"} configuration.
+10. Set of tools selected from this upstream.
+11. Fixed for MCP calls.
+12. MCP tools exposed to this agent.
+13. Name of MCP upstream as specified when configuring MCP servers in [MCPToolBoxFactory](#using-tools-from-mcp-servers){:target="_blank"}.
+14. Set of tools selected from this upstream.
+15. Fixed for Custom/local tools.
+16. Set of custom/local tools exposed to this agent as explained in [Using Custom Tools](#using-custom-tools){:target="_blank"}.
 
 ## Tools for Configured Agents
 
@@ -331,7 +440,7 @@ Custom tools are those that are implemented in local code and registered with th
 can be used to perform tasks that are specific to your application or domain and cannot be easily achieved using remote
 HTTP calls or MCP calls. Custom tools can be anything from simple utility functions to complex business logic
 implementations. Custom tools are registered globally with the `ConfiguredAgentFactory` and individual agents get access to
-only those tools that they are configured to use using the `AgentCapabilities.genericToolCalls` capability.
+only those tools that they are configured to use using the `AgentCapabilities.customToolCalls` capability.
 
 ```java
 //Define tools as usual
@@ -364,7 +473,7 @@ final var agentFactory = ConfiguredAgentFactory.builder()
     The `CustomToolBox` class provides multiple ways to register tools.
 
 Once the tools are registered globally with the `ConfiguredAgentFactory`, they can be used by configured agents by using
-the `AgentCapabilities.genericToolCalls` capability.
+the `AgentCapabilities.customToolCalls` capability.
 
 ```java
 // Create agent configured factory and register custom tools
@@ -372,6 +481,6 @@ final var agentConfig = AgentConfiguration.builder()
                 //Standard config, http tool boc factory etc
                 ...
                 //Add custom tool call capabilites
-                .capability(AgentCapabilities.genericToolCalls(Set.of("getWeather", "getName")))
+                .capability(AgentCapabilities.customToolCalls(Set.of("getWeather", "getName")))
                 .build();
 ```

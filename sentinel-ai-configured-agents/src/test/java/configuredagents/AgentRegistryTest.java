@@ -25,10 +25,7 @@ import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
-import lombok.Builder;
-import lombok.NonNull;
-import lombok.Singular;
-import lombok.SneakyThrows;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
@@ -36,15 +33,18 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Stream;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  *
@@ -140,6 +140,18 @@ class AgentRegistryTest {
         printAgentResponse(response);
     }
 
+    @Value
+    private static class WeatherAgentInput {
+        @JsonPropertyDescription("Location to know weather for")
+        String location;
+    }
+
+    @Value
+    private static class WeatherAgentOutput {
+        String condition;
+        String temperature;
+    }
+
     @Test
     @SneakyThrows
     void testHttp(WireMockRuntimeInfo wiremock) {
@@ -208,10 +220,10 @@ class AgentRegistryTest {
                 .agentName("Weather Agent")
                 .description("Provides the weather information for a given location.")
                 .prompt("Respond with the current weather for the given location.")
-                .inputSchema(loadSchema("inputschema.json"))
+                .inputSchema(schema(WeatherAgentInput.class))
+                .outputSchema(schema(WeatherAgentOutput.class))
                 .capability(AgentCapabilities.remoteHttpCalls(Map.of("weatherserver",
                                                                      Set.of("get_weather_for_location"))))
-                .outputSchema(loadSchema("outputschema.json"))
                 .build();
         log.info("Weather agent id: {}",
                  registry.configureAgent(weatherAgentConfiguration)
@@ -429,6 +441,30 @@ class AgentRegistryTest {
         ensureOutputGenerated(response);
     }
 
+    @Test
+    @SneakyThrows
+    void testConfigLoading() {
+        final var agentFactory = ConfiguredAgentFactory.builder()
+                .customToolBox(CustomToolBox.builder()
+                                       .name("custom")
+                                       .build()
+                                       .registerToolsFromObject(this))
+                .build();
+        final var agentSource = new InMemoryAgentConfigurationSource();
+        final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
+                .agentSource(agentSource)
+                .agentFactory(agentFactory::createAgent)
+                .build();
+        final var agents = registry.loadAgentsFromFile(Paths.get(Objects.requireNonNull(getClass().getResource(
+                "/agent.json")).toURI()).toString());
+        assertEquals(2, agents.size());
+
+        assertThrows(IOException.class, () -> registry.loadAgentsFromFile("non-existent-file.json"));
+        assertThrows(JsonProcessingException.class, () -> registry.loadAgentsFromFile(
+                Paths.get(Objects.requireNonNull(
+                        getClass().getResource("/agent-malformed.json")).toURI()).toString()));
+    }
+
     private static Stream<Arguments> generateAgentConfig() {
         return Stream.of(
                 Arguments.of(AgentConfiguration.builder()
@@ -436,7 +472,7 @@ class AgentRegistryTest {
                                      .description("Provides the weather information for a given location.")
                                      .prompt("Respond with the current weather for the given location.")
                                      .inputSchema(loadSchema("inputschema.json"))
-                                     .capability(AgentCapabilities.genericToolCalls(Set.of("getWeather")))
+                                     .capability(AgentCapabilities.customToolCalls(Set.of("getWeather")))
                                      .outputSchema(loadSchema("outputschema.json"))
                                      .build()),
                 Arguments.of(AgentConfiguration.builder()
@@ -444,7 +480,7 @@ class AgentRegistryTest {
                                      .description("Provides the weather information for a given location.")
                                      .prompt("Respond with the current weather for the given location.")
                                      .inputSchema(loadSchema("inputschema.json"))
-                                     .capability(AgentCapabilities.genericToolCalls(Set.of()))
+                                     .capability(AgentCapabilities.customToolCalls(Set.of()))
                                      .outputSchema(loadSchema("outputschema.json"))
                                      .build()
                             )

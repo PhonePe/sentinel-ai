@@ -21,7 +21,7 @@ public class AgentCapabilities {
         return new AgentMCPCapability(selectedUpstreams);
     }
 
-    public static AgentCapability genericToolCalls(Set<String> selectedTools) {
+    public static AgentCapability customToolCalls(Set<String> selectedTools) {
         return new AgentCustomToolCapability(selectedTools);
     }
 }

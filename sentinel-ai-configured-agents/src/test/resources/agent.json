@@ -1,0 +1,67 @@
+[
+  {
+    "agentName": "Summarizer Agent",
+    "description": "Summarizes large blocks of text",
+    "prompt": "Summarize the input text into max 140 character summaries"
+  },
+  {
+    "agentName": "All-in-One Agent",
+    "description": "Agent with HTTP, MCP, and Custom Tool capabilities.",
+    "prompt": "Use all available tools to answer the query.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "location"
+      ],
+      "properties": {
+        "location": {
+          "description": "Location to know weather for",
+          "type": "string"
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "condition": {
+          "type": "string"
+        },
+        "temperature": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "condition",
+        "temperature"
+      ],
+      "additionalProperties": false
+    },
+    "capabilities": [
+      {
+        "type": "REMOTE_HTTP_CALLS",
+        "selectedTools": {
+          "weatherserver": [
+            "get_weather_for_location"
+          ]
+        }
+      },
+      {
+        "type": "MCP",
+        "selectedTools": {
+          "mcp": [
+            "add",
+            "subtract"
+          ]
+        }
+      },
+      {
+        "type": "CUSTOM_TOOLS",
+        "selectedTools": [
+          "getWeather",
+          "doSomethingCustom"
+        ]
+      }
+    ]
+  }
+]
