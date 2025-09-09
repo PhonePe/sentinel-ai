@@ -1,14 +1,12 @@
 package configuredagents;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentExtension;
-import com.phonepe.sentinelai.core.agent.AgentInput;
-import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
@@ -40,6 +38,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Stream;
@@ -139,8 +138,7 @@ class AgentRegistryTest {
                                                            .request("Summarize the story of War and Peace")
                                                            .build())
                 .join();
-        log.info("Agent response: {}", MAPPER.writerWithDefaultPrettyPrinter()
-                .writeValueAsString(response.getData()));
+        printAgentResponse(response);
     }
 
     @Test
@@ -188,15 +186,17 @@ class AgentRegistryTest {
                                                                       "/api/v1/weather/${location}")).build())
                                             .build()));
         final var agentFactory = ConfiguredAgentFactory.builder()
-                .httpToolboxFactory(new HttpToolboxFactory(okHttpClient,
-                                                           MAPPER,
-                                                           toolSource,
-                                                           upstream -> new UpstreamResolver() {
-                                                               @Override
-                                                               public String resolve(String upstream) {
-                                                                   return wiremock.getHttpBaseUrl();
-                                                               }
-                                                           }))
+                .httpToolboxFactory(HttpToolboxFactory.builder()
+                                            .toolConfigSource(toolSource)
+                                            .okHttpClient(okHttpClient)
+                                            .objectMapper(MAPPER)
+                                            .upstreamResolver(upstream -> new UpstreamResolver() {
+                                                @Override
+                                                public String resolve(String upstream) {
+                                                    return wiremock.getHttpBaseUrl();
+                                                }
+                                            })
+                                            .build())
                 .build();
         final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
                 .agentSource(agentSource)
@@ -251,8 +251,7 @@ class AgentRegistryTest {
                                                            .request("How is the weather in Bangalore?")
                                                            .build())
                 .join();
-        log.info("Agent response: {}", MAPPER.writerWithDefaultPrettyPrinter()
-                .writeValueAsString(response.getData()));
+        printAgentResponse(response);
         assertTrue(response.getData().matches(".*[sS]unny.*"));
         ensureOutputGenerated(response);
     }
@@ -274,19 +273,89 @@ class AgentRegistryTest {
                 .build();
         final var transport = new StdioClientTransport(params);
 
-        final var mcpClient = McpClient.sync(transport)
+        try (final var mcpClient = McpClient.sync(transport)
+                .build()) {
+            mcpClient.initialize();
+            final var agentFactory = ConfiguredAgentFactory.builder()
+                    .mcpToolboxFactory(MCPToolBoxFactory.builder()
+                                               .objectMapper(MAPPER)
+                                               .clientProvider(upstream -> Optional.of(mcpClient))
+                                               .build())
+                    .build();
+            final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
+                    .agentSource(agentSource)
+                    .agentFactory(agentFactory::createAgent)
+                    .build();
+
+            // Let's create weather agent configuration
+
+            final var mathAgentConfig = AgentConfiguration.builder()
+                    .agentName("Math Agent")
+                    .description("Provides simple math operations.")
+                    .prompt("Respond with the answer for provided query.")
+                    .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
+                    .build();
+            log.info("Math agent id: {}",
+                     registry.configureAgent(mathAgentConfig)
+                             .map(AgentMetadata::getId)
+                             .orElseThrow());
+
+            final var model = new SimpleOpenAIModel<>(
+                    "gpt-4o",
+                    SimpleOpenAIAzure.builder()
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                            .baseUrl(wiremock.getHttpBaseUrl())
+                            .apiKey("BLAH")
+                            .apiVersion("2024-10-21")
+                            .objectMapper(MAPPER)
+                            .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                            .build(),
+                    MAPPER
+            );
+
+            final var setup = AgentSetup.builder()
+                    .mapper(MAPPER)
+                    .model(model)
+                    .modelSettings(ModelSettings.builder()
+                                           .temperature(0f)
+                                           .seed(0)
+                                           .parallelToolCalls(false)
+                                           .build())
+                    .build();
+
+            final var topAgent = PlannerAgent.builder()
+                    .setup(setup)
+                    .extension(registry)
+                    .build();
+            final var response = topAgent.executeAsync(AgentInput.<String>builder()
+                                                               .request("What is the sum of 3 and 6?")
+                                                               .build())
+                    .join();
+            printAgentResponse(response);
+            assertTrue(response.getData().matches(".*9.*"));
+            ensureOutputGenerated(response);
+        }
+    }
+
+    @Test
+    @SneakyThrows
+    void testMCPFromFile(WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(5, "art.mcpf", getClass());
+        final var mcpJsonPath = Paths.get(Objects.requireNonNull(getClass().getResource(
+                "/mcp.json")).getPath()).toAbsolutePath().toString();
+        final var agentSource = new InMemoryAgentConfigurationSource();
+        final var okHttpClient = new OkHttpClient.Builder()
+                .callTimeout(Duration.ofSeconds(180))
+                .connectTimeout(Duration.ofSeconds(120))
+                .readTimeout(Duration.ofSeconds(180))
+                .writeTimeout(Duration.ofSeconds(120))
                 .build();
-        mcpClient.initialize();
         final var agentFactory = ConfiguredAgentFactory.builder()
                 .mcpToolboxFactory(MCPToolBoxFactory.builder()
                                            .objectMapper(MAPPER)
-                                           .clientProvider(upstream -> {
-                                               if (upstream.equals("mcp")) {
-                                                   return Optional.of(mcpClient);
-                                               }
-                                               return Optional.empty();
-                                           })
-                                           .build())
+                                           .build()
+                                           .loadFromFile(mcpJsonPath))
                 .build();
         final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
                 .agentSource(agentSource)
@@ -311,8 +380,8 @@ class AgentRegistryTest {
                 SimpleOpenAIAzure.builder()
 //                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
 //                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                            .baseUrl(wiremock.getHttpBaseUrl())
+                            .apiKey("BLAH")
                         .apiVersion("2024-10-21")
                         .objectMapper(MAPPER)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
@@ -338,8 +407,7 @@ class AgentRegistryTest {
                                                            .request("What is the sum of 3 and 6?")
                                                            .build())
                 .join();
-        log.info("Agent response: {}", MAPPER.writerWithDefaultPrettyPrinter()
-                .writeValueAsString(response.getData()));
+        printAgentResponse(response);
         assertTrue(response.getData().matches(".*9.*"));
         ensureOutputGenerated(response);
     }
@@ -426,8 +494,7 @@ class AgentRegistryTest {
                                                            .request("How is the weather in Bangalore?")
                                                            .build())
                 .join();
-        log.info("Agent response: {}", MAPPER.writerWithDefaultPrettyPrinter()
-                .writeValueAsString(response.getData()));
+        printAgentResponse(response);
         assertTrue(response.getData().matches(".*[sS]unny.*"));
         ensureOutputGenerated(response);
     }
@@ -452,6 +519,11 @@ class AgentRegistryTest {
                                      .build()
                             )
                         );
+    }
+
+    private static void printAgentResponse(AgentOutput<String> response) throws JsonProcessingException {
+        log.info("Agent response: {}", MAPPER.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(response.getData()));
     }
 
     @SneakyThrows

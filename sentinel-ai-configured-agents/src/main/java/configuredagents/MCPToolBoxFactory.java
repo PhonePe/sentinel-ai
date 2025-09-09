@@ -1,31 +1,100 @@
 package configuredagents;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.phonepe.sentinelai.toolbox.mcp.MCPJsonReader;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPConfiguration;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPServerConfig;
 import io.modelcontextprotocol.client.McpSyncClient;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NonNull;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
  * A factory to create instances of {@link MCPToolBox} from the client provider. We do not apply tool filters here,
  * that is done in the {@link ConfiguredAgentFactory} where we can apply filters based on the agent configuration.
  */
-@AllArgsConstructor
-@Builder
+@Slf4j
 public class MCPToolBoxFactory {
     @NonNull
     private final ObjectMapper objectMapper;
 
-    @NonNull
     private final Function<String, Optional<McpSyncClient>> clientProvider;
+    private final Map<String, MCPServerConfig> knownConfigs = new ConcurrentHashMap<>();
 
+    @Builder
+    public MCPToolBoxFactory(
+            @NonNull ObjectMapper objectMapper,
+            Function<String, Optional<McpSyncClient>> clientProvider) {
+        this.objectMapper = objectMapper;
+        this.clientProvider = Objects.requireNonNullElse(clientProvider, upstream -> Optional.empty());
+    }
+
+    /**
+     * Create an MCPToolBox for the given upstream if the upstream is known. If not call the clientProvider to get
+     * a McpSyncClient for the upstream and build an MCPToolBox from that client. If the clientProvider does not
+     * provide a client, return an empty Optional.
+     *
+     * @param upstream Name of the MCP server
+     * @return An Optional containing the MCPToolBox if the upstream is known, otherwise an empty Optional.
+     */
     public Optional<MCPToolBox> create(String upstream) {
-        return clientProvider.apply(upstream)
-                .map(client-> new MCPToolBox(upstream, client, objectMapper, Set.of()));
+        return Optional.ofNullable(knownConfigs.get(upstream))
+                .map(mcpServerConfig -> new MCPToolBox(upstream, objectMapper, mcpServerConfig))
+                .or(() -> {
+                    log.debug("No MCPServerConfig found for upstream: {}. Falling back to client provider.", upstream);
+                    return clientProvider.apply(upstream)
+                            .map(client -> {
+                                log.debug("Client provider provided a client for upstream: {}", upstream);
+                                return new MCPToolBox(upstream, client, objectMapper, Set.of());
+                            });
+                });
+    }
+
+    /**
+     * Load MCP server configs from server.json file
+     *
+     * @param serverJsonPath Path to server.json file
+     * @return this factory with loaded MCPToolBox instances
+     */
+    @SneakyThrows
+    public MCPToolBoxFactory loadFromFile(String serverJsonPath) {
+        final var contents = Files.readAllBytes(Path.of(serverJsonPath));
+        return loadFromContent(contents);
+    }
+
+    /**
+     * Load MCP server configs from the given byte array
+     * @param contents Contents of the server.json file
+     * @return this factory with loaded MCPToolBox instances
+     */
+    @SneakyThrows
+    private MCPToolBoxFactory loadFromContent(byte[] contents) {
+        final var config = objectMapper.readValue(contents, MCPConfiguration.class);
+        MCPJsonReader.loadServers(config, this::addConfig);
+        return this;
+    }
+
+    /**
+     * Add an MCP server config for the given upstream. If a config already exists for the upstream, it is not
+     * overwritten.
+     *
+     * @param upstream Name of the MCP server
+     * @param config   MCP server configuration
+     * @return this factory with the added MCP server config
+     */
+    public MCPToolBoxFactory addConfig(String upstream, MCPServerConfig config) {
+        knownConfigs.putIfAbsent(upstream, config);
+        return this;
     }
 }

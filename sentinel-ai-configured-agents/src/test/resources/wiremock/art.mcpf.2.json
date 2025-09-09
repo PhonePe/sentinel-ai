@@ -1,0 +1,37 @@
+{
+  "id" : "chatcmpl-CDjEA7Qwh1C0Nq00ImiHXsYMkbUKr",
+  "object" : "chat.completion",
+  "created" : 1757388154,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_iGoPm5xygM2hsiFI0QCwvcfS",
+        "type" : "function",
+        "function" : {
+          "name" : "agent_registry_invoke_agent",
+          "arguments" : "{\"agentId\":\"math_agent\",\"agentInput\":\"{\\\"data\\\":\\\"What is the sum of 3 and 6?\\\"}\"}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 723,
+    "completion_tokens" : 40,
+    "total_tokens" : 763,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+
