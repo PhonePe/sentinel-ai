@@ -38,7 +38,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Stream;
@@ -259,7 +258,7 @@ class AgentRegistryTest {
     @ParameterizedTest
     @SneakyThrows
     @MethodSource("generateMcpTBFactory")
-    void testMCP1(
+    void testMCP(
             String mockFilePrefix,
             int numMockFiles,
             final MCPToolBoxFactory toolBoxFactory,
@@ -341,80 +340,6 @@ class AgentRegistryTest {
             assertTrue(response.getData().matches(".*9.*"));
             ensureOutputGenerated(response);
         }
-    }
-
-    @Test
-    @SneakyThrows
-    void testMCPFromFile(WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(5, "art.mcpf", getClass());
-        final var mcpJsonPath = Paths.get(Objects.requireNonNull(getClass().getResource(
-                "/mcp.json")).getPath()).toAbsolutePath().toString();
-        final var agentSource = new InMemoryAgentConfigurationSource();
-        final var okHttpClient = new OkHttpClient.Builder()
-                .callTimeout(Duration.ofSeconds(180))
-                .connectTimeout(Duration.ofSeconds(120))
-                .readTimeout(Duration.ofSeconds(180))
-                .writeTimeout(Duration.ofSeconds(120))
-                .build();
-        final var agentFactory = ConfiguredAgentFactory.builder()
-                .mcpToolboxFactory(MCPToolBoxFactory.builder()
-                                           .objectMapper(MAPPER)
-                                           .build()
-                                           .loadFromFile(mcpJsonPath))
-                .build();
-        final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
-                .agentSource(agentSource)
-                .agentFactory(agentFactory::createAgent)
-                .build();
-
-        // Let's create weather agent configuration
-
-        final var mathAgentConfig = AgentConfiguration.builder()
-                .agentName("Math Agent")
-                .description("Provides simple math operations.")
-                .prompt("Respond with the answer for provided query.")
-                .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
-                .build();
-        log.info("Math agent id: {}",
-                 registry.configureAgent(mathAgentConfig)
-                         .map(AgentMetadata::getId)
-                         .orElseThrow());
-
-        final var model = new SimpleOpenAIModel<>(
-                "gpt-4o",
-                SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
-                        .apiVersion("2024-10-21")
-                        .objectMapper(MAPPER)
-                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                        .build(),
-                MAPPER
-        );
-
-        final var setup = AgentSetup.builder()
-                .mapper(MAPPER)
-                .model(model)
-                .modelSettings(ModelSettings.builder()
-                                       .temperature(0f)
-                                       .seed(0)
-                                       .parallelToolCalls(false)
-                                       .build())
-                .build();
-
-        final var topAgent = PlannerAgent.builder()
-                .setup(setup)
-                .extension(registry)
-                .build();
-        final var response = topAgent.executeAsync(AgentInput.<String>builder()
-                                                           .request("What is the sum of 3 and 6?")
-                                                           .build())
-                .join();
-        printAgentResponse(response);
-        assertTrue(response.getData().matches(".*9.*"));
-        ensureOutputGenerated(response);
     }
 
     @Tool("Provides the weather for a location")
