@@ -4,3 +4,4 @@ nav:
   - tools.md
   - using-mcp-servers.md
   - calling-remote-services.md
+  - agent-registry.md
