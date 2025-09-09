@@ -8,7 +8,6 @@ import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.Tool;
-import com.phonepe.sentinelai.core.utils.EnvLoader;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
@@ -60,10 +59,10 @@ class SimpleOpenAIModelTextIOTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-//                        .baseUrl(wiremock.getHttpBaseUrl())
-//                        .apiKey("BLAH")
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
                         .apiVersion("2024-10-21")
                         .objectMapper(objectMapper)
                         .clientAdapter(new OkHttpClientAdapter(httpClient))
