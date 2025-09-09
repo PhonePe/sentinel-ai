@@ -1,6 +1,7 @@
 package configuredagents;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.agent.*;
@@ -10,8 +11,11 @@ import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
 import lombok.NonNull;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -61,15 +65,35 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
         });
     }
 
+    @SneakyThrows
+    public List<AgentMetadata> loadAgentsFromFile(final String agentConfig) {
+        return loadAgentsFromContent(Files.readAllBytes(Paths.get(agentConfig)));
+    }
+
+    @SneakyThrows
+    public List<AgentMetadata> loadAgentsFromContent(byte[] content) {
+        final var configs = mapper.readValue(content, new TypeReference<List<AgentConfiguration>>() {
+        });
+        final var agents = configs.stream()
+                .map(this::configureAgent)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toList();
+        if(log.isDebugEnabled()) {
+            log.debug("Loaded agents: {}", agents.stream().map(AgentMetadata::getId).toList());
+        }
+        return agents;
+    }
+
     public Optional<AgentMetadata> configureAgent(@NonNull final AgentConfiguration configuration) {
         final var fixedConfig = new AgentConfiguration(
                 configuration.getAgentName(),
                 configuration.getDescription(),
                 configuration.getPrompt(),
                 Objects.requireNonNullElseGet(configuration.getInputSchema(),
-                                              () -> JsonUtils.openAISchema(String.class, "data", mapper)),
+                                              () -> JsonUtils.schemaForPrimitive(String.class, "data", mapper)),
                 Objects.requireNonNullElseGet(configuration.getOutputSchema(),
-                                              () -> JsonUtils.openAISchema(String.class, Agent.OUTPUT_VARIABLE_NAME, mapper)),
+                                              () -> JsonUtils.schema(String.class)),
                 Objects.requireNonNullElseGet(configuration.getCapabilities(), List::of));
         final var agentId = AgentUtils.id(fixedConfig.getAgentName());
         return agentSource.save(agentId, fixedConfig);

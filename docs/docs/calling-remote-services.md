@@ -9,7 +9,7 @@ provides multiple ways of accessing functionality from remote services. The foll
 ways in which an agent written using SentinelAI can access functionality provided by remote services.
 
 !!!tip
-    If you have not done already, please go through the concept of [ToolBoxes](tools.md#using-toolbox){:target="_blank"}
+    If you have not done already, please go through the concept of [ToolBoxes](tools.md#using-toolbox)`{:target="_blank"}`
     and how to register them to an agent.
 
 While MCP servers provide a quick way to talk to services, one of the major problems with them is that they expose a

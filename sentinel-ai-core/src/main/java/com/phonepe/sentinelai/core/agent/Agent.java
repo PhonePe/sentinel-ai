@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -67,7 +66,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     public static final String OUTPUT_GENERATOR_ID = "__output_generator__";
 
-    @VisibleForTesting
     public static final String OUTPUT_VARIABLE_NAME = "output";
 
     public enum StreamProcessingMode {

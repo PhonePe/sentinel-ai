@@ -55,7 +55,7 @@ public class ConfiguredAgentFactory {
                             return null;
                         }
                         final var selectedTools =
-                                Objects.requireNonNullElseGet(remoteHttpCallCapability.getSelectedRemoteTools(),
+                                Objects.requireNonNullElseGet(remoteHttpCallCapability.getSelectedTools(),
                                                               Map::<String, Set<String>>of);
                         toolBoxes.addAll(
                                 selectedTools
