@@ -31,6 +31,7 @@ public class MCPToolBoxFactory {
 
     private final Function<String, Optional<McpSyncClient>> clientProvider;
     private final Map<String, MCPServerConfig> knownConfigs = new ConcurrentHashMap<>();
+    private final Map<String, McpSyncClient> knownClients = new ConcurrentHashMap<>();
 
     @Builder
     public MCPToolBoxFactory(
@@ -49,16 +50,30 @@ public class MCPToolBoxFactory {
      * @return An Optional containing the MCPToolBox if the upstream is known, otherwise an empty Optional.
      */
     public Optional<MCPToolBox> create(String upstream) {
-        return Optional.ofNullable(knownConfigs.get(upstream))
-                .map(mcpServerConfig -> new MCPToolBox(upstream, objectMapper, mcpServerConfig))
-                .or(() -> {
-                    log.debug("No MCPServerConfig found for upstream: {}. Falling back to client provider.", upstream);
-                    return clientProvider.apply(upstream)
-                            .map(client -> {
-                                log.debug("Client provider provided a client for upstream: {}", upstream);
-                                return new MCPToolBox(upstream, client, objectMapper, Set.of());
-                            });
+        final var tbFromServerConfig = Optional.ofNullable(knownConfigs.get(upstream))
+                .map(mcpServerConfig -> new MCPToolBox(upstream, objectMapper, mcpServerConfig));
+        if (tbFromServerConfig.isPresent()) {
+            log.debug("Found MCPServerConfig for upstream: {}", upstream);
+            return tbFromServerConfig;
+        }
+        final var tbFromKnownClient = Optional.ofNullable(knownClients.get(upstream))
+                .map(client -> {
+                    log.debug("Found known McpSyncClient for upstream: {}", upstream);
+                    return new MCPToolBox(upstream, client, objectMapper, Set.of());
                 });
+        if (tbFromKnownClient.isPresent()) {
+            return tbFromKnownClient;
+        }
+        log.debug("No MCPServerConfig or Client found for upstream: {}. Falling back to client provider.", upstream);
+        final var tbClientProvided = clientProvider.apply(upstream)
+                .map(client -> {
+                    log.debug("Client provider provided a client for upstream: {}", upstream);
+                    return new MCPToolBox(upstream, client, objectMapper, Set.of());
+                });
+        if (tbClientProvided.isEmpty()) {
+            log.error("No toolbox could be constructed for mcp server name: {}. Returning empty.", upstream);
+        }
+        return tbClientProvided;
     }
 
     /**
@@ -75,13 +90,14 @@ public class MCPToolBoxFactory {
 
     /**
      * Load MCP server configs from the given byte array
+     *
      * @param contents Contents of the server.json file
      * @return this factory with loaded MCPToolBox instances
      */
     @SneakyThrows
     public MCPToolBoxFactory loadFromContent(byte[] contents) {
         final var config = objectMapper.readValue(contents, MCPConfiguration.class);
-        MCPJsonReader.loadServers(config, this::addConfig);
+        MCPJsonReader.loadServers(config, this::registerMCPServerConfig);
         return this;
     }
 
@@ -93,8 +109,21 @@ public class MCPToolBoxFactory {
      * @param config   MCP server configuration
      * @return this factory with the added MCP server config
      */
-    public MCPToolBoxFactory addConfig(String upstream, MCPServerConfig config) {
+    public MCPToolBoxFactory registerMCPServerConfig(String upstream, MCPServerConfig config) {
         knownConfigs.putIfAbsent(upstream, config);
+        return this;
+    }
+
+    /**
+     * Add an MCP client for the given upstream. If a client already exists for the upstream, it is not
+     * overwritten.
+     *
+     * @param upstream Name of the MCP server
+     * @param client   MCP client
+     * @return this factory with the added MCP client
+     */
+    public MCPToolBoxFactory registerMcpClient(String upstream, McpSyncClient client) {
+        knownClients.putIfAbsent(upstream, client);
         return this;
     }
 }

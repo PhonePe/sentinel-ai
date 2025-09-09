@@ -256,9 +256,14 @@ class AgentRegistryTest {
         ensureOutputGenerated(response);
     }
 
-    @Test
+    @ParameterizedTest
     @SneakyThrows
-    void testMCP(WireMockRuntimeInfo wiremock) {
+    @MethodSource("generateMcpTBFactory")
+    void testMCP1(
+            String mockFilePrefix,
+            int numMockFiles,
+            final MCPToolBoxFactory toolBoxFactory,
+            WireMockRuntimeInfo wiremock) {
         TestUtils.setupMocks(6, "art.mcp", getClass());
 
         final var agentSource = new InMemoryAgentConfigurationSource();
@@ -380,8 +385,8 @@ class AgentRegistryTest {
                 SimpleOpenAIAzure.builder()
 //                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
 //                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                            .baseUrl(wiremock.getHttpBaseUrl())
-                            .apiKey("BLAH")
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
                         .apiVersion("2024-10-21")
                         .objectMapper(MAPPER)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
@@ -518,6 +523,36 @@ class AgentRegistryTest {
                                      .outputSchema(loadSchema("outputschema.json"))
                                      .build()
                             )
+                        );
+    }
+
+    public static Stream<Arguments> generateMcpTBFactory() {
+        final var params = ServerParameters.builder("npx")
+                .args("-y", "@modelcontextprotocol/server-everything")
+                .build();
+        final var transport = new StdioClientTransport(params);
+        final var mcpClient = McpClient.sync(transport)
+                .build();
+        return Stream.of(
+                Arguments.of("art.mcp", 5,
+                             MCPToolBoxFactory.builder()
+                                     .objectMapper(MAPPER)
+                                     .clientProvider(upstream -> Optional.of(mcpClient))
+                                     .build()),
+                Arguments.of("art.mcpf", 6,
+                             MCPToolBoxFactory.builder()
+                                     .objectMapper(MAPPER)
+                                     .clientProvider(upstream -> Optional.empty())
+                                     .build()
+                                     .loadFromFile(Objects.requireNonNull(
+                                             AgentRegistryTest.class.getResource("/mcp.json")).getPath())),
+                Arguments.of("art.mcp", 5,
+                             MCPToolBoxFactory.builder()
+                                     .objectMapper(MAPPER)
+                                     .clientProvider(upstream -> Optional.empty())
+                                     .build()
+                                     .registerMcpClient("mcp", mcpClient))
+
                         );
     }
 
