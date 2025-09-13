@@ -1,3 +1,8 @@
+---
+title: Using MCP Servers
+description: How to use MCP servers with SentinelAI agents to register and use tools.
+---
+
 # Using MCP Servers
 
 An Agent by itself does very little. Most of the power comes from it's ability to invoke tools or a set of tools to

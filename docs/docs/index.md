@@ -1,3 +1,8 @@
+---
+title: Introduction
+description: Introduction to Sentinel AI, a high level Java framework for building and deploying AI agents.
+---
+
 # Introduction
 
 Sentinel AI is a high level Java framework that allows you to build and deploy AI agents using a variety of LLMs and

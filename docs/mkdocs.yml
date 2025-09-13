@@ -44,6 +44,7 @@ plugins:
   - glightbox
   - search
   - awesome-pages
+  - meta
   - privacy:
       enabled: true
       cache: true
@@ -51,11 +52,11 @@ plugins:
       assets: true
       assets_fetch: true
       assets_fetch_dir: assets/external
-      links: true
-      links_noopener: true
+
   - offline:
      enabled: true
-copyright: "Copyright &copy; 2024  PhonePe Private Limited"
+
+copyright: "Copyright &copy; 2025  PhonePe Private Limited"
 
 markdown_extensions:
   - toc:

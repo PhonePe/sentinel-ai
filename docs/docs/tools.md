@@ -1,3 +1,8 @@
+---
+title: Using Tools in Agents
+description: Tool Call Support in SentinelAI
+---
+
 # Tool Call Support
 
 Major power of an AI agent comes from it's ability to invoke a tool or a set of tools to perform a task. Sentinel AI

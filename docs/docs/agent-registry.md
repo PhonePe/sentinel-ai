@@ -1,3 +1,8 @@
+---
+title: Configured Agents and Registry
+description: Learn how to use Configured Agents and Agent Registry in Sentinel AI to build orchestrator/worker patterns.
+---
+
 # Configured Agents and Registry
 
 As powerful as single agents can be,  due to a variety of limitations like context window length, chances of hallucination

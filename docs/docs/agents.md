@@ -1,3 +1,8 @@
+---
+title: Agents
+description: Creating and using agents in Sentinel AI
+---
+
 # Agent Basics
 
 The core abstraction of Sentinel AI is the `Agent` class. The `Agent` class is a generic class that takes three type
@@ -106,20 +111,22 @@ set only the required parameters and will default whatever it can if not provide
 
 Here are all available settings for the `AgentSetup` class:
 
-| **Setting**       | **Type**          | **Description**                                                                                                   |
-|-------------------|-------------------|-------------------------------------------------------------------------------------------------------------------|
-| `mapper`          | `ObjectMapper`    | The object mapper to use for serialization/deserialization. If not provided, a default one will be created.       |
-| `model`           | `Model`           | The LLM to be used for the agent. This can be provided at runtime. If not provided, an error will be thrown.      |
-| `modelSettings`   | `ModelSettings`   | The settings for the model. This can be provided at runtime. If not provided, an error will be thrown.            |
-| `executorService` | `ExecutorService` | The executor service to use for running the agent. If not provided, a default cached thread pool will be created. |
-| `eventBus`        | `EventBus`        | The event bus to be used for the agent. If not provided, a default event bus will be created.                     |
+| **Setting**            | **Type**               | **Description**                                                                                                   |
+|------------------------|------------------- -----|-------------------------------------------------------------------------------------------------------------------|
+| `mapper`               | `ObjectMapper`          | The object mapper to use for serialization/deserialization. If not provided, a default one will be created.       |
+| `model`                | `Model`                 | The LLM to be used for the agent. This can be provided at runtime. If not provided, an error will be thrown.      |
+| `modelSettings`        | [`ModelSettings`](#model-settings)  | The settings for the model. This can be provided at runtime. If not provided, an error will be thrown.            |
+| `executorService`      | `ExecutorService`       | The executor service to use for running the agent. If not provided, a default cached thread pool will be created. |
+| `eventBus`             | `EventBus`              | The event bus to be used for the agent. If not provided, a default event bus will be created.                     |
+| `outputGenerationMode` | `OutputGenerationMode`  | Output generation mode to use for this model. Can be `TOOL_BASED` (default) or `STRUCTURED_OUTPUT`. Typically, other than OpenAI models, it is safer to leave it at the default `TOOL_BASED` mode. |
+| `outputGenerationTool` | `UnaryOperator<String>` | A function that the model can use to generate the JSON string output. If not provided (recommended), Sentinel AI will use it's built in tool if the `outputGenerationMode` is set to `TOOL_BASED`  |
+| `retrySetup`           | [`RetrySetup`](#retry-setup)            | Retry setup to use for model calls. If not provided, default setup will be added.                                |
 
 !!!danger "Required parameters"
     - The `model`, and `modelSettings` are required parameters. If not provided, an error will be thrown. However, it is
       possible that model etc is not known during agent creation. In that case, the parameters can be provided as part of
       the `execute*` methods. If neither is available, exception will be provided at runtime.
-    - The `mapper`, `executorService` and `eventBus` are optional parameters. If not provided, a default one will be
-      created.
+    - All the other parameters are optional. If not provided, a default one will be created/provided.
 
 ### Model Settings
 
@@ -137,6 +144,40 @@ configure the model. The class is available in the core library itself and provi
 | `presencePenalty`   | `Float`                | Penalty for adding new tokens based on their presence in the output so far.                    |
 | `frequencyPenalty`  | `Float`                | Penalty for adding new tokens based on how many times they have appeared in the output so far. |
 | `logitBias`         | `Map<String, Integer>` | Controls the likelihood of specific tokens being generated.                                    |
+
+### Retry Setup
+The `RetrySetup` class is a configuration class that is used to configure the retry mechanism for model calls.
+
+| **Setting**         | **Type**               | **Description**                                                                                 |
+|---------------------|------------------------|-------------------------------------------------------------------------------------------------|
+| `totalAttempts`   | `int`                  | Total number of attempts to make. This includes the successful attempts.                        |
+| `delayAfterFailedAttempt` | `Duration`             | Delay after a failed attempt before retrying.                                                   |
+| `retriableErrorTypes` | `Set<ErrorTypes>` | Specific error types to retry on. If not provided, pre-defined set of error types are retried.  Check [relevant section](#default-error-codes). |
+                                    
+
+#### Default Error Codes
+The following error codes are retried by default:
+
+| Error Code                    | Description                                   | Retriable |
+|-------------------------------|-----------------------------------------------|-----------|
+| SUCCESS                       | Success                                       | No        |
+| NO_RESPONSE                   | No response                                   | Yes       |
+| REFUSED                       | Refused                                       | No        |
+| FILTERED                      | Content filtered                              | No        |
+| LENGTH_EXCEEDED               | Content length exceeded                       | No        |
+| TOOL_CALL_PERMANENT_FAILURE   | Tool call failed permanently for tool         | No        |
+| TOOL_CALL_TEMPORARY_FAILURE   | Tool call failed temporarily for tool         | Yes       |
+| JSON_ERROR                    | Error parsing JSON                            | Yes       |
+| SERIALIZATION_ERROR           | Error serializing object to JSON              | Yes       |
+| DESERIALIZATION_ERROR         | Error deserializing object to JSON            | Yes       |
+| UNKNOWN_FINISH_REASON         | Unknown finish reason                         | Yes       |
+| GENERIC_MODEL_CALL_FAILURE    | Model call failed with error                  | Yes       |
+| DATA_VALIDATION_FAILURE       | Model data validation failed. Errors          | Yes       |
+| FORCED_RETRY                  | Retry has been forced                         | Yes       |
+| UNKNOWN                       | Unknown response                              | Yes       |
+
+!!!warning
+    Refer to [ErrorCode.java](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-core/src/main/java/com/phonepe/sentinelai/core/errors/ErrorType.java){:target="_blank"} to get the latest list of error codes.
 
 ### Sample setup
 
@@ -426,6 +467,80 @@ agent.execute(
               .request(new BookInfo("978-0393096729", "War and Peace"))
               .build());
 ```
+
+## Customizing Agent Behaviour
+
+The `Agent` class constructor allows you to customize agent behaviour extensively by passing additional parameters. This
+enables you to control how your agent handles tools, extensions, validation, and error handling.
+
+### Constructor Parameters
+
+| Parameter                | Type                                         | Mandatory | Description                                                                                       |
+|--------------------------|----------------------------------------------|-----------|---------------------------------------------------------------------------------------------------|
+| outputType               | Class&lt;T&gt;                               | Yes       | The class of the agent's output type.                                                             |
+| systemPrompt             | String                                       | Yes       | The system prompt string for the agent.                                                           |
+| setup                    | AgentSetup                                   | Yes       | The setup/configuration for the agent (model, mapper, retry, etc).                                |
+| extensions               | List&lt;AgentExtension&lt;R, T, A&gt;&gt;    | No        | List of extensions to add custom logic, facts, or output schemas.                                 |
+| knownTools               | Map&lt;String, ExecutableTool&gt;            | No        | Map of tool id to tool implementation for registering custom tools.                               |
+| toolRunApprovalSeeker    | ToolRunApprovalSeeker&lt;R, T, A&gt;         | No        | (Advanced) Custom approval logic for tool runs.                                                   |
+| outputValidator          | OutputValidator&lt;R, T&gt;                  | No        | (Advanced) Custom output validation logic.                                                        |
+| errorHandler             | ErrorResponseHandler&lt;R&gt;                | No        | (Advanced) Custom error handling logic.                                                           |
+
+For most use cases, you can use the simpler constructor with just `outputType`, `systemPrompt`, `setup`, `extensions`, and `knownTools`. For advanced customization, use the full constructor and pass your own implementations for `toolRunApprovalSeeker`, `outputValidator`, or `errorHandler`.
+
+### Example: Basic Customization
+
+```java
+public class BookSummarizingAgent extends Agent<BookInfo, BookSummary, BookSummarizingAgent> {
+    public BookSummarizingAgent(AgentSetup setup) {
+        super(BookSummary.class,
+              """
+               You are an expert in summarizing books. You will be provided with the title and ISBN of a book.
+               You need to summarize the book and provide the topics discussed in the book.
+               """,
+              setup,
+              List.of(),
+              Map.of());
+    }
+    
+    @Override
+    public String name() {
+        return "book-summarizer";
+    }
+}
+```
+
+### Example: Advanced Customization
+
+```java
+public class CustomAgent extends Agent<MyRequest, MyResponse, CustomAgent> {
+    public CustomAgent(AgentSetup setup,
+                       ToolRunApprovalSeeker<MyRequest, MyResponse, CustomAgent> approvalSeeker,
+                       OutputValidator<MyRequest, MyResponse> validator,
+                       ErrorResponseHandler<MyRequest> errorHandler) {
+        super(MyResponse.class,
+              "Custom system prompt",
+              setup,
+              List.of(new MyExtension()),
+              Map.of("myTool", new MyTool()),
+              approvalSeeker,
+              validator,
+              errorHandler);
+    }
+    @Override
+    public String name() {
+        return "custom-agent";
+    }
+}
+```
+
+Use advanced options if you need to:
+
+- Approve or reject tool runs dynamically
+- Add custom validation logic for model outputs
+- Handle errors in a custom way
+
+Refer to the Javadoc for the `Agent` class for more details on each parameter and their advanced usage.
 
 ## Extensions
 

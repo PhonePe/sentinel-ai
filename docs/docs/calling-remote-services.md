@@ -1,3 +1,8 @@
+---
+title: Calling Remote HTTP Services
+description: How to make HTTP calls to remote services from an Agent using HttpToolBox
+---
+
 # Making HTTP Calls to Remote Services
 
 An Agent by itself does very little. Most of the power comes from it's ability to invoke tools or a set of tools to
