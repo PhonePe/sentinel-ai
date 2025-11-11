@@ -155,6 +155,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                         .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
                 logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
+                mergeUsage(context.getModelUsageStats(), completionResponse.getUsage());
                 final var response = extractResponse(completionResponse);
                 if (null == response) {
                     return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.NO_RESPONSE));
@@ -313,6 +314,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                         .map(completionResponse -> {
                             logModelResponse(completionResponse);
                             mergeUsage(stats, completionResponse.getUsage());
+                            mergeUsage(context.getModelUsageStats(), completionResponse.getUsage());
                             final var response = extractResponse(completionResponse);
                             if (null == response) {
                                 return null; //No response received yet, continue to next chunk
