@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationHandler;
+import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarly;
 import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
@@ -65,7 +67,8 @@ class AgentTest {
                   knownTools,
                   toolRunApprovalSeeker,
                   new DefaultOutputValidator<>(),
-                  new DefaultErrorHandler<>());
+                  new DefaultErrorHandler<>(),
+                  new NeverTerminateEarly());
         }
 
         @Override
@@ -114,7 +117,8 @@ class AgentTest {
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner) {
+                                                                ToolRunner toolRunner,
+                                                                EarlyTerminationHandler modelRunTerminationHandler) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey("test_agent_get_name"));
                                                                 final var response = toolRunner.runTool(
@@ -171,7 +175,8 @@ class AgentTest {
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner) {
+                                                                ToolRunner toolRunner,
+                                                                EarlyTerminationHandler modelRunTerminationHandler) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey("test_agent_get_name"));
                                                                 final var response = toolRunner.runTool(
@@ -231,7 +236,8 @@ class AgentTest {
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner) {
+                                                                ToolRunner toolRunner,
+                                                                EarlyTerminationHandler modelRunTerminationHandler) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey(
                                                                         "test_agent_session_summary"));
@@ -292,7 +298,8 @@ class AgentTest {
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner) {
+                                                                ToolRunner toolRunner,
+                                                                EarlyTerminationHandler modelRunTerminationHandler) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey("test_agent_void_tool"));
                                                                 final var response = toolRunner.runTool(
@@ -348,7 +355,8 @@ class AgentTest {
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner) {
+                                                                ToolRunner toolRunner,
+                                                                EarlyTerminationHandler modelRunTerminationHandler) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey(
                                                                         "test_agent_structured_tool"));
@@ -413,7 +421,8 @@ class AgentTest {
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner) {
+                                                                ToolRunner toolRunner,
+                                                                EarlyTerminationHandler modelRunTerminationHandler) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey("test_agent_throw_tool"));
                                                                 final var response = toolRunner.runTool(
@@ -471,7 +480,8 @@ class AgentTest {
                                                                 Collection<ModelOutputDefinition> outputDefinitions,
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner) {
+                                                                ToolRunner toolRunner,
+                                                                EarlyTerminationHandler modelRunTerminationHandler) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 final var response = toolRunner.runTool(
                                                                         tools,

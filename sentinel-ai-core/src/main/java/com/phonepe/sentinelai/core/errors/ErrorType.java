@@ -24,6 +24,7 @@ public enum ErrorType {
     DATA_VALIDATION_FAILURE("Model data validation failed. Errors: %s", true),
     FORCED_RETRY("Retry has been forced", true),
     UNKNOWN("Unknown response", true),
+    MODEL_RUN_TERMINATED("Model run was terminated", false),
     ;
 
     private final String message;

@@ -14,6 +14,8 @@ import com.google.common.primitives.Primitives;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationHandler;
+import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarly;
 import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
 import com.phonepe.sentinelai.core.errorhandling.ErrorResponseHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
@@ -36,10 +38,7 @@ import com.phonepe.sentinelai.core.utils.ToolUtils;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import io.appform.signals.signals.ConsumingFireForgetSignal;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.SneakyThrows;
-import lombok.Value;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -98,6 +97,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker;
     private final OutputValidator<R, T> outputValidator;
     private final ErrorResponseHandler<R> errorHandler;
+    private final EarlyTerminationHandler modelRunTerminationHandler;
 
     private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
     private final XmlMapper xmlMapper = new XmlMapper();
@@ -120,7 +120,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
              knownTools,
              new ApproveAllToolRuns<>(),
              new DefaultOutputValidator<>(),
-             new DefaultErrorHandler<>());
+             new DefaultErrorHandler<>(),
+             new NeverTerminateEarly());
     }
 
     @SneakyThrows
@@ -133,7 +134,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             final Map<String, ExecutableTool> knownTools,
             final ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker,
             final OutputValidator<R, T> outputValidator,
-            final ErrorResponseHandler<R> errorHandler) {
+            final ErrorResponseHandler<R> errorHandler,
+            final EarlyTerminationHandler modelRunTerminationHandler) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(systemPrompt), "Please provide a valid system prompt");
 
         this.outputType = outputType;
@@ -146,6 +148,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         this.toolRunApprovalSeeker = Objects.requireNonNullElseGet(toolRunApprovalSeeker, ApproveAllToolRuns::new);
         this.outputValidator = Objects.requireNonNullElseGet(outputValidator, DefaultOutputValidator::new);
         this.errorHandler = Objects.requireNonNullElseGet(errorHandler, DefaultErrorHandler::new);
+        this.modelRunTerminationHandler = Objects.requireNonNullElseGet(modelRunTerminationHandler, NeverTerminateEarly::new);
 
         xmlMapper.registerModule(new JavaTimeModule());
         xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
@@ -436,7 +439,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                             messages,
                             context,
                             isTextStreaming,
-                            streamHandler);
+                            streamHandler,
+                            modelRunTerminationHandler);
                     return errorHandler.handle(context,
                                                outputProcessor.apply(new ModelOutputProcessingContext<>(context,
                                                                                                         mergedAgentSetup,
@@ -603,7 +607,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                              new AgentToolRunner<>(self,
                                                    mergedAgentSetup,
                                                    toolRunApprovalSeeker,
-                                                   context))
+                                                   context),
+                            modelRunTerminationHandler)
                     .get();
         }
         catch (InterruptedException e) {
@@ -628,7 +633,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             List<AgentMessage> messages,
             AgentRunContext<R> context,
             boolean isTextStreaming,
-            Consumer<byte[]> streamHandler) {
+            Consumer<byte[]> streamHandler,
+            EarlyTerminationHandler earlyTerminationHandler) {
         CompletableFuture<ModelOutput> modelFuture;
 
         final var toolRunner = new AgentToolRunner<>(self,
@@ -643,7 +649,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                 messages,
                                 knownTools,
                                 toolRunner,
-                                streamHandler);
+                                streamHandler,
+                                earlyTerminationHandler);
             }
             else {
                 modelFuture = mergedAgentSetup.getModel()
@@ -652,7 +659,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                 messages,
                                 knownTools,
                                 toolRunner,
-                                streamHandler);
+                                streamHandler,
+                                earlyTerminationHandler);
             }
             return modelFuture.get();
         }

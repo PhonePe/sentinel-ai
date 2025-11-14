@@ -14,6 +14,7 @@ import com.phonepe.sentinelai.core.agentmessages.requests.*;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.*;
@@ -106,7 +107,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             Collection<ModelOutputDefinition> outputDefinitions,
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
-            ToolRunner toolRunner) {
+            ToolRunner toolRunner,
+            EarlyTerminationHandler modelRunTerminationHandler) {
         final var agentSetup = context.getAgentSetup();
         final var modelSettings = agentSetup.getModelSettings();
         //This keeps getting
@@ -213,6 +215,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             stats,
                             SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
                 };
+
+                if(output == null && modelRunTerminationHandler.shouldTerminateEarly(modelSettings, context)) {
+                    log.debug("Early termination requested, terminating model run");
+                    return ModelOutput.error(
+                            oldMessages,
+                            stats,
+                            SentinelError.error(ErrorType.MODEL_RUN_TERMINATED));
+                }
             } while (output == null || (output.getData() == null && output.getError() == null));
             return output;
         }, agentSetup.getExecutorService());
@@ -225,14 +235,16 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
-            Consumer<byte[]> streamHandler) {
+            Consumer<byte[]> streamHandler,
+            EarlyTerminationHandler modelRunTerminationHandler) {
         return streamImpl(context,
                           outputDefinitions,
                           oldMessages,
                           tools,
                           toolRunner,
                           streamHandler,
-                          Agent.StreamProcessingMode.TYPED);
+                          Agent.StreamProcessingMode.TYPED,
+                          modelRunTerminationHandler);
     }
 
     @Override
@@ -241,14 +253,16 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
-            Consumer<byte[]> streamHandler) {
+            Consumer<byte[]> streamHandler,
+            EarlyTerminationHandler modelRunTerminationHandler) {
         return streamImpl(context,
                           List.of(),
                           oldMessages,
                           tools,
                           toolRunner,
                           streamHandler,
-                          Agent.StreamProcessingMode.TEXT);
+                          Agent.StreamProcessingMode.TEXT,
+                          modelRunTerminationHandler);
     }
 
     private CompletableFuture<ModelOutput> streamImpl(
@@ -258,7 +272,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
             Consumer<byte[]> streamHandler,
-            Agent.StreamProcessingMode streamProcessingMode) {
+            Agent.StreamProcessingMode streamProcessingMode,
+            EarlyTerminationHandler modelRunTerminationHandler) {
         final var agentSetup = context.getAgentSetup();
         final var modelSettings = agentSetup.getModelSettings();
         //This keeps getting
@@ -439,6 +454,13 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // This needs to be done in two steps to ensure all chunks are consumed. Otherwise, some stuff like
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.stream().findAny().orElse(null);
+                if(output == null && modelRunTerminationHandler.shouldTerminateEarly(modelSettings, context)) {
+                    log.debug("Early termination requested, terminating model run");
+                    output =  ModelOutput.error(
+                            oldMessages,
+                            stats,
+                            SentinelError.error(ErrorType.MODEL_RUN_TERMINATED));
+                }
             } while (output == null || (output.getData() == null && output.getError() == null));
             return output;
         }, agentSetup.getExecutorService());
