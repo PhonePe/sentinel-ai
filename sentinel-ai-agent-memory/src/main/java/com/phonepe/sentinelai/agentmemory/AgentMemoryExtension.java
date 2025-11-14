@@ -7,6 +7,7 @@ import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarly;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
@@ -265,7 +266,8 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                          List.of(memorySchema()),
                          messages,
                          Map.of(),
-                         new NonContextualDefaultExternalToolRunner(objectMapper))
+                         new NonContextualDefaultExternalToolRunner(objectMapper),
+                         new NeverTerminateEarly())
                 .join();
         if (output.getError() != null && !output.getError().getErrorType().equals(ErrorType.SUCCESS)) {
             log.error("Error extracting memory: {}", output.getError());

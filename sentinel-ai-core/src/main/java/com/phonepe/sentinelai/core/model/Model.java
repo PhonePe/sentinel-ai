@@ -2,6 +2,7 @@ package com.phonepe.sentinelai.core.model;
 
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationHandler;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import org.apache.commons.lang3.NotImplementedException;
 
@@ -32,7 +33,8 @@ public interface Model {
             ModelRunContext context,
             Collection<ModelOutputDefinition> outputDefinitions,
             List<AgentMessage> oldMessages, Map<String, ExecutableTool> tools,
-            ToolRunner toolRunner);
+            ToolRunner toolRunner,
+            EarlyTerminationHandler earlyTerminationHandler);
 
     /**
      * Streams output from the model based on the provided context and messages. Supports tool calls.
@@ -55,7 +57,8 @@ public interface Model {
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
-            Consumer<byte[]> streamHandler) {
+            Consumer<byte[]> streamHandler,
+            EarlyTerminationHandler modelRunTerminationHandler) {
         throw new NotImplementedException();
     }
 
@@ -78,7 +81,8 @@ public interface Model {
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
-            Consumer<byte[]> streamHandler) {
+            Consumer<byte[]> streamHandler,
+            EarlyTerminationHandler modelRunTerminationHandler) {
         throw new NotImplementedException();
     }
 }
