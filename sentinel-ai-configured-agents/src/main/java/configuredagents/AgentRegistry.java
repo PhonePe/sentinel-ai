@@ -13,6 +13,7 @@ import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -112,7 +113,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
     }
 
     @Tool("Invoke an agent with input in the schema as defined in the agent metadata")
-    public JsonNode invokeAgent(
+    public AgentExecutionResult invokeAgent(
             AgentRunContext<JsonNode> context,
             @JsonPropertyDescription("ID of the agent to be invoked") String agentId,
             @JsonPropertyDescription("The json serialized structured input to be sent to the agent") String agentInput) {
@@ -124,10 +125,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
             final var agent = agentCache.find(agentId).orElse(null);
             if (null == agent) {
                 log.error("Agent not found: {}", agentId);
-                return context.getAgentSetup()
-                        .getMapper()
-                        .createObjectNode()
-                        .textNode("Agent not found: " + agentId);
+                return agentNotFound(context, agentId);
             }
             final var response = agent.executeAsync(AgentInput.<JsonNode>builder()
                                                             .request(context.getAgentSetup()
@@ -139,21 +137,17 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
                                                             .build())
                     .join();
             if (response.getData() != null) {
-                return response.getData();
+                return AgentExecutionResult.success(response.getData());
             }
-            return context.getAgentSetup()
-                    .getMapper()
-                    .createObjectNode()
-                    .textNode("Error running agent %s: [%s] %s ".formatted(agentId,
-                                                                           response.getError().getErrorType(),
-                                                                           response.getError().getMessage()));
+            return fail(context,
+                    "Error running agent %s: [%s] %s".formatted(agentId,
+                            response.getError().getErrorType(),
+                            response.getError().getMessage()));
         }
         catch (Exception e) {
             log.error("Error invoking agent: {}", agentId, e);
-            return context.getAgentSetup()
-                    .getMapper()
-                    .createObjectNode()
-                    .textNode("Error running agent %s: %s".formatted(agentId, AgentUtils.rootCause(e).getMessage()));
+            return fail(context,
+                    "Error running agent %s: %s".formatted(agentId, AgentUtils.rootCause(e).getMessage()));
         }
     }
 
@@ -166,12 +160,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
     public  List<FactList> facts(R request, AgentRunContext<R> context, A agent) {
         return List.of(new FactList(
                 "List of agents registered in the system and can be invoked",
-                agentSource.list()
-                        .stream()
-                        .map(agentMetadata -> new Fact(
-                                "Available Agent ID: %s".formatted(agentMetadata.getId()),
-                                agentMetadata.getConfiguration().getDescription()))
-                        .toList()));
+                availableAgents()));
     }
 
     @Override
@@ -215,6 +204,35 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
 
     private static IllegalArgumentException agentNotFoundError(String agentId) {
         return new IllegalArgumentException("Agent not found: " + agentId);
+    }
+
+    private AgentExecutionResult agentNotFound(AgentRunContext<JsonNode> context, String agentId) {
+        final var errorNode = context.getAgentSetup()
+                .getMapper()
+                .createObjectNode()
+                .put("message", "Agent not found: " + agentId)
+                .set("availableAgents", context.getAgentSetup()
+                        .getMapper()
+                        .valueToTree(availableAgents()));
+        return AgentExecutionResult.fail(errorNode);
+    }
+
+    private AgentExecutionResult fail(AgentRunContext<JsonNode> context, String errorMessage) {
+        final var errorNode = context.getAgentSetup()
+                .getMapper()
+                .createObjectNode()
+                .put("message", errorMessage);
+        return AgentExecutionResult.fail(errorNode);
+    }
+
+    @NotNull
+    private List<Fact> availableAgents() {
+        return agentSource.list()
+                .stream()
+                .map(agentMetadata -> new Fact(
+                        "Available Agent ID: %s".formatted(agentMetadata.getId()),
+                        agentMetadata.getConfiguration().getDescription()))
+                .toList();
     }
 
 }
