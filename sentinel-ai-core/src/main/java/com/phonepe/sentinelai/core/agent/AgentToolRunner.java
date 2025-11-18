@@ -5,7 +5,6 @@ import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Primitives;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
-import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.events.ToolCallCompletedAgentEvent;
 import com.phonepe.sentinelai.core.events.ToolCalledAgentEvent;

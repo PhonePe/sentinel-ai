@@ -7,7 +7,7 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
-import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarly;
+import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
@@ -230,7 +230,7 @@ public class SentinelMCPClient implements AutoCloseable {
                              messages,
                              Map.of(),
                              new NonContextualDefaultExternalToolRunner(mapper),
-                             new NeverTerminateEarly())
+                             new NeverTerminateEarlyStrategy())
                     .join();
 
             final var responseNode = response.getData().get(SAMPLING_OUTPUT_KEY);
