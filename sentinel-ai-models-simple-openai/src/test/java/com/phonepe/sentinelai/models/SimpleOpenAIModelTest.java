@@ -8,6 +8,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.events.EventBus;
@@ -106,12 +107,11 @@ class SimpleOpenAIModelTest {
 
     @Test
     @SneakyThrows
-    void testEarlyTerminationStrategy(final WireMockRuntimeInfo wiremock) {
+    void testEarlyTerminationStrategyShouldContinue(final WireMockRuntimeInfo wiremock) {
         final var terminationInvoked = new AtomicBoolean(false);
         final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> {
             terminationInvoked.set(true);
-            // Return empty Optional to allow normal flow to continue
-            return java.util.Optional.empty();
+            return EarlyTerminationStrategyResponse.builder().shouldTerminate(false).build();
         };
 
         testInternalWithTerminationStrategy(wiremock,
@@ -125,11 +125,15 @@ class SimpleOpenAIModelTest {
     @Test
     @SneakyThrows
     void testEarlyTerminationStrategyWithModelOutputError(final WireMockRuntimeInfo wiremock) {
-        final var forcedTerminationOutput = new AtomicBoolean(false);
+        final var isStrategyInvoked = new AtomicBoolean(false);
         // Strategy that forces early termination
         final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> {
-            forcedTerminationOutput.set(true);
-            return Optional.of(ModelOutput.error(List.of(), modelRunContext.getModelUsageStats(), SentinelError.error(ErrorType.MODEL_RUN_TERMINATED)));
+            isStrategyInvoked.set(true);
+            return EarlyTerminationStrategyResponse.builder()
+                    .shouldTerminate(true)
+                    .errorType(ErrorType.MODEL_RUN_TERMINATED)
+                    .reason("Terminating run early as per strategy")
+                    .build();
         };
 
         testInternalWithTerminationStrategy(wiremock,
@@ -137,17 +141,17 @@ class SimpleOpenAIModelTest {
                      "structured-output",
                      setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
                      earlyTerminationStrategy);
-        assertTrue(forcedTerminationOutput.get(), "Early termination strategy should have forced termination");
+        assertTrue(isStrategyInvoked.get(), "Early termination strategy should have been invoked");
     }
 
     @Test
     @SneakyThrows
-    void testEarlyTerminationStrategyWithModelOutputSuccess(final WireMockRuntimeInfo wiremock) {
-        final var forcedTerminationOutput = new AtomicBoolean(false);
+    void testEarlyTerminationStrategyReturningNull(final WireMockRuntimeInfo wiremock) {
+        final var isStrategyInvoked = new AtomicBoolean(false);
         // Strategy that forces early termination
         final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> {
-            forcedTerminationOutput.set(true);
-            return Optional.of(ModelOutput.success(JsonUtils.createMapper().createObjectNode().set("output",JsonUtils.createMapper().createObjectNode().put("username", "TerminatedUser").put("message", "This run was terminated early.")), List.of(), List.of(), modelRunContext.getModelUsageStats()));
+            isStrategyInvoked.set(true);
+            return null;
         };
 
         testInternalWithTerminationStrategy(wiremock,
@@ -155,7 +159,7 @@ class SimpleOpenAIModelTest {
                 "structured-output",
                 setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
                 earlyTerminationStrategy);
-        assertTrue(forcedTerminationOutput.get(), "Early termination strategy should have forced termination");
+        assertTrue(isStrategyInvoked.get(), "Early termination strategy should have been invoked");
     }
 
     @SneakyThrows

@@ -15,6 +15,7 @@ import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.*;
@@ -108,7 +109,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
-            EarlyTerminationStrategy modelRunTerminationStrategy) {
+            EarlyTerminationStrategy earlyTerminationStrategy) {
         final var agentSetup = context.getAgentSetup();
         final var modelSettings = agentSetup.getModelSettings();
         //This keeps getting
@@ -217,7 +218,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 };
 
                 if(shouldLoop(output)){
-                    output = modelRunTerminationStrategy.evaluate(modelSettings, context, output).orElse(output);
+                    final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
+                    if(strategyResponse != null && strategyResponse.isShouldTerminate()){
+                        output = ModelOutput.error(output == null ? List.of() : output.getAllMessages(), stats, SentinelError.error(strategyResponse.getErrorType()));
+                        break;
+                    }
                 }
             } while (shouldLoop(output));
             return output;
@@ -455,7 +460,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.stream().findAny().orElse(null);
                 if(shouldLoop(output)) {
-                    output = earlyTerminationStrategy.evaluate(modelSettings, context, output).orElse(null);
+                    final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
+                    if(strategyResponse != null && strategyResponse.isShouldTerminate()){
+                        output = ModelOutput.error(output == null ? List.of() : output.getAllMessages(), stats, new SentinelError(strategyResponse.getErrorType(), strategyResponse.getReason()));
+                        break;
+                    }
 
                 }
             } while (shouldLoop(output));

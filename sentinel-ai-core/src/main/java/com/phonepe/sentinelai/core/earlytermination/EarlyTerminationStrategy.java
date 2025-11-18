@@ -7,7 +7,7 @@ import com.phonepe.sentinelai.core.model.ModelSettings;
 import java.util.Optional;
 
 /**
- * Strategy to determine if a model run should be terminated early
+ * Strategy to determine if an agent run should be terminated early
  */
 
 @FunctionalInterface
@@ -20,5 +20,5 @@ public interface EarlyTerminationStrategy {
      * @param output Current Model Output
      * @return Optional containing ModelOutput if the run should be terminated early, empty otherwise
      */
-    Optional<ModelOutput> evaluate(final ModelSettings modelSettings,final ModelRunContext modelRunContext,final ModelOutput output);
+    EarlyTerminationStrategyResponse evaluate(final ModelSettings modelSettings,final ModelRunContext modelRunContext,final ModelOutput output);
 }
