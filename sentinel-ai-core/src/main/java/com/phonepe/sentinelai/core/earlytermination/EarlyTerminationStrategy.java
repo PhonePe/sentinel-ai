@@ -18,7 +18,7 @@ public interface EarlyTerminationStrategy {
      * @param modelSettings Model Settings
      * @param modelRunContext Model run context containing run-specific information
      * @param output Current Model Output
-     * @return Optional containing ModelOutput if the run should be terminated early, empty otherwise
+     * @return EarlyTerminationStrategyResponse indicating whether to terminate early along with error type and reason
      */
     EarlyTerminationStrategyResponse evaluate(final ModelSettings modelSettings,final ModelRunContext modelRunContext,final ModelOutput output);
 }
