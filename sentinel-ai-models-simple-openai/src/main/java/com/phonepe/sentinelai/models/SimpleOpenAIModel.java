@@ -18,6 +18,8 @@ import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessContext;
 import com.phonepe.sentinelai.core.model.*;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
@@ -113,7 +115,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
-            EarlyTerminationStrategy earlyTerminationStrategy) {
+            EarlyTerminationStrategy earlyTerminationStrategy,
+            List<AgentMessagesPreProcessor> messagesPreProcessors) {
         final var agentSetup = context.getAgentSetup();
         final var modelSettings = agentSetup.getModelSettings();
         //This keeps getting
@@ -139,6 +142,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         return CompletableFuture.supplyAsync(() -> {
             ModelOutput output = null;
             do {
+                executeMessagesPreProcessors(messagesPreProcessors, stats, context, allMessages, openAiMessages, newMessages);
+
                 generatedOutput.set(null);
                 final var builder = createChatRequestBuilder(openAiMessages);
                 applyModelSettings(modelSettings, builder, toolsForExecution);
@@ -1102,6 +1107,45 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             };
             case AUTO -> ToolChoiceOption.AUTO;
         };
+    }
+
+    private void executeMessagesPreProcessors(final List<AgentMessagesPreProcessor> messagesPreProcessors,
+                                              final ModelUsageStats statsForRun,
+                                              final ModelRunContext context,
+                                              final ArrayList<AgentMessage> allMessages,
+                                              final ArrayList<ChatMessage> openAiMessages,
+                                              final ArrayList<AgentMessage> newMessages) {
+        List<AgentMessage> transformedMessages = allMessages;
+        boolean messagesModified = false;
+
+        for (AgentMessagesPreProcessor processor: messagesPreProcessors) {
+            final var response = processor.execute(AgentMessagesPreProcessContext.builder()
+                    .statsForRun(statsForRun)
+                    .allMessages(transformedMessages)
+                    .modelRunContext(context)
+                    .build());
+
+            // check if processor transformed the messages
+            if (response != null
+                    && response.getTransformedMessages() != null
+                    && response.getTransformedMessages() != transformedMessages) {
+                transformedMessages = response.getTransformedMessages();
+                messagesModified = true;
+            }
+        }
+
+        if (messagesModified) {
+
+            // reset existing messages
+            openAiMessages.clear();
+            allMessages.clear();
+            newMessages.clear();
+
+            allMessages.addAll(transformedMessages);
+            openAiMessages.addAll(transformedMessages.stream()
+                    .map(SimpleOpenAIModel::convertIndividualMessageToOpenIDFormat)
+                    .toList());
+        }
     }
 
 }

@@ -3,6 +3,7 @@ package com.phonepe.sentinelai.core.model;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import org.apache.commons.lang3.NotImplementedException;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,8 @@ class ModelTest {
                     List<com.phonepe.sentinelai.core.agentmessages.AgentMessage> oldMessages,
                     Map<String, ExecutableTool> tools,
                     ToolRunner toolRunner,
-                    EarlyTerminationStrategy earlyTerminationStrategy) {
+                    EarlyTerminationStrategy earlyTerminationStrategy,
+                    List<AgentMessagesPreProcessor> preProcessors) {
                 return null;
             }
 
@@ -48,7 +50,8 @@ class ModelTest {
                     List<com.phonepe.sentinelai.core.agentmessages.AgentMessage> oldMessages,
                     Map<String, ExecutableTool> tools,
                     ToolRunner toolRunner,
-                    EarlyTerminationStrategy earlyTerminationStrategy) {
+                    EarlyTerminationStrategy earlyTerminationStrategy,
+                    List<AgentMessagesPreProcessor> preProcessors) {
                 return null;
             }
 

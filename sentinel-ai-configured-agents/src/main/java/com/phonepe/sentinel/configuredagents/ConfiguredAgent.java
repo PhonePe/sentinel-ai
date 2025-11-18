@@ -3,6 +3,7 @@ package com.phonepe.sentinel.configuredagents;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.SneakyThrows;
@@ -75,6 +76,12 @@ public class ConfiguredAgent {
         this.inputSchema = inputSchema;
         this.outputSchema = outputSchema;
         this.rootAgent = new RootAgent(name, prompt, outputSchema, rootAgentExtensions, availableTools);
+    }
+
+    public ConfiguredAgent registerAgentMessagesPreProcessors(List<AgentMessagesPreProcessor> preProcessors) {
+        if (preProcessors == null) return this;
+        preProcessors.forEach(this.rootAgent::registerAgentMessagesPreProcessor);
+        return this;
     }
 
     @SneakyThrows

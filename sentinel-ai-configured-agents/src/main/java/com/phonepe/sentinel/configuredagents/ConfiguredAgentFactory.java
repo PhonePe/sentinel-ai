@@ -3,6 +3,7 @@ package com.phonepe.sentinel.configuredagents;
 import com.phonepe.sentinel.configuredagents.capabilities.impl.*;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.tools.ComposingToolBox;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
@@ -23,12 +24,14 @@ public class ConfiguredAgentFactory {
     private final SimpleCache<HttpToolBox> httpToolboxFactory;
     private final SimpleCache<MCPToolBox> mcpToolboxFactory;
     private final CustomToolBox customToolBox;
+    private final Map<String, List<AgentMessagesPreProcessor>> messagesPreProcessors;
 
     @Builder
     public ConfiguredAgentFactory(
             final HttpToolboxFactory httpToolboxFactory,
             final MCPToolBoxFactory mcpToolboxFactory,
-            final CustomToolBox customToolBox) {
+            final CustomToolBox customToolBox,
+            final Map<String, List<AgentMessagesPreProcessor>> messagesPreProcessors) {
         this.httpToolboxFactory = null != httpToolboxFactory
                                   ? new SimpleCache<>(upstream -> httpToolboxFactory.create(upstream)
                 .orElseThrow(() -> new IllegalArgumentException("No HTTP tool box found for upstream: " + upstream)))
@@ -38,6 +41,9 @@ public class ConfiguredAgentFactory {
                 .orElseThrow(() -> new IllegalArgumentException("No MCP tool box found for upstream: " + upstream)))
                                  : null;
         this.customToolBox = customToolBox;
+        this.messagesPreProcessors = null != messagesPreProcessors
+                                        ? messagesPreProcessors
+                                        : Map.of();
     }
 
     public final ConfiguredAgent createAgent(@NonNull final AgentMetadata agentMetadata, Agent<?, ?, ?> parent) {
@@ -139,7 +145,8 @@ public class ConfiguredAgentFactory {
                 extensions,
                 new ComposingToolBox(toolBoxes, Set.of()),
                 agentConfiguration.getInputSchema(),
-                agentConfiguration.getOutputSchema());
+                agentConfiguration.getOutputSchema()
+        ).registerAgentMessagesPreProcessors(messagesPreProcessors.get(agentConfiguration.getAgentName()));
     }
 
 }
