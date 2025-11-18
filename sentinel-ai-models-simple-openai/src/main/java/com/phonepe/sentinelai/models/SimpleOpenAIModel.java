@@ -492,6 +492,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                        .description("Generates output to be used by user")
                                                        .contextAware(true)
                                                        .strictSchema(true)
+                                                       .terminal(true)
                                                        .build(),
                                                schema,
                                                (runContext, toolCallId, args) -> {

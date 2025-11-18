@@ -24,4 +24,6 @@ public class ToolDefinition {
     boolean contextAware;
 
     boolean strictSchema;
+
+    boolean terminal;
 }

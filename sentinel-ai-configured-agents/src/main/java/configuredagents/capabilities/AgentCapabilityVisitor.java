@@ -16,4 +16,5 @@ public interface AgentCapabilityVisitor<T> {
 
     T visit(AgentSessionManagementCapability sessionManagementCapability);
 
+    T visit(ParentToolInheritanceCapability parentToolInheritanceCapability);
 }
