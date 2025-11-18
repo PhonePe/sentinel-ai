@@ -13,7 +13,7 @@ import java.util.Optional;
 
 public class NeverTerminateEarlyStrategy implements EarlyTerminationStrategy {
     @Override
-    public Optional<ModelOutput> evaluate(ModelSettings modelSettings, ModelRunContext context) {
+    public Optional<ModelOutput> evaluate(final ModelSettings modelSettings,final ModelRunContext context, final ModelOutput output) {
         return Optional.empty();
     }
 }

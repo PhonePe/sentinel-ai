@@ -3,10 +3,15 @@ package com.phonepe.sentinelai.models;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.github.tomakehurst.wiremock.common.Json;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
+import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.events.EventBus;
+import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
@@ -25,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.UnaryOperator;
 
@@ -55,8 +61,9 @@ class SimpleOpenAIModelTest {
         public SimpleAgent(
                 AgentSetup setup,
                 List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions,
-                Map<String, ExecutableTool> tools) {
-            super(OutputObject.class, "greet the user", setup, extensions, tools);
+                Map<String, ExecutableTool> tools,
+                EarlyTerminationStrategy earlyTerminationStrategy) {
+            super(OutputObject.class, "greet the user", setup, extensions, tools, null, null, null, earlyTerminationStrategy);
         }
 
         @Tool("Get name of user")
@@ -97,6 +104,59 @@ class SimpleOpenAIModelTest {
                      setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT));
     }
 
+    @Test
+    @SneakyThrows
+    void testEarlyTerminationStrategy(final WireMockRuntimeInfo wiremock) {
+        final var terminationInvoked = new AtomicBoolean(false);
+        final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> {
+            terminationInvoked.set(true);
+            // Return empty Optional to allow normal flow to continue
+            return java.util.Optional.empty();
+        };
+
+        testInternalWithTerminationStrategy(wiremock,
+                     3,
+                     "structured-output",
+                     setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
+                     earlyTerminationStrategy);
+        assertTrue(terminationInvoked.get(), "Early termination strategy should have been invoked");
+    }
+
+    @Test
+    @SneakyThrows
+    void testEarlyTerminationStrategyWithModelOutputError(final WireMockRuntimeInfo wiremock) {
+        final var forcedTerminationOutput = new AtomicBoolean(false);
+        // Strategy that forces early termination
+        final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> {
+            forcedTerminationOutput.set(true);
+            return Optional.of(ModelOutput.error(List.of(), modelRunContext.getModelUsageStats(), SentinelError.error(ErrorType.MODEL_RUN_TERMINATED)));
+        };
+
+        testInternalWithTerminationStrategy(wiremock,
+                     3,
+                     "structured-output",
+                     setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
+                     earlyTerminationStrategy);
+        assertTrue(forcedTerminationOutput.get(), "Early termination strategy should have forced termination");
+    }
+
+    @Test
+    @SneakyThrows
+    void testEarlyTerminationStrategyWithModelOutputSuccess(final WireMockRuntimeInfo wiremock) {
+        final var forcedTerminationOutput = new AtomicBoolean(false);
+        // Strategy that forces early termination
+        final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> {
+            forcedTerminationOutput.set(true);
+            return Optional.of(ModelOutput.success(JsonUtils.createMapper().createObjectNode().set("output",JsonUtils.createMapper().createObjectNode().put("username", "TerminatedUser").put("message", "This run was terminated early.")), List.of(), List.of(), modelRunContext.getModelUsageStats()));
+        };
+
+        testInternalWithTerminationStrategy(wiremock,
+                3,
+                "structured-output",
+                setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
+                earlyTerminationStrategy);
+        assertTrue(forcedTerminationOutput.get(), "Early termination strategy should have forced termination");
+    }
 
     @SneakyThrows
     void testInternal(
@@ -173,4 +233,66 @@ class SimpleOpenAIModelTest {
         assertTrue(response2.getData().message().contains("Santanu"));
 
     }
+
+    @SneakyThrows
+    void testInternalWithTerminationStrategy(
+            final WireMockRuntimeInfo wiremock,
+            final int numStubs,
+            final String stubFilePrefix,
+            final UnaryOperator<AgentSetup.AgentSetupBuilder> agentSetupUpdater,
+            final EarlyTerminationStrategy earlyTerminationStrategy) {
+        TestUtils.setupMocks(numStubs, stubFilePrefix, getClass());
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var httpClient = new OkHttpClient.Builder()
+                .build();
+        final var model = new SimpleOpenAIModel<>(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(objectMapper)
+                        .clientAdapter(new OkHttpClientAdapter(httpClient))
+                        .build(),
+                objectMapper
+        );
+        final var eventBus = new EventBus();
+        eventBus.onEvent()
+                .connect(event -> {
+                    if (log.isDebugEnabled()) {
+                        try {
+                            log.debug("Event: {}", objectMapper.writerWithDefaultPrettyPrinter()
+                                    .writeValueAsString(event));
+                        }
+                        catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                });
+
+        final var agent = SimpleAgent.builder()
+                .setup(agentSetupUpdater.apply(AgentSetup.builder()
+                                                       .mapper(objectMapper)
+                                                       .model(model)
+                                                       .modelSettings(ModelSettings.builder()
+                                                                              .temperature(0.1f)
+                                                                              .seed(42)
+                                                                              .build())
+                                                       .eventBus(eventBus))
+                               .build())
+                .earlyTerminationStrategy(earlyTerminationStrategy)
+                .build();
+
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
+        final var response = agent.execute(AgentInput.<UserInput>builder()
+                                                   .request(new UserInput("Hi?"))
+                                                   .requestMetadata(requestMetadata)
+                                                   .build());
+        log.info("Agent response: {}", response.getData());
+    }
 }
+

@@ -216,12 +216,16 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
                 };
 
-                if(output == null ){
-                    output = modelRunTerminationStrategy.evaluate(modelSettings, context).orElse(null);
+                if(shouldLoop(output)){
+                    output = modelRunTerminationStrategy.evaluate(modelSettings, context, output).orElse(output);
                 }
-            } while (output == null || (output.getData() == null && output.getError() == null));
+            } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
+    }
+
+    private static boolean shouldLoop(final ModelOutput output) {
+        return output == null || (output.getData() == null && output.getError() == null);
     }
 
     @Override
@@ -450,11 +454,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // This needs to be done in two steps to ensure all chunks are consumed. Otherwise, some stuff like
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.stream().findAny().orElse(null);
-                if(output == null) {
-                    output = earlyTerminationStrategy.evaluate(modelSettings, context).orElse(null);
+                if(shouldLoop(output)) {
+                    output = earlyTerminationStrategy.evaluate(modelSettings, context, output).orElse(null);
 
                 }
-            } while (output == null || (output.getData() == null && output.getError() == null));
+            } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
     }
