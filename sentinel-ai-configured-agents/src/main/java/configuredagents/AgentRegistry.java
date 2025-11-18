@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.tools.Tool;
@@ -13,7 +14,6 @@ import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -207,10 +207,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
     }
 
     private AgentExecutionResult agentNotFound(AgentRunContext<JsonNode> context, String agentId) {
-        final var errorNode = context.getAgentSetup()
-                .getMapper()
-                .createObjectNode()
-                .put("message", "Agent not found: " + agentId)
+        final var errorNode = toJsonNode(context, "Agent not found: " + agentId)
                 .set("availableAgents", context.getAgentSetup()
                         .getMapper()
                         .valueToTree(availableAgents()));
@@ -218,14 +215,17 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
     }
 
     private AgentExecutionResult fail(AgentRunContext<JsonNode> context, String errorMessage) {
-        final var errorNode = context.getAgentSetup()
-                .getMapper()
-                .createObjectNode()
-                .put("message", errorMessage);
+        final var errorNode = toJsonNode(context, errorMessage);
         return AgentExecutionResult.fail(errorNode);
     }
 
-    @NotNull
+    private static ObjectNode toJsonNode(final AgentRunContext<JsonNode> context, final String errorMessage) {
+        return context.getAgentSetup()
+                .getMapper()
+                .createObjectNode()
+                .put("message", errorMessage);
+    }
+
     private List<Fact> availableAgents() {
         return agentSource.list()
                 .stream()

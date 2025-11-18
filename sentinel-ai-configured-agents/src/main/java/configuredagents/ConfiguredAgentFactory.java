@@ -47,7 +47,6 @@ public class ConfiguredAgentFactory {
         final var toolBoxes = new ArrayList<ToolBox>();
         final var extensions = new ArrayList<AgentExtension<String, String, ConfiguredAgent.RootAgent>>();
 
-
         capabilities.forEach(
                 agentCapability -> agentCapability.accept(new AgentCapabilityVisitor<Void>() {
                     @Override
