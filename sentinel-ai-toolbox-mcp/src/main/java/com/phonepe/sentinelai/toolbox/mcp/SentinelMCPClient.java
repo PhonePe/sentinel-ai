@@ -230,7 +230,8 @@ public class SentinelMCPClient implements AutoCloseable {
                              messages,
                              Map.of(),
                              new NonContextualDefaultExternalToolRunner(mapper),
-                             new NeverTerminateEarlyStrategy())
+                             new NeverTerminateEarlyStrategy(),
+                            List.of())
                     .join();
 
             final var responseNode = response.getData().get(SAMPLING_OUTPUT_KEY);
