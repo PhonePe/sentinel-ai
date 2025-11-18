@@ -13,5 +13,11 @@ import java.util.Optional;
 @FunctionalInterface
 public interface EarlyTerminationStrategy {
 
-    Optional<ModelOutput> shouldTerminateEarly(ModelSettings modelSettings, ModelRunContext modelRunContext);
+    /**
+     * Evaluate whether to terminate the model run early
+     * @param modelSettings Model Settings
+     * @param modelRunContext Model run context containing run-specific information
+     * @return Optional containing ModelOutput if the run should be terminated early, empty otherwise
+     */
+    Optional<ModelOutput> evaluate(ModelSettings modelSettings, ModelRunContext modelRunContext);
 }

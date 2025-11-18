@@ -217,7 +217,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 };
 
                 if(output == null ){
-                    output = modelRunTerminationStrategy.shouldTerminateEarly(modelSettings, context).orElse(null);
+                    output = modelRunTerminationStrategy.evaluate(modelSettings, context).orElse(null);
                 }
             } while (output == null || (output.getData() == null && output.getError() == null));
             return output;
@@ -451,7 +451,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.stream().findAny().orElse(null);
                 if(output == null) {
-                    output = earlyTerminationStrategy.shouldTerminateEarly(modelSettings, context).orElse(null);
+                    output = earlyTerminationStrategy.evaluate(modelSettings, context).orElse(null);
 
                 }
             } while (output == null || (output.getData() == null && output.getError() == null));
