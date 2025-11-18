@@ -8,10 +8,15 @@ import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.events.EventBus;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
@@ -33,9 +38,11 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -104,6 +111,67 @@ class SimpleOpenAIModelTest {
 
     @Test
     @SneakyThrows
+    void testNewMessagesAreAddedByThePreprocessor(final WireMockRuntimeInfo wiremock) {
+        AtomicInteger iter = new AtomicInteger(0);
+         var response = testInternal(wiremock,
+                4,
+                "tool-output",
+                List.of(ctx -> {
+
+                    final var newMessages = new ArrayList<>(ctx.getAllMessages());
+                    newMessages.add(new GenericText(AgentGenericMessage.Role.ASSISTANT,"123-" + iter.getAndIncrement()));
+
+                    return AgentMessagesPreProcessResult.builder()
+                            .transformedMessages(newMessages)
+                            .build();
+                })
+         );
+         assertEquals(2, iter.get());
+         assertEquals(2, response.getAllMessages().stream().filter(x -> x.getMessageType().equals(AgentMessageType.GENERIC_TEXT_MESSAGE))
+                 .map(AgentGenericMessage.class::cast)
+                 .filter(x -> x.getRole().equals(AgentGenericMessage.Role.ASSISTANT))
+                 .count());
+
+    }
+
+    @Test
+    @SneakyThrows
+    void testNoopPreProcessor(final WireMockRuntimeInfo wiremock) {
+        AtomicInteger iter = new AtomicInteger(0);
+        var response = testInternal(wiremock,
+                4,
+                "tool-output",
+                List.of(ctx -> {
+                    return AgentMessagesPreProcessResult.builder()
+                            .transformedMessages(iter.getAndIncrement() == 0 ? null : List.of())
+                            .build();
+                })
+        );
+        assertEquals(2, iter.get());
+        assertEquals(0, response.getAllMessages().stream().filter(x -> x.getMessageType().equals(AgentMessageType.GENERIC_TEXT_MESSAGE))
+                .map(AgentGenericMessage.class::cast)
+                .filter(x -> x.getRole().equals(AgentGenericMessage.Role.ASSISTANT))
+                .count());
+
+    }
+
+    @Test
+    @SneakyThrows
+    void testExceptionRaisedByPreprocessor(final WireMockRuntimeInfo wiremock) {
+        var response = testInternal(wiremock,
+                4,
+                "tool-output",
+                List.of(ctx -> {
+                    throw new RuntimeException("Errored");
+                })
+        );
+
+        assertEquals(ErrorType.PREPROCESSOR_RUN_FAILURE, response.getError().getErrorType());
+
+    }
+
+    @Test
+    @SneakyThrows
     void testStructuredOutput(final WireMockRuntimeInfo wiremock) {
         testInternal(wiremock,
                      3,
@@ -167,6 +235,39 @@ class SimpleOpenAIModelTest {
                 earlyTerminationStrategy);
         assertTrue(isStrategyInvoked.get(), "Early termination strategy should have been invoked");
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+    }
+
+    @SneakyThrows
+    AgentOutput<OutputObject> testInternal(
+            final WireMockRuntimeInfo wiremock,
+            final int numStubs,
+            final String stubFilePrefix,
+            final List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
+        TestUtils.setupMocks(numStubs, stubFilePrefix, getClass());
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var model = setupModel("gpt-4o", wiremock, objectMapper);
+
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                                .mapper(objectMapper)
+                                .model(model)
+                                .modelSettings(ModelSettings.builder()
+                                        .temperature(0.1f)
+                                        .seed(42)
+                                        .build())
+                        .build())
+                .build();
+        agent.registerAgentMessagesPreProcessors(agentMessagesPreProcessors);
+
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
+        return agent.execute(AgentInput.<UserInput>builder()
+                .request(new UserInput("Hi?"))
+                .requestMetadata(requestMetadata)
+                .build());
     }
 
     @SneakyThrows

@@ -267,7 +267,8 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                          messages,
                          Map.of(),
                          new NonContextualDefaultExternalToolRunner(objectMapper),
-                         new NeverTerminateEarlyStrategy())
+                         new NeverTerminateEarlyStrategy(),
+                         List.of())
                 .join();
         if (output.getError() != null && !output.getError().getErrorType().equals(ErrorType.SUCCESS)) {
             log.error("Error extracting memory: {}", output.getError());

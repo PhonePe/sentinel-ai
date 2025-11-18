@@ -28,12 +28,14 @@ public class ConfiguredAgentFactory {
     private final SimpleCache<HttpToolBox> httpToolboxFactory;
     private final SimpleCache<MCPToolBox> mcpToolboxFactory;
     private final CustomToolBox customToolBox;
+    private final AgentMessagesPreProcessors messagesPreProcessors;
 
     @Builder
     public ConfiguredAgentFactory(
             final HttpToolboxFactory httpToolboxFactory,
             final MCPToolBoxFactory mcpToolboxFactory,
-            final CustomToolBox customToolBox) {
+            final CustomToolBox customToolBox,
+            final AgentMessagesPreProcessors messagesPreProcessors) {
         this.httpToolboxFactory = null != httpToolboxFactory
                                   ? new SimpleCache<>(upstream -> httpToolboxFactory.create(upstream)
                 .orElseThrow(() -> new IllegalArgumentException("No HTTP tool box found for upstream: " + upstream)))
@@ -43,6 +45,8 @@ public class ConfiguredAgentFactory {
                 .orElseThrow(() -> new IllegalArgumentException("No MCP tool box found for upstream: " + upstream)))
                                  : null;
         this.customToolBox = customToolBox;
+        this.messagesPreProcessors = Optional.ofNullable(messagesPreProcessors)
+                .orElse(AgentMessagesPreProcessors.NONE);
     }
 
     public final ConfiguredAgent createAgent(@NonNull final AgentMetadata agentMetadata, Agent<?, ?, ?> parent) {
@@ -137,10 +141,16 @@ public class ConfiguredAgentFactory {
                 }));
         toolBoxes.addAll(extensions); //Because all extensions are also toolboxes
 
-        return new ConfiguredAgent(
+        final var agent = new ConfiguredAgent(
                 agentConfiguration,
                 extensions,
-                new ComposingToolBox(toolBoxes, Set.of()));
+                new ComposingToolBox(toolBoxes, Set.of())
+        );
+
+        messagesPreProcessors.processorsFor(agentConfiguration.getAgentName())
+                        .ifPresent(agent::registerAgentMessagesPreProcessors);
+
+        return agent;
     }
 
 }
