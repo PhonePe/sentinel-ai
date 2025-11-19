@@ -441,7 +441,7 @@ class AgentRegistryTest {
     @Test
     @SneakyThrows
     void testInheritance(WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(5, "arti.http", getClass());
+        TestUtils.setupMocks(4, "arti.http", getClass());
 
         stubFor(get(urlEqualTo("/api/v1/weather/Bangalore"))
                         .willReturn(jsonResponse("""
@@ -511,7 +511,9 @@ class AgentRegistryTest {
                 .outputSchema(schema(WeatherAgentOutput.class))
                 .capability(AgentCapabilities.inheritToolsFromParent(Set.of("get_weather_for_location")))
                 .build();
-
+        registry.configureAgent(weatherAgentConfiguration)
+                .map(AgentMetadata::getId)
+                .orElseThrow();
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
