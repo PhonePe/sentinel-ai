@@ -218,30 +218,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 };
 
                 if (shouldLoop(output)) {
-                    final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
-                    if (isEarlyTermination(strategyResponse)) {
-                        output = ModelOutput.error(
-                                Optional.ofNullable(output)
-                                        .map(ModelOutput::getAllMessages)
-                                        .orElse(List.of()),
-                                stats,
-                                new SentinelError(strategyResponse.getErrorType(), strategyResponse.getReason()));
-                        break;
-                    }
+                    output = evaluateRunTerminationStrategy(context, earlyTerminationStrategy, modelSettings, output, stats);
                 }
             } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
-    }
-
-    private static boolean shouldLoop(final ModelOutput output) {
-        return output == null || (output.getData() == null && output.getError() == null);
-    }
-
-    private static boolean isEarlyTermination(final EarlyTerminationStrategyResponse strategyResponse) {
-        return Optional.ofNullable(strategyResponse)
-                .map(response -> response.getResponseType() == EarlyTerminationStrategyResponse.ResponseType.TERMINATE)
-                .orElse(false);
     }
 
     @Override
@@ -471,16 +452,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.stream().findAny().orElse(null);
                 if (shouldLoop(output)) {
-                    final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
-                    if (isEarlyTermination(strategyResponse)) {
-                        output = ModelOutput.error(
-                                Optional.ofNullable(output)
-                                        .map(ModelOutput::getAllMessages)
-                                        .orElse(List.of()),
-                                stats,
-                                new SentinelError(strategyResponse.getErrorType(), strategyResponse.getReason()));
-                        break;
-                    }
+                    output = evaluateRunTerminationStrategy(context, earlyTerminationStrategy, modelSettings, output, stats);
                 }
             } while (shouldLoop(output));
             return output;
@@ -558,6 +530,32 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                ErrorType.TOOL_CALL_PERMANENT_FAILURE);
                                                    }
                                                }));
+    }
+
+
+
+    private static boolean shouldLoop(final ModelOutput output) {
+        return output == null || (output.getData() == null && output.getError() == null);
+    }
+
+    private static boolean isEarlyTermination(final EarlyTerminationStrategyResponse strategyResponse) {
+        return Optional.ofNullable(strategyResponse)
+                .map(response -> response.getResponseType() == EarlyTerminationStrategyResponse.ResponseType.TERMINATE)
+                .orElse(false);
+    }
+
+
+    private static ModelOutput evaluateRunTerminationStrategy(ModelRunContext context, EarlyTerminationStrategy earlyTerminationStrategy, ModelSettings modelSettings, ModelOutput output, ModelUsageStats stats) {
+        final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
+        if (isEarlyTermination(strategyResponse)) {
+            output = ModelOutput.error(
+                    Optional.ofNullable(output)
+                            .map(ModelOutput::getAllMessages)
+                            .orElse(List.of()),
+                    stats,
+                    new SentinelError(strategyResponse.getErrorType(), strategyResponse.getReason()));
+        }
+        return output;
     }
 
     private static Chat.Choice extractResponse(Chat completionResponse) {

@@ -19,7 +19,7 @@ public class EarlyTerminationStrategyResponse {
     }
 
     public static EarlyTerminationStrategyResponse doNotTerminate() {
-        return new EarlyTerminationStrategyResponse(ResponseType.CONTINUE, null, null);
+        return new EarlyTerminationStrategyResponse(ResponseType.CONTINUE, ErrorType.SUCCESS, ErrorType.SUCCESS.getMessage());
     }
 
     public enum ResponseType {
