@@ -3,7 +3,6 @@ package configuredagents;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.tools.ComposingToolBox;
 import com.phonepe.sentinelai.core.tools.ToolBox;
-import com.phonepe.sentinelai.core.utils.ToolUtils;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
 import configuredagents.capabilities.AgentCapability;
