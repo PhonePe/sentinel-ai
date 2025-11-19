@@ -123,12 +123,12 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
             final var messagesToBeSent = new ArrayList<>(parentMessages.stream()
                                                                  .filter(parentMessageFilter)
                                                                  .toList());
-            final var agent = agentCache.find(agentId).orElse(null);
-            if (null == agent) {
+            final var configuredAgent = agentCache.find(agentId).orElse(null);
+            if (null == configuredAgent) {
                 log.error("Agent not found: {}", agentId);
                 return agentNotFound(context, agentId);
             }
-            final var response = agent.executeAsync(AgentInput.<JsonNode>builder()
+            final var response = configuredAgent.executeAsync(AgentInput.<JsonNode>builder()
                                                             .request(context.getAgentSetup()
                                                                              .getMapper()
                                                                              .readTree(agentInput))
