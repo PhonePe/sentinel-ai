@@ -3,16 +3,13 @@ package com.phonepe.sentinelai.models;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.github.tomakehurst.wiremock.common.Json;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.events.EventBus;
-import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
@@ -31,11 +28,12 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 
 /**
  * Tests {@link SimpleOpenAIModel}
@@ -111,15 +109,16 @@ class SimpleOpenAIModelTest {
         final var terminationInvoked = new AtomicBoolean(false);
         final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> {
             terminationInvoked.set(true);
-            return EarlyTerminationStrategyResponse.builder().shouldTerminate(false).build();
+            return EarlyTerminationStrategyResponse.doNotTerminate();
         };
 
-        testInternalWithTerminationStrategy(wiremock,
+        var response = testInternalWithTerminationStrategy(wiremock,
                      3,
                      "structured-output",
                      setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
                      earlyTerminationStrategy);
         assertTrue(terminationInvoked.get(), "Early termination strategy should have been invoked");
+        assertEquals(response.getError().getErrorType(), ErrorType.SUCCESS);
     }
 
     @Test
@@ -129,19 +128,18 @@ class SimpleOpenAIModelTest {
         // Strategy that forces early termination
         final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> {
             isStrategyInvoked.set(true);
-            return EarlyTerminationStrategyResponse.builder()
-                    .shouldTerminate(true)
-                    .errorType(ErrorType.MODEL_RUN_TERMINATED)
-                    .reason("Terminating run early as per strategy")
-                    .build();
+            return EarlyTerminationStrategyResponse.terminate(ErrorType.MODEL_RUN_TERMINATED,
+                    "Terminating run early as per strategy");
         };
 
-        testInternalWithTerminationStrategy(wiremock,
+        var response = testInternalWithTerminationStrategy(wiremock,
                      3,
                      "structured-output",
                      setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
                      earlyTerminationStrategy);
         assertTrue(isStrategyInvoked.get(), "Early termination strategy should have been invoked");
+        assertEquals(ErrorType.MODEL_RUN_TERMINATED, response.getError().getErrorType());
+        assertEquals("Terminating run early as per strategy", response.getError().getMessage());
     }
 
     @Test
@@ -154,12 +152,13 @@ class SimpleOpenAIModelTest {
             return null;
         };
 
-        testInternalWithTerminationStrategy(wiremock,
+        var response = testInternalWithTerminationStrategy(wiremock,
                 3,
                 "structured-output",
                 setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
                 earlyTerminationStrategy);
         assertTrue(isStrategyInvoked.get(), "Early termination strategy should have been invoked");
+        assertEquals(response.getError().getErrorType(), ErrorType.SUCCESS);
     }
 
     @SneakyThrows
@@ -239,7 +238,7 @@ class SimpleOpenAIModelTest {
     }
 
     @SneakyThrows
-    void testInternalWithTerminationStrategy(
+    AgentOutput<SimpleOpenAIModelTest.OutputObject> testInternalWithTerminationStrategy(
             final WireMockRuntimeInfo wiremock,
             final int numStubs,
             final String stubFilePrefix,
@@ -253,6 +252,8 @@ class SimpleOpenAIModelTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
                         .baseUrl(wiremock.getHttpBaseUrl())
                         .apiKey("BLAH")
                         .apiVersion("2024-10-21")
@@ -297,6 +298,7 @@ class SimpleOpenAIModelTest {
                                                    .requestMetadata(requestMetadata)
                                                    .build());
         log.info("Agent response: {}", response.getData());
+        return response;
     }
 }
 

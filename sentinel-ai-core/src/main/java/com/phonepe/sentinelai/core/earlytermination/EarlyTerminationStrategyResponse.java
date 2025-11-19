@@ -1,18 +1,29 @@
 package com.phonepe.sentinelai.core.earlytermination;
 
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
+
+@Value
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class EarlyTerminationStrategyResponse {
 
-    private boolean shouldTerminate;
-    private ErrorType errorType;
-    private String reason;
+    ResponseType responseType;
+    ErrorType errorType;
+    String reason;
+
+    public static EarlyTerminationStrategyResponse terminate(ErrorType errorType, String reason) {
+        return new EarlyTerminationStrategyResponse(ResponseType.TERMINATE, errorType, reason);
+    }
+
+    public static EarlyTerminationStrategyResponse doNotTerminate() {
+        return new EarlyTerminationStrategyResponse(ResponseType.CONTINUE, null, null);
+    }
+
+    public enum ResponseType {
+        TERMINATE,
+        CONTINUE
+    }
 }

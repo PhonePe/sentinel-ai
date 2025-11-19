@@ -4,8 +4,6 @@ import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 
-import java.util.Optional;
-
 /**
  * An early termination strategy that never terminates the model run early.
  */
@@ -14,8 +12,6 @@ import java.util.Optional;
 public class NeverTerminateEarlyStrategy implements EarlyTerminationStrategy {
     @Override
     public EarlyTerminationStrategyResponse evaluate(final ModelSettings modelSettings,final ModelRunContext context, final ModelOutput output) {
-        return EarlyTerminationStrategyResponse.builder()
-                .shouldTerminate(false)
-                .build();
+        return EarlyTerminationStrategyResponse.doNotTerminate();
     }
 }

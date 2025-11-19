@@ -217,10 +217,15 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
                 };
 
-                if(shouldLoop(output)){
+                if (shouldLoop(output)) {
                     final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
-                    if(strategyResponse != null && strategyResponse.isShouldTerminate()){
-                        output = ModelOutput.error(output == null ? List.of() : output.getAllMessages(), stats, SentinelError.error(strategyResponse.getErrorType()));
+                    if (isEarlyTermination(strategyResponse)) {
+                        output = ModelOutput.error(
+                                Optional.ofNullable(output)
+                                        .map(ModelOutput::getAllMessages)
+                                        .orElse(List.of()),
+                                stats,
+                                new SentinelError(strategyResponse.getErrorType(), strategyResponse.getReason()));
                         break;
                     }
                 }
@@ -231,6 +236,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
     private static boolean shouldLoop(final ModelOutput output) {
         return output == null || (output.getData() == null && output.getError() == null);
+    }
+
+    private static boolean isEarlyTermination(final EarlyTerminationStrategyResponse strategyResponse) {
+        return Optional.ofNullable(strategyResponse)
+                .map(response -> response.getResponseType() == EarlyTerminationStrategyResponse.ResponseType.TERMINATE)
+                .orElse(false);
     }
 
     @Override
@@ -459,13 +470,17 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // This needs to be done in two steps to ensure all chunks are consumed. Otherwise, some stuff like
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.stream().findAny().orElse(null);
-                if(shouldLoop(output)) {
+                if (shouldLoop(output)) {
                     final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
-                    if(strategyResponse != null && strategyResponse.isShouldTerminate()){
-                        output = ModelOutput.error(output == null ? List.of() : output.getAllMessages(), stats, new SentinelError(strategyResponse.getErrorType(), strategyResponse.getReason()));
+                    if (isEarlyTermination(strategyResponse)) {
+                        output = ModelOutput.error(
+                                Optional.ofNullable(output)
+                                        .map(ModelOutput::getAllMessages)
+                                        .orElse(List.of()),
+                                stats,
+                                new SentinelError(strategyResponse.getErrorType(), strategyResponse.getReason()));
                         break;
                     }
-
                 }
             } while (shouldLoop(output));
             return output;
