@@ -37,6 +37,7 @@ import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -150,9 +151,25 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
                 final var request = builder.build();
                 logModelRequest(request);
-                final var completionResponse = openAIProvider.chatCompletions()
-                        .create(request)
-                        .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
+                Chat completionResponse;
+
+                try {
+                    completionResponse = openAIProvider.chatCompletions()
+                            .create(request)
+                            .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
+                } catch (Exception e) {
+                    log.error("Error calling API ", e);
+                    var error = AgentUtils.rootCause(e);
+
+                    if (error instanceof SocketTimeoutException se) {
+                        return ModelOutput.error(
+                                newMessages,
+                                allMessages,
+                                context.getModelUsageStats(),
+                                SentinelError.error(ErrorType.TIMEOUT, se.getMessage()));
+                    }
+                    throw e;
+                }
                 logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
                 mergeUsage(context.getModelUsageStats(), completionResponse.getUsage());

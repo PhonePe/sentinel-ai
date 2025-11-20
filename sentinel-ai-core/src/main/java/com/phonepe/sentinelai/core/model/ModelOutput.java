@@ -42,4 +42,8 @@ public class ModelOutput {
     public static ModelOutput error(List<AgentMessage> oldMessages, ModelUsageStats stats, SentinelError error) {
         return new ModelOutput(null, List.of(), oldMessages, stats, error);
     }
+
+    public static ModelOutput error(List<AgentMessage> newMessages, List<AgentMessage> allMessages, ModelUsageStats stats, SentinelError error) {
+        return new ModelOutput(null, newMessages, allMessages, stats, error);
+    }
 }
