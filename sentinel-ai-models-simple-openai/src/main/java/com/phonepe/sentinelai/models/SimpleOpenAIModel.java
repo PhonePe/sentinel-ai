@@ -167,7 +167,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     var error = AgentUtils.rootCause(e);
 
                     var modelOutput = toModelOutput(context, error, newMessages, allMessages);
-                    if (modelOutput.isPresent()) return modelOutput.get();
+                    if (modelOutput.isPresent())
+                        return modelOutput.get();
                     throw e;
                 }
                 logModelResponse(completionResponse);
@@ -487,14 +488,20 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                        final Throwable error,
                                                        final List<AgentMessage> newMessages,
                                                        final List<AgentMessage> allMessages) {
-        var rootCause = AgentUtils.rootCause(error);
-        if (rootCause instanceof SocketTimeoutException
-                || rootCause instanceof SocketException) {
+        final var rootCause = AgentUtils.rootCause(error);
+        if (rootCause instanceof SocketTimeoutException) {
             return Optional.of(ModelOutput.error(
                     newMessages,
                     allMessages,
                     context.getModelUsageStats(),
                     SentinelError.error(ErrorType.TIMEOUT, rootCause.getMessage())));
+        }
+        if (rootCause instanceof SocketException) {
+            return Optional.of(ModelOutput.error(
+                    newMessages,
+                    allMessages,
+                    context.getModelUsageStats(),
+                    SentinelError.error(ErrorType.COMMUNICATION_ERROR, rootCause.getMessage())));
         }
         return Optional.empty();
     }

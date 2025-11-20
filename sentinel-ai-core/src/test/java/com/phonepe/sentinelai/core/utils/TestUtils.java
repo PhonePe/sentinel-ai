@@ -11,6 +11,7 @@ import lombok.experimental.UtilityClass;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
@@ -41,6 +42,12 @@ public class TestUtils {
         stubFor(post("/chat/completions?api-version=2024-10-21")
                 .willReturn(aResponse()
                         .withFault(fault)));
+    }
+
+    public static void setupMocksWithTimeout(Duration duration) {
+        stubFor(post("/chat/completions?api-version=2024-10-21")
+                .willReturn(aResponse()
+                        .withFixedDelay((int) duration.toMillis())));
     }
 
     @SneakyThrows

@@ -12,6 +12,7 @@ import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.events.EventBus;
+import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
@@ -19,25 +20,22 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
+import io.github.sashirestela.cleverclient.retry.RetryConfig;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.awaitility.Awaitility;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.UnaryOperator;
-import java.util.stream.IntStream;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -297,10 +295,28 @@ class SimpleOpenAIModelTest {
 
     @Test
     @SneakyThrows
-    void testRetriesOnTimeouts(final WireMockRuntimeInfo wiremock) {
+    void testConnectionResets(final WireMockRuntimeInfo wiremock) {
         TestUtils.setupMocksWithFault(Fault.CONNECTION_RESET_BY_PEER);
 
         final var response = executeAgent(wiremock);
+        assertSame(ErrorType.COMMUNICATION_ERROR,
+                response.getError().getErrorType(),
+                "Expected TIMEOUT after retries, got: " + response.getError());
+    }
+
+    @Test
+    @SneakyThrows
+    void testRetriesOnTimeouts(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocksWithTimeout(Duration.ofSeconds(10));
+
+        final var httpClient = new OkHttpClient.Builder()
+                .readTimeout(Duration.ofSeconds(2))
+                .build();
+
+        final var model = setupModel("gpt-4o",
+                wiremock, JsonUtils.createMapper(), httpClient);
+
+        final var response = executeAgentWithModel(model);
         assertSame(ErrorType.TIMEOUT,
                 response.getError().getErrorType(),
                 "Expected TIMEOUT after retries, got: " + response.getError());
@@ -320,25 +336,39 @@ class SimpleOpenAIModelTest {
     private static AgentOutput<OutputObject> executeAgent(final WireMockRuntimeInfo wiremock) {
         final var mapper = JsonUtils.createMapper();
         final var model = setupModel("gpt-4o-mini-2024-07-18", wiremock, mapper);
-        final var agent = SimpleAgent.builder()
-                .setup(AgentSetup.builder()
-                               .mapper(mapper)
-                               .model(model)
-                               .retrySetup(RetrySetup.builder()
-                                                   .totalAttempts(3)
-                                                   .delayAfterFailedAttempt(Duration.ofMillis(50))
-                                                   .build())
-                               .build())
-                .build();
-        return agent.execute(AgentInput.<UserInput>builder()
-                                                   .request(new UserInput("Hi?"))
-                                                   .build());
+        return executeAgentWithModel(model);
     }
 
-    @NotNull
-    private static SimpleOpenAIModel<SimpleOpenAIAzure> setupModel(final String modelName, final WireMockRuntimeInfo wiremock, final JsonMapper mapper) {
+    private static AgentOutput<OutputObject> executeAgentWithModel(final Model model) {
+        final var mapper = JsonUtils.createMapper();
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                        .mapper(mapper)
+                        .model(model)
+                        .retrySetup(RetrySetup.builder()
+                                .totalAttempts(3)
+                                .delayAfterFailedAttempt(Duration.ofMillis(50))
+                                .build())
+                        .build())
+                .build();
+        return agent.execute(AgentInput.<UserInput>builder()
+                .request(new UserInput("Hi?"))
+                .build());
+    }
+
+    private static SimpleOpenAIModel<SimpleOpenAIAzure> setupModel(final String modelName,
+                                                                   final WireMockRuntimeInfo wiremock,
+                                                                   final JsonMapper mapper) {
         final var httpClient = new OkHttpClient.Builder()
                 .build();
+
+        return setupModel(modelName, wiremock, mapper, httpClient);
+    }
+
+    private static SimpleOpenAIModel<SimpleOpenAIAzure> setupModel(final String modelName,
+                                                                   final WireMockRuntimeInfo wiremock,
+                                                                   final JsonMapper mapper,
+                                                                   final OkHttpClient okHttpClient) {
 
         return new SimpleOpenAIModel<>(
                 modelName,
@@ -347,7 +377,10 @@ class SimpleOpenAIModelTest {
                         .apiKey("BLAH")
                         .apiVersion("2024-10-21")
                         .objectMapper(mapper)
-                        .clientAdapter(new OkHttpClientAdapter(httpClient))
+                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                        .retryConfig(RetryConfig.builder()
+                                .maxAttempts(0) // disabling implicit retries by default for tests
+                                .build())
                         .build(),
                 mapper);
     }
