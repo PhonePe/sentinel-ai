@@ -3,6 +3,7 @@ package com.phonepe.sentinelai.core.agent;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Strings;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.errorhandling.ErrorResponseHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
@@ -44,7 +45,8 @@ class AgentModelRetryTest {
                 Map<String, ExecutableTool> knownTools,
                 ToolRunApprovalSeeker<String, String, TestAgent> toolRunApprovalSeeker,
                 OutputValidator<String, String> outputValidator,
-                ErrorResponseHandler<String> errorHandler) {
+                ErrorResponseHandler<String> errorHandler,
+                EarlyTerminationStrategy earlyTerminationHandler) {
             super(String.class,
                   "blah",
                   setup,
@@ -52,7 +54,8 @@ class AgentModelRetryTest {
                   knownTools,
                   toolRunApprovalSeeker,
                   outputValidator,
-                  errorHandler);
+                  errorHandler,
+                  earlyTerminationHandler);
         }
 
         @Override
@@ -69,7 +72,8 @@ class AgentModelRetryTest {
                            anyCollection(),
                            anyList(),
                            anyMap(),
-                           any(ToolRunner.class)))
+                           any(ToolRunner.class),
+                           any(EarlyTerminationStrategy.class)))
                 .thenReturn(CompletableFuture.completedFuture(
                         ModelOutput.error(List.of(),
                                           new ModelUsageStats(),
@@ -79,6 +83,7 @@ class AgentModelRetryTest {
                           anyList(),
                           anyMap(),
                           any(ToolRunner.class),
+                          any(EarlyTerminationStrategy.class),
                           any()))
                 .thenReturn(CompletableFuture.completedFuture(
                         ModelOutput.error(List.of(),
@@ -88,6 +93,7 @@ class AgentModelRetryTest {
                               anyList(),
                               anyMap(),
                               any(ToolRunner.class),
+                              any(EarlyTerminationStrategy.class),
                               any()))
                 .thenReturn(CompletableFuture.completedFuture(
                         ModelOutput.error(List.of(),
@@ -144,7 +150,8 @@ class AgentModelRetryTest {
                            anyCollection(),
                            anyList(),
                            anyMap(),
-                           any(ToolRunner.class)))
+                           any(ToolRunner.class),
+                           any(EarlyTerminationStrategy.class)))
                 .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocationOnMock -> {
                     if (callCount.getAndIncrement() < 2) {
                         return CompletableFuture.completedFuture(
@@ -185,19 +192,22 @@ class AgentModelRetryTest {
                            anyCollection(),
                            anyList(),
                            anyMap(),
-                           any(ToolRunner.class)))
+                           any(ToolRunner.class),
+                           any(EarlyTerminationStrategy.class)))
                 .thenThrow(new IllegalArgumentException("Test error"));
         when(model.stream(any(),
                           anyCollection(),
                           anyList(),
                           anyMap(),
                           any(ToolRunner.class),
+                          any(EarlyTerminationStrategy.class),
                           any()))
                 .thenThrow(new IllegalArgumentException("Test error"));
         when(model.streamText(any(),
                               anyList(),
                               anyMap(),
                               any(ToolRunner.class),
+                              any(EarlyTerminationStrategy.class),
                               any()))
                 .thenThrow(new IllegalArgumentException("Test error"));
 
@@ -250,7 +260,8 @@ class AgentModelRetryTest {
                            anyCollection(),
                            anyList(),
                            anyMap(),
-                           any(ToolRunner.class)))
+                           any(ToolRunner.class),
+                           any(EarlyTerminationStrategy.class)))
                 .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocationOnMock -> generateOutput(
                         callCount, mapper, output));
         when(model.stream(any(),
@@ -258,6 +269,7 @@ class AgentModelRetryTest {
                           anyList(),
                           anyMap(),
                           any(ToolRunner.class),
+                          any(EarlyTerminationStrategy.class),
                           any()))
                 .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocationOnMock -> generateOutput(
                         callCount, mapper, output));
@@ -265,6 +277,7 @@ class AgentModelRetryTest {
                               anyList(),
                               anyMap(),
                               any(ToolRunner.class),
+                              any(EarlyTerminationStrategy.class),
                               any()))
                 .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocationOnMock -> generateTextOutput(
                         callCount, mapper, output));
@@ -332,7 +345,8 @@ class AgentModelRetryTest {
                            anyCollection(),
                            anyList(),
                            anyMap(),
-                           any(ToolRunner.class)))
+                           any(ToolRunner.class),
+                           any(EarlyTerminationStrategy.class)))
                 .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocationOnMock -> {
                     callCount.incrementAndGet();
                     return CompletableFuture.completedFuture(

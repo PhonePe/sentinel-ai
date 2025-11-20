@@ -25,6 +25,7 @@ public enum ErrorType {
     FORCED_RETRY("Retry has been forced", true),
     TIMEOUT("Request timed out", true),
     UNKNOWN("Unknown response", true),
+    MODEL_RUN_TERMINATED("Model run was terminated", false),
     ;
 
     private final String message;

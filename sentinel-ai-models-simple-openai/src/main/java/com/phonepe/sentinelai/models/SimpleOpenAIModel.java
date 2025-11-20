@@ -14,6 +14,8 @@ import com.phonepe.sentinelai.core.agentmessages.requests.*;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.*;
@@ -107,7 +109,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             Collection<ModelOutputDefinition> outputDefinitions,
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
-            ToolRunner toolRunner) {
+            ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy) {
         final var agentSetup = context.getAgentSetup();
         final var modelSettings = agentSetup.getModelSettings();
         //This keeps getting
@@ -230,7 +233,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             stats,
                             SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
                 };
-            } while (output == null || (output.getData() == null && output.getError() == null));
+
+                if (shouldLoop(output)) {
+                    output = evaluateRunTerminationStrategy(context, earlyTerminationStrategy, modelSettings, output, stats);
+                }
+            } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
     }
@@ -242,12 +249,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy,
             Consumer<byte[]> streamHandler) {
         return streamImpl(context,
                           outputDefinitions,
                           oldMessages,
                           tools,
                           toolRunner,
+                          earlyTerminationStrategy,
                           streamHandler,
                           Agent.StreamProcessingMode.TYPED);
     }
@@ -258,12 +267,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy,
             Consumer<byte[]> streamHandler) {
         return streamImpl(context,
                           List.of(),
                           oldMessages,
                           tools,
                           toolRunner,
+                          earlyTerminationStrategy,
                           streamHandler,
                           Agent.StreamProcessingMode.TEXT);
     }
@@ -274,6 +285,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy,
             Consumer<byte[]> streamHandler,
             Agent.StreamProcessingMode streamProcessingMode) {
         final var agentSetup = context.getAgentSetup();
@@ -456,7 +468,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // This needs to be done in two steps to ensure all chunks are consumed. Otherwise, some stuff like
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.stream().findAny().orElse(null);
-            } while (output == null || (output.getData() == null && output.getError() == null));
+                if (shouldLoop(output)) {
+                    output = evaluateRunTerminationStrategy(context, earlyTerminationStrategy, modelSettings, output, stats);
+                }
+            } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
     }
@@ -532,6 +547,32 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                ErrorType.TOOL_CALL_PERMANENT_FAILURE);
                                                    }
                                                }));
+    }
+
+
+
+    private static boolean shouldLoop(final ModelOutput output) {
+        return output == null || (output.getData() == null && output.getError() == null);
+    }
+
+    private static boolean isEarlyTermination(final EarlyTerminationStrategyResponse strategyResponse) {
+        return Optional.ofNullable(strategyResponse)
+                .map(response -> response.getResponseType() == EarlyTerminationStrategyResponse.ResponseType.TERMINATE)
+                .orElse(false);
+    }
+
+
+    private static ModelOutput evaluateRunTerminationStrategy(ModelRunContext context, EarlyTerminationStrategy earlyTerminationStrategy, ModelSettings modelSettings, ModelOutput output, ModelUsageStats stats) {
+        final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
+        if (isEarlyTermination(strategyResponse)) {
+            output = ModelOutput.error(
+                    Optional.ofNullable(output)
+                            .map(ModelOutput::getAllMessages)
+                            .orElse(List.of()),
+                    stats,
+                    new SentinelError(strategyResponse.getErrorType(), strategyResponse.getReason()));
+        }
+        return output;
     }
 
     private static Chat.Choice extractResponse(Chat completionResponse) {
