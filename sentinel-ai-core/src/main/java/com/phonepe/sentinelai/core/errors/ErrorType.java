@@ -23,6 +23,7 @@ public enum ErrorType {
     GENERIC_MODEL_CALL_FAILURE("Model call failed with error: %s", true),
     DATA_VALIDATION_FAILURE("Model data validation failed. Errors: %s", true),
     FORCED_RETRY("Retry has been forced", true),
+    TIMEOUT("Request timed out", true),
     UNKNOWN("Unknown response", true),
     MODEL_RUN_TERMINATED("Model run was terminated", false),
     ;

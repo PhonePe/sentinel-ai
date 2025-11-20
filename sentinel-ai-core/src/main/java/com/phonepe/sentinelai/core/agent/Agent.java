@@ -483,6 +483,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         try {
             final var errorResponse = Agent.<T>handleErrorResponse(modelOutput).orElse(null);
             if (errorResponse != null) {
+                processingContext.messages.addAll(modelOutput.getNewMessages());
                 return errorResponse;
             }
             //Creating an empty object here as we don't want to waste time doing null checks
