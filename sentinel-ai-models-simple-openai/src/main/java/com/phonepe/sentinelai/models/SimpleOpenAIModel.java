@@ -39,6 +39,7 @@ import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -47,6 +48,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
 import static com.phonepe.sentinelai.core.utils.EventUtils.*;
@@ -161,16 +163,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             .create(request)
                             .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
                 } catch (Exception e) {
-                    log.error("Error calling API ", e);
+                    log.error("Error calling model ", e);
                     var error = AgentUtils.rootCause(e);
 
-                    if (error instanceof SocketTimeoutException se) {
-                        return ModelOutput.error(
-                                newMessages,
-                                allMessages,
-                                context.getModelUsageStats(),
-                                SentinelError.error(ErrorType.TIMEOUT, se.getMessage()));
-                    }
+                    var modelOutput = toModelOutput(context, error, newMessages, allMessages);
+                    if (modelOutput.isPresent()) return modelOutput.get();
                     throw e;
                 }
                 logModelResponse(completionResponse);
@@ -331,9 +328,19 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
                 final var request = builder.build();
                 logModelRequest(request);
-                final var completionResponseStream = openAIProvider.chatCompletions()
-                        .createStream(request)
-                        .join();
+                Stream<Chat> completionResponseStream;
+
+                try {
+                    completionResponseStream = openAIProvider.chatCompletions()
+                            .createStream(request)
+                            .join();
+                } catch (Exception e) {
+                    log.error("Error calling model ", e);
+
+                    final var modelOutput =  toModelOutput(context, e, newMessages, allMessages);
+                    if (modelOutput.isPresent()) return modelOutput.get();
+                    throw e;
+                }
                 //We use the following to merge the pieces of response we get from stream into final output
                 final var responseData = new StringBuilder();
                 //We use the following to cobble together the fragment of tool call objects we get from the stream
@@ -474,6 +481,22 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
+    }
+
+    private static Optional<ModelOutput> toModelOutput(final ModelRunContext context,
+                                                       final Throwable error,
+                                                       final List<AgentMessage> newMessages,
+                                                       final List<AgentMessage> allMessages) {
+        var rootCause = AgentUtils.rootCause(error);
+        if (rootCause instanceof SocketTimeoutException
+                || rootCause instanceof SocketException) {
+            return Optional.of(ModelOutput.error(
+                    newMessages,
+                    allMessages,
+                    context.getModelUsageStats(),
+                    SentinelError.error(ErrorType.TIMEOUT, rootCause.getMessage())));
+        }
+        return Optional.empty();
     }
 
     @SuppressWarnings("java:S107")

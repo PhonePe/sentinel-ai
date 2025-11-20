@@ -3,6 +3,8 @@ package com.phonepe.sentinelai.models;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.*;
@@ -23,14 +25,20 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.awaitility.Awaitility;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.UnaryOperator;
+import java.util.stream.IntStream;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -170,21 +178,7 @@ class SimpleOpenAIModelTest {
         TestUtils.setupMocks(numStubs, stubFilePrefix, getClass());
         final var objectMapper = JsonUtils.createMapper();
 
-        final var httpClient = new OkHttpClient.Builder()
-                .build();
-        final var model = new SimpleOpenAIModel<>(
-                "gpt-4o",
-                SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
-                        .apiVersion("2024-10-21")
-                        .objectMapper(objectMapper)
-                        .clientAdapter(new OkHttpClientAdapter(httpClient))
-                        .build(),
-                objectMapper
-        );
+        final var model = setupModel("gpt-4o", wiremock, objectMapper);
         final var eventBus = new EventBus();
         eventBus.onEvent()
                 .connect(event -> {
@@ -300,5 +294,61 @@ class SimpleOpenAIModelTest {
         log.info("Agent response: {}", response.getData());
         return response;
     }
-}
 
+    @Test
+    @SneakyThrows
+    void testRetriesOnTimeouts(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocksWithFault(Fault.CONNECTION_RESET_BY_PEER);
+
+        final var response = executeAgent(wiremock);
+        assertSame(ErrorType.TIMEOUT,
+                response.getError().getErrorType(),
+                "Expected TIMEOUT after retries, got: " + response.getError());
+    }
+
+    @Test
+    @SneakyThrows
+    void testRetriesForGenericFailure(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocksWithFault(Fault.MALFORMED_RESPONSE_CHUNK);
+
+        final var response = executeAgent(wiremock);
+        assertSame(ErrorType.GENERIC_MODEL_CALL_FAILURE,
+                response.getError().getErrorType(),
+                "Expected GENERIC_MODEL_CALL_FAILURE after retries, got: " + response.getError());
+    }
+
+    private static AgentOutput<OutputObject> executeAgent(final WireMockRuntimeInfo wiremock) {
+        final var mapper = JsonUtils.createMapper();
+        final var model = setupModel("gpt-4o-mini-2024-07-18", wiremock, mapper);
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                               .mapper(mapper)
+                               .model(model)
+                               .retrySetup(RetrySetup.builder()
+                                                   .totalAttempts(3)
+                                                   .delayAfterFailedAttempt(Duration.ofMillis(50))
+                                                   .build())
+                               .build())
+                .build();
+        return agent.execute(AgentInput.<UserInput>builder()
+                                                   .request(new UserInput("Hi?"))
+                                                   .build());
+    }
+
+    @NotNull
+    private static SimpleOpenAIModel<SimpleOpenAIAzure> setupModel(final String modelName, final WireMockRuntimeInfo wiremock, final JsonMapper mapper) {
+        final var httpClient = new OkHttpClient.Builder()
+                .build();
+
+        return new SimpleOpenAIModel<>(
+                modelName,
+                SimpleOpenAIAzure.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(mapper)
+                        .clientAdapter(new OkHttpClientAdapter(httpClient))
+                        .build(),
+                mapper);
+    }
+}
