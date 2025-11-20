@@ -339,7 +339,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     log.error("Error calling model ", e);
 
                     final var modelOutput =  toModelOutput(context, e, newMessages, allMessages);
-                    if (modelOutput.isPresent()) return modelOutput.get();
+                    if (modelOutput.isPresent())
+                        return modelOutput.get();
                     throw e;
                 }
                 //We use the following to merge the pieces of response we get from stream into final output
@@ -490,20 +491,25 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                        final List<AgentMessage> allMessages) {
         final var rootCause = AgentUtils.rootCause(error);
         if (rootCause instanceof SocketTimeoutException) {
-            return Optional.of(ModelOutput.error(
-                    newMessages,
-                    allMessages,
-                    context.getModelUsageStats(),
-                    SentinelError.error(ErrorType.TIMEOUT, rootCause.getMessage())));
+            return toModelOutput(context, newMessages, allMessages, rootCause, ErrorType.TIMEOUT);
         }
         if (rootCause instanceof SocketException) {
-            return Optional.of(ModelOutput.error(
-                    newMessages,
-                    allMessages,
-                    context.getModelUsageStats(),
-                    SentinelError.error(ErrorType.COMMUNICATION_ERROR, rootCause.getMessage())));
+            return toModelOutput(context, newMessages, allMessages, rootCause, ErrorType.COMMUNICATION_ERROR);
         }
         return Optional.empty();
+    }
+
+    private static Optional<ModelOutput> toModelOutput(
+            final ModelRunContext context,
+            final List<AgentMessage> newMessages,
+            final List<AgentMessage> allMessages,
+            final Throwable rootCause,
+            ErrorType errorType) {
+        return Optional.of(ModelOutput.error(
+                newMessages,
+                allMessages,
+                context.getModelUsageStats(),
+                SentinelError.error(errorType, rootCause.getMessage())));
     }
 
     @SuppressWarnings("java:S107")
