@@ -169,7 +169,7 @@ class AgentRegistryTest {
                 .build();
         final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
                 .agentSource(agentSource)
-                .agentFactory(config -> badAgent)
+                .agentFactory((config, agent) -> badAgent)
                 .build();
         final var summarizerAgentConfig = AgentConfiguration.builder()
                 .agentName("Summarizer Agent")
