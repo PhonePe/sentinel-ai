@@ -23,7 +23,9 @@ public enum ErrorType {
     GENERIC_MODEL_CALL_FAILURE("Model call failed with error: %s", true),
     DATA_VALIDATION_FAILURE("Model data validation failed. Errors: %s", true),
     FORCED_RETRY("Retry has been forced", true),
-    COMMUNICATION_ERROR("Network error", true),
+    MODEL_CALL_COMMUNICATION_ERROR("Network error", true),
+    MODEL_CALL_RATE_LIMIT_EXCEEDED("Rate limit exceeded: %s", true),
+    MODEL_CALL_HTTP_FAILURE("Error making HTTP Call: %s", true),
     UNKNOWN("Unknown response", true),
     MODEL_RUN_TERMINATED("Model run was terminated", false),
     ;

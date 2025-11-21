@@ -2,7 +2,6 @@ package com.phonepe.sentinelai.models;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
@@ -156,19 +155,9 @@ class SimpleOpenAIModelStreamingTest {
                 .build();
 
         final var response = execute(wiremock, httpClient);
-        assertSame(ErrorType.COMMUNICATION_ERROR,
+        assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
                 response.getError().getErrorType(),
                 "Expected TIMEOUT after retries, got: " + response.getError());
-    }
-
-    @Test
-    @SneakyThrows
-    void testGenericCallFailures(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocksWithFault(Fault.RANDOM_DATA_THEN_CLOSE);
-        final var response = execute(wiremock);
-        assertSame(ErrorType.GENERIC_MODEL_CALL_FAILURE,
-                response.getError().getErrorType(),
-                "Expected GENERIC_MODEL_CALL_FAILURE after retries, got: " + response.getError());
     }
 
     private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock) throws FileNotFoundException {

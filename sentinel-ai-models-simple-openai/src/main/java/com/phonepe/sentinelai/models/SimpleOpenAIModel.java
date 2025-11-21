@@ -25,6 +25,7 @@ import com.phonepe.sentinelai.core.tools.ParameterMapper;
 import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
+import io.github.sashirestela.cleverclient.support.CleverClientException;
 import io.github.sashirestela.openai.common.ResponseFormat;
 import io.github.sashirestela.openai.common.Usage;
 import io.github.sashirestela.openai.common.function.FunctionCall;
@@ -161,10 +162,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 try {
                     completionResponse = openAIProvider.chatCompletions()
                             .create(request)
-                            .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
+                            .join();
                 }
                 catch (Exception e) {
-                    return toModelOutput(context, e, newMessages, allMessages)
+                    return errorToModelOutput(context, e, newMessages, allMessages)
                             .orElseThrow(() -> new RuntimeException(e));
                 }
                 logModelResponse(completionResponse);
@@ -337,7 +338,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             .join();
                 }
                 catch (Exception e) {
-                    return toModelOutput(context, e, newMessages, allMessages)
+                    return errorToModelOutput(context, e, newMessages, allMessages)
                             .orElseThrow(() -> new RuntimeException(e));
                 }
                 //We use the following to merge the pieces of response we get from stream into final output
@@ -486,7 +487,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }, agentSetup.getExecutorService());
     }
 
-    private static Optional<ModelOutput> toModelOutput(
+    private static Optional<ModelOutput> errorToModelOutput(
             final ModelRunContext context,
             final Throwable error,
             final List<AgentMessage> newMessages,
@@ -497,22 +498,58 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 error);
         // Looks like OkHttp sends out a variety of IOExceptions for network issues
         if (ClassUtils.isAssignable(rootCause.getClass(), IOException.class)) {
-            return toModelOutput(context, newMessages, allMessages, rootCause, ErrorType.COMMUNICATION_ERROR);
+            return errorToModelOutput(context,
+                                      newMessages,
+                                      allMessages,
+                                      rootCause,
+                                      ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
+                                      rootCause.getMessage());
+        }
+        // Now that we have all network errors covered, we check for different status codes etc
+        if (rootCause instanceof CleverClientException cleverClientException) {
+            return cleverClientException.responseInfo()
+                    .flatMap(responseInfo -> {
+                        final var message = Objects.requireNonNullElse(responseInfo.getData(),
+                                                                       cleverClientException.getMessage());
+                        return switch (responseInfo.getStatusCode()) {
+                                case 429 -> errorToModelOutput(context,
+                                                               newMessages,
+                                                               allMessages,
+                                                               rootCause,
+                                                               ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED,
+                                                               message);
+                                default -> errorToModelOutput(context,
+                                                              newMessages,
+                                                              allMessages,
+                                                              rootCause,
+                                                              ErrorType.MODEL_CALL_HTTP_FAILURE,
+                                                              "Received HTTP error:  [%d] %s".formatted(
+                                                                      responseInfo.getStatusCode(),
+                                                                      message));
+                            };
+                    })
+                    .or(() -> errorToModelOutput(context,
+                                                 newMessages,
+                                                 allMessages,
+                                                 rootCause,
+                                                 ErrorType.GENERIC_MODEL_CALL_FAILURE,
+                                                 cleverClientException.getMessage()));
         }
         return Optional.empty();
     }
 
-    private static Optional<ModelOutput> toModelOutput(
+    private static Optional<ModelOutput> errorToModelOutput(
             final ModelRunContext context,
             final List<AgentMessage> newMessages,
             final List<AgentMessage> allMessages,
             final Throwable rootCause,
-            ErrorType errorType) {
+            final ErrorType errorType,
+            final String message) {
         return Optional.of(ModelOutput.error(
                 newMessages,
                 allMessages,
                 context.getModelUsageStats(),
-                SentinelError.error(errorType, rootCause.getMessage())));
+                SentinelError.error(errorType, message)));
     }
 
     @SuppressWarnings("java:S107")
