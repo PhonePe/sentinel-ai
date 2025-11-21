@@ -7,7 +7,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
@@ -32,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentMatchers;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,12 +44,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  *
@@ -63,7 +71,15 @@ class AgentRegistryTest {
             super(String.class,
                   """
                           Your role is to perform complex tasks as specified by the user. You can achieve this by using
-                           the other agents.
+                           the other agents. Do not attempt to answer the user's query directly. Instead, analyze the query and
+                           determine which agent(s) would be best suited to handle different parts of the request. Plan
+                           out a sequence of agent calls to fulfill the user's request comprehensively.
+                           Once you have a plan, execute the agent calls in the determined order, passing relevant
+                           information between them as needed. Finally, compile the results from all agent calls into a coherent response
+                           to present to the user.
+                           Remember, your primary function is to orchestrate the use of other agents to accomplish the user's
+                           goals effectively. Do not try to perform the functionality of the other agents; instead, focus on leveraging their capabilities
+                           through well-thought-out planning and execution.
                           """,
                   setup,
                   extensions,
@@ -74,6 +90,18 @@ class AgentRegistryTest {
         public String name() {
             return "planner-agent";
         }
+    }
+
+
+    @Tool("Provides the weather for a location")
+    public String getWeather(@JsonPropertyDescription("Name of the city to get weather for") final String city) {
+        return """
+                {
+                "location" : "Bangalore",
+                "temperature" : "33 centigrade",
+                "condition" : "sunny"
+                }
+                """;
     }
 
     @Test
@@ -93,18 +121,7 @@ class AgentRegistryTest {
                 .agentSource(agentSource)
                 .agentFactory(agentFactory::createAgent)
                 .build();
-        final var summarizerAgentConfig = AgentConfiguration.builder()
-                .agentName("Summarizer Agent")
-                .description("Summarizes input text")
-                .prompt("Provide a 140 character summary for the provided input text")
-                .capability(AgentCapabilities.remoteHttpCalls(Map.of("weatherserver",
-                                                                     Set.of("get_weather_for_location"))))
-                .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
-                .build();
-        log.info("Summarizing agent id: {}",
-                 registry.configureAgent(summarizerAgentConfig)
-                         .map(AgentMetadata::getId)
-                         .orElseThrow());
+        registerSummmarizingAgent(registry);
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
@@ -140,16 +157,131 @@ class AgentRegistryTest {
         printAgentResponse(response);
     }
 
-    @Value
-    private static class WeatherAgentInput {
-        @JsonPropertyDescription("Location to know weather for")
-        String location;
+
+    @ParameterizedTest
+    @SneakyThrows
+    @MethodSource("generateBadAgents")
+    void testSimpleAgentFailure(String prefix, int numMocks, ConfiguredAgent badAgent, WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(numMocks, prefix, getClass());
+        final var agentSource = new InMemoryAgentConfigurationSource();
+        final var okHttpClient = new OkHttpClient.Builder()
+                .callTimeout(Duration.ofSeconds(180))
+                .connectTimeout(Duration.ofSeconds(120))
+                .readTimeout(Duration.ofSeconds(180))
+                .writeTimeout(Duration.ofSeconds(120))
+                .build();
+        final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
+                .agentSource(agentSource)
+                .agentFactory(config -> badAgent)
+                .build();
+        final var summarizerAgentConfig = AgentConfiguration.builder()
+                .agentName("Summarizer Agent")
+                .description("Summarizes input text")
+                .prompt("Provide a 140 character summary for the provided input text")
+                .capability(AgentCapabilities.remoteHttpCalls(Map.of("weatherserver",
+                                                                     Set.of("get_weather_for_location"))))
+                .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
+                .build();
+        log.info("Summarizing agent id: {}",
+                 registry.configureAgent(summarizerAgentConfig)
+                         .map(AgentMetadata::getId)
+                         .orElseThrow());
+
+        final var model = new SimpleOpenAIModel<>(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(MAPPER)
+                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                        .build(),
+                MAPPER
+        );
+
+        final var setup = AgentSetup.builder()
+                .mapper(MAPPER)
+                .model(model)
+                .modelSettings(ModelSettings.builder()
+                                       .temperature(0f)
+                                       .seed(0)
+                                       .parallelToolCalls(false)
+                                       .build())
+                .build();
+
+        final var topAgent = PlannerAgent.builder()
+                .setup(setup)
+                .extension(registry)
+                .build();
+        final var response = topAgent.executeAsync(AgentInput.<String>builder()
+                                                           .request("Summarize the story of War and Peace")
+                                                           .build())
+                .join();
+        printAgentResponse(response);
     }
 
-    @Value
-    private static class WeatherAgentOutput {
-        String condition;
-        String temperature;
+    @ParameterizedTest
+    @SneakyThrows
+    @MethodSource("generateFailurePrompt")
+    void testSimpleAgentWrongAgentID(String filePrefix, int numMocks, String prompt, WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(numMocks, filePrefix, getClass());
+        final var agentSource = new InMemoryAgentConfigurationSource();
+        final var okHttpClient = new OkHttpClient.Builder()
+                .callTimeout(Duration.ofSeconds(180))
+                .connectTimeout(Duration.ofSeconds(120))
+                .readTimeout(Duration.ofSeconds(180))
+                .writeTimeout(Duration.ofSeconds(120))
+                .build();
+        final var agentFactory = ConfiguredAgentFactory.builder() //Nothing is specified
+                .build();
+        final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
+                .agentSource(agentSource)
+                .agentFactory(agentFactory::createAgent)
+                .build();
+        registerSummmarizingAgent(registry);
+        final var model = new SimpleOpenAIModel<>(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(MAPPER)
+                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                        .build(),
+                MAPPER
+        );
+
+        final var setup = AgentSetup.builder()
+                .mapper(MAPPER)
+                .model(model)
+                .modelSettings(ModelSettings.builder()
+                                       .temperature(0f)
+                                       .seed(0)
+                                       .parallelToolCalls(false)
+                                       .build())
+                .build();
+
+        final var topAgent = PlannerAgent.builder()
+                .setup(setup)
+                .extension(registry)
+                .build();
+        final var response = topAgent.executeAsync(
+                        AgentInput.<String>builder()
+                                .request(prompt)
+                                .build())
+                .join();
+        printAgentResponse(response);
+        assertTrue(response.getAllMessages().stream()
+                           .anyMatch(agentMessage -> {
+                               if (agentMessage instanceof ToolCallResponse errorMessage) {
+                                   return errorMessage.getErrorType().equals(ErrorType.TOOL_CALL_PERMANENT_FAILURE);
+                               }
+                               return false;
+                           }));
     }
 
     @Test
@@ -275,7 +407,7 @@ class AgentRegistryTest {
             int numMockFiles,
             final MCPToolBoxFactory toolBoxFactory,
             WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(6, "art.mcp", getClass());
+        TestUtils.setupMocks(numMockFiles, mockFilePrefix, getClass());
 
         final var agentSource = new InMemoryAgentConfigurationSource();
         final var okHttpClient = new OkHttpClient.Builder()
@@ -293,10 +425,7 @@ class AgentRegistryTest {
                 .build()) {
             mcpClient.initialize();
             final var agentFactory = ConfiguredAgentFactory.builder()
-                    .mcpToolboxFactory(MCPToolBoxFactory.builder()
-                                               .objectMapper(MAPPER)
-                                               .clientProvider(upstream -> Optional.of(mcpClient))
-                                               .build())
+                    .mcpToolboxFactory(toolBoxFactory)
                     .build();
             final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
                     .agentSource(agentSource)
@@ -352,17 +481,6 @@ class AgentRegistryTest {
             assertTrue(response.getData().matches(".*9.*"));
             ensureOutputGenerated(response);
         }
-    }
-
-    @Tool("Provides the weather for a location")
-    public String getWeather(@JsonPropertyDescription("Name of the city to get weather for") final String city) {
-        return """
-                {
-                "location" : "Bangalore",
-                "temperature" : "33 centigrade",
-                "condition" : "sunny"
-                }
-                """;
     }
 
     @ParameterizedTest
@@ -500,7 +618,7 @@ class AgentRegistryTest {
                                      .objectMapper(MAPPER)
                                      .clientProvider(upstream -> Optional.of(mcpClient))
                                      .build()),
-                Arguments.of("art.mcpf", 6,
+                Arguments.of("art.mcpf", 5,
                              MCPToolBoxFactory.builder()
                                      .objectMapper(MAPPER)
                                      .clientProvider(upstream -> Optional.empty())
@@ -517,6 +635,33 @@ class AgentRegistryTest {
                         );
     }
 
+    public static Stream<Arguments> generateFailurePrompt() {
+        return Stream.of(
+                Arguments.of("wmg",
+                             2,
+                             " Call tool agent_registry_get_agent_metadata with wrong agent id. Fail on error."),
+                Arguments.of("wmi", 2, " Call agent_registry_invoke_agent with wrong agent id. Fail on error.")
+                        );
+    }
+
+    public static Stream<Arguments> generateBadAgents() {
+        final var failedAgent = mock(ConfiguredAgent.class);
+        when(failedAgent.executeAsync(ArgumentMatchers.any()))
+                .thenReturn(CompletableFuture.completedFuture(AgentOutput.error(
+                        List.of(),
+                        new ModelUsageStats(),
+                        SentinelError.error(ErrorType.GENERIC_MODEL_CALL_FAILURE, "Test error"))));
+
+        final var errorAgent = mock(ConfiguredAgent.class);
+        when(errorAgent.executeAsync(ArgumentMatchers.any()))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new RuntimeException("Error summarizing text")));
+
+        return Stream.of(
+                Arguments.of("bae", 3, failedAgent),
+                Arguments.of("baex", 4, errorAgent));
+    }
+
     private static void printAgentResponse(AgentOutput<String> response) throws JsonProcessingException {
         log.info("Agent response: {}", MAPPER.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(response.getData()));
@@ -527,4 +672,32 @@ class AgentRegistryTest {
         return MAPPER.readTree(Files.readString(Path.of(Objects.requireNonNull(AgentRegistryTest.class.getResource(
                 "/schema/%s".formatted(schemaFilename))).toURI())));
     }
+
+    private static void registerSummmarizingAgent(AgentRegistry<String, String, PlannerAgent> registry) {
+        final var summarizerAgentConfig = AgentConfiguration.builder()
+                .agentName("Summarizer Agent")
+                .description("Summarizes input text")
+                .prompt("Provide a 140 character summary for the provided input text")
+                .capability(AgentCapabilities.remoteHttpCalls(Map.of("weatherserver",
+                                                                     Set.of("get_weather_for_location"))))
+                .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
+                .build();
+        log.info("Summarizing agent id: {}",
+                 registry.configureAgent(summarizerAgentConfig)
+                         .map(AgentMetadata::getId)
+                         .orElseThrow());
+    }
+
+    @Value
+    private static class WeatherAgentInput {
+        @JsonPropertyDescription("Location to know weather for")
+        String location;
+    }
+
+    @Value
+    private static class WeatherAgentOutput {
+        String condition;
+        String temperature;
+    }
+
 }
