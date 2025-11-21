@@ -160,12 +160,6 @@ class SimpleOpenAIModelStreamingTest {
                 "Expected TIMEOUT after retries, got: " + response.getError());
     }
 
-    private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock) throws FileNotFoundException {
-        final var httpClient = new OkHttpClient.Builder()
-                .build();
-        return execute(wiremock, httpClient);
-    }
-
     private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock,
                                                final OkHttpClient client) throws FileNotFoundException {
         final var objectMapper = JsonUtils.createMapper();

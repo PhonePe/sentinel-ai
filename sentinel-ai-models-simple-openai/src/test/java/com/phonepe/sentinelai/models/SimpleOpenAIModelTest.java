@@ -339,9 +339,7 @@ class SimpleOpenAIModelTest {
     @SneakyThrows
     @MethodSource("generateFaults")
     void testRetriesForGenericFailure(final Fault fault, final WireMockRuntimeInfo wiremock) {
-        stubFor(post("/chat/completions?api-version=2024-10-21")
-                        .willReturn(aResponse()
-                                            .withFault(fault)));
+        TestUtils.setupMocksWithFault(fault);
         final var response = executeAgent(wiremock);
         assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
                 response.getError().getErrorType(),

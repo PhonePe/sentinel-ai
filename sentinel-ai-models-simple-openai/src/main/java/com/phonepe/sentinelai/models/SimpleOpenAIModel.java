@@ -501,7 +501,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             return errorToModelOutput(context,
                                       newMessages,
                                       allMessages,
-                                      rootCause,
                                       ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
                                       rootCause.getMessage());
         }
@@ -515,13 +514,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                 case 429 -> errorToModelOutput(context,
                                                                newMessages,
                                                                allMessages,
-                                                               rootCause,
                                                                ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED,
                                                                message);
                                 default -> errorToModelOutput(context,
                                                               newMessages,
                                                               allMessages,
-                                                              rootCause,
                                                               ErrorType.MODEL_CALL_HTTP_FAILURE,
                                                               "Received HTTP error:  [%d] %s".formatted(
                                                                       responseInfo.getStatusCode(),
@@ -531,7 +528,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     .or(() -> errorToModelOutput(context,
                                                  newMessages,
                                                  allMessages,
-                                                 rootCause,
                                                  ErrorType.GENERIC_MODEL_CALL_FAILURE,
                                                  cleverClientException.getMessage()));
         }
@@ -542,7 +538,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             final ModelRunContext context,
             final List<AgentMessage> newMessages,
             final List<AgentMessage> allMessages,
-            final Throwable rootCause,
             final ErrorType errorType,
             final String message) {
         return Optional.of(ModelOutput.error(

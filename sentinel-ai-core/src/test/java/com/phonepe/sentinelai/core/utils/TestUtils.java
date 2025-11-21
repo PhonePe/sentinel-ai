@@ -39,7 +39,9 @@ public class TestUtils {
     }
 
     public static void setupMocksWithFault(Fault fault) {
-
+        stubFor(post("/chat/completions?api-version=2024-10-21")
+                        .willReturn(aResponse()
+                                            .withFault(fault)));
     }
 
     public static void setupMocksWithTimeout(Duration duration) {
