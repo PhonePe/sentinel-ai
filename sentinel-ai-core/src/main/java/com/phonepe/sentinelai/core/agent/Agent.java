@@ -634,6 +634,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         }
     }
 
+    @SuppressWarnings("java:S107")
     private ModelOutput makeAsyncModelCall(
             AgentSetup mergedAgentSetup,
             ModelRunContext modelRunContext,

@@ -126,7 +126,7 @@ class SimpleOpenAIModelTest {
                      setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
                      earlyTerminationStrategy);
         assertTrue(terminationInvoked.get(), "Early termination strategy should have been invoked");
-        assertEquals(response.getError().getErrorType(), ErrorType.SUCCESS);
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
     }
 
     @Test
@@ -166,7 +166,7 @@ class SimpleOpenAIModelTest {
                 setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
                 earlyTerminationStrategy);
         assertTrue(isStrategyInvoked.get(), "Early termination strategy should have been invoked");
-        assertEquals(response.getError().getErrorType(), ErrorType.SUCCESS);
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
     }
 
     @SneakyThrows

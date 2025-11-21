@@ -4,8 +4,6 @@ import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 
-import java.util.Optional;
-
 /**
  * Strategy to determine if an agent run should be terminated early
  */
