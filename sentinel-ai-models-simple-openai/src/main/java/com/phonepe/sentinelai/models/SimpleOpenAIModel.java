@@ -38,8 +38,9 @@ import io.github.sashirestela.openai.service.ChatCompletionServices;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ClassUtils;
 
-import java.net.SocketException;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -494,7 +495,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         log.error("Error calling model: %s -> %s".formatted(
                   rootCause.getClass().getSimpleName(), rootCause.getMessage()),
                 error);
-        if (rootCause instanceof SocketException) {
+        // Looks like OkHttp sends out a variety of IOExceptions for network issues
+        if (ClassUtils.isAssignable(rootCause.getClass(), IOException.class)) {
             return toModelOutput(context, newMessages, allMessages, rootCause, ErrorType.COMMUNICATION_ERROR);
         }
         return Optional.empty();
