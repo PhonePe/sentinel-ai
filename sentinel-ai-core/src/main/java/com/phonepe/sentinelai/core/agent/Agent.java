@@ -570,12 +570,12 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     .map(ModelOutputDefinition::getName)
                     .orElse(null);
             if (outputDefinition.isEmpty() || Strings.isNullOrEmpty(outputName)) {
-                log.error("Empty output name found. Definition: {}", outputDefinition);
+                log.info("Empty output name found for extension {}. Extension will not consume any data.", extension.name());
                 return;
             }
             final var extensionOutputData = data.get(outputName);
             if (JsonUtils.empty(extensionOutputData)) {
-                log.warn("No output from model for extension data named: {}", outputName);
+                log.warn("No output from model for extension data named: {} for extension: {}", outputName, extension.name());
                 return;
             }
             try {
@@ -634,6 +634,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         }
     }
 
+    @SuppressWarnings("java:S107")
     private ModelOutput makeAsyncModelCall(
             AgentSetup mergedAgentSetup,
             ModelRunContext modelRunContext,

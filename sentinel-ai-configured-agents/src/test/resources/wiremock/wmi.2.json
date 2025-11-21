@@ -1,0 +1,37 @@
+{
+  "id" : "chatcmpl-CdzKqlASPwGa1hmDelrg1fZMwIUY4",
+  "object" : "chat.completion",
+  "created" : 1763646600,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_gr58y0N80f28gnXNOCu9isiO",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":\"Error: Failed to invoke the agent with ID 'wrong_agent_id'. The agent metadata is not available, indicating that the agent ID may be incorrect or not registered in the system.\"}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 678,
+    "completion_tokens" : 52,
+    "total_tokens" : 730,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+

@@ -278,6 +278,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                           Agent.StreamProcessingMode.TEXT);
     }
 
+    @SuppressWarnings("java:S107")
     private CompletableFuture<ModelOutput> streamImpl(
             ModelRunContext context,
             Collection<ModelOutputDefinition> outputDefinitions,

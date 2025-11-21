@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.tools.Tool;
@@ -63,7 +62,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
             log.info("Building new agent for: {}", agentId);
             return agentFactory.apply(
                     agentSource.read(agentId)
-                            .orElseThrow(() -> agentNotFoundError(agentId)), agent);
+                            .orElse(null), this.agent);
         });
     }
 
@@ -118,16 +117,14 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
             AgentRunContext<JsonNode> context,
             @JsonPropertyDescription("ID of the agent to be invoked") String agentId,
             @JsonPropertyDescription("The json serialized structured input to be sent to the agent") String agentInput) {
-        try {
-            final var parentMessages = context.getOldMessages();
+        final var configuredAgent = agentCache.find(agentId)
+                .orElseThrow(() -> agentNotFoundError(agentId));
+        final var parentMessages = context.getOldMessages();
             final var messagesToBeSent = new ArrayList<>(parentMessages.stream()
                                                                  .filter(parentMessageFilter)
                                                                  .toList());
-            final var configuredAgent = agentCache.find(agentId).orElse(null);
-            if (null == configuredAgent) {
-                log.error("Agent not found: {}", agentId);
-                return agentNotFound(context, agentId);
-            }
+
+        try {
             final var response = configuredAgent.executeAsync(AgentInput.<JsonNode>builder()
                                                             .request(context.getAgentSetup()
                                                                              .getMapper()
@@ -141,7 +138,8 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
                 return AgentExecutionResult.success(response.getData());
             }
             return fail(context,
-                    "Error running agent %s: [%s] %s".formatted(agentId,
+                    "Error running agent %s: [%s] %s".formatted(
+                            agentId,
                             response.getError().getErrorType(),
                             response.getError().getMessage()));
         }
@@ -161,7 +159,12 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
     public  List<FactList> facts(R request, AgentRunContext<R> context, A agent) {
         return List.of(new FactList(
                 "List of agents registered in the system and can be invoked",
-                availableAgents()));
+                agentSource.list()
+                        .stream()
+                        .map(agentMetadata -> new Fact(
+                                "Available Agent ID: %s".formatted(agentMetadata.getId()),
+                                agentMetadata.getConfiguration().getDescription()))
+                        .toList()));
     }
 
     @Override
@@ -181,6 +184,14 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
                                                    The list of available agents is provided in the facts.
                                                     You MUST invoke the agent_registry_get_agent_metadata tool to understand the agent's capabilities and input/output schema.
                                                     Once understood, you can invoke an agent using the `agent_registry_invoke_agent` tool with the agent ID and input.
+                                                    Invocation response has the following fields:
+                                                    - successful: boolean indicating if the agent invocation was successful
+                                                    - agentOutput: json serialized structured output from the agent (present only if successful = true)
+                                                    - error: reason for failure (present only if successful = false)
+                                                    ALWAYS FOLLOW THESE INSTRUCTIONS:
+                                                    - DO NOT INVOKE AGENT WITHOUT UNDERSTANDING ITS CAPABILITIES AND INPUT/OUTPUT SCHEMA.
+                                                    - DO NOT MAKE ASSUMPTIONS ABOUT THE FUNCTIONALITY OF THE INVOKED AGENT.
+                                                    - DO NOT try to mimic the functionality of the invoked agent yourself. It is ok to fail the task if no suitable agent is found or agent invocation fails.
                                                 """)
                                 .build()
 
@@ -207,33 +218,10 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
         return new IllegalArgumentException("Agent not found: " + agentId);
     }
 
-    private AgentExecutionResult agentNotFound(AgentRunContext<JsonNode> context, String agentId) {
-        final var errorNode = toJsonNode(context, "Agent not found: " + agentId)
-                .set("availableAgents", context.getAgentSetup()
-                        .getMapper()
-                        .valueToTree(availableAgents()));
-        return AgentExecutionResult.fail(errorNode);
-    }
-
     private AgentExecutionResult fail(AgentRunContext<JsonNode> context, String errorMessage) {
-        final var errorNode = toJsonNode(context, errorMessage);
-        return AgentExecutionResult.fail(errorNode);
+        return AgentExecutionResult.fail(context.getAgentSetup()
+                                                 .getMapper()
+                                                 .createObjectNode()
+                                                 .textNode(errorMessage));
     }
-
-    private static ObjectNode toJsonNode(final AgentRunContext<JsonNode> context, final String errorMessage) {
-        return context.getAgentSetup()
-                .getMapper()
-                .createObjectNode()
-                .put("message", errorMessage);
-    }
-
-    private List<Fact> availableAgents() {
-        return agentSource.list()
-                .stream()
-                .map(agentMetadata -> new Fact(
-                        "Available Agent ID: %s".formatted(agentMetadata.getId()),
-                        agentMetadata.getConfiguration().getDescription()))
-                .toList();
-    }
-
 }

@@ -1,0 +1,37 @@
+{
+  "id" : "chatcmpl-Ce39tobkTTxXtNnho7vBTf5vqv0m0",
+  "object" : "chat.completion",
+  "created" : 1763661297,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_TfHUlQop8mWRoyosykK0qvRK",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":\"I encountered an error while trying to summarize the story of War and Peace. Please try again later.\"}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1194,
+    "completion_tokens" : 36,
+    "total_tokens" : 1230,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 1024
+    }
+  }
+} 
+
+
