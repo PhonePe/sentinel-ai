@@ -3,6 +3,7 @@ package configuredagents.capabilities;
 import configuredagents.capabilities.impl.AgentCustomToolCapability;
 import configuredagents.capabilities.impl.AgentMCPCapability;
 import configuredagents.capabilities.impl.AgentRemoteHttpCallCapability;
+import configuredagents.capabilities.impl.ParentToolInheritanceCapability;
 import lombok.experimental.UtilityClass;
 
 import java.util.Map;
@@ -23,5 +24,9 @@ public class AgentCapabilities {
 
     public static AgentCapability customToolCalls(Set<String> selectedTools) {
         return new AgentCustomToolCapability(selectedTools);
+    }
+
+    public static AgentCapability inheritToolsFromParent(Set<String> selectedTools) {
+        return new ParentToolInheritanceCapability(selectedTools);
     }
 }

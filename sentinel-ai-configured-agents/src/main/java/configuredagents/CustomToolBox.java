@@ -35,10 +35,18 @@ public class CustomToolBox implements ToolBox {
 
     public static CustomToolBox filter(
             @NonNull final String agentName,
-            @NonNull final CustomToolBox toolBox,
+            @NonNull final ToolBox toolBox,
             @NonNull final Set<String> exposedTools) {
-        final var sourceTools = Objects.requireNonNullElseGet(toolBox.tools(), Map::<String, ExecutableTool>of);
-        final var toolBoxName = "%s-%s".formatted(agentName, toolBox.name());
+        return CustomToolBox.filter(agentName, toolBox.name(), toolBox.tools(), exposedTools);
+    }
+
+    public static CustomToolBox filter(
+            @NonNull final String agentName,
+            @NonNull final String sourceName,
+            @NonNull final Map<String, ExecutableTool> tools,
+            @NonNull final Set<String> exposedTools) {
+        final var sourceTools = Objects.requireNonNullElseGet(tools, Map::<String, ExecutableTool>of);
+        final var toolBoxName = "%s-%s".formatted(agentName, sourceName);
         return new CustomToolBox(
                 toolBoxName,
                 sourceTools.entrySet()

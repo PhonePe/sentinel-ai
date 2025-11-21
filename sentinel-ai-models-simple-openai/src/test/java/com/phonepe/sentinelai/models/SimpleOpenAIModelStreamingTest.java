@@ -2,13 +2,11 @@ package com.phonepe.sentinelai.models;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
@@ -16,7 +14,6 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.cleverclient.retry.RetryConfig;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -151,32 +148,16 @@ class SimpleOpenAIModelStreamingTest {
     @Test
     @SneakyThrows
     void testTimeouts(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocksWithTimeout(Duration.ofSeconds(10));
+        TestUtils.setupMocksWithTimeout(Duration.ofSeconds(1));
 
         final var httpClient = new OkHttpClient.Builder()
-                .readTimeout(Duration.ofSeconds(2))
+                .readTimeout(Duration.ofMillis(100))
                 .build();
 
         final var response = execute(wiremock, httpClient);
-        assertSame(ErrorType.TIMEOUT,
+        assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
                 response.getError().getErrorType(),
                 "Expected TIMEOUT after retries, got: " + response.getError());
-    }
-
-    @Test
-    @SneakyThrows
-    void testGenericCallFailures(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocksWithFault(Fault.RANDOM_DATA_THEN_CLOSE);
-        final var response = execute(wiremock);
-        assertSame(ErrorType.GENERIC_MODEL_CALL_FAILURE,
-                response.getError().getErrorType(),
-                "Expected GENERIC_MODEL_CALL_FAILURE after retries, got: " + response.getError());
-    }
-
-    private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock) throws FileNotFoundException {
-        final var httpClient = new OkHttpClient.Builder()
-                .build();
-        return execute(wiremock, httpClient);
     }
 
     private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock,

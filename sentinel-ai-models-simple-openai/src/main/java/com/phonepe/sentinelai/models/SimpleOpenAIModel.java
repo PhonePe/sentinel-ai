@@ -25,6 +25,7 @@ import com.phonepe.sentinelai.core.tools.ParameterMapper;
 import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
+import io.github.sashirestela.cleverclient.support.CleverClientException;
 import io.github.sashirestela.openai.common.ResponseFormat;
 import io.github.sashirestela.openai.common.Usage;
 import io.github.sashirestela.openai.common.function.FunctionCall;
@@ -38,9 +39,9 @@ import io.github.sashirestela.openai.service.ChatCompletionServices;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ClassUtils;
 
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -161,15 +162,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 try {
                     completionResponse = openAIProvider.chatCompletions()
                             .create(request)
-                            .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
-                } catch (Exception e) {
-                    log.error("Error calling model ", e);
-                    var error = AgentUtils.rootCause(e);
-
-                    var modelOutput = toModelOutput(context, error, newMessages, allMessages);
-                    if (modelOutput.isPresent())
-                        return modelOutput.get();
-                    throw e;
+                            .join();
+                }
+                catch (Exception e) {
+                    return errorToModelOutput(context, e, newMessages, allMessages)
+                            .orElseThrow(() -> new RuntimeException(e));
                 }
                 logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
@@ -207,16 +204,16 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                stopwatch));
                     }
                     case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> runTools(message.getToolCalls(),
-                                                                                       context,
-                                                                                       toolsForExecution,
-                                                                                       toolRunner,
-                                                                                       stats,
-                                                                                       stopwatch,
-                                                                                       generatedOutput,
-                                                                                       openAiMessages,
-                                                                                       allMessages,
-                                                                                       newMessages,
-                                                                                       oldMessages)
+                                                                                           context,
+                                                                                           toolsForExecution,
+                                                                                           toolRunner,
+                                                                                           stats,
+                                                                                           stopwatch,
+                                                                                           generatedOutput,
+                                                                                           openAiMessages,
+                                                                                           allMessages,
+                                                                                           newMessages,
+                                                                                           oldMessages)
                             .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(
                             oldMessages,
@@ -233,7 +230,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 };
 
                 if (shouldLoop(output)) {
-                    output = evaluateRunTerminationStrategy(context, earlyTerminationStrategy, modelSettings, output, stats);
+                    output = evaluateRunTerminationStrategy(context,
+                                                            earlyTerminationStrategy,
+                                                            modelSettings,
+                                                            output,
+                                                            stats);
                 }
             } while (shouldLoop(output));
             return output;
@@ -335,13 +336,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     completionResponseStream = openAIProvider.chatCompletions()
                             .createStream(request)
                             .join();
-                } catch (Exception e) {
-                    log.error("Error calling model ", e);
-
-                    final var modelOutput =  toModelOutput(context, e, newMessages, allMessages);
-                    if (modelOutput.isPresent())
-                        return modelOutput.get();
-                    throw e;
+                }
+                catch (Exception e) {
+                    return errorToModelOutput(context, e, newMessages, allMessages)
+                            .orElseThrow(() -> new RuntimeException(e));
                 }
                 //We use the following to merge the pieces of response we get from stream into final output
                 final var responseData = new StringBuilder();
@@ -478,38 +476,75 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.stream().findAny().orElse(null);
                 if (shouldLoop(output)) {
-                    output = evaluateRunTerminationStrategy(context, earlyTerminationStrategy, modelSettings, output, stats);
+                    output = evaluateRunTerminationStrategy(context,
+                                                            earlyTerminationStrategy,
+                                                            modelSettings,
+                                                            output,
+                                                            stats);
                 }
             } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
     }
 
-    private static Optional<ModelOutput> toModelOutput(final ModelRunContext context,
-                                                       final Throwable error,
-                                                       final List<AgentMessage> newMessages,
-                                                       final List<AgentMessage> allMessages) {
+    private static Optional<ModelOutput> errorToModelOutput(
+            final ModelRunContext context,
+            final Throwable error,
+            final List<AgentMessage> newMessages,
+            final List<AgentMessage> allMessages) {
         final var rootCause = AgentUtils.rootCause(error);
-        if (rootCause instanceof SocketTimeoutException) {
-            return toModelOutput(context, newMessages, allMessages, rootCause, ErrorType.TIMEOUT);
+        log.error("Error calling model: %s -> %s".formatted(
+                  rootCause.getClass().getSimpleName(), rootCause.getMessage()),
+                error);
+        // Looks like OkHttp sends out a variety of IOExceptions for network issues
+        if (ClassUtils.isAssignable(rootCause.getClass(), IOException.class)) {
+            return errorToModelOutput(context,
+                                      newMessages,
+                                      allMessages,
+                                      ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
+                                      rootCause.getMessage());
         }
-        if (rootCause instanceof SocketException) {
-            return toModelOutput(context, newMessages, allMessages, rootCause, ErrorType.COMMUNICATION_ERROR);
+        // Now that we have all network errors covered, we check for different status codes etc
+        if (rootCause instanceof CleverClientException cleverClientException) {
+            return cleverClientException.responseInfo()
+                    .flatMap(responseInfo -> {
+                        final var message = Objects.requireNonNullElse(responseInfo.getData(),
+                                                                       cleverClientException.getMessage());
+                        return switch (responseInfo.getStatusCode()) {
+                                case 429 -> errorToModelOutput(context,
+                                                               newMessages,
+                                                               allMessages,
+                                                               ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED,
+                                                               message);
+                                default -> errorToModelOutput(context,
+                                                              newMessages,
+                                                              allMessages,
+                                                              ErrorType.MODEL_CALL_HTTP_FAILURE,
+                                                              "Received HTTP error:  [%d] %s".formatted(
+                                                                      responseInfo.getStatusCode(),
+                                                                      message));
+                            };
+                    })
+                    .or(() -> errorToModelOutput(context,
+                                                 newMessages,
+                                                 allMessages,
+                                                 ErrorType.GENERIC_MODEL_CALL_FAILURE,
+                                                 cleverClientException.getMessage()));
         }
         return Optional.empty();
     }
 
-    private static Optional<ModelOutput> toModelOutput(
+    private static Optional<ModelOutput> errorToModelOutput(
             final ModelRunContext context,
             final List<AgentMessage> newMessages,
             final List<AgentMessage> allMessages,
-            final Throwable rootCause,
-            ErrorType errorType) {
+            final ErrorType errorType,
+            final String message) {
         return Optional.of(ModelOutput.error(
                 newMessages,
                 allMessages,
                 context.getModelUsageStats(),
-                SentinelError.error(errorType, rootCause.getMessage())));
+                SentinelError.error(errorType, message)));
     }
 
     @SuppressWarnings("java:S107")
@@ -562,6 +597,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                        .description("Generates output to be used by user")
                                                        .contextAware(true)
                                                        .strictSchema(true)
+                                                       .terminal(true)
                                                        .build(),
                                                schema,
                                                (runContext, toolCallId, args) -> {
@@ -586,7 +622,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
 
-
     private static boolean shouldLoop(final ModelOutput output) {
         return output == null || (output.getData() == null && output.getError() == null);
     }
@@ -598,7 +633,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
 
-    private static ModelOutput evaluateRunTerminationStrategy(ModelRunContext context, EarlyTerminationStrategy earlyTerminationStrategy, ModelSettings modelSettings, ModelOutput output, ModelUsageStats stats) {
+    private static ModelOutput evaluateRunTerminationStrategy(
+            ModelRunContext context,
+            EarlyTerminationStrategy earlyTerminationStrategy,
+            ModelSettings modelSettings,
+            ModelOutput output,
+            ModelUsageStats stats) {
         final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
         if (isEarlyTermination(strategyResponse)) {
             output = ModelOutput.error(

@@ -12,10 +12,7 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
-import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
-import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolMetadata;
-import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolParameterType;
-import com.phonepe.sentinelai.toolbox.remotehttp.UpstreamResolver;
+import com.phonepe.sentinelai.toolbox.remotehttp.*;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplate;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.InMemoryHttpToolSource;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.TemplatizedHttpTool;
@@ -440,6 +437,127 @@ class AgentRegistryTest {
         assertTrue(response.getData().matches(".*[sS]unny.*"));
         ensureOutputGenerated(response);
     }
+
+    @Test
+    @SneakyThrows
+    void testInheritance(WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(4, "arti.http", getClass());
+
+        stubFor(get(urlEqualTo("/api/v1/weather/Bangalore"))
+                        .willReturn(jsonResponse("""
+                                                         {
+                                                         "location" : "Bangalore",
+                                                         "temperature" : "33 centigrade",
+                                                         "condition" : "sunny"
+                                                         }
+                                                         """, 200)));
+        final var agentSource = new InMemoryAgentConfigurationSource();
+        final var okHttpClient = new OkHttpClient.Builder()
+                .callTimeout(Duration.ofSeconds(180))
+                .connectTimeout(Duration.ofSeconds(120))
+                .readTimeout(Duration.ofSeconds(180))
+                .writeTimeout(Duration.ofSeconds(120))
+                .build();
+
+        final var toolSource = InMemoryHttpToolSource.builder()
+                .mapper(MAPPER)
+                .build();
+        toolSource.register("weatherserver",
+                            List.of(TemplatizedHttpTool.builder()
+                                            .metadata(HttpToolMetadata.builder()
+                                                              .name("get_weather_for_location")
+                                                              .description(
+                                                                      "Provides the weather information for a given " +
+                                                                              "location.")
+                                                              .parameters(Map.of("location",
+                                                                                 HttpToolMetadata.HttpToolParameterMeta.builder()
+                                                                                         .description(
+                                                                                                 "Location for the " +
+                                                                                                         "user")
+                                                                                         .type(HttpToolParameterType.STRING)
+                                                                                         .build()))
+                                                              .build())
+                                            .template(HttpCallTemplate.builder()
+                                                              .method(HttpCallSpec.HttpMethod.GET)
+                                                              .path(HttpCallTemplate.Template.textSubstitutor(
+                                                                      "/api/v1/weather/${location}")).build())
+                                            .build()));
+        final var agentFactory = ConfiguredAgentFactory.builder()
+                .httpToolboxFactory(HttpToolboxFactory.builder()
+                                            .toolConfigSource(toolSource)
+                                            .okHttpClient(okHttpClient)
+                                            .objectMapper(MAPPER)
+                                            .upstreamResolver(upstream -> new UpstreamResolver() {
+                                                @Override
+                                                public String resolve(String upstream) {
+                                                    return wiremock.getHttpBaseUrl();
+                                                }
+                                            })
+                                            .build())
+                .build();
+        final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
+                .agentSource(agentSource)
+                .agentFactory(agentFactory::createAgent)
+                .build();
+
+        // Let's create weather agent configuration
+
+        final var weatherAgentConfiguration = AgentConfiguration.builder()
+                .agentName("Weather Agent")
+                .description("Provides the weather information for a given location. Planner must call me instead of "
+                        + "directly calling the weather tools.")
+                .prompt("Respond with the current weather for the given location.")
+                .inputSchema(schema(WeatherAgentInput.class))
+                .outputSchema(schema(WeatherAgentOutput.class))
+                .capability(AgentCapabilities.inheritToolsFromParent(Set.of("get_weather_for_location")))
+                .build();
+        registry.configureAgent(weatherAgentConfiguration)
+                .map(AgentMetadata::getId)
+                .orElseThrow();
+        final var model = new SimpleOpenAIModel<>(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(MAPPER)
+                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                        .build(),
+                MAPPER
+        );
+
+        final var setup = AgentSetup.builder()
+                .mapper(MAPPER)
+                .model(model)
+                .modelSettings(ModelSettings.builder()
+                                       .temperature(0f)
+                                       .seed(0)
+                                       .parallelToolCalls(false)
+                                       .build())
+                .build();
+
+        final var topAgent = PlannerAgent.builder()
+                .setup(setup)
+                .extension(registry)
+                .build()
+                .registerToolbox(HttpToolBox.builder()
+                                         .upstream("weatherserver")
+                                       .httpToolSource(toolSource)
+                                       .httpClient(okHttpClient)
+                                         .upstreamResolver(upstream -> wiremock.getHttpBaseUrl())
+                                       .mapper(MAPPER)
+                                       .build());
+        final var response = topAgent.executeAsync(AgentInput.<String>builder()
+                                                           .request("How is the weather in Bangalore?")
+                                                           .build())
+                .join();
+        printAgentResponse(response);
+        assertTrue(response.getData().matches(".*[sS]unny.*"));
+        ensureOutputGenerated(response);
+    }
+
 
     @Test
     @SneakyThrows

@@ -1,0 +1,151 @@
+name: Maven Build Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  build:
+    name: Build (run all tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Maven local repository
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up JDK 17 and cache Maven
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Build (run unit + integration tests)
+        env:
+          MAVEN_OPTS: -Xmx2G
+        run: mvn -B -V -T1C clean verify
+
+      - name: Upload Surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: '**/target/surefire-reports/**/*'
+
+      - name: Upload Failsafe reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports
+          path: '**/target/failsafe-reports/**/*'
+
+      - name: Upload JaCoCo reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-reports
+          path: |
+            **/target/site/jacoco*
+            **/target/site/jacoco-aggregate/**
+
+      - name: Compute test summary
+        if: always()
+        id: test_summary
+        run: |
+          set -eo pipefail
+          total_tests=0
+          total_failures=0
+          total_errors=0
+          total_skipped=0
+
+          # find surefire and failsafe XML reports
+          mapfile -t files < <(find . -type f \( -path "*/target/surefire-reports/*.xml" -o -path "*/target/failsafe-reports/*.xml" \) -print)
+
+          for f in "${files[@]}"; do
+            # sum attributes across all <testsuite ...> tags in the file
+            t=$(awk -F'tests="' '{for(i=2;i<=NF;i++){split($i,a,"\"");s+=a[1]}} END{print s+0}' "$f") || t=0
+            fa=$(awk -F'failures="' '{for(i=2;i<=NF;i++){split($i,a,"\"");s+=a[1]}} END{print s+0}' "$f") || fa=0
+            er=$(awk -F'errors="' '{for(i=2;i<=NF;i++){split($i,a,"\"");s+=a[1]}} END{print s+0}' "$f") || er=0
+            sk=$(awk -F'skipped="' '{for(i=2;i<=NF;i++){split($i,a,"\"");s+=a[1]}} END{print s+0}' "$f") || sk=0
+
+            total_tests=$((total_tests + t))
+            total_failures=$((total_failures + fa))
+            total_errors=$((total_errors + er))
+            total_skipped=$((total_skipped + sk))
+          done
+
+          # Collect JaCoCo LINE coverage from jacoco.xml files
+          total_cov_covered=0
+          total_cov_missed=0
+          mapfile -t jacfiles < <(find . -type f -name 'jacoco.xml' -path '*/target/*' -print)
+
+          for jf in "${jacfiles[@]}"; do
+            # Extract missed and covered from <counter type="LINE" missed="X" covered="Y"/>
+            read missed covered < <(awk '/type="LINE"/ { if(match($0,/missed="([0-9]+)"/,m)) missed+=m[1]; if(match($0,/covered="([0-9]+)"/,c)) covered+=c[1]} END{print (missed+0)" "(covered+0)}' "$jf")
+            total_cov_missed=$((total_cov_missed + (missed+0)))
+            total_cov_covered=$((total_cov_covered + (covered+0)))
+          done
+
+          total_cov_total=$((total_cov_covered + total_cov_missed))
+          if [ "$total_cov_total" -gt 0 ]; then
+            coverage_pct=$(awk -v c=$total_cov_covered -v t=$total_cov_total 'BEGIN{printf "%.2f", (c*100)/t}')
+          else
+            coverage_pct="n/a"
+          fi
+
+          if [ "$coverage_pct" = "n/a" ]; then
+            coverage_display="$coverage_pct"
+          else
+            coverage_display="${coverage_pct}%"
+          fi
+
+          # export outputs in GitHub Actions format
+          echo "tests=$total_tests" >> $GITHUB_OUTPUT
+          echo "failures=$total_failures" >> $GITHUB_OUTPUT
+          echo "errors=$total_errors" >> $GITHUB_OUTPUT
+          echo "skipped=$total_skipped" >> $GITHUB_OUTPUT
+          echo "coverage=$coverage_pct" >> $GITHUB_OUTPUT
+          echo "coverage_covered=$total_cov_covered" >> $GITHUB_OUTPUT
+          echo "coverage_missed=$total_cov_missed" >> $GITHUB_OUTPUT
+          echo "coverage_total=$total_cov_total" >> $GITHUB_OUTPUT
+          echo "coverage_display=$coverage_display" >> $GITHUB_OUTPUT
+
+      - name: Post summary comment to PR (same-repo only)
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9
+        continue-on-error: true
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## Maven test summary
+
+            - Total tests: ${{ steps.test_summary.outputs.tests }}
+            - Failures: ${{ steps.test_summary.outputs.failures }}
+            - Errors: ${{ steps.test_summary.outputs.errors }}
+            - Skipped: ${{ steps.test_summary.outputs.skipped }}
+            - Coverage (LINE): ${{ steps.test_summary.outputs.coverage_display }} (lines covered: ${{ steps.test_summary.outputs.coverage_covered }} / ${{ steps.test_summary.outputs.coverage_total }})
+
+            _This comment is automatically generated by the GitHub Actions workflow._
+          edit-mode: replace
+
+      - name: Skip PR comment for forked PRs
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          echo "PR originates from a fork (${{ github.event.pull_request.head.repo.full_name }}) — skipping comment because the GITHUB_TOKEN cannot post comments from forked workflows."

@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
 /**
@@ -48,11 +48,12 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
 
     private final SimpleCache<ConfiguredAgent> agentCache;
 
+    private A agent;
 
     @Builder
     public AgentRegistry(
             @NonNull AgentConfigurationSource agentSource,
-            @NonNull Function<AgentMetadata, ConfiguredAgent> agentFactory,
+            @NonNull BiFunction<AgentMetadata, A, ConfiguredAgent> agentFactory,
             final Predicate<AgentMessage> parentMessageFilter,
             final ObjectMapper mapper) {
         this.agentSource = agentSource;
@@ -62,7 +63,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
             log.info("Building new agent for: {}", agentId);
             return agentFactory.apply(
                     agentSource.read(agentId)
-                            .orElseThrow(() -> agentNotFoundError(agentId)));
+                            .orElseThrow(() -> agentNotFoundError(agentId)), agent);
         });
     }
 
@@ -122,12 +123,12 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
             final var messagesToBeSent = new ArrayList<>(parentMessages.stream()
                                                                  .filter(parentMessageFilter)
                                                                  .toList());
-            final var agent = agentCache.find(agentId).orElse(null);
-            if (null == agent) {
+            final var configuredAgent = agentCache.find(agentId).orElse(null);
+            if (null == configuredAgent) {
                 log.error("Agent not found: {}", agentId);
                 return agentNotFound(context, agentId);
             }
-            final var response = agent.executeAsync(AgentInput.<JsonNode>builder()
+            final var response = configuredAgent.executeAsync(AgentInput.<JsonNode>builder()
                                                             .request(context.getAgentSetup()
                                                                              .getMapper()
                                                                              .readTree(agentInput))
@@ -199,7 +200,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
 
     @Override
     public  void onExtensionRegistrationCompleted(A agent) {
-        //Nothing to do here
+        this.agent = agent;
     }
 
     private static IllegalArgumentException agentNotFoundError(String agentId) {
