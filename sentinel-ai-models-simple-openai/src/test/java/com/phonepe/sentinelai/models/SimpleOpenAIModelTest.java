@@ -35,10 +35,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.UnaryOperator;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
@@ -307,17 +304,20 @@ class SimpleOpenAIModelTest {
     @Test
     @SneakyThrows
     void testRetriesOnTimeouts(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocksWithTimeout(Duration.ofSeconds(10));
+        TestUtils.setupMocksWithTimeout(Duration.ofSeconds(2));
 
         final var httpClient = new OkHttpClient.Builder()
-                .readTimeout(Duration.ofSeconds(2))
+                .readTimeout(Duration.ofMillis(100))
+                .callTimeout(Duration.ofMillis(100))
+                .connectTimeout(Duration.ofMillis(100))
+                .writeTimeout(Duration.ofMillis(100))
                 .build();
 
         final var model = setupModel("gpt-4o",
                 wiremock, JsonUtils.createMapper(), httpClient);
 
         final var response = executeAgentWithModel(model);
-        assertSame(ErrorType.TIMEOUT,
+        assertSame(ErrorType.COMMUNICATION_ERROR,
                 response.getError().getErrorType(),
                 "Expected TIMEOUT after retries, got: " + response.getError());
     }
@@ -379,7 +379,7 @@ class SimpleOpenAIModelTest {
                         .objectMapper(mapper)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
                         .retryConfig(RetryConfig.builder()
-                                .maxAttempts(0) // disabling implicit retries by default for tests
+                                .maxAttempts(1) // disabling implicit retries by default for tests
                                 .build())
                         .build(),
                 mapper);

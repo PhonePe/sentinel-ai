@@ -8,7 +8,6 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
@@ -16,7 +15,6 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.cleverclient.retry.RetryConfig;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -151,14 +149,14 @@ class SimpleOpenAIModelStreamingTest {
     @Test
     @SneakyThrows
     void testTimeouts(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocksWithTimeout(Duration.ofSeconds(10));
+        TestUtils.setupMocksWithTimeout(Duration.ofSeconds(1));
 
         final var httpClient = new OkHttpClient.Builder()
-                .readTimeout(Duration.ofSeconds(2))
+                .readTimeout(Duration.ofMillis(100))
                 .build();
 
         final var response = execute(wiremock, httpClient);
-        assertSame(ErrorType.TIMEOUT,
+        assertSame(ErrorType.COMMUNICATION_ERROR,
                 response.getError().getErrorType(),
                 "Expected TIMEOUT after retries, got: " + response.getError());
     }

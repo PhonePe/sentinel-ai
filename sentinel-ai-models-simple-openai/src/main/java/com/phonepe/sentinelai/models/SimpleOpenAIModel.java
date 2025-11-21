@@ -40,7 +40,6 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -162,14 +161,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     completionResponse = openAIProvider.chatCompletions()
                             .create(request)
                             .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
-                } catch (Exception e) {
-                    log.error("Error calling model ", e);
-                    var error = AgentUtils.rootCause(e);
-
-                    var modelOutput = toModelOutput(context, error, newMessages, allMessages);
-                    if (modelOutput.isPresent())
-                        return modelOutput.get();
-                    throw e;
+                }
+                catch (Exception e) {
+                    return toModelOutput(context, e, newMessages, allMessages)
+                            .orElseThrow(() -> new RuntimeException(e));
                 }
                 logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
@@ -207,16 +202,16 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                stopwatch));
                     }
                     case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> runTools(message.getToolCalls(),
-                                                                                       context,
-                                                                                       toolsForExecution,
-                                                                                       toolRunner,
-                                                                                       stats,
-                                                                                       stopwatch,
-                                                                                       generatedOutput,
-                                                                                       openAiMessages,
-                                                                                       allMessages,
-                                                                                       newMessages,
-                                                                                       oldMessages)
+                                                                                           context,
+                                                                                           toolsForExecution,
+                                                                                           toolRunner,
+                                                                                           stats,
+                                                                                           stopwatch,
+                                                                                           generatedOutput,
+                                                                                           openAiMessages,
+                                                                                           allMessages,
+                                                                                           newMessages,
+                                                                                           oldMessages)
                             .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(
                             oldMessages,
@@ -233,7 +228,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 };
 
                 if (shouldLoop(output)) {
-                    output = evaluateRunTerminationStrategy(context, earlyTerminationStrategy, modelSettings, output, stats);
+                    output = evaluateRunTerminationStrategy(context,
+                                                            earlyTerminationStrategy,
+                                                            modelSettings,
+                                                            output,
+                                                            stats);
                 }
             } while (shouldLoop(output));
             return output;
@@ -335,13 +334,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     completionResponseStream = openAIProvider.chatCompletions()
                             .createStream(request)
                             .join();
-                } catch (Exception e) {
-                    log.error("Error calling model ", e);
-
-                    final var modelOutput =  toModelOutput(context, e, newMessages, allMessages);
-                    if (modelOutput.isPresent())
-                        return modelOutput.get();
-                    throw e;
+                }
+                catch (Exception e) {
+                    return toModelOutput(context, e, newMessages, allMessages)
+                            .orElseThrow(() -> new RuntimeException(e));
                 }
                 //We use the following to merge the pieces of response we get from stream into final output
                 final var responseData = new StringBuilder();
@@ -478,21 +474,26 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.stream().findAny().orElse(null);
                 if (shouldLoop(output)) {
-                    output = evaluateRunTerminationStrategy(context, earlyTerminationStrategy, modelSettings, output, stats);
+                    output = evaluateRunTerminationStrategy(context,
+                                                            earlyTerminationStrategy,
+                                                            modelSettings,
+                                                            output,
+                                                            stats);
                 }
             } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
     }
 
-    private static Optional<ModelOutput> toModelOutput(final ModelRunContext context,
-                                                       final Throwable error,
-                                                       final List<AgentMessage> newMessages,
-                                                       final List<AgentMessage> allMessages) {
+    private static Optional<ModelOutput> toModelOutput(
+            final ModelRunContext context,
+            final Throwable error,
+            final List<AgentMessage> newMessages,
+            final List<AgentMessage> allMessages) {
         final var rootCause = AgentUtils.rootCause(error);
-        if (rootCause instanceof SocketTimeoutException) {
-            return toModelOutput(context, newMessages, allMessages, rootCause, ErrorType.TIMEOUT);
-        }
+        log.error("Error calling model: %s -> %s".formatted(
+                  rootCause.getClass().getSimpleName(), rootCause.getMessage()),
+                error);
         if (rootCause instanceof SocketException) {
             return toModelOutput(context, newMessages, allMessages, rootCause, ErrorType.COMMUNICATION_ERROR);
         }
@@ -587,7 +588,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
 
-
     private static boolean shouldLoop(final ModelOutput output) {
         return output == null || (output.getData() == null && output.getError() == null);
     }
@@ -599,7 +599,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
 
-    private static ModelOutput evaluateRunTerminationStrategy(ModelRunContext context, EarlyTerminationStrategy earlyTerminationStrategy, ModelSettings modelSettings, ModelOutput output, ModelUsageStats stats) {
+    private static ModelOutput evaluateRunTerminationStrategy(
+            ModelRunContext context,
+            EarlyTerminationStrategy earlyTerminationStrategy,
+            ModelSettings modelSettings,
+            ModelOutput output,
+            ModelUsageStats stats) {
         final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
         if (isEarlyTermination(strategyResponse)) {
             output = ModelOutput.error(
