@@ -1,19 +1,22 @@
 package com.phonepe.sentinelai.models;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentInput;
-import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
-import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.core.utils.TestUtils;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
+import io.github.sashirestela.cleverclient.retry.RetryConfig;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -21,19 +24,21 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
 
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.phonepe.sentinelai.core.utils.TestUtils.readStubFile;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests simple text based io with {@link SimpleOpenAIModel}
@@ -95,40 +100,11 @@ class SimpleOpenAIModelStreamingTest {
                 });
         final var objectMapper = JsonUtils.createMapper();
 
-        final var httpClient = new OkHttpClient.Builder()
-                .build();
-        final var model = new SimpleOpenAIModel<>(
-                "gpt-4o",
-                SimpleOpenAIAzure.builder()
-//                        .baseUrl("http://localhost:8080") //Wiremock recorder input: $AZURE_ENDPOINT
-//                        // Uncomment the above to record responses using the wiremock recorder.
-//                        // Yeah ... life is hard
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
-                        .apiVersion("2024-10-21")
-                        .objectMapper(objectMapper)
-                        .clientAdapter(new OkHttpClientAdapter(httpClient))
-                        .build(),
-                objectMapper,
-                SimpleOpenAIModelOptions.builder()
-                        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
-                        .build()
-        );
         final var stats = new ModelUsageStats(); //We want to collect stats from the whole session
         final var executor = Executors.newCachedThreadPool();
-        final var agent = new TestAgent(AgentSetup.builder()
-                                                .model(model)
-                                                .mapper(objectMapper)
-                                                .modelSettings(ModelSettings.builder()
-                                                                       .parallelToolCalls(false)
-                                                                       .temperature(0.1f)
-                                                                       .seed(1)
-                                                                       .build())
-                                                .executorService(executor)
-                                                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
-                                                .build());
+        final var httpClient = new OkHttpClient.Builder()
+                .build();
+        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
         final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
         final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
                                                                  .request("Hi")
@@ -172,6 +148,58 @@ class SimpleOpenAIModelStreamingTest {
         log.info("Session stats: {}", stats);
     }
 
+    @Test
+    @SneakyThrows
+    void testTimeouts(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocksWithTimeout(Duration.ofSeconds(10));
+
+        final var httpClient = new OkHttpClient.Builder()
+                .readTimeout(Duration.ofSeconds(2))
+                .build();
+
+        final var response = execute(wiremock, httpClient);
+        assertSame(ErrorType.TIMEOUT,
+                response.getError().getErrorType(),
+                "Expected TIMEOUT after retries, got: " + response.getError());
+    }
+
+    @Test
+    @SneakyThrows
+    void testGenericCallFailures(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocksWithFault(Fault.RANDOM_DATA_THEN_CLOSE);
+        final var response = execute(wiremock);
+        assertSame(ErrorType.GENERIC_MODEL_CALL_FAILURE,
+                response.getError().getErrorType(),
+                "Expected GENERIC_MODEL_CALL_FAILURE after retries, got: " + response.getError());
+    }
+
+    private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock) throws FileNotFoundException {
+        final var httpClient = new OkHttpClient.Builder()
+                .build();
+        return execute(wiremock, httpClient);
+    }
+
+    private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock,
+                                               final OkHttpClient client) throws FileNotFoundException {
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var stats = new ModelUsageStats(); //We want to collect stats from the whole session
+        final var executor = Executors.newCachedThreadPool();
+        final var agent = setupAgent(wiremock, objectMapper, client, executor);
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        return agent.executeAsyncStreaming(AgentInput.<String>builder()
+                                .request("Hi")
+                                .requestMetadata(
+                                        AgentRequestMetadata.builder()
+                                                .sessionId("s1")
+                                                .userId("ss")
+                                                .usageStats(stats)
+                                                .build())
+                                .build(),
+                        new TextStreamer(objectMapper, executor, data -> print(data, outputStream)))
+                .join();
+    }
+
     private static void print(byte[] data, PrintStream outputStream) {
         try {
             outputStream.write(data);
@@ -181,5 +209,41 @@ class SimpleOpenAIModelStreamingTest {
         catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static TestAgent setupAgent(final WireMockRuntimeInfo wiremock,
+                                        final JsonMapper objectMapper,
+                                        final OkHttpClient httpClient,
+                                        final ExecutorService executor) {
+        final var model = new SimpleOpenAIModel<>(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+//                        .baseUrl("http://localhost:8080") //Wiremock recorder input: $AZURE_ENDPOINT
+//                        // Uncomment the above to record responses using the wiremock recorder.
+//                        // Yeah ... life is hard
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(objectMapper)
+                        .clientAdapter(new OkHttpClientAdapter(httpClient))
+                        .build(),
+                objectMapper,
+                SimpleOpenAIModelOptions.builder()
+                        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
+                        .build()
+        );
+        return new TestAgent(AgentSetup.builder()
+                .model(model)
+                .mapper(objectMapper)
+                .modelSettings(ModelSettings.builder()
+                        .parallelToolCalls(false)
+                        .temperature(0.1f)
+                        .seed(1)
+                        .build())
+                .executorService(executor)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
     }
 }
