@@ -2,6 +2,7 @@ package com.phonepe.sentinelai.core.model;
 
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import org.apache.commons.lang3.NotImplementedException;
 
@@ -26,13 +27,15 @@ public interface Model {
      * @param oldMessages The previous messages in the conversation, which can be used to provide context for the model.
      * @param tools A map of tool names to executable tools that can be used by the model to generate outputs.
      * @param toolRunner The tool runner that will execute the tools when needed.
+     * @param earlyTerminationStrategy A strategy to terminate the model run earlier than expected. *
      * @return A CompletableFuture that will complete with the generated Model
      */
     CompletableFuture<ModelOutput> compute(
             ModelRunContext context,
             Collection<ModelOutputDefinition> outputDefinitions,
             List<AgentMessage> oldMessages, Map<String, ExecutableTool> tools,
-            ToolRunner toolRunner);
+            ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy);
 
     /**
      * Streams output from the model based on the provided context and messages. Supports tool calls.
@@ -45,6 +48,7 @@ public interface Model {
      *                      model.
      * @param tools         List of available tools that can be used by the model to generate outputs.
      * @param toolRunner    A runner for the tools that will execute the tools when needed.
+     * @param earlyTerminationStrategy A strategy to terminate the model run earlier than expected.
      * @param streamHandler A consumer that will handle the streamed output from the model. It will be called with
      *                      byte arrays as the output is generated.
      * @return A CompletableFuture that will complete with the generated ModelOutput when the streaming is done.
@@ -55,6 +59,7 @@ public interface Model {
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy,
             Consumer<byte[]> streamHandler) {
         throw new NotImplementedException();
     }
@@ -69,6 +74,7 @@ public interface Model {
      *                      model.
      * @param tools         List of available tools that can be used by the model to generate outputs.
      * @param toolRunner    A runner for the tools that will execute the tools when needed.
+     * @param earlyTerminationStrategy A strategy to terminate the model run earlier than expected.
      * @param streamHandler A consumer that will handle the streamed output from the model. It will be called with
      *                      byte arrays as the output is generated.
      * @return A CompletableFuture that will complete with the generated ModelOutput when the streaming is done.
@@ -78,6 +84,7 @@ public interface Model {
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy,
             Consumer<byte[]> streamHandler) {
         throw new NotImplementedException();
     }

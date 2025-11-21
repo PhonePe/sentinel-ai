@@ -1,5 +1,6 @@
 package com.phonepe.sentinelai.core.utils;
 
+import com.github.tomakehurst.wiremock.http.Fault;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
@@ -10,6 +11,7 @@ import lombok.experimental.UtilityClass;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
@@ -34,6 +36,18 @@ public class TestUtils {
                                     .willSetStateTo(Objects.toString(i + 1)));
 
                 });
+    }
+
+    public static void setupMocksWithFault(Fault fault) {
+        stubFor(post("/chat/completions?api-version=2024-10-21")
+                .willReturn(aResponse()
+                        .withFault(fault)));
+    }
+
+    public static void setupMocksWithTimeout(Duration duration) {
+        stubFor(post("/chat/completions?api-version=2024-10-21")
+                .willReturn(aResponse()
+                        .withFixedDelay((int) duration.toMillis())));
     }
 
     @SneakyThrows

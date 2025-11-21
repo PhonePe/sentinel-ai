@@ -14,6 +14,8 @@ import com.phonepe.sentinelai.core.agentmessages.requests.*;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.*;
@@ -37,6 +39,8 @@ import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -44,6 +48,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
 import static com.phonepe.sentinelai.core.utils.EventUtils.*;
@@ -106,7 +111,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             Collection<ModelOutputDefinition> outputDefinitions,
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
-            ToolRunner toolRunner) {
+            ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy) {
         final var agentSetup = context.getAgentSetup();
         final var modelSettings = agentSetup.getModelSettings();
         //This keeps getting
@@ -150,9 +156,21 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
                 final var request = builder.build();
                 logModelRequest(request);
-                final var completionResponse = openAIProvider.chatCompletions()
-                        .create(request)
-                        .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
+                Chat completionResponse;
+
+                try {
+                    completionResponse = openAIProvider.chatCompletions()
+                            .create(request)
+                            .join(); //TODO::CATCH EXCEPTIONS LIKE 429 etc
+                } catch (Exception e) {
+                    log.error("Error calling model ", e);
+                    var error = AgentUtils.rootCause(e);
+
+                    var modelOutput = toModelOutput(context, error, newMessages, allMessages);
+                    if (modelOutput.isPresent())
+                        return modelOutput.get();
+                    throw e;
+                }
                 logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
                 mergeUsage(context.getModelUsageStats(), completionResponse.getUsage());
@@ -213,7 +231,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             stats,
                             SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
                 };
-            } while (output == null || (output.getData() == null && output.getError() == null));
+
+                if (shouldLoop(output)) {
+                    output = evaluateRunTerminationStrategy(context, earlyTerminationStrategy, modelSettings, output, stats);
+                }
+            } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
     }
@@ -225,12 +247,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy,
             Consumer<byte[]> streamHandler) {
         return streamImpl(context,
                           outputDefinitions,
                           oldMessages,
                           tools,
                           toolRunner,
+                          earlyTerminationStrategy,
                           streamHandler,
                           Agent.StreamProcessingMode.TYPED);
     }
@@ -241,12 +265,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy,
             Consumer<byte[]> streamHandler) {
         return streamImpl(context,
                           List.of(),
                           oldMessages,
                           tools,
                           toolRunner,
+                          earlyTerminationStrategy,
                           streamHandler,
                           Agent.StreamProcessingMode.TEXT);
     }
@@ -257,6 +283,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             List<AgentMessage> oldMessages,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
+            EarlyTerminationStrategy earlyTerminationStrategy,
             Consumer<byte[]> streamHandler,
             Agent.StreamProcessingMode streamProcessingMode) {
         final var agentSetup = context.getAgentSetup();
@@ -302,9 +329,20 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
                 final var request = builder.build();
                 logModelRequest(request);
-                final var completionResponseStream = openAIProvider.chatCompletions()
-                        .createStream(request)
-                        .join();
+                Stream<Chat> completionResponseStream;
+
+                try {
+                    completionResponseStream = openAIProvider.chatCompletions()
+                            .createStream(request)
+                            .join();
+                } catch (Exception e) {
+                    log.error("Error calling model ", e);
+
+                    final var modelOutput =  toModelOutput(context, e, newMessages, allMessages);
+                    if (modelOutput.isPresent())
+                        return modelOutput.get();
+                    throw e;
+                }
                 //We use the following to merge the pieces of response we get from stream into final output
                 final var responseData = new StringBuilder();
                 //We use the following to cobble together the fragment of tool call objects we get from the stream
@@ -439,9 +477,39 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // This needs to be done in two steps to ensure all chunks are consumed. Otherwise, some stuff like
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.stream().findAny().orElse(null);
-            } while (output == null || (output.getData() == null && output.getError() == null));
+                if (shouldLoop(output)) {
+                    output = evaluateRunTerminationStrategy(context, earlyTerminationStrategy, modelSettings, output, stats);
+                }
+            } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
+    }
+
+    private static Optional<ModelOutput> toModelOutput(final ModelRunContext context,
+                                                       final Throwable error,
+                                                       final List<AgentMessage> newMessages,
+                                                       final List<AgentMessage> allMessages) {
+        final var rootCause = AgentUtils.rootCause(error);
+        if (rootCause instanceof SocketTimeoutException) {
+            return toModelOutput(context, newMessages, allMessages, rootCause, ErrorType.TIMEOUT);
+        }
+        if (rootCause instanceof SocketException) {
+            return toModelOutput(context, newMessages, allMessages, rootCause, ErrorType.COMMUNICATION_ERROR);
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<ModelOutput> toModelOutput(
+            final ModelRunContext context,
+            final List<AgentMessage> newMessages,
+            final List<AgentMessage> allMessages,
+            final Throwable rootCause,
+            ErrorType errorType) {
+        return Optional.of(ModelOutput.error(
+                newMessages,
+                allMessages,
+                context.getModelUsageStats(),
+                SentinelError.error(errorType, rootCause.getMessage())));
     }
 
     @SuppressWarnings("java:S107")
@@ -516,6 +584,32 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                ErrorType.TOOL_CALL_PERMANENT_FAILURE);
                                                    }
                                                }));
+    }
+
+
+
+    private static boolean shouldLoop(final ModelOutput output) {
+        return output == null || (output.getData() == null && output.getError() == null);
+    }
+
+    private static boolean isEarlyTermination(final EarlyTerminationStrategyResponse strategyResponse) {
+        return Optional.ofNullable(strategyResponse)
+                .map(response -> response.getResponseType() == EarlyTerminationStrategyResponse.ResponseType.TERMINATE)
+                .orElse(false);
+    }
+
+
+    private static ModelOutput evaluateRunTerminationStrategy(ModelRunContext context, EarlyTerminationStrategy earlyTerminationStrategy, ModelSettings modelSettings, ModelOutput output, ModelUsageStats stats) {
+        final var strategyResponse = earlyTerminationStrategy.evaluate(modelSettings, context, output);
+        if (isEarlyTermination(strategyResponse)) {
+            output = ModelOutput.error(
+                    Optional.ofNullable(output)
+                            .map(ModelOutput::getAllMessages)
+                            .orElse(List.of()),
+                    stats,
+                    new SentinelError(strategyResponse.getErrorType(), strategyResponse.getReason()));
+        }
+        return output;
     }
 
     private static Chat.Choice extractResponse(Chat completionResponse) {
