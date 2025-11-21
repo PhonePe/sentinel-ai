@@ -1,5 +1,6 @@
 package configuredagents;
 
+import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.tools.ComposingToolBox;
 import com.phonepe.sentinelai.core.tools.ToolBox;
@@ -39,7 +40,7 @@ public class ConfiguredAgentFactory {
         this.customToolBox = customToolBox;
     }
 
-    public final ConfiguredAgent createAgent(@NonNull final AgentMetadata agentMetadata) {
+    public final ConfiguredAgent createAgent(@NonNull final AgentMetadata agentMetadata, Agent<?, ?, ?> parent) {
         final var agentConfiguration = agentMetadata.getConfiguration();
         final var capabilities = Objects.requireNonNullElseGet(agentConfiguration.getCapabilities(),
                                                                List::<AgentCapability>of);
@@ -113,6 +114,19 @@ public class ConfiguredAgentFactory {
 
                     @Override
                     public Void visit(AgentSessionManagementCapability sessionManagementCapability) {
+                        return null;
+                    }
+
+                    @Override
+                    public Void visit(ParentToolInheritanceCapability parentToolInheritanceCapability) {
+                        final var parentTools = parent.tools();
+                        final var exposedTools = Objects.requireNonNullElseGet(
+                                parentToolInheritanceCapability.getSelectedTools(), Set::<String>of);
+                        toolBoxes.add(
+                                CustomToolBox.filter(agentConfiguration.getAgentName(),
+                                                     "agent-%s-tools".formatted(parent.name()),
+                                                     parentTools,
+                                                     exposedTools));
                         return null;
                     }
                 }));

@@ -40,14 +40,15 @@ public class TestUtils {
 
     public static void setupMocksWithFault(Fault fault) {
         stubFor(post("/chat/completions?api-version=2024-10-21")
-                .willReturn(aResponse()
-                        .withFault(fault)));
+                        .willReturn(aResponse()
+                                            .withFault(fault)));
     }
 
     public static void setupMocksWithTimeout(Duration duration) {
         stubFor(post("/chat/completions?api-version=2024-10-21")
-                .willReturn(aResponse()
-                        .withFixedDelay((int) duration.toMillis())));
+                        .willReturn(aResponse()
+                                            .withStatus(200)
+                                            .withFixedDelay((int) duration.toMillis())));
     }
 
     @SneakyThrows
@@ -73,7 +74,7 @@ public class TestUtils {
         assertTrue(response.getNewMessages()
                            .stream()
                            .anyMatch(message -> message.getMessageType()
-                                           .equals(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE)
+                                   .equals(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE)
                                    && message instanceof ToolCall toolCall
                                    && toolCall.getToolName().equals(Agent.OUTPUT_GENERATOR_ID)),
                    "Expected at least one output function call, but found none.");

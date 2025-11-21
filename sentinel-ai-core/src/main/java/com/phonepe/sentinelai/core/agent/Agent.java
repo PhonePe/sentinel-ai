@@ -233,6 +233,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         return executeAsync(request).join();
     }
 
+    public Map<String, ExecutableTool> tools() {
+        return Map.copyOf(knownTools);
+    }
+
     /**
      * Execute the agent synchronously.
      *

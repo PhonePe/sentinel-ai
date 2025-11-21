@@ -1,0 +1,37 @@
+{
+  "id" : "chatcmpl-CdVB446YAn94URbMwvj23YndRo0RJ",
+  "object" : "chat.completion",
+  "created" : 1763530674,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_deZ5m2wStyZDYEwexG9ihtfB",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":\"The weather in Bangalore is currently sunny with a temperature of 33 degrees Celsius.\"}"
+        }
+      } ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 766,
+    "completion_tokens" : 32,
+    "total_tokens" : 798,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+

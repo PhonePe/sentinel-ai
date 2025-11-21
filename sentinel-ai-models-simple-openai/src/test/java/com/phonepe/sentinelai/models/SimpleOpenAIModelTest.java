@@ -28,17 +28,19 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
@@ -293,44 +295,69 @@ class SimpleOpenAIModelTest {
         return response;
     }
 
-    @Test
+    @ParameterizedTest
     @SneakyThrows
-    void testConnectionResets(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocksWithFault(Fault.CONNECTION_RESET_BY_PEER);
+    @MethodSource("generateHttpCallFailures")
+    void testConnectionRateLimit(
+            final int status,
+            final String payload,
+            final ErrorType expectedErrorType,
+            final WireMockRuntimeInfo wiremock) {
+        stubFor(post("/chat/completions?api-version=2024-10-21")
+                        .willReturn(aResponse()
+                                            .withStatus(status)
+                                            .withBody(payload)));
 
         final var response = executeAgent(wiremock);
-        assertSame(ErrorType.COMMUNICATION_ERROR,
-                response.getError().getErrorType(),
-                "Expected TIMEOUT after retries, got: " + response.getError());
+        assertSame(expectedErrorType,
+                   response.getError().getErrorType(),
+                   "Expected %s after retries, got: %s".formatted(expectedErrorType, response.getError()));
     }
 
     @Test
     @SneakyThrows
     void testRetriesOnTimeouts(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocksWithTimeout(Duration.ofSeconds(10));
+        TestUtils.setupMocksWithTimeout(Duration.ofSeconds(2));
 
         final var httpClient = new OkHttpClient.Builder()
-                .readTimeout(Duration.ofSeconds(2))
+                .readTimeout(Duration.ofMillis(100))
+                .callTimeout(Duration.ofMillis(100))
+                .connectTimeout(Duration.ofMillis(100))
+                .writeTimeout(Duration.ofMillis(100))
                 .build();
 
         final var model = setupModel("gpt-4o",
                 wiremock, JsonUtils.createMapper(), httpClient);
 
         final var response = executeAgentWithModel(model);
-        assertSame(ErrorType.TIMEOUT,
+        assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
                 response.getError().getErrorType(),
                 "Expected TIMEOUT after retries, got: " + response.getError());
     }
 
-    @Test
+    @ParameterizedTest
     @SneakyThrows
-    void testRetriesForGenericFailure(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocksWithFault(Fault.MALFORMED_RESPONSE_CHUNK);
-
+    @MethodSource("generateFaults")
+    void testRetriesForGenericFailure(final Fault fault, final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocksWithFault(fault);
         final var response = executeAgent(wiremock);
-        assertSame(ErrorType.GENERIC_MODEL_CALL_FAILURE,
+        assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
                 response.getError().getErrorType(),
-                "Expected GENERIC_MODEL_CALL_FAILURE after retries, got: " + response.getError());
+                "Expected COMMUNICATION_ERROR after retries, got: " + response.getError());
+    }
+
+    public static Stream<Arguments> generateHttpCallFailures() {
+        return Stream.of(
+                Arguments.of(429, "Connection Rate Limit", ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED),
+                Arguments.of(500, "Internal Server Error", ErrorType.MODEL_CALL_HTTP_FAILURE));
+    }
+
+    public static Stream<Arguments> generateFaults() {
+        return Stream.of(
+                Arguments.of(Fault.CONNECTION_RESET_BY_PEER),
+                Arguments.of(Fault.MALFORMED_RESPONSE_CHUNK),
+                Arguments.of(Fault.RANDOM_DATA_THEN_CLOSE),
+                Arguments.of(Fault.EMPTY_RESPONSE));
     }
 
     private static AgentOutput<OutputObject> executeAgent(final WireMockRuntimeInfo wiremock) {
@@ -379,7 +406,7 @@ class SimpleOpenAIModelTest {
                         .objectMapper(mapper)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
                         .retryConfig(RetryConfig.builder()
-                                .maxAttempts(0) // disabling implicit retries by default for tests
+                                .maxAttempts(1) // disabling implicit retries by default for tests
                                 .build())
                         .build(),
                 mapper);

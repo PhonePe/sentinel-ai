@@ -5,13 +5,17 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import configuredagents.capabilities.impl.AgentCustomToolCapability;
 import configuredagents.capabilities.impl.AgentMCPCapability;
 import configuredagents.capabilities.impl.AgentRemoteHttpCallCapability;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.ToString;
 
 /**
  * Expresses the capabilities of an agent.
  */
-@Data
+@EqualsAndHashCode
+@ToString
+@Getter
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type")
 @JsonSubTypes({
         @JsonSubTypes.Type(name = "REMOTE_HTTP_CALLS", value = AgentRemoteHttpCallCapability.class),
@@ -23,6 +27,7 @@ public abstract class AgentCapability {
         REMOTE_HTTP_CALLS,
         MCP,
         CUSTOM_TOOLS,
+        TOOL_INHERITANCE,
         AGENT_MEMORY,
         SESSION_MANAGEMENT,
     }
