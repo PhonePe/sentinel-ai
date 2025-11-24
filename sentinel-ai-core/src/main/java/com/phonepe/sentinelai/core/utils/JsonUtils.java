@@ -15,6 +15,10 @@ public class JsonUtils {
 
     public static JsonMapper createMapper() {
         final var mapper = new JsonMapper();
+        return configureMapper(mapper);
+    }
+
+    public static JsonMapper configureMapper(JsonMapper mapper) {
         mapper.findAndRegisterModules()
                 .setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
