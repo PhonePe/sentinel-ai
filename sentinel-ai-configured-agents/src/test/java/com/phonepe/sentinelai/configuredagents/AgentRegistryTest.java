@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.phonepe.sentinelai.configuredagents.capabilities.AgentCapabilities;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
@@ -13,6 +14,7 @@ import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.Tool;
+import com.phonepe.sentinelai.core.utils.EnvLoader;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
@@ -20,7 +22,6 @@ import com.phonepe.sentinelai.toolbox.remotehttp.*;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplate;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.InMemoryHttpToolSource;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.TemplatizedHttpTool;
-import com.phonepe.sentinelai.configuredagents.capabilities.AgentCapabilities;
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import io.modelcontextprotocol.client.McpClient;
@@ -635,10 +636,10 @@ class AgentRegistryTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+//                        .baseUrl(wiremock.getHttpBaseUrl())
+//                        .apiKey("BLAH")
                         .apiVersion("2024-10-21")
                         .objectMapper(MAPPER)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
