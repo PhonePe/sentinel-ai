@@ -127,7 +127,7 @@ public class SentinelMCPClient implements AutoCloseable {
             final var res = mcpClient.callTool(new McpSchema.CallToolRequest(tool.getToolDefinition().getName(), args));
             return new ExternalTool.ExternalToolResponse(
                     res.content(),
-                    Boolean.FALSE.equals(res.isError())
+                    Boolean.TRUE.equals(res.isError())
                     ? ErrorType.TOOL_CALL_TEMPORARY_FAILURE
                     : ErrorType.SUCCESS);
         }
@@ -192,6 +192,7 @@ public class SentinelMCPClient implements AutoCloseable {
                                 // present in the required field. This is not something all MCP
                                 // servers do properly. So for now we are setting strict false
                                 // for tools obtained from mcp servers
+                                .terminal(false)
                                 .build(),
                         mapper.valueToTree(toolDef.inputSchema()),
                         this::runTool))
