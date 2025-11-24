@@ -14,7 +14,6 @@ import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.Tool;
-import com.phonepe.sentinelai.core.utils.EnvLoader;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
@@ -636,10 +635,10 @@ class AgentRegistryTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-//                        .baseUrl(wiremock.getHttpBaseUrl())
-//                        .apiKey("BLAH")
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
                         .apiVersion("2024-10-21")
                         .objectMapper(MAPPER)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
