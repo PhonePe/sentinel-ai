@@ -1,7 +1,11 @@
 package com.phonepe.sentinelai.configuredagents;
 
-import com.phonepe.sentinel.configuredagents.capabilities.impl.*;
-import com.phonepe.sentinelai.configuredagents.capabilities.impl.*;
+import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentCustomToolCapability;
+import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentMCPCapability;
+import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentMemoryCapability;
+import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentRemoteHttpCallCapability;
+import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentSessionManagementCapability;
+import com.phonepe.sentinelai.configuredagents.capabilities.impl.ParentToolInheritanceCapability;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.tools.ComposingToolBox;
