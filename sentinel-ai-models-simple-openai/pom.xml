@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.phonepe.sentinel-ai</groupId>
         <artifactId>sentinel-ai</artifactId>
-        <version>1.1.1-alpha2</version>
+        <version>1.1.1-alpha3</version>
     </parent>
 
     <artifactId>sentinel-ai-models-simple-openai</artifactId>

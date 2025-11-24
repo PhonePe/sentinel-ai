@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.phonepe.sentinel.configuredagents.capabilities.impl.AgentCustomToolCapability;
 import com.phonepe.sentinel.configuredagents.capabilities.impl.AgentMCPCapability;
 import com.phonepe.sentinel.configuredagents.capabilities.impl.AgentRemoteHttpCallCapability;
+import com.phonepe.sentinel.configuredagents.capabilities.impl.ParentToolInheritanceCapability;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
@@ -21,6 +22,7 @@ import lombok.ToString;
         @JsonSubTypes.Type(name = "REMOTE_HTTP_CALLS", value = AgentRemoteHttpCallCapability.class),
         @JsonSubTypes.Type(name = "MCP", value = AgentMCPCapability.class),
         @JsonSubTypes.Type(name = "CUSTOM_TOOLS", value = AgentCustomToolCapability.class),
+        @JsonSubTypes.Type(name = "TOOL_INHERITANCE", value = ParentToolInheritanceCapability.class),
 })
 public abstract class AgentCapability {
     public enum Type {
