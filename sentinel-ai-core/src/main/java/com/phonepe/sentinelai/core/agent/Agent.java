@@ -21,6 +21,7 @@ import com.phonepe.sentinelai.core.errorhandling.ErrorResponseHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.events.EventBus;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
@@ -48,6 +49,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -106,6 +108,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final XmlMapper xmlMapper = new XmlMapper();
     private final ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> requestCompleted =
             new ConsumingFireForgetSignal<>();
+    private final List<AgentMessagesPreProcessor> agentMessagesPreProcessors = new CopyOnWriteArrayList<>(); // just to be thread-safe
 
     @SuppressWarnings("unchecked")
     private final A self = (A) this;
@@ -226,6 +229,12 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             log.debug("No tools registered");
         }
         this.knownTools.putAll(tools);
+        return self;
+    }
+
+    public A registerAgentMessagesPreProcessor(AgentMessagesPreProcessor agentMessagesPreProcessor) {
+        this.agentMessagesPreProcessors.add(agentMessagesPreProcessor);
+        log.info("Registering messages pre-processor: {} for agent: {}", agentMessagesPreProcessor.getClass().getSimpleName(), name());
         return self;
     }
 
@@ -616,7 +625,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                    mergedAgentSetup,
                                                    toolRunApprovalSeeker,
                                                    context),
-                            earlyTerminationStrategy)
+                            earlyTerminationStrategy,
+                            agentMessagesPreProcessors)
                     .get();
         }
         catch (InterruptedException e) {
