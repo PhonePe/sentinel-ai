@@ -1095,12 +1095,16 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     private ToolChoiceOption computeToolChoice(OutputGenerationMode outputGenerationMode) {
-        return switch (this.modelOptions.getToolChoice()) {
-            case REQUIRED -> switch (outputGenerationMode) {
-                case TOOL_BASED -> ToolChoiceOption.REQUIRED;
-                case STRUCTURED_OUTPUT -> ToolChoiceOption.AUTO;
+        return switch (outputGenerationMode) {
+            case TOOL_BASED -> ToolChoiceOption.REQUIRED;
+            case STRUCTURED_OUTPUT -> switch (this.modelOptions.getToolChoice()) {
+                case REQUIRED -> {
+                    log.warn("Model is configured for STRUCTURED_OUTPUT generation mode, " +
+                             "but tool choice is set to REQUIRED. This might lead to infinite tool-call loops");
+                    yield ToolChoiceOption.REQUIRED;
+                }
+                case AUTO -> ToolChoiceOption.AUTO;
             };
-            case AUTO -> ToolChoiceOption.AUTO;
         };
     }
 
