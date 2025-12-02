@@ -19,10 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -83,8 +80,12 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
             return new ToolCallResponse(toolCall.getToolCallId(),
                                         toolCall.getToolName(),
                                         ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                        "Tool call %s failed. Invalid tool: %s"
-                                                .formatted(toolCall.getToolCallId(), toolCall.getToolName()),
+                                        ("Tool call %s failed. There is no tool with name: %s. " +
+                                                "Retry by calling any of the following available tools with the" +
+                                                " appropriate parameters: %s.")
+                                                .formatted(toolCall.getToolCallId(),
+                                                           toolCall.getToolName(),
+                                                           Set.copyOf(tools.keySet())),
                                         LocalDateTime.now());
         }
         //TODO::RETRY LOGIC
