@@ -30,7 +30,7 @@ import java.util.function.Predicate;
 @Slf4j
 public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
 
-    public static final AgentMetadataAccessMode DEFAULT_METADATA_ACCESS_MODE =
+    private static final AgentMetadataAccessMode DEFAULT_METADATA_ACCESS_MODE =
             AgentMetadataAccessMode.INCLUDE_IN_PROMPT;
     /**
      * Storage for agent configurations.
