@@ -101,10 +101,14 @@ class AgentRegistryTest {
                 """;
     }
 
-    @Test
+    @ParameterizedTest
     @SneakyThrows
-    void testSimpleAgent(WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(4, "art.sa", getClass());
+    @MethodSource("generateSimpleTestConfig")
+    void testSimpleAgent(AgentMetadataAccessMode metadataAccessMode,
+                         int numMocks,
+                         String mockPrefix,
+                         WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(numMocks, mockPrefix, getClass());
         final var agentSource = new InMemoryAgentConfigurationSource();
         final var okHttpClient = new OkHttpClient.Builder()
                 .callTimeout(Duration.ofSeconds(180))
@@ -117,6 +121,7 @@ class AgentRegistryTest {
         final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
                 .agentSource(agentSource)
                 .agentFactory(agentFactory::createAgent)
+                .agentMetadataAccessMode(metadataAccessMode)
                 .build();
         registerSummmarizingAgent(registry);
         final var model = new SimpleOpenAIModel<>(
@@ -699,6 +704,16 @@ class AgentRegistryTest {
         assertThrows(JsonProcessingException.class, () -> registry.loadAgentsFromFile(
                 Paths.get(Objects.requireNonNull(
                         getClass().getResource("/agent-malformed.json")).toURI()).toString()));
+    }
+
+    public static Stream<Arguments> generateSimpleTestConfig() {
+        return Stream.of(
+                //Direct invocation so one less call. Num mocks: 3
+                Arguments.of(null, 3, "artd.sa"), //Default is inject
+                Arguments.of(AgentMetadataAccessMode.INCLUDE_IN_PROMPT, 3, "artp.sa"),
+                // Metadata get function will be called so one more call. Num mocks: 4
+                Arguments.of(AgentMetadataAccessMode.METADATA_TOOL_LOOKUP, 4, "art.sa")
+                        );
     }
 
     private static Stream<Arguments> generateAgentConfig() {
