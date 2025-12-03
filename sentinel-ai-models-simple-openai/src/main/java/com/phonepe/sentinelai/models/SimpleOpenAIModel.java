@@ -150,7 +150,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              .strict(true)
                                                                              .build()));
                 }
-                builder.toolChoice(computeToolChoice(outputGenerationMode));
+                addToolChoice(toolsForExecution, builder, outputGenerationMode);
                 raiseMessageSentEvent(context, oldMessages);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
@@ -325,7 +325,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              .strict(true)
                                                                              .build()));
                 }
-                builder.toolChoice(computeToolChoice(outputGenerationMode));
+                addToolChoice(toolsForExecution, builder, outputGenerationMode);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
 
@@ -1092,6 +1092,16 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 });
             }
         });
+    }
+
+    private void addToolChoice(
+            Map<String, ExecutableTool> toolsForExecution,
+            ChatRequest.ChatRequestBuilder builder,
+            OutputGenerationMode outputGenerationMode) {
+        // Looks like some models do not like the tool_choice being sent if there are no tools specified
+        if (!toolsForExecution.isEmpty()) {
+            builder.toolChoice(computeToolChoice(outputGenerationMode));
+        }
     }
 
     private ToolChoiceOption computeToolChoice(OutputGenerationMode outputGenerationMode) {

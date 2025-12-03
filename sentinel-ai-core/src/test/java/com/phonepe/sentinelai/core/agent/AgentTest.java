@@ -524,7 +524,7 @@ class AgentTest {
                         .build());
         assertNull(response.getData());
         final var data = response.getError();
-        assertTrue(data.getMessage().contains("Invalid tool: getUnknown"));
+        assertTrue(data.getMessage().contains("There is no tool with name: getUnknown"));
     }
 
     private static ObjectNode createTextOutput(String message) {
