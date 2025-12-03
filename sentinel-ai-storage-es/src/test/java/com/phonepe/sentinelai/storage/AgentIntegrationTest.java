@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinel.session.AgentSessionExtension;
+import com.phonepe.sentinel.session.AgentSessionExtensionMode;
+import com.phonepe.sentinel.session.AgentSessionExtensionSetup;
 import com.phonepe.sentinelai.agentmemory.AgentMemoryExtension;
 import com.phonepe.sentinelai.agentmemory.MemoryExtractionMode;
 import com.phonepe.sentinelai.core.agent.*;
@@ -129,7 +131,7 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                                .build(),
                                        AgentSessionExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                                .sessionStore(sessionStorage)
-                                               .updateSummaryAfterSession(true)
+                                               .setup(AgentSessionExtensionSetup.builder().mode(AgentSessionExtensionMode.SUMMARY).build())
                                                .build());
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
