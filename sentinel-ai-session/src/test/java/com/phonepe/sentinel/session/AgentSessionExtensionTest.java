@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.phonepe.sentinel.session.history.History;
+import com.phonepe.sentinel.session.history.HistoryStore;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
@@ -27,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  *
@@ -65,6 +69,21 @@ class AgentSessionExtensionTest {
         public Optional<SessionSummary> saveSession(String agentName, SessionSummary sessionSummary) {
             sessionData.put(sessionSummary.getSessionId(), sessionSummary);
             return session(sessionSummary.getSessionId());
+        }
+    }
+
+    private static final class InMemoryHistoryStore implements HistoryStore {
+        private final Map<String, History> historyData = new ConcurrentHashMap<>();
+
+        @Override
+        public Optional<History> history(String sessionId) {
+            return Optional.ofNullable(historyData.get(sessionId));
+        }
+
+        @Override
+        public Optional<History> saveHistory(History history) {
+            historyData.put(history.getSessionId(), history);
+            return Optional.of(history);
         }
     }
 
@@ -124,7 +143,7 @@ class AgentSessionExtensionTest {
                                .build())
                 .extensions(List.of(AgentSessionExtension.<UserInput, String, SimpleAgent>builder()
                                             .sessionStore(new InMemorySessionStore())
-                                            .updateSummaryAfterSession(true)
+                                            .setup(AgentSessionExtensionSetup.builder().mode(AgentSessionExtensionMode.SUMMARY).build())
                                             .mapper(objectMapper)
                                             .build()))
                 .build()
@@ -153,6 +172,76 @@ class AgentSessionExtensionTest {
             log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
                     .writeValueAsString(response2.getAllMessages()));
         }
+    }
+
+
+    @Test
+    @SneakyThrows
+    void testHistoryMode(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(6, "se", getClass());
+        final var objectMapper = JsonUtils.createMapper();
+        final var toolbox = new TestToolBox("Santanu");
+        final var model = new SimpleOpenAIModel(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(objectMapper)
+                        .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder().build()))
+                        .build(),
+                objectMapper
+        );
+
+
+        InMemoryHistoryStore historyStore = new InMemoryHistoryStore();
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                        .mapper(objectMapper)
+                        .model(model)
+                        .modelSettings(ModelSettings.builder()
+                                .temperature(0.1f)
+                                .seed(1)
+                                .build())
+                        .build())
+                .extensions(List.of(AgentSessionExtension.<UserInput, String, SimpleAgent>builder()
+                        .historyStore(historyStore)
+                        .setup(AgentSessionExtensionSetup.builder().mode(AgentSessionExtensionMode.HISTORY).build())
+                        .mapper(objectMapper)
+                        .build()))
+                .build()
+                .registerToolbox(toolbox);
+
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
+        final var response = agent.execute(
+                AgentInput.<UserInput>builder()
+                        .request(new UserInput("Hi"))
+                        .requestMetadata(requestMetadata)
+                        .build());
+        log.info("Agent response: {}", response.getData());
+
+        //Thread.sleep(1000);
+        //assertEquals(1, historyStore.history("s1").orElseThrow().getMessages().size());
+
+        final var response2 = agent.execute(
+                AgentInput.<UserInput>builder()
+                        .request(new UserInput("How is the weather at user's location?"))
+                        .requestMetadata(requestMetadata)
+                        //.oldMessages(response.getAllMessages())
+                        .build());
+        log.info("Second call: {}", response2.getData());
+        if (log.isTraceEnabled()) {
+            log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
+                    .writeValueAsString(response2.getAllMessages()));
+        }
+
+        //Thread.sleep(1000);
+        //assertEquals(2, historyStore.history("s1").orElseThrow().getMessages().size());
     }
 
     /**

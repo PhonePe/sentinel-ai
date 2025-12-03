@@ -4,7 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import com.phonepe.sentinel.session.history.History;
+import com.phonepe.sentinel.session.history.HistoryStore;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.Builder;
@@ -17,6 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+
 /**
  * Manages session for an agent
  */
@@ -27,15 +33,26 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     private static final String OUTPUT_KEY = "sessionOutput";
     ObjectMapper mapper;
     SessionStore sessionStore;
-    boolean updateSummaryAfterSession;
+    HistoryStore historyStore;
+    AgentSessionExtensionSetup setup;
+
 
     public AgentSessionExtension(
             ObjectMapper mapper,
-            @NonNull SessionStore sessionStore,
-            boolean updateSummaryAfterSession) {
+            SessionStore sessionStore,
+            HistoryStore historyStore,
+            @NonNull AgentSessionExtensionSetup setup) {
         this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
+        this.setup = setup;
+        if (isSummaryEnabled()) {
+            Objects.requireNonNull(sessionStore, "SessionStore cannot be null when SUMMARY mode is enabled");
+        }
+        if (isHistoryEnabled()) {
+            Objects.requireNonNull(historyStore, "HistoryStore cannot be null when HISTORY mode is enabled");
+        }
         this.sessionStore = sessionStore;
-        this.updateSummaryAfterSession = updateSummaryAfterSession;
+        this.historyStore = historyStore;
+
     }
 
     @Override
@@ -50,12 +67,15 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             A agent) {
         final var sessionId = AgentUtils.sessionId(context);
         if (!Strings.isNullOrEmpty(sessionId)) {
-            return sessionStore.session(sessionId)
-                    .map(sessionSummary -> List.of(
-                            new FactList("Information about session %s".formatted(sessionId),
-                                         List.of(new Fact(
-                                                 "Session Summary", sessionSummary.toString())))))
-                    .orElse(List.of());
+            if (isSummaryEnabled()) {
+                return sessionStore.session(sessionId)
+                        .map(sessionSummary -> List.of(
+                                new FactList("Information about session %s".formatted(sessionId),
+                                        List.of(new Fact(
+                                                "Session Summary", sessionSummary.toString())))))
+                        .orElse(List.of());
+            }
+
         }
         return List.of();
     }
@@ -66,7 +86,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             AgentRunContext<R> context,
             A agent, ProcessingMode processingMode) {
         final var prompts = new ArrayList<SystemPrompt.Task>();
-        if (updateSummaryAfterSession) {
+        if (isSummaryEnabled()) {
             final var prompt = SystemPrompt.Task.builder()
                     .objective("UPDATE SESSION SUMMARY")
                     .outputField(OUTPUT_KEY)
@@ -96,7 +116,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
     @Override
     public Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode) {
-        if (updateSummaryAfterSession) {
+        if (isSummaryEnabled()) {
             return Optional.of(new ModelOutputDefinition(
                     OUTPUT_KEY,
                     "Schema summary for this session",
@@ -107,7 +127,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
     @Override
     public void consume(JsonNode output, A agent) {
-        if (!updateSummaryAfterSession) {
+        if (!isSummaryEnabled()) {
             return;
         }
         try {
@@ -121,8 +141,55 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
     }
 
+
+    @Override
+    public List<AgentMessage> messages(R request, AgentRunContext<R> metadata, A agent) {
+        if (isHistoryEnabled()) {
+            final var sessionId = AgentUtils.sessionId(metadata);
+            if (!Strings.isNullOrEmpty(sessionId)) {
+                return historyStore.history(sessionId).map(History::toAgentMessages).orElse(List.of());
+
+            }
+        }
+        return List.of();
+    }
+
     @Override
     public void onExtensionRegistrationCompleted(A agent) {
-        //Nothing to do here for now
+        agent.onRequestCompleted().connect(this::extractAndStoreHistory);
+    }
+
+    private void extractAndStoreHistory(Agent.ProcessingCompletedData<R, T, A> data) {
+        if (isHistoryEnabled()) {
+            final var sessionId = AgentUtils.sessionId(data.getContext());
+            if (!Strings.isNullOrEmpty(sessionId) || data.getOutput().getNewMessages().isEmpty()) {
+                var messages = historyStore.history(sessionId).map(History::getMessages)
+                        .orElse(Lists.newArrayList());
+
+
+                AgentMessage latestPrompt = data.getOutput().getAllMessages().stream()
+                        .filter(agentMessage -> agentMessage.getMessageType()
+                                == AgentMessageType.USER_PROMPT_REQUEST_MESSAGE)
+                        .reduce((first, second) -> second)
+                        .orElse(null);
+                var newMessages = data.getOutput().getNewMessages();
+                if (!Objects.isNull(latestPrompt)) {
+                    newMessages.add(latestPrompt);
+                }
+                messages.add(newMessages);
+                historyStore.saveHistory(History.builder()
+                        .sessionId(sessionId)
+                        .messages(messages)
+                        .build());
+            }
+        }
+    }
+
+    private boolean isSummaryEnabled() {
+        return this.setup.getModes().contains(AgentSessionExtensionMode.SUMMARY);
+    }
+
+    private boolean isHistoryEnabled() {
+        return this.setup.getModes().contains(AgentSessionExtensionMode.HISTORY);
     }
 }
