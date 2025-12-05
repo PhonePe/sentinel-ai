@@ -1,8 +1,10 @@
 package com.phonepe.sentinelai.configuredagents;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
+import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
+import com.phonepe.sentinelai.core.outputvalidation.DefaultOutputValidator;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.SneakyThrows;
@@ -18,63 +20,39 @@ import java.util.concurrent.CompletableFuture;
 @SuppressWarnings({"unused", "FieldCanBeLocal"})
 public class ConfiguredAgent {
 
-    private final String name;
-    private final String description;
-    private final RootAgent rootAgent;
-    private final JsonNode inputSchema;
-    private final JsonNode outputSchema;
+    public static final class RootAgent extends RegisterableAgent<RootAgent> {
 
-    public static final class RootAgent extends Agent<String, String, RootAgent> {
-
-        private final String name;
-        private final JsonNode outputSchema;
+        private final AgentConfiguration agentConfiguration;
 
         public RootAgent(
-                final String name,
-                final String prompt,
-                final JsonNode outputSchema,
-                final List<AgentExtension<String, String, RootAgent>> extensions,
+                final AgentConfiguration agentConfiguration,
+                final List<AgentExtension<String, String, RootAgent>> agentExtensions,
                 final ToolBox toolBox) {
-            super(String.class,
-                  prompt,
+            super(agentConfiguration,
                   AgentSetup.builder().build(),
-                  extensions,
-                  Map.of());
-            this.name = name;
-            this.outputSchema = outputSchema;
+                  agentExtensions,
+                  Map.of(),
+                  new ApproveAllToolRuns<>(),
+                  new DefaultOutputValidator<>(),
+                  new DefaultErrorHandler<>(),
+                  new NeverTerminateEarlyStrategy());
+            this.agentConfiguration = agentConfiguration;
             this.registerToolbox(toolBox);
         }
 
-        @Override
-        public String name() {
-            return name;
-        }
+    }
 
-        @Override
-        protected JsonNode outputSchema() {
-            return outputSchema;
-        }
+    private final Agent<String, String, ? extends RegisterableAgent<?>> rootAgent;
 
-        @Override
-        protected String translateData(JsonNode output, AgentSetup agentSetup) throws JsonProcessingException {
-            return agentSetup.getMapper()
-                    .writeValueAsString(output);
-        }
+    public ConfiguredAgent(Agent<String, String, ? extends RegisterableAgent<?>> agent) {
+        this.rootAgent = agent;
     }
 
     public ConfiguredAgent(
-            final String name,
-            final String description,
-            final String prompt,
+            final AgentConfiguration agentConfiguration,
             final List<AgentExtension<String, String, RootAgent>> rootAgentExtensions,
-            final ToolBox availableTools,
-            final JsonNode inputSchema,
-            final JsonNode outputSchema) {
-        this.name = name;
-        this.description = description;
-        this.inputSchema = inputSchema;
-        this.outputSchema = outputSchema;
-        this.rootAgent = new RootAgent(name, prompt, outputSchema, rootAgentExtensions, availableTools);
+            final ToolBox availableTools) {
+        this.rootAgent = new RootAgent(agentConfiguration, rootAgentExtensions, availableTools);
     }
 
     @SneakyThrows
@@ -86,8 +64,7 @@ public class ConfiguredAgent {
                                               input.getRequestMetadata(),
                                               input.getOldMessages(),
                                               input.getAgentSetup()
-                                      )
-                                     )
+                                      ))
                 .thenApply(output -> {
                     try {
                         final var json = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper)

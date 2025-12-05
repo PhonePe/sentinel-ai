@@ -1,5 +1,7 @@
 package com.phonepe.sentinelai.configuredagents;
 
+import com.phonepe.sentinelai.configuredagents.capabilities.AgentCapability;
+import com.phonepe.sentinelai.configuredagents.capabilities.AgentCapabilityVisitor;
 import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentCustomToolCapability;
 import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentMCPCapability;
 import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentMemoryCapability;
@@ -12,8 +14,6 @@ import com.phonepe.sentinelai.core.tools.ComposingToolBox;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
-import com.phonepe.sentinelai.configuredagents.capabilities.AgentCapability;
-import com.phonepe.sentinelai.configuredagents.capabilities.AgentCapabilityVisitor;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -138,13 +138,9 @@ public class ConfiguredAgentFactory {
         toolBoxes.addAll(extensions); //Because all extensions are also toolboxes
 
         return new ConfiguredAgent(
-                agentConfiguration.getAgentName(),
-                agentConfiguration.getDescription(),
-                agentConfiguration.getPrompt(),
+                agentConfiguration,
                 extensions,
-                new ComposingToolBox(toolBoxes, Set.of()),
-                agentConfiguration.getInputSchema(),
-                agentConfiguration.getOutputSchema());
+                new ComposingToolBox(toolBoxes, Set.of()));
     }
 
 }
