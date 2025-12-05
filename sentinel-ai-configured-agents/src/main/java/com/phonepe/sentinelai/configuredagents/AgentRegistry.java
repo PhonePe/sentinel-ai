@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
@@ -48,9 +49,11 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
 
     private final AgentMetadataAccessMode agentMetadataAccessMode;
 
+    private final Map<String, ConfiguredAgent> externallyRegisteredAgents = new ConcurrentHashMap<>();
+
     private final SimpleCache<ConfiguredAgent> agentCache;
 
-    private A agent;
+    private A parent;
 
     @Builder
     public AgentRegistry(
@@ -65,10 +68,15 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
         this.agentMetadataAccessMode = Objects.requireNonNullElse(agentMetadataAccessMode,
                                                                   DEFAULT_METADATA_ACCESS_MODE);
         this.agentCache = new SimpleCache<>(agentId -> {
+            final var externallyRegisteredAgent = externallyRegisteredAgents.get(agentId);
+            if (null != externallyRegisteredAgent) {
+                log.info("Using externally registered agent for: {}", agentId);
+                return externallyRegisteredAgent;
+            }
             log.info("Building new agent for: {}", agentId);
             return agentFactory.apply(
                     agentSource.read(agentId)
-                            .orElse(null), this.agent);
+                            .orElse(null), this.parent);
         });
     }
 
@@ -92,18 +100,37 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
         return agents;
     }
 
+    /**
+     * Register the configuration of a new agent. Will be created when needed using the
+     * {@link ConfiguredAgentFactory::createAgent(AgentMetadata, Agent)} method.
+     *
+     * @param configuration Agent configuration
+     * @return The metadata of the configured agent if successful, empty otherwise
+     */
     public Optional<AgentMetadata> configureAgent(@NonNull final AgentConfiguration configuration) {
-        final var fixedConfig = new AgentConfiguration(
-                configuration.getAgentName(),
-                configuration.getDescription(),
-                configuration.getPrompt(),
-                Objects.requireNonNullElseGet(configuration.getInputSchema(),
-                                              () -> JsonUtils.schemaForPrimitive(String.class, "data", mapper)),
-                Objects.requireNonNullElseGet(configuration.getOutputSchema(),
-                                              () -> JsonUtils.schema(String.class)),
-                Objects.requireNonNullElseGet(configuration.getCapabilities(), List::of));
+        final var fixedConfig = AgentConfiguration.fixConfiguration(configuration, mapper);
         final var agentId = AgentUtils.id(fixedConfig.getAgentName());
         return agentSource.save(agentId, fixedConfig);
+    }
+
+    /**
+     * Register a new agent. This will be treated as a singleton and reused when needed.
+     *
+     * @param agent The agent to be registered
+     * @return The metadata of the configured agent if successful, empty otherwise
+     */
+    public Optional<AgentMetadata> configureAgent(@NonNull final RegisterableAgent<? extends RegisterableAgent<?>> agent) {
+        final var fixedConfig = AgentConfiguration.fixConfiguration(agent.agentConfiguration(), mapper);
+        final var agentId = AgentUtils.id(fixedConfig.getAgentName());
+        final var metadata = agentSource.save(agentId, fixedConfig);
+        if (metadata.isPresent()) {
+            externallyRegisteredAgents.put(agentId, new ConfiguredAgent(agent));
+            log.info("Registered external agent: {} ({})", agent.agentConfiguration().getAgentName(), agentId);
+        }
+        else {
+            log.warn("Agent with id {} could not be configured", agentId);
+        }
+        return metadata;
     }
 
     @Tool("Get agent metadata. Use this to get agent id, name, description, input and output schema etc")
@@ -240,7 +267,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
 
     @Override
     public void onExtensionRegistrationCompleted(A agent) {
-        this.agent = agent;
+        this.parent = agent;
     }
 
     private static IllegalArgumentException agentNotFoundError(String agentId) {

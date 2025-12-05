@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-Bvf1Ez7uyQGxO0HMfXIthrI1If4dq",
+  "id" : "chatcmpl-CjF92SzXU5knaQSt4KubRDxZohrIl",
   "object" : "chat.completion",
-  "created" : 1753082072,
+  "created" : 1764899012,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
@@ -9,20 +9,20 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_JFeiaWyqLNHsxxxzMdluNJ4r",
+        "id" : "call_Vkozk3SVvd2ia3rESQWKo6qs",
         "type" : "function",
         "function" : {
-          "name" : "agent_registry_invoke_agent",
-          "arguments" : "{\"agentId\":\"math_agent\",\"agentInput\":\"{\\\"type\\\":\\\"string\\\",\\\"value\\\":\\\"3 + 6\\\"}\"}"
+          "name" : "mcp_add",
+          "arguments" : "{\"a\":3,\"b\":6}"
         }
       } ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 793,
-    "completion_tokens" : 37,
-    "total_tokens" : 830,
+    "prompt_tokens" : 276,
+    "completion_tokens" : 20,
+    "total_tokens" : 296,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
