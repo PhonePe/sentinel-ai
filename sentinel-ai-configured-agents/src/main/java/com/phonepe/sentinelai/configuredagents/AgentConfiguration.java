@@ -55,6 +55,12 @@ public class AgentConfiguration {
     @Singular
     List<AgentCapability> capabilities;
 
+    /**
+     * Fixes the configuration by setting default schemas and capabilities if they are not provided.
+     * @param configuration Original configuration
+     * @param mapper Object mapper to create schema etc. if needed
+     * @return Fixed configuration with all fields filled up
+     */
     public static AgentConfiguration fixConfiguration(@NonNull AgentConfiguration configuration,
                                                       final ObjectMapper mapper) {
         return new AgentConfiguration(
