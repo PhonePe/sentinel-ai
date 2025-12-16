@@ -36,6 +36,8 @@ import io.github.sashirestela.openai.domain.chat.Chat;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
 import io.github.sashirestela.openai.domain.chat.ChatRequest;
 import io.github.sashirestela.openai.service.ChatCompletionServices;
+import lombok.Getter;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +63,7 @@ import static com.phonepe.sentinelai.core.utils.EventUtils.*;
  * for details of client usage
  */
 @Slf4j
+@Getter
 public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Model {
 
     @Value
@@ -80,7 +83,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     private final String modelName;
-    private final M openAIProvider;
+    private final ChatCompletionServiceFactory openAIProviderFactory;
     private final ObjectMapper mapper;
     private final ParameterMapper parameterMapper;
     private final SimpleOpenAIModelOptions modelOptions;
@@ -97,8 +100,19 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             final M openAIProvider,
             final ObjectMapper mapper,
             final SimpleOpenAIModelOptions modelOptions) {
+        this(modelName,
+             new DefaultChatCompletionServiceFactory(openAIProvider),
+             mapper,
+             modelOptions);
+    }
+
+    public SimpleOpenAIModel(
+            final String modelName,
+            @NonNull final ChatCompletionServiceFactory openAIProviderFactory,
+            final ObjectMapper mapper,
+            final SimpleOpenAIModelOptions modelOptions) {
         this.modelName = modelName;
-        this.openAIProvider = openAIProvider;
+        this.openAIProviderFactory = openAIProviderFactory;
         this.mapper = mapper;
         this.parameterMapper = new ParameterMapper(mapper);
         this.modelOptions = Objects.requireNonNullElse(
@@ -160,7 +174,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 Chat completionResponse;
 
                 try {
-                    completionResponse = openAIProvider.chatCompletions()
+                    completionResponse = openAIProviderFactory.get(modelName)
+                            .chatCompletions()
                             .create(request)
                             .join();
                 }
@@ -334,7 +349,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 Stream<Chat> completionResponseStream;
 
                 try {
-                    completionResponseStream = openAIProvider.chatCompletions()
+                    completionResponseStream = openAIProviderFactory.get(modelName)
+                            .chatCompletions()
                             .createStream(request)
                             .join();
                 }

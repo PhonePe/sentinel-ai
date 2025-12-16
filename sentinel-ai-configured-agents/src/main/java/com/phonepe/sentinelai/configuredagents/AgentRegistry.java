@@ -163,6 +163,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
                                                                       .oldMessages(messagesToBeSent)
                                                                       .build())
                     .join();
+            context.getModelUsageStats().merge(response.getUsage());
             if (response.getData() != null) {
                 return AgentExecutionResult.success(response.getData());
             }

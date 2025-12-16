@@ -16,7 +16,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <simple-openai.version>3.19.4</simple-openai.version>
+        <simple-openai.version>3.22.2</simple-openai.version>
     </properties>
 
     <dependencies>

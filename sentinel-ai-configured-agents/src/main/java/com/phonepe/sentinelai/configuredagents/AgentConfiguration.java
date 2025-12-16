@@ -11,6 +11,7 @@ import lombok.Singular;
 import lombok.Value;
 import lombok.With;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 
@@ -56,6 +57,12 @@ public class AgentConfiguration {
     List<AgentCapability> capabilities;
 
     /**
+     * Overriding model configuration for the agent.
+     */
+    @Nullable
+    ModelConfiguration modelConfiguration;
+
+    /**
      * Fixes the configuration by setting default schemas and capabilities if they are not provided.
      * @param configuration Original configuration
      * @param mapper Object mapper to create schema etc. if needed
@@ -71,6 +78,7 @@ public class AgentConfiguration {
                                               () -> JsonUtils.schemaForPrimitive(String.class, "data", mapper)),
                 Objects.requireNonNullElseGet(configuration.getOutputSchema(),
                                               () -> JsonUtils.schema(String.class)),
-                Objects.requireNonNullElseGet(configuration.getCapabilities(), List::of));
+                Objects.requireNonNullElseGet(configuration.getCapabilities(), List::of),
+                configuration.getModelConfiguration());
     }
 }

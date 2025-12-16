@@ -26,10 +26,11 @@ public class ConfiguredAgent {
 
         public RootAgent(
                 final AgentConfiguration agentConfiguration,
+                final AgentSetup agentSetup,
                 final List<AgentExtension<String, String, RootAgent>> agentExtensions,
                 final ToolBox toolBox) {
             super(agentConfiguration,
-                  AgentSetup.builder().build(),
+                  agentSetup,
                   agentExtensions,
                   Map.of(),
                   new ApproveAllToolRuns<>(),
@@ -51,8 +52,9 @@ public class ConfiguredAgent {
     public ConfiguredAgent(
             final AgentConfiguration agentConfiguration,
             final List<AgentExtension<String, String, RootAgent>> rootAgentExtensions,
-            final ToolBox availableTools) {
-        this.rootAgent = new RootAgent(agentConfiguration, rootAgentExtensions, availableTools);
+            final ToolBox availableTools,
+            final AgentSetup agentSetup) {
+        this.rootAgent = new RootAgent(agentConfiguration, agentSetup, rootAgentExtensions, availableTools);
     }
 
     @SneakyThrows
@@ -63,7 +65,7 @@ public class ConfiguredAgent {
                                               input.getFacts(),
                                               input.getRequestMetadata(),
                                               input.getOldMessages(),
-                                              input.getAgentSetup()
+                                              null // We do not forward the setup here to use setup from rootAgent
                                       ))
                 .thenApply(output -> {
                     try {
