@@ -69,6 +69,14 @@ public class ConfiguredAgent {
                                       ))
                 .thenApply(output -> {
                     try {
+                        final var error = output.getError();
+                        if (error != null) {
+                            return new AgentOutput<>(null,
+                                                            output.getNewMessages(),
+                                                            output.getAllMessages(),
+                                                            output.getUsage(),
+                                                            error);
+                        }
                         final var json = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper)
                                 .readTree(output.getData());
                         return new AgentOutput<>(json,

@@ -143,11 +143,12 @@ public class ConfiguredAgentFactory {
                 }));
         toolBoxes.addAll(extensions); //Because all extensions are also toolboxes
 
+        final var agentSetup = agentSetupProvider.from(parent.getSetup(), agentConfiguration, modelFactory);
         return new ConfiguredAgent(
                 agentConfiguration,
                 extensions,
                 new ComposingToolBox(toolBoxes, Set.of()),
-                agentSetupProvider.from(parent.getSetup(), agentConfiguration, modelFactory));
+                agentSetup);
     }
 
 }

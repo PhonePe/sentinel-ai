@@ -1,7 +1,6 @@
 package com.phonepe.sentinelai.configuredagents;
 
 import com.phonepe.sentinelai.core.agent.AgentSetup;
-import com.phonepe.sentinelai.core.model.ModelSettings;
 import lombok.AllArgsConstructor;
 
 /**
@@ -20,7 +19,7 @@ public class ConfigDrivenAgentSetupProvider implements AgentSetupProvider {
             return source;
         }
 
-        final var modelSettings = ModelSettings.merge(source.getModelSettings(), providedConfig.getSettings());
+        final var modelSettings = source.getModelSettings();
         return AgentSetup.builder()
                 .mapper(source.getMapper())
                 .model(modelFactory.build(agentConfiguration, source.getModel()))
