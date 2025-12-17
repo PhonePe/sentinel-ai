@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
+import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.outputvalidation.DefaultOutputValidator;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
@@ -70,7 +71,7 @@ public class ConfiguredAgent {
                 .thenApply(output -> {
                     try {
                         final var error = output.getError();
-                        if (error != null) {
+                        if (error != null && !error.getErrorType().equals(ErrorType.SUCCESS)) {
                             return new AgentOutput<>(null,
                                                             output.getNewMessages(),
                                                             output.getAllMessages(),
