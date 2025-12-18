@@ -38,11 +38,11 @@ public class AgentOutput<T> {
         return new AgentOutput<>(data, newMessages, allMessages, usage, SentinelError.success());
     }
 
-    public static <T> AgentOutput<T> error(List<AgentMessage> oldMessages, ModelUsageStats stats, SentinelError error) {
-        return new AgentOutput<>(null, List.of(), oldMessages, stats, error);
+    public static <T> AgentOutput<T> error(List<AgentMessage> allMessages, ModelUsageStats stats, SentinelError error) {
+        return new AgentOutput<>(null, List.of(), allMessages, stats, error);
     }
 
-    public static <T> AgentOutput<T> error(List<AgentMessage> newMessages, List<AgentMessage> oldMessages, ModelUsageStats stats, SentinelError error) {
-        return new AgentOutput<>(null, newMessages, oldMessages, stats, error);
+    public static <T> AgentOutput<T> error(List<AgentMessage> newMessages, List<AgentMessage> allMessages, ModelUsageStats stats, SentinelError error) {
+        return new AgentOutput<>(null, newMessages, allMessages, stats, error);
     }
 }
