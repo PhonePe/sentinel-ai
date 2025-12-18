@@ -1,7 +1,6 @@
 package com.phonepe.sentinelai.configuredagents;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
@@ -72,9 +71,13 @@ class ConfiguredAgentTest {
     void testRootAgentException() {
         final var mockAgent = createMockAgent();
         when(mockAgent.executeAsync(any(AgentInput.class))).thenThrow(new RuntimeException("boom"));
-
+        final var mapper = JsonUtils.createMapper();
         final var configured = new ConfiguredAgent(mockAgent);
-        final var input = AgentInput.<JsonNode>builder().request(new ObjectMapper().createObjectNode()).agentSetup(AgentSetup.builder().mapper(new ObjectMapper()).build()).build();
+        final var input = AgentInput.<JsonNode>builder().request(mapper.createObjectNode())
+                .agentSetup(AgentSetup.builder()
+                                    .mapper(mapper)
+                                    .build())
+                .build();
 
         assertThrows(RuntimeException.class, () -> configured.executeAsync(input));
     }
