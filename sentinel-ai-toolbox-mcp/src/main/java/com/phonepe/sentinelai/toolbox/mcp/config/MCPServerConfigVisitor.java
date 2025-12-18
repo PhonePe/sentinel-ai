@@ -7,4 +7,6 @@ public interface MCPServerConfigVisitor<T> {
     T visit(MCPStdioServerConfig stdioServerConfig);
 
     T visit(MCPSSEServerConfig sseServerConfig);
+
+    T visit(MCPHttpServerConfig httpServerConfig);
 }

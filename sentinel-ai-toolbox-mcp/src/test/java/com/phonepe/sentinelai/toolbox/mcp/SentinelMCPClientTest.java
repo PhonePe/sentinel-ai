@@ -4,6 +4,7 @@ import com.phonepe.sentinelai.core.utils.JsonUtils;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
@@ -22,7 +23,7 @@ class SentinelMCPClientTest {
         final var params = ServerParameters.builder("npx")
                 .args("-y", "@modelcontextprotocol/server-everything")
                 .build();
-        final var transport = new StdioClientTransport(params);
+        final var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(objectMapper));
 
         final var mcpClient = McpClient.sync(transport)
                 .build();
