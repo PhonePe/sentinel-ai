@@ -2,6 +2,7 @@ package com.phonepe.sentinelai.core.agent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import lombok.Value;
 
@@ -28,6 +29,10 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
     Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode);
 
     void consume(final JsonNode output, A agent);
+
+    default List<AgentMessage> messages(R request, AgentRunContext<R> metadata, A agent) {
+        return List.of();
+    }
 
     default void onExtensionRegistrationCompleted(A agent) {
         //Nothing to do here for now
