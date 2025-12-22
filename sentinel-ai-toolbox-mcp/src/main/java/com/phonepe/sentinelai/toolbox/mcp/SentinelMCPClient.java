@@ -164,22 +164,26 @@ public class SentinelMCPClient implements AutoCloseable {
 
             @Override
             public McpClientTransport visit(MCPSSEServerConfig sseServerConfig) {
-                final var timeout = Objects.requireNonNullElse(sseServerConfig.getTimeout(), 5_000);
+                final int timeout = Objects.requireNonNullElse(sseServerConfig.getTimeout(), 5_000);
                 return HttpClientSseClientTransport.builder(sseServerConfig.getUrl())
                         .jsonMapper(jacksonMapper)
-                        .customizeClient(builder -> builder.connectTimeout(Duration.ofMillis(timeout)))
+                        .connectTimeout(Duration.ofMillis(timeout))
+                        .customizeRequest(requestBuilder -> requestBuilder.timeout(Duration.ofMillis(timeout)))
                         .build();
             }
 
             @Override
             public McpClientTransport visit(MCPHttpServerConfig httpServerConfig) {
-                final var timeout = Objects.requireNonNullElse(httpServerConfig.getTimeout(), 5_000);
+                final int timeout = Objects.requireNonNullElse(httpServerConfig.getTimeout(), 5_000);
                 final var providedHeaders = Objects.requireNonNullElseGet(
                         httpServerConfig.getHeaders(), Map::<String, String>of);
                 return HttpClientStreamableHttpTransport.builder(httpServerConfig.getUrl())
+                        .connectTimeout(Duration.ofMillis(timeout))
                         .jsonMapper(jacksonMapper)
-                        .customizeClient(builder -> builder.connectTimeout(Duration.ofMillis(timeout)))
-                        .customizeRequest(requestBuilder -> providedHeaders.forEach(requestBuilder::header))
+                        .customizeRequest(requestBuilder -> {
+                            requestBuilder.timeout(Duration.ofMillis(timeout));
+                            providedHeaders.forEach(requestBuilder::header);
+                        })
                         .build();
             }
         });
@@ -224,6 +228,13 @@ public class SentinelMCPClient implements AutoCloseable {
     }
 
     private McpSchema.CreateMessageResult handleSamplingRequest(McpSchema.CreateMessageRequest createMessageRequest) {
+        if (null == agent) {
+            return new McpSchema.CreateMessageResult(
+                    McpSchema.Role.ASSISTANT,
+                    new McpSchema.TextContent("Sampling call failed. No agent is registered to handle the request"),
+                    "NoAgent",
+                    McpSchema.CreateMessageResult.StopReason.END_TURN);
+        }
         log.debug("Handling sampling request: {}", createMessageRequest);
         final var agentSetup = agent.getSetup();
         final var setup = agentSetup.getModelSettings()
@@ -327,7 +338,7 @@ public class SentinelMCPClient implements AutoCloseable {
                                                ((McpSchema.TextResourceContents) embeddedResource.resource()).text(),
                                                mapper.writeValueAsString(embeddedResource.resource()));
             case "blob" -> new GenericResource(translateRole(message.role()),
-                                               GenericResource.ResourceType.TEXT,
+                                               GenericResource.ResourceType.BLOB,
                                                embeddedResource.resource().uri(),
                                                embeddedResource.resource().mimeType(),
                                                ((McpSchema.BlobResourceContents) embeddedResource.resource()).blob(),
