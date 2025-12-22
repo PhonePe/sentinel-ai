@@ -7,16 +7,14 @@ import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.outputvalidation.DefaultOutputValidator;
 import com.phonepe.sentinelai.core.tools.ToolBox;
-import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.SneakyThrows;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 /**
- *
+ * A configured agent is an envelope used by the Agent Registry to manage dynamically configured agents.
  */
 @SuppressWarnings({"unused", "FieldCanBeLocal"})
 public class ConfiguredAgent {
@@ -62,24 +60,23 @@ public class ConfiguredAgent {
     public final CompletableFuture<AgentOutput<JsonNode>> executeAsync(AgentInput<JsonNode> input) {
         final var mapper = input.getAgentSetup().getMapper();
         return rootAgent.executeAsync(new AgentInput<>(
-                                              mapper.writeValueAsString(input.getRequest()),
-                                              input.getFacts(),
-                                              input.getRequestMetadata(),
-                                              input.getOldMessages(),
-                                              null // We do not forward the setup here to use setup from rootAgent
-                                      ))
+                        mapper.writeValueAsString(input.getRequest()),
+                        input.getFacts(),
+                        input.getRequestMetadata(),
+                        input.getOldMessages(),
+                        null // We do not forward the setup here to use setup from rootAgent
+                ))
                 .thenApply(output -> {
                     try {
                         final var error = output.getError();
                         if (error != null && !error.getErrorType().equals(ErrorType.SUCCESS)) {
                             return new AgentOutput<>(null,
-                                                            output.getNewMessages(),
-                                                            output.getAllMessages(),
-                                                            output.getUsage(),
-                                                            error);
+                                                     output.getNewMessages(),
+                                                     output.getAllMessages(),
+                                                     output.getUsage(),
+                                                     error);
                         }
-                        final var json = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper)
-                                .readTree(output.getData());
+                        final var json = mapper.readTree(output.getData());
                         return new AgentOutput<>(json,
                                                  output.getNewMessages(),
                                                  output.getAllMessages(),

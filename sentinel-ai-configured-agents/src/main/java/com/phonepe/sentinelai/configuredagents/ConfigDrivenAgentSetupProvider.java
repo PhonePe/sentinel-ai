@@ -3,6 +3,8 @@ package com.phonepe.sentinelai.configuredagents;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import lombok.AllArgsConstructor;
 
+import java.util.Objects;
+
 /**
  * Provides a new setup basd on the provided configuration
  */
@@ -19,7 +21,9 @@ public class ConfigDrivenAgentSetupProvider implements AgentSetupProvider {
             return source;
         }
 
-        final var modelSettings = source.getModelSettings();
+        // Use the model settings from the provided config, else fall back to source
+        final var modelSettings = Objects.requireNonNullElseGet(
+                providedConfig.getSettings(), source::getModelSettings);
         return AgentSetup.builder()
                 .mapper(source.getMapper())
                 .model(modelFactory.build(agentConfiguration, source.getModel()))

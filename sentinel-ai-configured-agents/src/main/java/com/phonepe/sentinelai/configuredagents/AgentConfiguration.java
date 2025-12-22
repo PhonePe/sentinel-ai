@@ -11,7 +11,6 @@ import lombok.Singular;
 import lombok.Value;
 import lombok.With;
 
-import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 
@@ -59,7 +58,6 @@ public class AgentConfiguration {
     /**
      * Overriding model configuration for the agent.
      */
-    @Nullable
     ModelConfiguration modelConfiguration;
 
     /**

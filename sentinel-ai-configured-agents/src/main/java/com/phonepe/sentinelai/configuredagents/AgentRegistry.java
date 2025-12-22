@@ -77,6 +77,9 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
             return agentFactory.apply(
                     agentSource.read(agentId)
                             .orElse(null), this.parent);
+            // This will not lead to NPE as this is used in
+            // computeIfAbsent which allows the method to return null and ignores it
+            // Don't want to throw and exception and break the flow. Null will be handled appropriately at call site.
         });
     }
 
