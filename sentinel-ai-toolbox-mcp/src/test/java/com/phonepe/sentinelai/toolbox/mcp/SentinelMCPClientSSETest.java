@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests {@link ComposingMCPToolBox} with SSE transport
  */
 @Testcontainers
-public class SentinelMCPClientSSETest {
+class SentinelMCPClientSSETest {
     @Container
     static GenericContainer<?> container = new GenericContainer<>("tzolov/mcp-everything-server:v2")
             .withExposedPorts(3001)
