@@ -29,13 +29,17 @@ public class ConfiguredAgentFactory {
     private final SimpleCache<MCPToolBox> mcpToolboxFactory;
     private final CustomToolBox customToolBox;
     private final AgentMessagesPreProcessors messagesPreProcessors;
+    private final AgentSetupProvider agentSetupProvider;
+    private final ModelFactory modelFactory;
 
     @Builder
     public ConfiguredAgentFactory(
             final HttpToolboxFactory httpToolboxFactory,
             final MCPToolBoxFactory mcpToolboxFactory,
             final CustomToolBox customToolBox,
-            final AgentMessagesPreProcessors messagesPreProcessors) {
+            final AgentMessagesPreProcessors messagesPreProcessors,
+            final AgentSetupProvider agentSetupProvider,
+            final ModelFactory modelFactory) {
         this.httpToolboxFactory = null != httpToolboxFactory
                                   ? new SimpleCache<>(upstream -> httpToolboxFactory.create(upstream)
                 .orElseThrow(() -> new IllegalArgumentException("No HTTP tool box found for upstream: " + upstream)))
@@ -47,6 +51,8 @@ public class ConfiguredAgentFactory {
         this.customToolBox = customToolBox;
         this.messagesPreProcessors = Optional.ofNullable(messagesPreProcessors)
                 .orElse(AgentMessagesPreProcessors.NONE);
+        this.agentSetupProvider = Objects.requireNonNullElseGet(agentSetupProvider, ConfigDrivenAgentSetupProvider::new);
+        this.modelFactory = Objects.requireNonNullElseGet(modelFactory, SimpleOpenAIModelFactory::new);
     }
 
     public final ConfiguredAgent createAgent(@NonNull final AgentMetadata agentMetadata, Agent<?, ?, ?> parent) {
@@ -141,14 +147,15 @@ public class ConfiguredAgentFactory {
                 }));
         toolBoxes.addAll(extensions); //Because all extensions are also toolboxes
 
+        final var agentSetup = agentSetupProvider.from(parent.getSetup(), agentConfiguration, modelFactory);
         final var agent = new ConfiguredAgent(
                 agentConfiguration,
                 extensions,
-                new ComposingToolBox(toolBoxes, Set.of())
-        );
+                new ComposingToolBox(toolBoxes, Set.of()),
+                agentSetup);
 
         messagesPreProcessors.processorsFor(agentConfiguration.getAgentName())
-                        .ifPresent(agent::registerAgentMessagesPreProcessors);
+                .ifPresent(agent::registerAgentMessagesPreProcessors);
 
         return agent;
     }

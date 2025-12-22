@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-CiCHgwo6tqJcndbwlFVCjFlVRWc79",
+  "id" : "chatcmpl-CnHckQyG53QIMwQmMltEWPFrI0v42",
   "object" : "chat.completion",
-  "created" : 1764649688,
+  "created" : 1765861854,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
@@ -9,13 +9,14 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_YMe86o1TFg5Q0Fpwxb2GR8jy",
+        "id" : "call_aUQnUUkNBPfCZYI0eUkY2TK5",
         "type" : "function",
         "function" : {
           "name" : "agent_registry_invoke_agent",
           "arguments" : "{\"agentId\":\"summarizer_agent\",\"agentInput\":\"{\\\"data\\\":\\\"Summarize the story of War and Peace\\\"}\"}"
         }
-      } ]
+      } ],
+      "annotations" : [ ]
     },
     "finish_reason" : "tool_calls"
   } ],

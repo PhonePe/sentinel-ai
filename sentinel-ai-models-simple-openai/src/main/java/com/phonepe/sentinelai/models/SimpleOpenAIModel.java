@@ -39,6 +39,8 @@ import io.github.sashirestela.openai.domain.chat.ChatMessage;
 import io.github.sashirestela.openai.domain.chat.ChatRequest;
 import io.github.sashirestela.openai.service.ChatCompletionServices;
 import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -67,6 +69,7 @@ import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertToOp
  * for details of client usage
  */
 @Slf4j
+@Getter
 public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Model {
 
     @Builder
@@ -87,7 +90,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     private final String modelName;
-    private final M openAIProvider;
+    private final ChatCompletionServiceFactory openAIProviderFactory;
     private final ObjectMapper mapper;
     private final ParameterMapper parameterMapper;
     private final SimpleOpenAIModelOptions modelOptions;
@@ -104,8 +107,19 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             final M openAIProvider,
             final ObjectMapper mapper,
             final SimpleOpenAIModelOptions modelOptions) {
+        this(modelName,
+             new DefaultChatCompletionServiceFactory(openAIProvider),
+             mapper,
+             modelOptions);
+    }
+
+    public SimpleOpenAIModel(
+            final String modelName,
+            @NonNull final ChatCompletionServiceFactory openAIProviderFactory,
+            final ObjectMapper mapper,
+            final SimpleOpenAIModelOptions modelOptions) {
         this.modelName = modelName;
-        this.openAIProvider = openAIProvider;
+        this.openAIProviderFactory = openAIProviderFactory;
         this.mapper = mapper;
         this.parameterMapper = new ParameterMapper(mapper);
         this.modelOptions = Objects.requireNonNullElse(
@@ -172,7 +186,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 Chat completionResponse;
 
                 try {
-                    completionResponse = openAIProvider.chatCompletions()
+                    completionResponse = openAIProviderFactory.get(modelName)
+                            .chatCompletions()
                             .create(request)
                             .join();
                 }
@@ -323,7 +338,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 Stream<Chat> completionResponseStream;
 
                 try {
-                    completionResponseStream = openAIProvider.chatCompletions()
+                    completionResponseStream = openAIProviderFactory.get(modelName)
+                            .chatCompletions()
                             .createStream(request)
                             .join();
                 }
@@ -387,7 +403,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                     if (streamProcessingMode.equals(Agent.StreamProcessingMode.TYPED)) {
                                         yield processOutput(context,
                                                             responseData.toString(),
-                                                            //We just take what we gathered return that
+                                                //We just take what we gathered return that
                                                             oldMessages,
                                                             stats,
                                                             allMessages,
@@ -397,7 +413,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                     else {
                                         yield processStreamingOutput(context,
                                                                      responseData.toString(),
-                                                                     //We just take what we gathered return that
+                                                //We just take what we gathered return that
                                                                      oldMessages,
                                                                      stats,
                                                                      allMessages,
@@ -484,8 +500,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             final List<AgentMessage> allMessages) {
         final var rootCause = AgentUtils.rootCause(error);
         log.error("Error calling model: %s -> %s".formatted(
-                  rootCause.getClass().getSimpleName(), rootCause.getMessage()),
-                error);
+                          rootCause.getClass().getSimpleName(), rootCause.getMessage()),
+                  error);
         // Looks like OkHttp sends out a variety of IOExceptions for network issues
         if (ClassUtils.isAssignable(rootCause.getClass(), IOException.class)) {
             return errorToModelOutput(context,
@@ -501,19 +517,19 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                         final var message = Objects.requireNonNullElse(responseInfo.getData(),
                                                                        cleverClientException.getMessage());
                         return switch (responseInfo.getStatusCode()) {
-                                case 429 -> errorToModelOutput(context,
-                                                               newMessages,
-                                                               allMessages,
-                                                               ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED,
-                                                               message);
-                                default -> errorToModelOutput(context,
-                                                              newMessages,
-                                                              allMessages,
-                                                              ErrorType.MODEL_CALL_HTTP_FAILURE,
-                                                              "Received HTTP error:  [%d] %s".formatted(
-                                                                      responseInfo.getStatusCode(),
-                                                                      message));
-                            };
+                            case 429 -> errorToModelOutput(context,
+                                                           newMessages,
+                                                           allMessages,
+                                                           ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED,
+                                                           message);
+                            default -> errorToModelOutput(context,
+                                                          newMessages,
+                                                          allMessages,
+                                                          ErrorType.MODEL_CALL_HTTP_FAILURE,
+                                                          "Received HTTP error:  [%d] %s".formatted(
+                                                                  responseInfo.getStatusCode(),
+                                                                  message));
+                        };
                     })
                     .or(() -> errorToModelOutput(context,
                                                  newMessages,
@@ -858,6 +874,23 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         if (modelSettings.getLogitBias() != null) {
             builder.logitBias(modelSettings.getLogitBias());
         }
+        if (null != modelSettings.getReasoning()) {
+            builder.reasoningEffort(translateReasoningEffort(modelSettings));
+        }
+    }
+
+    /**
+     * Translate reasoning effort from model settings to ChatRequest enum.
+     * @param modelSettings Model settings
+     * @return Translated reasoning effort
+     */
+    private static ChatRequest.ReasoningEffort translateReasoningEffort(ModelSettings modelSettings) {
+        return switch (modelSettings.getReasoning()) {
+            case LOW -> ChatRequest.ReasoningEffort.LOW;
+            case MEDIUM -> ChatRequest.ReasoningEffort.MEDIUM;
+            case HIGH -> ChatRequest.ReasoningEffort.HIGH;
+            case MINIMAL -> ChatRequest.ReasoningEffort.MINIMAL;
+        };
     }
 
     /**
@@ -1003,7 +1036,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             case STRUCTURED_OUTPUT -> switch (this.modelOptions.getToolChoice()) {
                 case REQUIRED -> {
                     log.warn("Model is configured for STRUCTURED_OUTPUT generation mode, " +
-                             "but tool choice is set to REQUIRED. This might lead to infinite tool-call loops");
+                                     "but tool choice is set to REQUIRED. This might lead to infinite tool-call loops");
                     yield ToolChoiceOption.REQUIRED;
                 }
                 case AUTO -> ToolChoiceOption.AUTO;

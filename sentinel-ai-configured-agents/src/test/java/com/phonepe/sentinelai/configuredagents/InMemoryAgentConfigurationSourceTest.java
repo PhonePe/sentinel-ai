@@ -21,7 +21,8 @@ class InMemoryAgentConfigurationSourceTest {
                 "You are a test agent.",
                 null,
                 null,
-                List.of());
+                List.of(),
+                null);
         String agentId = AgentUtils.id(config.getAgentName());
 
         // Save the agent configuration
