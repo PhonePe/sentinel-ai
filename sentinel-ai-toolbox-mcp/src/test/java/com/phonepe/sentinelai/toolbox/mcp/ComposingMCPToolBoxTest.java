@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests {@link ComposingMCPToolBox}
  */
-class ComposingMCPToolBoxStdIOTest {
+class ComposingMCPToolBoxStdioTest {
 
     @Test
     void testBasicCreation() {

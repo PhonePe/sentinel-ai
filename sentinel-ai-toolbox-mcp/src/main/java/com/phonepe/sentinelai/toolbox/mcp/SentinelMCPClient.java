@@ -41,7 +41,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toMap;
 
@@ -56,6 +55,7 @@ public class SentinelMCPClient implements AutoCloseable {
     private final String name;
     private final McpSyncClient mcpClient;
     private final ObjectMapper mapper;
+    private final JacksonMcpJsonMapper jackSonMapper;
     private final Set<String> exposedTools = new CopyOnWriteArraySet<>();
     private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
 
@@ -70,6 +70,7 @@ public class SentinelMCPClient implements AutoCloseable {
         this.mapper = mapper;
         this.mcpClient = createMcpClient(mcpServerConfig);
         this.exposeTools(exposedTools);
+        jackSonMapper = new JacksonMcpJsonMapper(mapper);
     }
 
     public SentinelMCPClient(
@@ -81,6 +82,7 @@ public class SentinelMCPClient implements AutoCloseable {
         this.mcpClient = mcpClient;
         this.mapper = mapper;
         this.exposeTools(exposedTools);
+        jackSonMapper = new JacksonMcpJsonMapper(mapper);
     }
 
     public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
@@ -116,7 +118,7 @@ public class SentinelMCPClient implements AutoCloseable {
                                         .filter(entry -> exposedTools.contains(entry.getValue()
                                                                                        .getToolDefinition()
                                                                                        .getName()))
-                                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                                        .collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
         return Map.copyOf(mapToReturn);
     }
 
@@ -130,7 +132,7 @@ public class SentinelMCPClient implements AutoCloseable {
         log.debug("Calling MCP tool: {} with args: {}", toolId, args);
         try {
             final var res = mcpClient.callTool(
-                    new McpSchema.CallToolRequest(new JacksonMcpJsonMapper(mapper),
+                    new McpSchema.CallToolRequest(jackSonMapper,
                                                   tool.getToolDefinition().getName(),
                                                   args));
             return new ExternalTool.ExternalToolResponse(
@@ -157,14 +159,14 @@ public class SentinelMCPClient implements AutoCloseable {
                         .args(Objects.requireNonNullElseGet(stdioServerConfig.getArgs(), List::of))
                         .env(Objects.requireNonNullElseGet(stdioServerConfig.getEnv(), Map::of))
                         .build();
-                return new StdioClientTransport(serverParameters, new JacksonMcpJsonMapper(mapper));
+                return new StdioClientTransport(serverParameters, jackSonMapper);
             }
 
             @Override
             public McpClientTransport visit(MCPSSEServerConfig sseServerConfig) {
                 final var timeout = Objects.requireNonNullElse(sseServerConfig.getTimeout(), 5_000);
                 return HttpClientSseClientTransport.builder(sseServerConfig.getUrl())
-                        .jsonMapper(new JacksonMcpJsonMapper(mapper))
+                        .jsonMapper(jackSonMapper)
                         .customizeClient(builder -> builder.connectTimeout(Duration.ofMillis(timeout)))
                         .build();
             }
@@ -175,7 +177,7 @@ public class SentinelMCPClient implements AutoCloseable {
                 final var providedHeaders = Objects.requireNonNullElseGet(
                         httpServerConfig.getHeaders(), Map::<String, String>of);
                 return HttpClientStreamableHttpTransport.builder(httpServerConfig.getUrl())
-                        .jsonMapper(new JacksonMcpJsonMapper(mapper))
+                        .jsonMapper(jackSonMapper)
                         .customizeClient(builder -> builder.connectTimeout(Duration.ofMillis(timeout)))
                         .customizeRequest(requestBuilder -> providedHeaders.forEach(requestBuilder::header))
                         .build();

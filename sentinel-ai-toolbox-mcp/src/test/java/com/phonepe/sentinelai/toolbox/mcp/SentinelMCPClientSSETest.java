@@ -15,7 +15,7 @@ import java.util.Objects;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests {@link ComposingMCPToolBox} with HTTP transport
+ * Tests {@link ComposingMCPToolBox} with SSE transport
  */
 @Testcontainers
 public class SentinelMCPClientSSETest {

@@ -7,13 +7,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Configuration for STDIO MCP server
+ * Configuration for HTTP MCP server
  */
 @Value
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 public class MCPHttpServerConfig extends MCPServerConfig {
-    String url; // Command to launch the server
+    String url; // Endpoint URL of the HTTP server
     Map<String, String> headers; // Headers for the HTTP requests
     Integer timeout; //Timeout in millis (default 5 seconds)
 
