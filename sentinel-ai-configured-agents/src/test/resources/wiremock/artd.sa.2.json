@@ -1,31 +1,31 @@
 {
-  "id" : "chatcmpl-CiCO5l3mLEZ8a8nDEgWTVa49rGM7v",
+  "id" : "chatcmpl-CnHbYSqHW0B84lhBNHVsXpfpdhj6i",
   "object" : "chat.completion",
-  "created" : 1764650085,
-  "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_efad92c60b",
+  "created" : 1765861780,
+  "model" : "gpt-5-2025-08-07",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_fScMfqRqksKbIytYXqlGNfHJ",
+        "id" : "call_zyG7T8Rc7gg8KpPhiU7E8WYz",
         "type" : "function",
         "function" : {
           "name" : "__output_generator__",
-          "arguments" : "{\"output\":\"\\\"War and Peace\\\" by Tolstoy explores love, loss, and fate during the Napoleonic Wars through the lives of Russian aristocrats.\"}"
+          "arguments" : "{\"output\":\"Epic of Russian nobility during Napoleon's invasion; love, war, and growth as Pierre, Natasha, and Andrei seek meaning amid fate and history\"}"
         }
-      } ]
+      } ],
+      "annotations" : [ ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 346,
-    "completion_tokens" : 46,
-    "total_tokens" : 392,
+    "prompt_tokens" : 295,
+    "completion_tokens" : 2615,
+    "total_tokens" : 2910,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
-      "reasoning_tokens" : 0
+      "reasoning_tokens" : 2560
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,

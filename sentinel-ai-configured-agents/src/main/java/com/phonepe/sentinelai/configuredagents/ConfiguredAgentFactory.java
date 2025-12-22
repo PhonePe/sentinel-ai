@@ -28,12 +28,16 @@ public class ConfiguredAgentFactory {
     private final SimpleCache<HttpToolBox> httpToolboxFactory;
     private final SimpleCache<MCPToolBox> mcpToolboxFactory;
     private final CustomToolBox customToolBox;
+    private final AgentSetupProvider agentSetupProvider;
+    private final ModelFactory modelFactory;
 
     @Builder
     public ConfiguredAgentFactory(
             final HttpToolboxFactory httpToolboxFactory,
             final MCPToolBoxFactory mcpToolboxFactory,
-            final CustomToolBox customToolBox) {
+            final CustomToolBox customToolBox,
+            final AgentSetupProvider agentSetupProvider,
+            final ModelFactory modelFactory) {
         this.httpToolboxFactory = null != httpToolboxFactory
                                   ? new SimpleCache<>(upstream -> httpToolboxFactory.create(upstream)
                 .orElseThrow(() -> new IllegalArgumentException("No HTTP tool box found for upstream: " + upstream)))
@@ -43,6 +47,8 @@ public class ConfiguredAgentFactory {
                 .orElseThrow(() -> new IllegalArgumentException("No MCP tool box found for upstream: " + upstream)))
                                  : null;
         this.customToolBox = customToolBox;
+        this.agentSetupProvider = Objects.requireNonNullElseGet(agentSetupProvider, ConfigDrivenAgentSetupProvider::new);
+        this.modelFactory = Objects.requireNonNullElseGet(modelFactory, SimpleOpenAIModelFactory::new);
     }
 
     public final ConfiguredAgent createAgent(@NonNull final AgentMetadata agentMetadata, Agent<?, ?, ?> parent) {
@@ -137,10 +143,12 @@ public class ConfiguredAgentFactory {
                 }));
         toolBoxes.addAll(extensions); //Because all extensions are also toolboxes
 
+        final var agentSetup = agentSetupProvider.from(parent.getSetup(), agentConfiguration, modelFactory);
         return new ConfiguredAgent(
                 agentConfiguration,
                 extensions,
-                new ComposingToolBox(toolBoxes, Set.of()));
+                new ComposingToolBox(toolBoxes, Set.of()),
+                agentSetup);
     }
 
 }

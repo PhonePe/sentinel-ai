@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-CdzKltXt3fM9Fxt5ZS1aybfNXlLk2",
+  "id" : "chatcmpl-CmzedDFSE5WIw7iE1vcEL851cslDQ",
   "object" : "chat.completion",
-  "created" : 1763646595,
+  "created" : 1765792779,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_efad92c60b",
   "choices" : [ {
@@ -9,20 +9,21 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_v9aXb8VDcg0mGLdHaKPfB9V1",
+        "id" : "call_EqZ503bsbT9YDUWpsig0T09s",
         "type" : "function",
         "function" : {
           "name" : "__output_generator__",
-          "arguments" : "{\"output\":\"Error: Agent not found: wrong_agent_id\"}"
+          "arguments" : "{\"output\":\"Failed to retrieve agent metadata: Agent not found with the ID 'wrong_agent_id'.\"}"
         }
-      } ]
+      } ],
+      "annotations" : [ ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 672,
-    "completion_tokens" : 25,
-    "total_tokens" : 697,
+    "prompt_tokens" : 966,
+    "completion_tokens" : 34,
+    "total_tokens" : 1000,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
