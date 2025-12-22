@@ -16,7 +16,7 @@ import java.util.Set;
 @ToString(callSuper = true)
 public class MCPSSEServerConfig extends MCPServerConfig {
     String url; // Endpoint URL of the server (for http)
-    Integer timeout; //Timeout in millis
+    Integer timeout; //Timeout in millis (default 5 seconds)
 
     @Builder
     @Jacksonized

@@ -15,38 +15,18 @@ import java.util.Objects;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests {@link ComposingMCPToolBox}
+ * Tests {@link ComposingMCPToolBox} with HTTP transport
  */
 @Testcontainers
-class ComposingMCPToolBoxTest {
-
+class SentinelMCPClientHttpTest {
     @Container
     static GenericContainer<?> container = new GenericContainer<>("tzolov/mcp-everything-server:v2")
             .withExposedPorts(3001)
-            .withCommand("node","dist/index.js","sse");
-
-    @Test
-    void testBasicCreation() {
-        final var objectMapper = JsonUtils.createMapper();
-        final var composingMCPToolBox = ComposingMCPToolBox.buildFromFile()
-                .name("Test Composing MCP")
-                .objectMapper(objectMapper)
-                .mcpJsonFilePath(Objects.requireNonNull(getClass().getResource("/mcp.json")).getPath())
-                .build();
-        assertNotNull(composingMCPToolBox);
-
-        assertFalse(composingMCPToolBox.tools().isEmpty());
-        final var originalSize = composingMCPToolBox.tools().size();
-        assertTrue(originalSize >= 8);
-        composingMCPToolBox.exposeTools("test_mcp", "echo");
-        assertEquals(1, composingMCPToolBox.tools().size());
-        composingMCPToolBox.exposeAllTools("test_mcp");
-        assertEquals(originalSize, composingMCPToolBox.tools().size());
-    }
+            .withCommand("node","dist/index.js");
 
     @Test
     @SneakyThrows
-    void testSSE() {
+    void testHTTP() {
         final var objectMapper = JsonUtils.createMapper();
         final var composingMCPToolBox = ComposingMCPToolBox.buildEmpty()
                 .name("Test Composing MCP")
@@ -55,8 +35,9 @@ class ComposingMCPToolBoxTest {
         assertNotNull(composingMCPToolBox);
         assertEquals("Test Composing MCP", composingMCPToolBox.name());
         assertTrue(composingMCPToolBox.tools().isEmpty());
-        final var payload = Files.readString(Path.of(Objects.requireNonNull(getClass().getResource("/mcp-sse.json"))
-                                                             .getPath())).formatted(container.getMappedPort(3001));
+        final var payload = Files.readString(Path.of(Objects.requireNonNull(getClass().getResource("/mcp-http.json"))
+                                                             .getPath()))
+                .formatted(container.getMappedPort(3001));
         MCPJsonReader.loadServers(objectMapper.readValue(payload, MCPConfiguration.class), composingMCPToolBox);
         assertFalse(composingMCPToolBox.tools().isEmpty());
         assertTrue(composingMCPToolBox.tools().size() > 1);
@@ -65,5 +46,4 @@ class ComposingMCPToolBoxTest {
         composingMCPToolBox.exposeAllTools("test_mcp");
         assertTrue(composingMCPToolBox.tools().size() > 1);
     }
-
 }

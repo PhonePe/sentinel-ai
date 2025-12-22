@@ -93,7 +93,7 @@
         <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
         <jackson.version>2.18.3</jackson.version>
         <mockito.version>5.20.0</mockito.version>
-        <testcontainers.version>1.21.3</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
 
     <dependencyManagement>
