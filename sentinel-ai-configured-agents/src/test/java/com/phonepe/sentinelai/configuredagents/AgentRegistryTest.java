@@ -863,7 +863,7 @@ class AgentRegistryTest {
             OkHttpClient okHttpClient,
             WireMockRuntimeInfo wiremock) {
         return new DefaultChatCompletionServiceFactory()
-                .defaultProvider(SimpleOpenAIAzure.builder()
+                .registerDefaultProvider(SimpleOpenAIAzure.builder()
 //                                         .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
 //                                         .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
                                          .baseUrl(wiremock.getHttpBaseUrl())

@@ -5,7 +5,9 @@ import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import lombok.AllArgsConstructor;
 
 /**
- *
+ * A simple model factory that creates SimpleOpenAIModel instances based on the provided agent configuration.
+ * The way it works is that, the name from the modelConfig is passed to a new instance of SimpleOpenAIModel, this name
+ * is used by SimpleOpenAI model to fetch the relevant API provider from the {@link com.phonepe.sentinelai.models.ChatCompletionServiceFactory}.
  */
 @AllArgsConstructor
 public class SimpleOpenAIModelFactory implements ModelFactory {
@@ -17,8 +19,11 @@ public class SimpleOpenAIModelFactory implements ModelFactory {
             return defaultModel;
         }
         if(defaultModel instanceof SimpleOpenAIModel<?> simpleOpenAIModel) {
-            return new SimpleOpenAIModel<>(providedSetting.getName(),
-                                           simpleOpenAIModel.getOpenAIProviderFactory(),
+            final var aiProviderFactory = simpleOpenAIModel.getOpenAIProviderFactory();
+            final var modelName = providedSetting.getName();
+            final var serviceProvider = aiProviderFactory.get(modelName);
+            return new SimpleOpenAIModel<>(modelName,
+                                           serviceProvider,
                                            simpleOpenAIModel.getMapper(),
                                            simpleOpenAIModel.getModelOptions());
         }

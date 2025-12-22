@@ -28,7 +28,7 @@ public class DefaultChatCompletionServiceFactory implements ChatCompletionServic
         this.defaultProvider.set(defaultProvider);
     }
 
-    public DefaultChatCompletionServiceFactory defaultProvider(
+    public DefaultChatCompletionServiceFactory registerDefaultProvider(
             @NonNull final ChatCompletionServices defaultProvider) {
         this.defaultProvider.set(defaultProvider);
         return this;
