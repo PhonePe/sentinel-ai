@@ -1,7 +1,10 @@
 package com.phonepe.sentinelai.toolbox.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentRunContext;
+import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
+import com.phonepe.sentinelai.core.agent.ProcessingMode;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
@@ -11,18 +14,20 @@ import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
-import com.phonepe.sentinelai.core.tools.*;
+import com.phonepe.sentinelai.core.tools.ExecutableTool;
+import com.phonepe.sentinelai.core.tools.ExternalTool;
+import com.phonepe.sentinelai.core.tools.NonContextualDefaultExternalToolRunner;
+import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.toolbox.mcp.config.MCPSSEServerConfig;
-import com.phonepe.sentinelai.toolbox.mcp.config.MCPServerConfig;
-import com.phonepe.sentinelai.toolbox.mcp.config.MCPServerConfigVisitor;
-import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
+import com.phonepe.sentinelai.toolbox.mcp.config.*;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
+import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.Getter;
@@ -36,7 +41,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toMap;
 
@@ -51,6 +55,7 @@ public class SentinelMCPClient implements AutoCloseable {
     private final String name;
     private final McpSyncClient mcpClient;
     private final ObjectMapper mapper;
+    private final JacksonMcpJsonMapper jacksonMapper;
     private final Set<String> exposedTools = new CopyOnWriteArraySet<>();
     private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
 
@@ -63,6 +68,7 @@ public class SentinelMCPClient implements AutoCloseable {
             @Singular final Set<String> exposedTools) {
         this.name = name;
         this.mapper = mapper;
+        this.jacksonMapper = new JacksonMcpJsonMapper(mapper);
         this.mcpClient = createMcpClient(mcpServerConfig);
         this.exposeTools(exposedTools);
     }
@@ -75,6 +81,7 @@ public class SentinelMCPClient implements AutoCloseable {
         this.name = name;
         this.mcpClient = mcpClient;
         this.mapper = mapper;
+        this.jacksonMapper = new JacksonMcpJsonMapper(mapper);
         this.exposeTools(exposedTools);
     }
 
@@ -111,7 +118,7 @@ public class SentinelMCPClient implements AutoCloseable {
                                         .filter(entry -> exposedTools.contains(entry.getValue()
                                                                                        .getToolDefinition()
                                                                                        .getName()))
-                                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                                        .collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
         return Map.copyOf(mapToReturn);
     }
 
@@ -124,7 +131,10 @@ public class SentinelMCPClient implements AutoCloseable {
         }
         log.debug("Calling MCP tool: {} with args: {}", toolId, args);
         try {
-            final var res = mcpClient.callTool(new McpSchema.CallToolRequest(tool.getToolDefinition().getName(), args));
+            final var res = mcpClient.callTool(
+                    new McpSchema.CallToolRequest(jacksonMapper,
+                                                  tool.getToolDefinition().getName(),
+                                                  args));
             return new ExternalTool.ExternalToolResponse(
                     res.content(),
                     Boolean.TRUE.equals(res.isError())
@@ -149,18 +159,35 @@ public class SentinelMCPClient implements AutoCloseable {
                         .args(Objects.requireNonNullElseGet(stdioServerConfig.getArgs(), List::of))
                         .env(Objects.requireNonNullElseGet(stdioServerConfig.getEnv(), Map::of))
                         .build();
-                return new StdioClientTransport(serverParameters, mapper);
+                return new StdioClientTransport(serverParameters, jacksonMapper);
             }
 
             @Override
             public McpClientTransport visit(MCPSSEServerConfig sseServerConfig) {
-                final var timeout = Objects.requireNonNullElse(sseServerConfig.getTimeout(), 5_000);
+                final int timeout = Objects.requireNonNullElse(sseServerConfig.getTimeout(), 5_000);
                 return HttpClientSseClientTransport.builder(sseServerConfig.getUrl())
-                        .objectMapper(mapper)
-                        .customizeClient(builder -> builder.connectTimeout(Duration.ofMillis(timeout)))
+                        .jsonMapper(jacksonMapper)
+                        .connectTimeout(Duration.ofMillis(timeout))
+                        .customizeRequest(requestBuilder -> requestBuilder.timeout(Duration.ofMillis(timeout)))
+                        .build();
+            }
+
+            @Override
+            public McpClientTransport visit(MCPHttpServerConfig httpServerConfig) {
+                final int timeout = Objects.requireNonNullElse(httpServerConfig.getTimeout(), 5_000);
+                final var providedHeaders = Objects.requireNonNullElseGet(
+                        httpServerConfig.getHeaders(), Map::<String, String>of);
+                return HttpClientStreamableHttpTransport.builder(httpServerConfig.getUrl())
+                        .connectTimeout(Duration.ofMillis(timeout))
+                        .jsonMapper(jacksonMapper)
+                        .customizeRequest(requestBuilder -> {
+                            requestBuilder.timeout(Duration.ofMillis(timeout));
+                            providedHeaders.forEach(requestBuilder::header);
+                        })
                         .build();
             }
         });
+
         final var client = McpClient.sync(transport)
                 .clientInfo(new McpSchema.Implementation("sentinel-ai-toolbox-mcp", "X.X.X"))
                 .sampling(this::handleSamplingRequest)
@@ -201,6 +228,13 @@ public class SentinelMCPClient implements AutoCloseable {
     }
 
     private McpSchema.CreateMessageResult handleSamplingRequest(McpSchema.CreateMessageRequest createMessageRequest) {
+        if (null == agent) {
+            return new McpSchema.CreateMessageResult(
+                    McpSchema.Role.ASSISTANT,
+                    new McpSchema.TextContent("Sampling call failed. No agent is registered to handle the request"),
+                    "NoAgent",
+                    McpSchema.CreateMessageResult.StopReason.END_TURN);
+        }
         log.debug("Handling sampling request: {}", createMessageRequest);
         final var agentSetup = agent.getSetup();
         final var setup = agentSetup.getModelSettings()
@@ -235,7 +269,7 @@ public class SentinelMCPClient implements AutoCloseable {
                     .join();
 
             final var responseNode = response.getData().get(SAMPLING_OUTPUT_KEY);
-            if(JsonUtils.empty(responseNode)) {
+            if (JsonUtils.empty(responseNode)) {
                 return new McpSchema.CreateMessageResult(
                         McpSchema.Role.ASSISTANT,
                         new McpSchema.TextContent("Sampling call failed. No content was generated"),
@@ -250,7 +284,7 @@ public class SentinelMCPClient implements AutoCloseable {
         }
         catch (Exception e) {
             final var message = AgentUtils.rootCause(e).getMessage();
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.error("Error running sampling call: ", e);
             }
             return new McpSchema.CreateMessageResult(
@@ -304,7 +338,7 @@ public class SentinelMCPClient implements AutoCloseable {
                                                ((McpSchema.TextResourceContents) embeddedResource.resource()).text(),
                                                mapper.writeValueAsString(embeddedResource.resource()));
             case "blob" -> new GenericResource(translateRole(message.role()),
-                                               GenericResource.ResourceType.TEXT,
+                                               GenericResource.ResourceType.BLOB,
                                                embeddedResource.resource().uri(),
                                                embeddedResource.resource().mimeType(),
                                                ((McpSchema.BlobResourceContents) embeddedResource.resource()).blob(),

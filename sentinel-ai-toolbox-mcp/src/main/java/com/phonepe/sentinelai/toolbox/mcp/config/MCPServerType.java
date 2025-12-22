@@ -11,6 +11,7 @@ public enum MCPServerType {
 
     STDIO(Values.STDIO_TEXT),
     SSE(Values.SSE_TEXT),
+    HTTP(Values.HTTP_TEXT)
     ;
     private final String value;
 
@@ -22,5 +23,6 @@ public enum MCPServerType {
     public static final class Values {
         public static final String STDIO_TEXT = "stdio";
         public static final String SSE_TEXT = "sse";
+        public static final String HTTP_TEXT = "http";
     }
 }
