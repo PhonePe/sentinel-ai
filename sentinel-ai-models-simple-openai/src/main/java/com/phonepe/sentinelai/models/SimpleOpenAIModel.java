@@ -20,6 +20,7 @@ import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessContext;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
 import com.phonepe.sentinelai.core.model.*;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
@@ -27,6 +28,8 @@ import com.phonepe.sentinelai.core.tools.ParameterMapper;
 import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
+import com.phonepe.sentinelai.models.errors.AgentMessagesPreProcessorExecutionFailedException;
+import com.phonepe.sentinelai.models.errors.InvalidAgentMessagesException;
 import io.github.sashirestela.cleverclient.support.CleverClientException;
 import io.github.sashirestela.openai.common.ResponseFormat;
 import io.github.sashirestela.openai.common.Usage;
@@ -45,7 +48,6 @@ import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ClassUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -161,8 +163,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         return CompletableFuture.supplyAsync(() -> {
             ModelOutput output = null;
             do {
-                final var stopwatch = Stopwatch.createStarted();
-
                 ModelOutput error = executeMessagesPreProcessors(context,
                                                                  oldMessages,
                                                                  messagesPreProcessors,
@@ -177,11 +177,22 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }
 
                 generatedOutput.set(null);
-                final var request = toChatRequest(openAiMessages, modelSettings, toolsForExecution, outputGenerationMode, schema);
-
-                raiseMessageSentEvent(context, oldMessages);
+                final var builder = createChatRequestBuilder(openAiMessages);
+                applyModelSettings(modelSettings, builder, toolsForExecution);
+                addToolList(toolsForExecution, builder);
+                if (outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
+                    builder.responseFormat(ResponseFormat.jsonSchema(ResponseFormat.JsonSchema.builder()
+                                                                             .name("model_output")
+                                                                             .schema(schema)
+                                                                             .strict(true)
+                                                                             .build()));
+                }
+                addToolChoice(toolsForExecution, builder, outputGenerationMode);
+                raiseMessageSentEvent(context, allMessages);
+                final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
 
+                final var request = builder.build();
                 logModelRequest(request);
                 Chat completionResponse;
 
@@ -202,18 +213,59 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 if (null == response) {
                     return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.NO_RESPONSE));
                 }
-
-                output = handleModelResponse(context,
-                                             oldMessages,
-                                             toolRunner,
-                                             response,
-                                             stats,
-                                             toolsForExecution,
-                                             stopwatch,
-                                             generatedOutput,
-                                             openAiMessages,
-                                             allMessages,
-                                             newMessages);
+                final var message = response.getMessage();
+                output = switch (response.getFinishReason()) {
+                    case FinishReasons.STOP -> {
+                        final var refusal = message.getRefusal();
+                        if (!Strings.isNullOrEmpty(refusal)) {
+                            yield ModelOutput.error(oldMessages,
+                                                    stats,
+                                                    SentinelError.error(ErrorType.REFUSED, refusal));
+                        }
+                        yield runTools(message.getToolCalls(),
+                                       context,
+                                       toolsForExecution,
+                                       toolRunner,
+                                       stats,
+                                       stopwatch,
+                                       generatedOutput,
+                                       openAiMessages,
+                                       allMessages,
+                                       newMessages,
+                                       oldMessages)
+                                .orElseGet(() -> processOutput(context,
+                                                               message.getContent(),
+                                                               oldMessages,
+                                                               stats,
+                                                               allMessages,
+                                                               newMessages,
+                                                               stopwatch));
+                    }
+                    case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> runTools(message.getToolCalls(),
+                                                                                           context,
+                                                                                           toolsForExecution,
+                                                                                           toolRunner,
+                                                                                           stats,
+                                                                                           stopwatch,
+                                                                                           generatedOutput,
+                                                                                           openAiMessages,
+                                                                                           allMessages,
+                                                                                           newMessages,
+                                                                                           oldMessages)
+                            .orElse(null);
+                    case FinishReasons.LENGTH -> ModelOutput.error(
+                            oldMessages,
+                            stats,
+                            SentinelError.error(ErrorType.LENGTH_EXCEEDED));
+                    case FinishReasons.CONTENT_FILTER -> ModelOutput.error(
+                            oldMessages,
+                            stats,
+                            SentinelError.error(ErrorType.FILTERED));
+                    default -> ModelOutput.error(
+                            oldMessages,
+                            stats,
+                            SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
+                };
 
                 if (shouldLoop(output)) {
                     output = evaluateRunTerminationStrategy(context,
@@ -336,7 +388,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var request = builder.build();
                 logModelRequest(request);
                 Stream<Chat> completionResponseStream;
-
+                raiseMessageSentEvent(context, allMessages);
                 try {
                     completionResponseStream = openAIProviderFactory.get(modelName)
                             .chatCompletions()
@@ -1053,158 +1105,116 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                      final List<ChatMessage> openAiMessages) {
         try {
             executeMessagesPreProcessors(context, messagesPreProcessors, stats, allMessages, newMessages, openAiMessages);
-        } catch (Exception e) {
-            log.error("Error running pre-processors ", e);
+        }
+        catch (InvalidAgentMessagesException ie) {
+            log.error("Preprocessor returned invalid messages ", ie);
+            return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID));
+        }
+        catch (Exception e) {
+            log.error("Error executing preprocessor ", e);
             return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.PREPROCESSOR_RUN_FAILURE));
         }
         return null;
     }
 
-    private synchronized void executeMessagesPreProcessors(final ModelRunContext context,
-                                                           final List<AgentMessagesPreProcessor> messagesPreProcessors,
-                                                           final ModelUsageStats stats,
-                                                           final List<AgentMessage> allMessages,
-                                                           final List<AgentMessage> newMessages,
-                                                           final List<ChatMessage> openAiMessages) {
+    private void executeMessagesPreProcessors(final ModelRunContext context,
+                                              final List<AgentMessagesPreProcessor> messagesPreProcessors,
+                                              final ModelUsageStats stats,
+                                              final List<AgentMessage> allMessages,
+                                              final List<AgentMessage> newMessages,
+                                              final List<ChatMessage> openAiMessages) {
         final var processedAgentMessages = executeMessagesPreProcessors(messagesPreProcessors, stats, context, allMessages);
-        processedAgentMessages.ifPresent(processedMessages -> {
-            allMessages.clear();
-            newMessages.clear();
-            openAiMessages.clear();
+        if (!processedAgentMessages.isEmpty()) {
+            mergeNewMessages(allMessages, newMessages, openAiMessages, processedAgentMessages);
+        }
+    }
 
-            allMessages.addAll(processedMessages.allMessages);
-            newMessages.addAll(processedMessages.newMessages);
-            openAiMessages.addAll(processedMessages.openAiMessages);
-        });
+    private static void mergeNewMessages(final List<AgentMessage> allMessages,
+                                         final List<AgentMessage> newMessages,
+                                         final List<ChatMessage> openAiMessages,
+                                         final List<AgentMessage> processedAgentMessages) {
+        allMessages.clear();
+        newMessages.clear();
+        openAiMessages.clear();
+
+        allMessages.addAll(processedAgentMessages);
+        openAiMessages.addAll(convertToOpenAIMessages(processedAgentMessages));
     }
 
     /**
      *
      * Executes the given set of pre-processors.
-     * The processors are executed as a chain/pipeline where the valid output of one processor is passed as an input
-     * for the next processor in the chain.
+     * The processors are executed as a chain/pipeline where the valid output(non-empty list of msgs) of one processor
+     * is passed as an input for the next processor in the chain.
      *
      */
-    private Optional<AgentMessages> executeMessagesPreProcessors(final List<AgentMessagesPreProcessor> messagesPreProcessors,
+    private List<AgentMessage> executeMessagesPreProcessors(final List<AgentMessagesPreProcessor> messagesPreProcessors,
                                                                  final ModelUsageStats statsForRun,
                                                                  final ModelRunContext context,
                                                                  final List<AgentMessage> allMessages) {
         if (messagesPreProcessors == null || messagesPreProcessors.isEmpty()) {
             log.trace("No agent messages pre-processors found");
-            return Optional.empty();
+            return List.of();
         }
 
         var transformedMessages = List.copyOf(allMessages);
 
         for (var processor : messagesPreProcessors) {
-            final var response = processor.process(AgentMessagesPreProcessContext.builder()
-                    .statsForRun(statsForRun)
-                    .allMessages(transformedMessages)
-                    .modelRunContext(context)
-                    .build());
-
-            // check if processor transformed the messages
-            if (response != null
-                    && response.getTransformedMessages() != null) {
-                transformedMessages = List.copyOf(response.getTransformedMessages());
-            }
-        }
-
-        if (transformedMessages.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return Optional.of(AgentMessages.builder()
+            AgentMessagesPreProcessResult response;
+            try {
+                 response = processor.process(AgentMessagesPreProcessContext.builder()
+                        .statsForRun(statsForRun)
                         .allMessages(transformedMessages)
-                        .newMessages(List.of())
-                        .openAiMessages(convertToOpenAIMessages(transformedMessages))
-                .build());
-    }
-
-    private ChatRequest toChatRequest(final List<ChatMessage> openAiMessages,
-                                      final ModelSettings modelSettings,
-                                      final HashMap<String, ExecutableTool> toolsForExecution,
-                                      final OutputGenerationMode outputGenerationMode,
-                                      final ObjectNode schema) {
-        final var builder = createChatRequestBuilder(openAiMessages);
-        applyModelSettings(modelSettings, builder, toolsForExecution);
-        addToolList(toolsForExecution, builder);
-        if (outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
-            builder.responseFormat(ResponseFormat.jsonSchema(ResponseFormat.JsonSchema.builder()
-                    .name("model_output")
-                    .schema(schema)
-                    .strict(true)
-                    .build()));
-        }
-        addToolChoice(toolsForExecution, builder, outputGenerationMode);
-        return builder.build();
-    }
-
-    @Nullable
-    private ModelOutput handleModelResponse(final ModelRunContext context,
-                                            final List<AgentMessage> oldMessages,
-                                            final ToolRunner toolRunner,
-                                            final Chat.Choice response,
-                                            final ModelUsageStats stats,
-                                            final HashMap<String, ExecutableTool> toolsForExecution,
-                                            final Stopwatch stopwatch,
-                                            final AtomicReference<String> generatedOutput,
-                                            final ArrayList<ChatMessage> openAiMessages,
-                                            final ArrayList<AgentMessage> allMessages,
-                                            final ArrayList<AgentMessage> newMessages) {
-        final var message = response.getMessage();
-        return switch (response.getFinishReason()) {
-            case FinishReasons.STOP -> {
-                final var refusal = message.getRefusal();
-                if (!Strings.isNullOrEmpty(refusal)) {
-                    yield ModelOutput.error(oldMessages,
-                            stats,
-                            SentinelError.error(ErrorType.REFUSED, refusal));
-                }
-                yield runTools(message.getToolCalls(),
-                        context,
-                        toolsForExecution,
-                        toolRunner,
-                        stats,
-                        stopwatch,
-                        generatedOutput,
-                        openAiMessages,
-                        allMessages,
-                        newMessages,
-                        oldMessages)
-                        .orElseGet(() -> processOutput(context,
-                                message.getContent(),
-                                oldMessages,
-                                stats,
-                                allMessages,
-                                newMessages,
-                                stopwatch));
+                        .modelRunContext(context)
+                        .build());
             }
-            case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> runTools(message.getToolCalls(),
-                    context,
-                    toolsForExecution,
-                    toolRunner,
-                    stats,
-                    stopwatch,
-                    generatedOutput,
-                    openAiMessages,
-                    allMessages,
-                    newMessages,
-                    oldMessages)
+            catch (Exception e) {
+                log.error("Error executing preprocessor: {}", processor.getClass().getSimpleName(), e);
+                throw new AgentMessagesPreProcessorExecutionFailedException(
+                        "Preprocessor %s failed".formatted(processor.getClass().getSimpleName()), e);
+            }
+
+            final var candidateMessages = Optional.ofNullable(response)
+                    .map(AgentMessagesPreProcessResult::getTransformedMessages)
                     .orElse(null);
-            case FinishReasons.LENGTH -> ModelOutput.error(
-                    oldMessages,
-                    stats,
-                    SentinelError.error(ErrorType.LENGTH_EXCEEDED));
-            case FinishReasons.CONTENT_FILTER -> ModelOutput.error(
-                    oldMessages,
-                    stats,
-                    SentinelError.error(ErrorType.FILTERED));
-            default -> ModelOutput.error(
-                    oldMessages,
-                    stats,
-                    SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, response.getFinishReason()));
-        };
+
+            if (candidateMessages != null && !candidateMessages.isEmpty()) {
+                validateTransformedAgentMessages(processor, candidateMessages);
+                transformedMessages = List.copyOf(candidateMessages);
+            }
+        }
+
+        return transformedMessages;
+    }
+
+    private void validateTransformedAgentMessages(final AgentMessagesPreProcessor processor,
+                                                  final List<AgentMessage> messages) {
+        if (messages == null || messages.isEmpty() ) {
+            return ;
+        }
+
+        if (!hasExactlyOneSystemPromptMessage(messages)) {
+            throw InvalidAgentMessagesException.withMessage(
+                    "Agent Messages returned by the processor: %s are invalid. Must contain one system prompt message."
+                            .formatted(processor.getClass().getSimpleName()));
+        }
+
+        if (!hasAtLeastOneUserPromptMessage(messages)) {
+            throw InvalidAgentMessagesException.withMessage(
+                    "Agent Messages returned by the processor: %s are invalid. Must at least one user message."
+                            .formatted(processor.getClass().getSimpleName()));
+        }
+    }
+
+    private static boolean hasAtLeastOneUserPromptMessage(final List<AgentMessage> messages) {
+        return messages.stream()
+                .anyMatch(x -> x.getMessageType().equals(AgentMessageType.USER_PROMPT_REQUEST_MESSAGE));
+    }
+
+    private static boolean hasExactlyOneSystemPromptMessage(final List<AgentMessage> messages) {
+        return messages.stream()
+                .filter(x -> x.getMessageType().equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE))
+                .count() == 1;
     }
 
 }

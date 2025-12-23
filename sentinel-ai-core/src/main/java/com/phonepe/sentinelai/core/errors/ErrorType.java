@@ -28,7 +28,8 @@ public enum ErrorType {
     MODEL_CALL_HTTP_FAILURE("Error making HTTP Call: %s", true),
     UNKNOWN("Unknown response", true),
     MODEL_RUN_TERMINATED("Model run was terminated", false),
-    PREPROCESSOR_RUN_FAILURE("Agent messages pre-processor failed", true)
+    PREPROCESSOR_RUN_FAILURE("Agent messages preprocessor failed", true),
+    PREPROCESSOR_MESSAGES_OUTPUT_INVALID("Messages returned by the processer is invalid", false)
     ;
 
     private final String message;

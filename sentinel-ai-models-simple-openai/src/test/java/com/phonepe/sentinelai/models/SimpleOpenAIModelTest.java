@@ -9,6 +9,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
@@ -131,7 +132,28 @@ class SimpleOpenAIModelTest {
                  .map(AgentGenericMessage.class::cast)
                  .filter(x -> x.getRole().equals(AgentGenericMessage.Role.ASSISTANT))
                  .count());
+    }
 
+    @Test
+    @SneakyThrows
+    void testInvalidMessagesReturnedByAPreprocessor(final WireMockRuntimeInfo wiremock) {
+        AtomicInteger iter = new AtomicInteger(0);
+        var response = testInternal(wiremock,
+                4,
+                "tool-output",
+                List.of(ctx -> {
+
+                    List<AgentMessage> newMessages = List.of(new GenericText(AgentGenericMessage.Role.ASSISTANT,"123-" + iter.getAndIncrement()));
+
+                    return AgentMessagesPreProcessResult.builder()
+                            .transformedMessages(newMessages)
+                            .build();
+                })
+        );
+        assertEquals(2, response.getAllMessages().stream().filter(x -> x.getMessageType().equals(AgentMessageType.GENERIC_TEXT_MESSAGE))
+                .map(AgentGenericMessage.class::cast)
+                .filter(x -> x.getRole().equals(AgentGenericMessage.Role.ASSISTANT))
+                .count());
     }
 
     @Test

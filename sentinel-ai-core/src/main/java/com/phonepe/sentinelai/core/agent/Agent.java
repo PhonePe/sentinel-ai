@@ -232,12 +232,22 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         return self;
     }
 
+    /**
+     * Register agent message pre-processor. This is thread safe and can be called at runtime.
+     * @param agentMessagesPreProcessor processor instance
+     * @return this
+     */
     public A registerAgentMessagesPreProcessor(AgentMessagesPreProcessor agentMessagesPreProcessor) {
         this.agentMessagesPreProcessors.add(agentMessagesPreProcessor);
         log.debug("Registering messages pre-processor: {} for agent: {}", agentMessagesPreProcessor.getClass().getSimpleName(), name());
         return self;
     }
 
+    /**
+     * Register list of agent message pre-processor. This is thread safe and can be called at runtime.
+     * @param agentMessagesPreProcessors processor instances
+     * @return this
+     */
     public A registerAgentMessagesPreProcessors(List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
         agentMessagesPreProcessors.forEach(self::registerAgentMessagesPreProcessor);
         return self;

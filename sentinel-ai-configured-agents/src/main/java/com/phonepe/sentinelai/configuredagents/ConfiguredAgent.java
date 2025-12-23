@@ -12,6 +12,7 @@ import lombok.SneakyThrows;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -59,8 +60,7 @@ public class ConfiguredAgent {
     }
 
     public ConfiguredAgent registerAgentMessagesPreProcessors(List<AgentMessagesPreProcessor> preProcessors) {
-        Optional.ofNullable(preProcessors)
-                .ifPresent(this.rootAgent::registerAgentMessagesPreProcessors);
+        rootAgent.registerAgentMessagesPreProcessors(Objects.requireNonNullElseGet(preProcessors, List::of));
         return this;
     }
 
