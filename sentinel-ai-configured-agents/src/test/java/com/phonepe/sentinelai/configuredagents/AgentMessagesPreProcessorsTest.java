@@ -12,8 +12,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class AgentMessagesPreProcessorsTest {
 
-    private static final AgentMessagesPreProcessor MOCK_PROCESSOR = ctx -> null;
-    private static final AgentMessagesPreProcessor ANOTHER_PROCESSOR = ctx -> null;
+    private static final AgentMessagesPreProcessor MOCK_PROCESSOR = (ctx, a, b) -> null;
+    private static final AgentMessagesPreProcessor ANOTHER_PROCESSOR = (ctx, a, b) -> null;
 
     @Test
     void testAddSingleProcessor() {
