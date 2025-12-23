@@ -10,6 +10,7 @@ import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
@@ -118,7 +119,8 @@ class AgentTest {
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
                                                                 ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy) {
+                                                                EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                List<AgentMessagesPreProcessor> preProcessors) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey("test_agent_get_name"));
                                                                 final var response = toolRunner.runTool(
@@ -176,7 +178,8 @@ class AgentTest {
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
                                                                 ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy) {
+                                                                EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                List<AgentMessagesPreProcessor> preProcessors) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey("test_agent_get_name"));
                                                                 final var response = toolRunner.runTool(
@@ -237,7 +240,8 @@ class AgentTest {
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
                                                                 ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy) {
+                                                                EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                List<AgentMessagesPreProcessor> preProcessors) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey(
                                                                         "test_agent_session_summary"));
@@ -299,7 +303,8 @@ class AgentTest {
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
                                                                 ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy) {
+                                                                EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                List<AgentMessagesPreProcessor> preProcessors) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey("test_agent_void_tool"));
                                                                 final var response = toolRunner.runTool(
@@ -356,7 +361,8 @@ class AgentTest {
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
                                                                 ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy) {
+                                                                EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                List<AgentMessagesPreProcessor> preProcessors) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey(
                                                                         "test_agent_structured_tool"));
@@ -422,7 +428,8 @@ class AgentTest {
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
                                                                 ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy) {
+                                                                EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                List<AgentMessagesPreProcessor> preProcessors) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 assertTrue(tools.containsKey("test_agent_throw_tool"));
                                                                 final var response = toolRunner.runTool(
@@ -481,7 +488,8 @@ class AgentTest {
                                                                 List<AgentMessage> oldMessages,
                                                                 Map<String, ExecutableTool> tools,
                                                                 ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy) {
+                                                                EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                List<AgentMessagesPreProcessor> preProcessors) {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 final var response = toolRunner.runTool(
                                                                         tools,

@@ -3,6 +3,7 @@ package com.phonepe.sentinelai.core.model;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import org.apache.commons.lang3.NotImplementedException;
 import org.junit.jupiter.api.Test;
@@ -29,13 +30,14 @@ class ModelTest {
                     List<com.phonepe.sentinelai.core.agentmessages.AgentMessage> oldMessages,
                     Map<String, ExecutableTool> tools,
                     ToolRunner toolRunner,
-                    EarlyTerminationStrategy earlyTerminationStrategy) {
+                    EarlyTerminationStrategy earlyTerminationStrategy,
+                    List<AgentMessagesPreProcessor> preProcessors) {
                 return null;
             }
 
         };
         assertThrows(NotImplementedException.class,
-                     () -> model.stream(null, List.of(), List.of(), Map.of(), null, null,bytes -> {}));
+                     () -> model.stream(null, List.of(), List.of(), Map.of(), null, null, bytes -> {}, List.of()));
     }
 
     @Test
@@ -48,12 +50,13 @@ class ModelTest {
                     List<com.phonepe.sentinelai.core.agentmessages.AgentMessage> oldMessages,
                     Map<String, ExecutableTool> tools,
                     ToolRunner toolRunner,
-                    EarlyTerminationStrategy earlyTerminationStrategy) {
+                    EarlyTerminationStrategy earlyTerminationStrategy,
+                    List<AgentMessagesPreProcessor> preProcessors) {
                 return null;
             }
 
         };
         assertThrows(NotImplementedException.class,
-                     () -> model.streamText(null, List.of(), Map.of(), null, null, bytes -> {}));
+                     () -> model.streamText(null, List.of(), Map.of(), null, null, bytes -> {}, List.of()));
     }
 }
