@@ -28,7 +28,6 @@ public class ConfiguredAgentFactory {
     private final SimpleCache<HttpToolBox> httpToolboxFactory;
     private final SimpleCache<MCPToolBox> mcpToolboxFactory;
     private final CustomToolBox customToolBox;
-    private final AgentMessagesPreProcessors messagesPreProcessors;
     private final AgentSetupProvider agentSetupProvider;
     private final ModelFactory modelFactory;
 
@@ -49,8 +48,6 @@ public class ConfiguredAgentFactory {
                 .orElseThrow(() -> new IllegalArgumentException("No MCP tool box found for upstream: " + upstream)))
                                  : null;
         this.customToolBox = customToolBox;
-        this.messagesPreProcessors = Optional.ofNullable(messagesPreProcessors)
-                .orElse(AgentMessagesPreProcessors.NONE);
         this.agentSetupProvider = Objects.requireNonNullElseGet(agentSetupProvider, ConfigDrivenAgentSetupProvider::new);
         this.modelFactory = Objects.requireNonNullElseGet(modelFactory, SimpleOpenAIModelFactory::new);
     }
@@ -148,16 +145,12 @@ public class ConfiguredAgentFactory {
         toolBoxes.addAll(extensions); //Because all extensions are also toolboxes
 
         final var agentSetup = agentSetupProvider.from(parent.getSetup(), agentConfiguration, modelFactory);
-        final var agent = new ConfiguredAgent(
+
+        return new ConfiguredAgent(
                 agentConfiguration,
                 extensions,
                 new ComposingToolBox(toolBoxes, Set.of()),
                 agentSetup);
-
-        messagesPreProcessors.processorsFor(agentConfiguration.getAgentName())
-                .ifPresent(agent::registerAgentMessagesPreProcessors);
-
-        return agent;
     }
 
 }

@@ -1,7 +1,7 @@
 package com.phonepe.sentinelai.core.hooks;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import lombok.Builder;
+import lombok.NonNull;
 import lombok.Value;
 
 import java.util.List;
@@ -13,7 +13,8 @@ import java.util.List;
  * will not be modified. Completely resetting agent messages to an empty list by a processor is not allowed.
  */
 @Value
-@Builder
 public class AgentMessagesPreProcessResult {
     List<AgentMessage> transformedMessages;
+
+    List<AgentMessage> newMessages;
 }

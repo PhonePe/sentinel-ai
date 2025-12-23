@@ -7,9 +7,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessContext;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
-import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
@@ -34,7 +32,6 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
@@ -166,11 +163,9 @@ class SimpleOpenAIModelStreamingTest {
                 .build();
         final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
         AtomicBoolean preProcessorCalled = new AtomicBoolean(false);
-        agent.registerAgentMessagesPreProcessor(ctx -> {
+        agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
             preProcessorCalled.set(true);
-            return AgentMessagesPreProcessResult.builder()
-                    .transformedMessages(null)
-                    .build();
+            return new AgentMessagesPreProcessResult(null, null);
         });
 
         final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
@@ -193,7 +188,7 @@ class SimpleOpenAIModelStreamingTest {
         final var httpClient = new OkHttpClient.Builder()
                 .build();
         final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
-        agent.registerAgentMessagesPreProcessor(ctx -> {
+        agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
             throw new RuntimeException("Errored");
         });
 

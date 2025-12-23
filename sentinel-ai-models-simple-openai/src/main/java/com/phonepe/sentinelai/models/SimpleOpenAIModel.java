@@ -1108,11 +1108,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }
         catch (InvalidAgentMessagesException ie) {
             log.error("Preprocessor returned invalid messages ", ie);
-            return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID));
+            return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID, ie.getMessage()));
         }
         catch (Exception e) {
-            log.error("Error executing preprocessor ", e);
-            return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.PREPROCESSOR_RUN_FAILURE));
+            log.error(AgentUtils.rootCause(e).getMessage(), e);
+            return ModelOutput.error(oldMessages, stats,
+                    SentinelError.error(ErrorType.PREPROCESSOR_RUN_FAILURE, AgentUtils.rootCause(e).getMessage()));
         }
         return null;
     }
@@ -1123,74 +1124,88 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                               final List<AgentMessage> allMessages,
                                               final List<AgentMessage> newMessages,
                                               final List<ChatMessage> openAiMessages) {
-        final var processedAgentMessages = executeMessagesPreProcessors(messagesPreProcessors, stats, context, allMessages);
-        if (!processedAgentMessages.isEmpty()) {
-            mergeNewMessages(allMessages, newMessages, openAiMessages, processedAgentMessages);
-        }
+        executeMessagesPreProcessors(messagesPreProcessors, stats, context, allMessages, newMessages)
+                .ifPresent(processedAgentMessages ->
+                        mergeNewMessages(allMessages, newMessages, openAiMessages, processedAgentMessages));
     }
 
     private static void mergeNewMessages(final List<AgentMessage> allMessages,
                                          final List<AgentMessage> newMessages,
                                          final List<ChatMessage> openAiMessages,
-                                         final List<AgentMessage> processedAgentMessages) {
+                                         final AgentMessages processedAgentMessages) {
         allMessages.clear();
         newMessages.clear();
         openAiMessages.clear();
 
-        allMessages.addAll(processedAgentMessages);
-        openAiMessages.addAll(convertToOpenAIMessages(processedAgentMessages));
+        allMessages.addAll(processedAgentMessages.allMessages);
+        newMessages.addAll(processedAgentMessages.newMessages);
+        openAiMessages.addAll(convertToOpenAIMessages(processedAgentMessages.allMessages));
     }
 
     /**
      *
      * Executes the given set of pre-processors.
-     * The processors are executed as a chain/pipeline where the valid output(non-empty list of msgs) of one processor
+     * The processors are executed as a chain/pipeline where a valid output(non-empty list of msgs) of one processor
      * is passed as an input for the next processor in the chain.
      *
      */
-    private List<AgentMessage> executeMessagesPreProcessors(final List<AgentMessagesPreProcessor> messagesPreProcessors,
+    private Optional<AgentMessages> executeMessagesPreProcessors(final List<AgentMessagesPreProcessor> messagesPreProcessors,
                                                                  final ModelUsageStats statsForRun,
                                                                  final ModelRunContext context,
-                                                                 final List<AgentMessage> allMessages) {
+                                                                 final List<AgentMessage> allMessages,
+                                                                 final List<AgentMessage> newMessages) {
         if (messagesPreProcessors == null || messagesPreProcessors.isEmpty()) {
             log.trace("No agent messages pre-processors found");
-            return List.of();
+            return Optional.empty();
         }
 
-        var transformedMessages = List.copyOf(allMessages);
+        var transformedAllMessages = List.copyOf(allMessages);
+        var transformedNewMessages = List.copyOf(newMessages);
 
         for (var processor : messagesPreProcessors) {
             AgentMessagesPreProcessResult response;
             try {
-                 response = processor.process(AgentMessagesPreProcessContext.builder()
+                final var ctx = AgentMessagesPreProcessContext.builder()
                         .statsForRun(statsForRun)
-                        .allMessages(transformedMessages)
                         .modelRunContext(context)
-                        .build());
+                        .build();
+                response = processor.process(ctx, transformedAllMessages, transformedNewMessages);
             }
             catch (Exception e) {
                 log.error("Error executing preprocessor: {}", processor.getClass().getSimpleName(), e);
                 throw new AgentMessagesPreProcessorExecutionFailedException(
-                        "Preprocessor %s failed".formatted(processor.getClass().getSimpleName()), e);
+                        "Preprocessor %s failed: %s".formatted(processor.getClass().getSimpleName(), e.getMessage()), e);
             }
 
-            final var candidateMessages = Optional.ofNullable(response)
-                    .map(AgentMessagesPreProcessResult::getTransformedMessages)
-                    .orElse(null);
+            final var candidateMessages = response.getTransformedMessages();
+            if (candidateMessages != null) {
+                validateTransformedAgentMessages(processor, response.getTransformedMessages());
+                transformedAllMessages = List.copyOf(response.getTransformedMessages());
+            }
 
-            if (candidateMessages != null && !candidateMessages.isEmpty()) {
-                validateTransformedAgentMessages(processor, candidateMessages);
-                transformedMessages = List.copyOf(candidateMessages);
+            if (response.getNewMessages() != null) {
+                transformedNewMessages = List.copyOf(response.getNewMessages());
             }
         }
 
-        return transformedMessages;
+        // If nothing changed across the entire chain, indicate no-op to avoid unnecessary merging
+        if (transformedAllMessages.equals(allMessages) && transformedNewMessages.equals(newMessages)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(AgentMessages.builder()
+                        .allMessages(transformedAllMessages)
+                        .newMessages(transformedNewMessages)
+                        .build());
     }
 
     private void validateTransformedAgentMessages(final AgentMessagesPreProcessor processor,
                                                   final List<AgentMessage> messages) {
-        if (messages == null || messages.isEmpty() ) {
-            return ;
+
+        if (messages.isEmpty()) {
+            throw InvalidAgentMessagesException.withMessage(
+                    "Agent Messages returned by the processor: %s are invalid. Must be a non-empty list."
+                            .formatted(processor.getClass().getSimpleName()));
         }
 
         if (!hasExactlyOneSystemPromptMessage(messages)) {
@@ -1201,7 +1216,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
         if (!hasAtLeastOneUserPromptMessage(messages)) {
             throw InvalidAgentMessagesException.withMessage(
-                    "Agent Messages returned by the processor: %s are invalid. Must at least one user message."
+                    "Agent Messages returned by the processor: %s are invalid. Must contain at least one user message."
                             .formatted(processor.getClass().getSimpleName()));
         }
     }

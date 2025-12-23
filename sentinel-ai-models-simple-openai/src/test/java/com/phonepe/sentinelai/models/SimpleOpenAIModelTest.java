@@ -15,6 +15,7 @@ import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
@@ -117,14 +118,12 @@ class SimpleOpenAIModelTest {
          var response = testInternal(wiremock,
                 4,
                 "tool-output",
-                List.of(ctx -> {
+                List.of((ctx, allMessages, newMessages) -> {
 
-                    final var newMessages = new ArrayList<>(ctx.getAllMessages());
-                    newMessages.add(new GenericText(AgentGenericMessage.Role.ASSISTANT,"123-" + iter.getAndIncrement()));
+                    final var processedMessages = new ArrayList<>(allMessages);
+                    processedMessages.add(new GenericText(AgentGenericMessage.Role.ASSISTANT,"123-" + iter.getAndIncrement()));
 
-                    return AgentMessagesPreProcessResult.builder()
-                            .transformedMessages(newMessages)
-                            .build();
+                    return new AgentMessagesPreProcessResult(processedMessages, List.of());
                 })
          );
          assertEquals(2, iter.get());
@@ -136,45 +135,77 @@ class SimpleOpenAIModelTest {
 
     @Test
     @SneakyThrows
-    void testInvalidMessagesReturnedByAPreprocessor(final WireMockRuntimeInfo wiremock) {
-        AtomicInteger iter = new AtomicInteger(0);
+    void testAbsenceOfSystemPromptInPreprocessorOutput(final WireMockRuntimeInfo wiremock) {
         var response = testInternal(wiremock,
                 4,
                 "tool-output",
-                List.of(ctx -> {
+                List.of((ctx, allMessages, newMessages) -> {
 
-                    List<AgentMessage> newMessages = List.of(new GenericText(AgentGenericMessage.Role.ASSISTANT,"123-" + iter.getAndIncrement()));
+                    List<AgentMessage> transformedMessages = List.of(
+                            new GenericText(AgentGenericMessage.Role.ASSISTANT,"123-"));
 
-                    return AgentMessagesPreProcessResult.builder()
-                            .transformedMessages(newMessages)
-                            .build();
+                    return new AgentMessagesPreProcessResult(transformedMessages, List.of());
                 })
         );
-        assertEquals(2, response.getAllMessages().stream().filter(x -> x.getMessageType().equals(AgentMessageType.GENERIC_TEXT_MESSAGE))
-                .map(AgentGenericMessage.class::cast)
-                .filter(x -> x.getRole().equals(AgentGenericMessage.Role.ASSISTANT))
-                .count());
+        assertEquals(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID, response.getError().getErrorType());
+    }
+
+    @Test
+    @SneakyThrows
+    void testAbsenceOfUserMessageInPreprocessorOutput(final WireMockRuntimeInfo wiremock) {
+        var response = testInternal(wiremock,
+                4,
+                "tool-output",
+                List.of((ctx, allMessages, newMessages)
+                        -> new AgentMessagesPreProcessResult(List.of(allMessages.get(0)), List.of()))
+        );
+        assertEquals(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID, response.getError().getErrorType());
     }
 
     @Test
     @SneakyThrows
     void testNoopPreProcessor(final WireMockRuntimeInfo wiremock) {
-        AtomicInteger iter = new AtomicInteger(0);
         var response = testInternal(wiremock,
                 4,
                 "tool-output",
-                List.of(ctx -> {
-                    return AgentMessagesPreProcessResult.builder()
-                            .transformedMessages(iter.getAndIncrement() == 0 ? null : List.of())
-                            .build();
-                })
+                List.of((ctx, allMessages, newMessages)
+                        -> new AgentMessagesPreProcessResult(null, null))
         );
-        assertEquals(2, iter.get());
-        assertEquals(0, response.getAllMessages().stream().filter(x -> x.getMessageType().equals(AgentMessageType.GENERIC_TEXT_MESSAGE))
-                .map(AgentGenericMessage.class::cast)
-                .filter(x -> x.getRole().equals(AgentGenericMessage.Role.ASSISTANT))
-                .count());
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
 
+        // system prompt + user message + 4 tool calls req/resp + structured output
+        assertEquals(2 + 4 + 1, response.getAllMessages().size());
+        assertFalse(response.getNewMessages().isEmpty());
+    }
+
+    @Test
+    @SneakyThrows
+    void testEmptyListReturnedByAProcessorFails(final WireMockRuntimeInfo wiremock) {
+        var response = testInternal(wiremock,
+                4,
+                "tool-output",
+                List.of((ctx, allMessages, newMessages)
+                        -> new AgentMessagesPreProcessResult(List.of(), null))
+        );
+        assertEquals(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID, response.getError().getErrorType());
+    }
+
+    @Test
+    @SneakyThrows
+    void testNewMessagesAreUpdatedByAProcessor(final WireMockRuntimeInfo wiremock) {
+        var response = testInternal(wiremock,
+                4,
+                "tool-output",
+                List.of((ctx, allMessages, newMessages)
+                        -> new AgentMessagesPreProcessResult(allMessages, List.of(new GenericText(AgentGenericMessage.Role.USER, "TEST"))))
+        );
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertEquals(1, response.getNewMessages().stream().filter(x -> x.getMessageType().equals(AgentMessageType.GENERIC_TEXT_MESSAGE))
+                .map(AgentGenericMessage.class::cast)
+                .filter( x -> x.getRole().equals(AgentGenericMessage.Role.USER))
+                .map(GenericText.class::cast)
+                .filter(x -> x.getText().equals("TEST"))
+                .count());
     }
 
     @Test
@@ -183,7 +214,7 @@ class SimpleOpenAIModelTest {
         var response = testInternal(wiremock,
                 4,
                 "tool-output",
-                List.of(ctx -> {
+                List.of((ctx, allMessages, newMessages) -> {
                     throw new RuntimeException("Errored");
                 })
         );

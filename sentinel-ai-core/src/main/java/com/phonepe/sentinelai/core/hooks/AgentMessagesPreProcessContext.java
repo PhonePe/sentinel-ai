@@ -25,10 +25,4 @@ public class AgentMessagesPreProcessContext {
      * Usage stats for this specific run
      */
     ModelUsageStats statsForRun;
-
-
-    /**
-     * All messages that will be sent to the LLM
-     */
-    List<AgentMessage> allMessages;
 }
