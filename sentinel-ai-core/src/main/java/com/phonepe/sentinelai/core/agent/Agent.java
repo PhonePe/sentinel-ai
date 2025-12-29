@@ -511,7 +511,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         try {
             final var errorResponse = Agent.<T>handleErrorResponse(modelOutput).orElse(null);
             if (errorResponse != null) {
-                processingContext.messages.addAll(modelOutput.getNewMessages());
+                mergeModelOutput(processingContext, modelOutput);
                 return errorResponse;
             }
             //Creating an empty object here as we don't want to waste time doing null checks
@@ -802,5 +802,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             return xmlMapper.createObjectNode().put("data", Objects.toString(object));
         }
         return xmlMapper.valueToTree(object);
+    }
+
+    private static <R> void mergeModelOutput(final ModelOutputProcessingContext<R> processingContext, final ModelOutput modelOutput) {
+        processingContext.messages.clear();
+        processingContext.messages.addAll(modelOutput.getAllMessages());
     }
 }
