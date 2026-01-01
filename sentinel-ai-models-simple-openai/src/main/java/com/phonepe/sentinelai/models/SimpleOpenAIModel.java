@@ -1166,7 +1166,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             AgentMessagesPreProcessResult response;
             try {
                 final var ctx = AgentMessagesPreProcessContext.builder()
-                        .statsForRun(statsForRun)
                         .modelRunContext(context)
                         .build();
                 response = processor.process(ctx, transformedAllMessages, transformedNewMessages);

@@ -20,9 +20,4 @@ public class AgentMessagesPreProcessContext {
      * The context of the model run, which includes metadata about the agent and the request.
      */
     ModelRunContext modelRunContext;
-
-    /**
-     * Usage stats for this specific run
-     */
-    ModelUsageStats statsForRun;
 }
