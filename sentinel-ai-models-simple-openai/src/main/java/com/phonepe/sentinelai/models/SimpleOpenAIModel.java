@@ -9,8 +9,9 @@ import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ToolRunner;
-import com.phonepe.sentinelai.core.agentmessages.*;
-import com.phonepe.sentinelai.core.agentmessages.requests.*;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
+import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
@@ -18,9 +19,9 @@ import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
-import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessContext;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.*;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
@@ -74,11 +75,30 @@ import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertToOp
 @Getter
 public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Model {
 
+    /**
+     * This is a conduit for passing around list of messages together. All fields are mandatory.
+     */
     @Builder
     @Value
     private static class AgentMessages {
+        @NonNull
         List<ChatMessage> openAiMessages;
+        @NonNull
         List<AgentMessage> allMessages;
+        @NonNull
+        List<AgentMessage> newMessages;
+    }
+
+    /**
+     * This is the final output after preprocessing and is used to change the messages
+     * actually sent to the model
+     */
+    @Builder
+    @Value
+    private static class PreProcessorExecutionResults {
+        @NonNull
+        List<AgentMessage> allMessages;
+        @NonNull
         List<AgentMessage> newMessages;
     }
 
@@ -163,13 +183,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         return CompletableFuture.supplyAsync(() -> {
             ModelOutput output = null;
             do {
-                ModelOutput error = executeMessagesPreProcessors(context,
-                                                                 oldMessages,
-                                                                 messagesPreProcessors,
-                                                                 stats,
-                                                                 allMessages,
-                                                                 newMessages,
-                                                                 openAiMessages);
+                final var error = preProcessMessages(context,
+                                                       oldMessages,
+                                                       messagesPreProcessors,
+                                                       stats,
+                                                       allMessages,
+                                                       newMessages,
+                                                       openAiMessages)
+                        .orElse(null);
 
                 if (error != null) {
                     output = error;
@@ -203,8 +224,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             .join();
                 }
                 catch (Exception e) {
-                    return errorToModelOutput(context, e, newMessages, allMessages)
-                            .orElseThrow(() -> new RuntimeException(e));
+                    return errorToModelOutput(context, e, newMessages, allMessages);
                 }
                 logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
@@ -357,13 +377,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         return CompletableFuture.supplyAsync(() -> {
             ModelOutput output = null;
             do {
-                ModelOutput error = executeMessagesPreProcessors(context,
-                                                                 oldMessages,
-                                                                 messagesPreProcessors,
-                                                                 stats,
-                                                                 allMessages,
-                                                                 newMessages,
-                                                                 openAiMessages);
+                final var error = preProcessMessages(context,
+                                                       oldMessages,
+                                                       messagesPreProcessors,
+                                                       stats,
+                                                       allMessages,
+                                                       newMessages,
+                                                       openAiMessages)
+                        .orElse(null);
                 if (error != null) {
                     output = error;
                     break;
@@ -395,8 +416,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             .join();
                 }
                 catch (Exception e) {
-                    return errorToModelOutput(context, e, newMessages, allMessages)
-                            .orElseThrow(() -> new RuntimeException(e));
+                    return errorToModelOutput(context, e, newMessages, allMessages);
                 }
                 //We use the following to merge the pieces of response we get from stream into final output
                 final var responseData = new StringBuilder();
@@ -483,7 +503,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                         toolsForExecution,
                                                         toolRunner,
                                                         toolCalls,
-                                                        new AgentMessages(openAiMessages, allMessages, newMessages),
+                                                        AgentMessages.builder()
+                                                                .newMessages(newMessages)
+                                                                .allMessages(allMessages)
+                                                                .openAiMessages(openAiMessages)
+                                                                .build(),
                                                         stats,
                                                         stopwatch);
                                         if (generatedOutput.get() != null) {
@@ -530,7 +554,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 //The flow is intentionally done this way
                 // This needs to be done in two steps to ensure all chunks are consumed. Otherwise, some stuff like
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
-                output = outputs.stream().findAny().orElse(null);
+                output = outputs.isEmpty() ? null : outputs.get(outputs.size() - 1);
                 if (shouldLoop(output)) {
                     output = evaluateRunTerminationStrategy(context,
                                                             earlyTerminationStrategy,
@@ -543,7 +567,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }, agentSetup.getExecutorService());
     }
 
-    private static Optional<ModelOutput> errorToModelOutput(
+    private static ModelOutput errorToModelOutput(
             final ModelRunContext context,
             final Throwable error,
             final List<AgentMessage> newMessages,
@@ -554,53 +578,57 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                   error);
         // Looks like OkHttp sends out a variety of IOExceptions for network issues
         if (ClassUtils.isAssignable(rootCause.getClass(), IOException.class)) {
-            return errorToModelOutput(context,
-                                      newMessages,
-                                      allMessages,
-                                      ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
-                                      rootCause.getMessage());
+            return createErrorResponse(context,
+                                       newMessages,
+                                       allMessages,
+                                       ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
+                                       rootCause.getMessage());
         }
         // Now that we have all network errors covered, we check for different status codes etc
         if (rootCause instanceof CleverClientException cleverClientException) {
             return cleverClientException.responseInfo()
-                    .flatMap(responseInfo -> {
+                    .map(responseInfo -> {
                         final var message = Objects.requireNonNullElse(responseInfo.getData(),
                                                                        cleverClientException.getMessage());
                         return switch (responseInfo.getStatusCode()) {
-                            case 429 -> errorToModelOutput(context,
+                            case 429 -> createErrorResponse(context,
+                                                            newMessages,
+                                                            allMessages,
+                                                            ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED,
+                                                            message);
+                            default -> createErrorResponse(context,
                                                            newMessages,
                                                            allMessages,
-                                                           ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED,
-                                                           message);
-                            default -> errorToModelOutput(context,
-                                                          newMessages,
-                                                          allMessages,
-                                                          ErrorType.MODEL_CALL_HTTP_FAILURE,
-                                                          "Received HTTP error:  [%d] %s".formatted(
-                                                                  responseInfo.getStatusCode(),
-                                                                  message));
+                                                           ErrorType.MODEL_CALL_HTTP_FAILURE,
+                                                           "Received HTTP error:  [%d] %s".formatted(
+                                                                   responseInfo.getStatusCode(),
+                                                                   message));
                         };
                     })
-                    .or(() -> errorToModelOutput(context,
-                                                 newMessages,
-                                                 allMessages,
-                                                 ErrorType.GENERIC_MODEL_CALL_FAILURE,
-                                                 cleverClientException.getMessage()));
+                    .orElseGet(() -> createErrorResponse(context,
+                                                         newMessages,
+                                                         allMessages,
+                                                         ErrorType.GENERIC_MODEL_CALL_FAILURE,
+                                                         cleverClientException.getMessage()));
         }
-        return Optional.empty();
+        return createErrorResponse(context,
+                                   newMessages,
+                                   allMessages,
+                                   ErrorType.GENERIC_MODEL_CALL_FAILURE,
+                                   AgentUtils.rootCause(error).getMessage());
     }
 
-    private static Optional<ModelOutput> errorToModelOutput(
+    private static ModelOutput createErrorResponse(
             final ModelRunContext context,
             final List<AgentMessage> newMessages,
             final List<AgentMessage> allMessages,
             final ErrorType errorType,
             final String message) {
-        return Optional.of(ModelOutput.error(
+        return ModelOutput.error(
                 newMessages,
                 allMessages,
                 context.getModelUsageStats(),
-                SentinelError.error(errorType, message)));
+                SentinelError.error(errorType, message));
     }
 
     @SuppressWarnings("java:S107")
@@ -616,15 +644,19 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             ArrayList<AgentMessage> allMessages,
             ArrayList<AgentMessage> newMessages,
             List<AgentMessage> oldMessages) {
-        final var toolCalls = Objects.requireNonNullElseGet(receivedCalls,
-                                                            List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
+        final var toolCalls = Objects.requireNonNullElseGet(
+                receivedCalls, List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
 
         if (!toolCalls.isEmpty()) {
             handleToolCalls(context,
                             toolsForExecution,
                             toolRunner,
                             toolCalls,
-                            new AgentMessages(openAiMessages, allMessages, newMessages),
+                            AgentMessages.builder()
+                                    .newMessages(newMessages)
+                                    .allMessages(allMessages)
+                                    .openAiMessages(openAiMessages)
+                                    .build(),
                             stats,
                             stopwatch);
             return Optional.ofNullable(generatesOutput.get())
@@ -677,7 +709,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                }));
     }
 
-
     private static boolean shouldLoop(final ModelOutput output) {
         return output == null || (output.getData() == null && output.getError() == null);
     }
@@ -725,20 +756,25 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                        ? call.getId()
                        : existing.getId();
 
-        final var function = Objects.requireNonNullElseGet(existing.getFunction(), FunctionCall::new);
-        final var name = call.getFunction().getName();
-        if (!Strings.isNullOrEmpty(name)) {
-            function.setName(existingString(function.getName()) + name);
+        final var existingFunction = Objects.requireNonNullElseGet(existing.getFunction(), FunctionCall::new);
+        final var incomingFunction = call.getFunction();
+        if (null == incomingFunction) {
+            log.trace("No existingFunction object received for call: {}", id);
+            return existing;
         }
-        final var arguments = call.getFunction().getArguments();
+        final var name = incomingFunction.getName();
+        if (!Strings.isNullOrEmpty(name)) {
+            existingFunction.setName(existingString(existingFunction.getName()) + name);
+        }
+        final var arguments = incomingFunction.getArguments();
         if (!Strings.isNullOrEmpty(arguments)) {
-            function.setArguments(existingString(function.getArguments()) + arguments);
+            existingFunction.setArguments(existingString(existingFunction.getArguments()) + arguments);
         }
         return new io.github.sashirestela.openai.common.tool.ToolCall(
                 existing.getIndex(),
                 id,
                 existing.getType(),
-                function);
+                existingFunction);
     }
 
     private static String existingString(String input) {
@@ -931,6 +967,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
     /**
      * Translate reasoning effort from model settings to ChatRequest enum.
+     *
      * @param modelSettings Model settings
      * @return Translated reasoning effort
      */
@@ -1094,50 +1131,51 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         };
     }
 
-    private ModelOutput executeMessagesPreProcessors(final ModelRunContext context,
-                                                     final List<AgentMessage> oldMessages,
-                                                     final List<AgentMessagesPreProcessor> messagesPreProcessors,
-                                                     final ModelUsageStats stats,
-                                                     final List<AgentMessage> allMessages,
-                                                     final List<AgentMessage> newMessages,
-                                                     final List<ChatMessage> openAiMessages) {
+    /**
+     * This will run pre-processors in sequence and replace messages content with pre-processed output
+     * @param context Execution context
+     * @param oldMessages Incoming messages to model run call
+     * @param messagesPreProcessors List of preprocessors
+     * @param stats Usage stats might be updated
+     * @param allMessages All messages currently in context
+     * @param newMessages New messages generated in the context
+     * @param openAiMessages OpenAI format messages converted from allMessages
+     * @return Error if something has failed during pre-processor runs or empty if all good
+     */
+    private Optional<ModelOutput> preProcessMessages(
+            final ModelRunContext context,
+            final List<AgentMessage> oldMessages,
+            final List<AgentMessagesPreProcessor> messagesPreProcessors,
+            final ModelUsageStats stats,
+            final List<AgentMessage> allMessages,
+            final List<AgentMessage> newMessages,
+            final List<ChatMessage> openAiMessages) {
         try {
-            executeMessagesPreProcessors(context, messagesPreProcessors, stats, allMessages, newMessages, openAiMessages);
+            executeMessagesPreProcessors(messagesPreProcessors, context, allMessages, newMessages)
+                    .ifPresent(processedAgentMessages -> {
+                        // If pre-processing has returned responses
+                        // Replace contents to be sent to the model
+                        allMessages.clear();
+                        openAiMessages.clear();
+
+                        allMessages.addAll(processedAgentMessages.allMessages);
+                        newMessages.addAll(processedAgentMessages.newMessages);
+                        openAiMessages.addAll(convertToOpenAIMessages(processedAgentMessages.allMessages));
+                    });
         }
         catch (InvalidAgentMessagesException ie) {
             log.error("Preprocessor returned invalid messages ", ie);
-            return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID, ie.getMessage()));
+            return Optional.of(ModelOutput.error(oldMessages,
+                                     stats,
+                                     SentinelError.error(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID, ie.getMessage())));
         }
         catch (Exception e) {
-            log.error(AgentUtils.rootCause(e).getMessage(), e);
-            return ModelOutput.error(oldMessages, stats,
-                    SentinelError.error(ErrorType.PREPROCESSOR_RUN_FAILURE, AgentUtils.rootCause(e).getMessage()));
+            final var message = AgentUtils.rootCause(e).getMessage();
+            log.error("Error running preprocessor: " + message, e);
+            return Optional.of(ModelOutput.error(oldMessages, stats,
+                                     SentinelError.error(ErrorType.PREPROCESSOR_RUN_FAILURE, message)));
         }
-        return null;
-    }
-
-    private void executeMessagesPreProcessors(final ModelRunContext context,
-                                              final List<AgentMessagesPreProcessor> messagesPreProcessors,
-                                              final ModelUsageStats stats,
-                                              final List<AgentMessage> allMessages,
-                                              final List<AgentMessage> newMessages,
-                                              final List<ChatMessage> openAiMessages) {
-        executeMessagesPreProcessors(messagesPreProcessors, stats, context, allMessages, newMessages)
-                .ifPresent(processedAgentMessages ->
-                        mergeNewMessages(allMessages, newMessages, openAiMessages, processedAgentMessages));
-    }
-
-    private static void mergeNewMessages(final List<AgentMessage> allMessages,
-                                         final List<AgentMessage> newMessages,
-                                         final List<ChatMessage> openAiMessages,
-                                         final AgentMessages processedAgentMessages) {
-        allMessages.clear();
-        newMessages.clear();
-        openAiMessages.clear();
-
-        allMessages.addAll(processedAgentMessages.allMessages);
-        newMessages.addAll(processedAgentMessages.newMessages);
-        openAiMessages.addAll(convertToOpenAIMessages(processedAgentMessages.allMessages));
+        return Optional.empty();
     }
 
     /**
@@ -1147,13 +1185,13 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      * is passed as an input for the next processor in the chain.
      *
      */
-    private Optional<AgentMessages> executeMessagesPreProcessors(final List<AgentMessagesPreProcessor> messagesPreProcessors,
-                                                                 final ModelUsageStats statsForRun,
-                                                                 final ModelRunContext context,
-                                                                 final List<AgentMessage> allMessages,
-                                                                 final List<AgentMessage> newMessages) {
+    private Optional<PreProcessorExecutionResults> executeMessagesPreProcessors(
+            final List<AgentMessagesPreProcessor> messagesPreProcessors,
+            final ModelRunContext context,
+            final List<AgentMessage> allMessages,
+            final List<AgentMessage> newMessages) {
         if (messagesPreProcessors == null || messagesPreProcessors.isEmpty()) {
-            log.trace("No agent messages pre-processors found");
+            log.trace("No agent messages pre-processors to be executed.");
             return Optional.empty();
         }
 
@@ -1171,7 +1209,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             catch (Exception e) {
                 log.error("Error executing preprocessor: {}", processor.getClass().getSimpleName(), e);
                 throw new AgentMessagesPreProcessorExecutionFailedException(
-                        "Preprocessor %s failed: %s".formatted(processor.getClass().getSimpleName(), e.getMessage()), e);
+                        "Preprocessor %s failed: %s".formatted(processor.getClass().getSimpleName(), e.getMessage()),
+                        e);
             }
 
             final var candidateMessages = response.getTransformedMessages();
@@ -1190,14 +1229,15 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             return Optional.empty();
         }
 
-        return Optional.of(AgentMessages.builder()
-                        .allMessages(transformedAllMessages)
-                        .newMessages(transformedNewMessages)
-                        .build());
+        return Optional.of(PreProcessorExecutionResults.builder()
+                                   .allMessages(transformedAllMessages)
+                                   .newMessages(transformedNewMessages)
+                                   .build());
     }
 
-    private void validateTransformedAgentMessages(final AgentMessagesPreProcessor processor,
-                                                  final List<AgentMessage> messages) {
+    private void validateTransformedAgentMessages(
+            final AgentMessagesPreProcessor processor,
+            final List<AgentMessage> messages) {
 
         if (messages.isEmpty()) {
             throw InvalidAgentMessagesException.withMessage(
