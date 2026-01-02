@@ -1156,6 +1156,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                         // If pre-processing has returned responses
                         // Replace contents to be sent to the model
                         allMessages.clear();
+                        newMessages.clear();
                         openAiMessages.clear();
 
                         allMessages.addAll(processedAgentMessages.allMessages);

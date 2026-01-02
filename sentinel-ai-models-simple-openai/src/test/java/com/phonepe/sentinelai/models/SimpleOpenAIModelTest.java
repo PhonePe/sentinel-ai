@@ -15,7 +15,6 @@ import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
@@ -200,7 +199,9 @@ class SimpleOpenAIModelTest {
                         -> new AgentMessagesPreProcessResult(allMessages, List.of(new GenericText(AgentGenericMessage.Role.USER, "TEST"))))
         );
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-        assertEquals(1, response.getNewMessages().stream().filter(x -> x.getMessageType().equals(AgentMessageType.GENERIC_TEXT_MESSAGE))
+        assertEquals(1, response.getNewMessages()
+                .stream()
+                .filter(x -> x.getMessageType().equals(AgentMessageType.GENERIC_TEXT_MESSAGE))
                 .map(AgentGenericMessage.class::cast)
                 .filter( x -> x.getRole().equals(AgentGenericMessage.Role.USER))
                 .map(GenericText.class::cast)
