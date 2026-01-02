@@ -36,6 +36,7 @@ public class ConfiguredAgentFactory {
             final HttpToolboxFactory httpToolboxFactory,
             final MCPToolBoxFactory mcpToolboxFactory,
             final CustomToolBox customToolBox,
+            final AgentMessagesPreProcessors messagesPreProcessors,
             final AgentSetupProvider agentSetupProvider,
             final ModelFactory modelFactory) {
         this.httpToolboxFactory = null != httpToolboxFactory
@@ -144,6 +145,7 @@ public class ConfiguredAgentFactory {
         toolBoxes.addAll(extensions); //Because all extensions are also toolboxes
 
         final var agentSetup = agentSetupProvider.from(parent.getSetup(), agentConfiguration, modelFactory);
+
         return new ConfiguredAgent(
                 agentConfiguration,
                 extensions,
