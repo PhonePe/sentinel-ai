@@ -10,7 +10,6 @@ import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
-import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.NonContextualDefaultExternalToolRunner;
 import com.phonepe.sentinelai.core.tools.Tool;
@@ -237,7 +236,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
         else {
             log.debug("Out of band memory extraction is enabled, will extract memory asynchronously");
         }
-        // Replace the systemprompt with the extraction task prompt
+        // Replace the system prompt with the extraction task prompt
         final var messages = new ArrayList<AgentMessage>();
         //Add system prompt to the messages
         messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
@@ -250,18 +249,13 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                                     LocalDateTime.now()));
         final var modelRunContext = new ModelRunContext(agent.name(),
                                                         "mem-extraction-" + UUID.randomUUID(),
-                                                        null,
-                                                        null,
-                                                        agent.getSetup(),
-                                                        new ModelUsageStats(),
+                                                        AgentUtils.sessionId(data.getContext()),
+                                                        AgentUtils.userId(data.getContext()),
+                                                        data.getAgentSetup(),
+                                                        data.getContext().getModelUsageStats(),
                                                         ProcessingMode.DIRECT);
         final var output = data.getAgentSetup()
                 .getModel()
-/*
-                .runDirect(data.getContext().withOldMessages(messages),
-                           memorySchema(),
-                           messages)
-*/
                 .compute(modelRunContext,
                          List.of(memorySchema()),
                          messages,
@@ -283,6 +277,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                 consume(extractedMemoryData, data.getAgent());
             }
         }
+        log.info("Model usage stats for memory extraction run: {}", output.getUsage());
     }
 
     @Tool("Retrieve relevant memories based on topics and query derived from the current conversation")

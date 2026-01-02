@@ -253,11 +253,6 @@ public class SentinelMCPClient implements AutoCloseable {
                                                         ProcessingMode.DIRECT);
         try {
             final var response = agentSetup.getModel()
-/*                    .runDirect(setup,
-                               Objects.requireNonNullElseGet(agentSetup.getExecutorService(),
-                                                             Executors::newCachedThreadPool),
-                               null,
-                               messages)*/
                     .compute(modelRunContext,
                              List.of(new ModelOutputDefinition(SAMPLING_OUTPUT_KEY,
                                                                "Response to sampling calls",

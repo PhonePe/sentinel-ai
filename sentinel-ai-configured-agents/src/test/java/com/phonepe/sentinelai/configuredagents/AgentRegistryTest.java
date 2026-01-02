@@ -622,6 +622,7 @@ class AgentRegistryTest {
         printAgentResponse(response);
         assertTrue(response.getData().matches(".*[sS]unny.*"));
         ensureOutputGenerated(response);
+        log.info("Model usage stats: {}", response.getUsage());
     }
 
     @Test
