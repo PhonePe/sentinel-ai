@@ -1,0 +1,1445 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Learn how to use Configured Agents and Agent Registry in Sentinel AI to build orchestrator/worker patterns.">
+      
+      
+      
+        <link rel="canonical" href="https://phonepe.github.io/sentinel-ai/agent-registry.html">
+      
+      
+        <link rel="prev" href="calling-remote-services.html">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Configured Agents and Registry - Sentinel AI Agent Framework</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+        
+        
+        
+        <link rel="stylesheet" href="assets/external/fonts.googleapis.com/css.49ea35f2.css">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/extra.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#configured-agents-and-registry" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Sentinel AI Agent Framework" class="md-header__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sentinel AI Agent Framework
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configured Agents and Registry
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to system preference" type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Sentinel AI Agent Framework" class="md-nav__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    Sentinel AI Agent Framework
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agents.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tools.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Tools in Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="using-mcp-servers.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="calling-remote-services.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calling Remote HTTP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configured Agents and Registry
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="agent-registry.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configured Agents and Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#nomenclature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nomenclature
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-an-agent-factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an Agent Factory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-configuration-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Configuration Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Factory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Registry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Registry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuring-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuring Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuring Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-configuration-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Configuration Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loading-agent-configurations-from-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Loading Agent configurations from file
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Loading Agent configurations from file">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-configuration-file-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Configuration File Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tools-for-configured-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tools for Configured Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tools for Configured Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#making-remote-http-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Making remote HTTP calls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-tools-from-mcp-servers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using tools from MCP servers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-custom-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Custom Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#nomenclature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nomenclature
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-an-agent-factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an Agent Factory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-configuration-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Configuration Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Factory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Registry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Registry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuring-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuring Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuring Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-configuration-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Configuration Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loading-agent-configurations-from-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Loading Agent configurations from file
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Loading Agent configurations from file">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-configuration-file-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Configuration File Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tools-for-configured-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tools for Configured Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tools for Configured Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#making-remote-http-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Making remote HTTP calls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-tools-from-mcp-servers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using tools from MCP servers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-custom-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Custom Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="configured-agents-and-registry">Configured Agents and Registry<a class="headerlink" href="#configured-agents-and-registry" title="Permanent link">¶</a></h1>
+<p>As powerful as single agents can be,  due to a variety of limitations like context window length, chances of hallucination
+when large number of tools are exposed to the model etc., it is better to have agents that specialize in doing specific
+tasks. A common pattern that works out well in a variety of scenarios is to have a high level agent that does the
+planning and/or orchestration and delegates specific tasks to specialized agents.</p>
+<p>To allow developers to implement this pattern easily, Sentinel AI provides a way to configure and manage multiple agents
+through a centralized registry. This allows for easy access and management of different agents that can perform various 
+tasks. The registry is implemented as an <code>AgentExtension</code> and can be added to any top-level agent implementation.</p>
+<h2 id="nomenclature">Nomenclature<a class="headerlink" href="#nomenclature" title="Permanent link">¶</a></h2>
+<p>Let us understand a few fundamental constructs before we dive into the implementation details.</p>
+<ul>
+<li><code>ConfiguredAgent</code>: This is an abstraction that represents an agent with a specific configuration.</li>
+<li><code>AgentCapability</code>: Capabilities define what an agent gets access to. For example, HTTP tools, MCP tools,
+  local/custom tools etc.</li>
+<li><code>AgentConfiguration</code>: This represents the configuration details of an agent, including its name, description, input,
+  output spec, capabilities, capabilities and other settings.</li>
+<li><code>AgentConfigurationSource</code>: The agent configuration source is responsible for providing the configuration details
+  for an agent during the build process. A default in-memory source is provided, but you can implement your own source
+  based off more permanent storage.</li>
+<li><code>ConfiguredAgentFactory</code>: This factory is responsible for creating instances of configured agents based on the
+  provided configuration.</li>
+<li><code>AgentRegistry</code>: The agent registry is a centralized repository that holds all the configured agents. It allows for
+  easy retrieval and management of agents and exposes required tools to a Sentinel AI agent to get details about agents
+  and to invoke them to get work done.</li>
+</ul>
+<p>All tools from different sources are registered globally with the <code>ConfiguredAgentFactory</code> and individual agents
+get access to only those tools that they are configured to use. The factory is passed to the <code>AgentRegistry</code> extension.
+All configured agents are listed from the <code>AgentConfigurationSource</code> and created on the fly as and when needed. A
+summarized list of all configured agents is injected to the prompt sent to the model being used by the top-level
+agent. The top-level agent can then invoke any of the configured agents as tools to get work done.</p>
+<h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">¶</a></h2>
+<p>To use the agent registry and configured agents, you need to include the following dependencies in your project:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;dependency&gt;</span>
+<span class="w">    </span><span class="nt">&lt;groupId&gt;</span>com.phonepe.sentinel-ai<span class="nt">&lt;/groupId&gt;</span>
+<span class="w">    </span><span class="nt">&lt;artifactId&gt;</span>sentinel-ai-configured-agents<span class="nt">&lt;/artifactId&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</code></pre></div>
+<h2 id="creating-an-agent-factory">Creating an Agent Factory<a class="headerlink" href="#creating-an-agent-factory" title="Permanent link">¶</a></h2>
+<p>Use the builder on the <code>ConfiguredAgentFactory</code> to create an agent factory.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentFactory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ConfiguredAgentFactory</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="na">httpToolboxFactory</span><span class="p">(...)</span><span class="w"> </span><span class="c1">// Optional, if you want to provide HTTP capabilities</span>
+<span class="w">        </span><span class="p">.</span><span class="na">mcpToolboxFactory</span><span class="p">(...)</span><span class="w">  </span><span class="c1">// Optional, if you want to provide MCP capabilities</span>
+<span class="w">        </span><span class="p">.</span><span class="na">customToolBox</span><span class="p">(...)</span><span class="w">   </span><span class="c1">// Optional, if you want to provide custom/local capabilities</span>
+<span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div>
+<h2 id="agent-configuration-source">Agent Configuration Source<a class="headerlink" href="#agent-configuration-source" title="Permanent link">¶</a></h2>
+<p>In order for Sentinel AI to be able to build agents on the fly, it needs to read agent configurations from an
+<code>AgentConfigurationSource</code>. You can use <code>InMemoryAgentConfigurationSource</code> for testing or simple use cases where existing configurations can be
+populated at runtime or loaded from somewhere more permanent.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentSource</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">InMemoryAgentConfigurationSource</span><span class="p">();</span>
+</code></pre></div>
+<h2 id="agent-factory">Agent Factory<a class="headerlink" href="#agent-factory" title="Permanent link">¶</a></h2>
+<p><code>ConfiguredAgentFactory</code> is used to create instances of configured agents on the fly. It needs to be provided with
+different toolboxes that agents can use based on their configured capabilities. ToolBoxes that can be completely
+configure from outside, for example <code>HTTP ToolBox</code> and <code>MCP ToolBox</code> are created on the fly using ToolBox Factories.
+</p><div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentFactory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ConfiguredAgentFactory</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="na">httpToolboxFactory</span><span class="p">(...)</span><span class="w"> </span><span class="c1">// Optional, if you want to provide HTTP capabilities</span>
+<span class="w">        </span><span class="p">.</span><span class="na">mcpToolboxFactory</span><span class="p">(...)</span><span class="w">  </span><span class="c1">// Optional, if you want to provide MCP capabilities</span>
+<span class="w">        </span><span class="p">.</span><span class="na">customToolBox</span><span class="p">(...)</span><span class="w">   </span><span class="c1">// Optional, if you want to provide custom/local capabilities</span>
+<span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div><p></p>
+<h2 id="agent-registry">Agent Registry<a class="headerlink" href="#agent-registry" title="Permanent link">¶</a></h2>
+<p>The <code>AgentRegistry</code> extension is used to manage and provide access to configured agents. It needs to be provided with
+an <code>AgentConfigurationSource</code> to read agent configurations and an <code>ConfiguredAgentFactory</code> to create instances of configured
+agents.</p>
+<p></p><div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentRegistry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentRegistry</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="na">agentConfigurationSource</span><span class="p">(</span><span class="n">agentSource</span><span class="p">)</span><span class="w"> </span><span class="c1">//Mandatory</span>
+<span class="w">        </span><span class="p">.</span><span class="na">configuredAgentFactory</span><span class="p">(</span><span class="n">agentFactory</span><span class="p">::</span><span class="n">createAgent</span><span class="p">)</span><span class="w"> </span><span class="c1">//Mandatory</span>
+<span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div>
+The <code>AgentRegistry</code> extension can then be added to the top level <code>Agent</code> implementation.<p></p>
+<div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">topAgent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PlannerAgent</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="na">setup</span><span class="p">(</span><span class="n">setup</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">extension</span><span class="p">(</span><span class="n">registry</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="c1">// Interact with the planner agent as usual</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">topAgent</span><span class="p">.</span><span class="na">executeAsync</span><span class="p">(</span><span class="n">AgentInput</span><span class="p">.</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="n">builder</span><span class="p">()</span>
+<span class="w">                                                   </span><span class="p">.</span><span class="na">request</span><span class="p">(</span><span class="s">"Summarize the story of War and Peace"</span><span class="p">)</span>
+<span class="w">                                                   </span><span class="p">.</span><span class="na">build</span><span class="p">())</span>
+<span class="w">        </span><span class="p">.</span><span class="na">join</span><span class="p">();</span>
+</code></pre></div>
+<p>The <code>AgentRegistry</code> extension automatically injects a summarized list of all configured agents to the prompt sent to
+the model being used by the top-level agent. It also exposes tools for the planner to get details like I/O schema of these
+agents and to invoke them to get work done.</p>
+<div class="admonition tip">
+<p class="admonition-title">Sample planner agent implementation</p>
+<p>The following is the trivial implementation of a planner agent that uses the agent registry extension to manage and
+invoke Configured Agents.</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">PlannerAgent</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Agent</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">PlannerAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nd">@Builder</span>
+<span class="w">        </span><span class="kd">public</span><span class="w"> </span><span class="nf">PlannerAgent</span><span class="p">(</span>
+<span class="w">                </span><span class="nd">@NonNull</span><span class="w"> </span><span class="n">AgentSetup</span><span class="w"> </span><span class="n">setup</span><span class="p">,</span>
+<span class="w">                </span><span class="nd">@Singular</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">AgentExtension</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">PlannerAgent</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">extensions</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="kd">super</span><span class="p">(</span><span class="n">String</span><span class="p">.</span><span class="na">class</span><span class="p">,</span>
+<span class="w">                  </span><span class="s">"""</span>
+<span class="s">                          Your role is to perform complex tasks as specified by the user. You can achieve this by using</span>
+<span class="s">                           the other agents.</span>
+<span class="s">                          """</span><span class="p">,</span>
+<span class="w">                  </span><span class="n">setup</span><span class="p">,</span>
+<span class="w">                  </span><span class="n">extensions</span><span class="p">,</span>
+<span class="w">                  </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">());</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="nd">@Override</span>
+<span class="w">        </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="s">"planner-agent"</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+</code></pre></div>
+</div>
+<h3 id="configuring-agents">Configuring Agents<a class="headerlink" href="#configuring-agents" title="Permanent link">¶</a></h3>
+<p>Agents can be configured using the <code>AgentConfiguration</code> class. Such agents need to be registered with the <code>AgentRegistry</code>
+by calling the <code>configureAgent</code> method. The registry in-turn invokes the <code>AgentConfigurationSource::save</code> method to 
+persist the configuration and the <code>ConfiguredAgentFactory</code> to create an instance of the agent on the fly as and when
+needed.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Create agent configuration</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">summarizerAgentConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentConfiguration</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="na">agentName</span><span class="p">(</span><span class="s">"Summarizer Agent"</span><span class="p">)</span><span class="w"> </span><span class="c1">//(1)!</span>
+<span class="w">        </span><span class="p">.</span><span class="na">description</span><span class="p">(</span><span class="s">"Summarizes input text"</span><span class="p">)</span><span class="w"> </span><span class="c1">//(2)!</span>
+<span class="w">        </span><span class="p">.</span><span class="na">prompt</span><span class="p">(</span><span class="s">"Provide a 140 character summary for the provided input text"</span><span class="p">)</span><span class="w"> </span><span class="c1">//(3)!</span>
+<span class="w">        </span><span class="p">.</span><span class="na">inputSchema</span><span class="p">(</span><span class="n">JsonUtils</span><span class="p">.</span><span class="na">schemaForPrimitive</span><span class="p">(</span><span class="n">String</span><span class="p">.</span><span class="na">class</span><span class="p">,</span><span class="w"> </span><span class="s">"rawTextInput"</span><span class="p">,</span><span class="w"> </span><span class="n">mapper</span><span class="p">))</span><span class="w"> </span><span class="c1">//(4)!</span>
+<span class="w">        </span><span class="p">.</span><span class="na">outputSchema</span><span class="p">(</span><span class="n">JsonUtils</span><span class="p">.</span><span class="na">schema</span><span class="p">(</span><span class="n">SummarizerAgentOutput</span><span class="p">.</span><span class="na">class</span><span class="p">))</span><span class="w"> </span><span class="c1">//(5)!</span>
+<span class="w">        </span><span class="p">.</span><span class="na">capability</span><span class="p">(</span><span class="n">AgentCapabilities</span><span class="p">.</span><span class="na">remoteHttpCalls</span><span class="p">(</span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"weatherserver"</span><span class="p">,</span><span class="w"> </span><span class="c1">//(6)!</span>
+<span class="w">                                                             </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"get_weather_for_location"</span><span class="p">))))</span>
+<span class="w">        </span><span class="p">.</span><span class="na">capability</span><span class="p">(</span><span class="n">AgentCapabilities</span><span class="p">.</span><span class="na">mcpCalls</span><span class="p">(</span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"mcp"</span><span class="p">,</span><span class="w"> </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"add"</span><span class="p">))))</span>
+<span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="c1">// Register agent configuration with the registry</span>
+<span class="n">agentRegistry</span><span class="p">.</span><span class="na">configureAgent</span><span class="p">(</span><span class="n">summarizerAgentConfig</span><span class="p">);</span>
+</code></pre></div>
+<ol>
+<li>Name of the agent (Mandatory)</li>
+<li>Description of the agent (Mandatory)</li>
+<li>Prompt to be used by the agent (Mandatory)</li>
+<li>Input schema for the agent. (Optional, defaults to a simple string input schema)</li>
+<li>Output schema for the agent (Optional, defaults to a simple string output schema)</li>
+<li>Capabilities of the agent (Optional, defaults to no capabilities). See section on <a href="#tools-for-configured-agents">Tools for Configured Agents</a> for more details.</li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Schema generation</p>
+<p>You can use the <code>JsonUtils.schemaForPrimitive</code> and <code>JsonUtils.schema</code> utility functions to generate schema in the
+required format for primitive types/string and classes/records respectively.</p>
+</div>
+<h4 id="agent-configuration-parameters">Agent Configuration Parameters<a class="headerlink" href="#agent-configuration-parameters" title="Permanent link">¶</a></h4>
+<p>The following parameters can be configured using the <code>AgentConfiguration</code> builder.</p>
+<table>
+<thead>
+<tr>
+<th>Builder Parameter</th>
+<th>Mandatory</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>agentName</td>
+<td>Yes</td>
+<td>Name of the agent to be configured.</td>
+</tr>
+<tr>
+<td>description</td>
+<td>Yes</td>
+<td>Detailed description of the agent.</td>
+</tr>
+<tr>
+<td>prompt</td>
+<td>Yes</td>
+<td>System prompt to be used for the agent.</td>
+</tr>
+<tr>
+<td>inputSchema</td>
+<td>No</td>
+<td>Input schema for the agent. Defaults to String if missing.</td>
+</tr>
+<tr>
+<td>outputSchema</td>
+<td>No</td>
+<td>Output schema for the agent. Defaults to String if missing.</td>
+</tr>
+<tr>
+<td>capabilities</td>
+<td>No</td>
+<td>Extra capabilities of the agent.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="loading-agent-configurations-from-file">Loading Agent configurations from file<a class="headerlink" href="#loading-agent-configurations-from-file" title="Permanent link">¶</a></h3>
+<p>Agent Configurations can be leaded into the registry directly into registry from serialized JSON using the following
+functions:</p>
+<ul>
+<li><code>loadAgentsFromContent(byte[] content)</code> - Load agent configurations from serialized JSON content.</li>
+<li><code>loadAgentsFromFile(final String agentConfig)</code> - Load agent configurations from a file containing serialized JSON</li>
+</ul>
+<p>Both methods return the list of agents that were loaded into the registry.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Load agent configurations from file</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agents</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">agentRegistry</span><span class="p">.</span><span class="na">loadAgentsFromFile</span><span class="p">(</span><span class="s">"path/to/agent_config.json"</span><span class="p">);</span>
+</code></pre></div>
+<h4 id="agent-configuration-file-format">Agent Configuration File Format<a class="headerlink" href="#agent-configuration-file-format" title="Permanent link">¶</a></h4>
+<p>Sample file format can be found below:
+</p><div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"agentName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"All-in-One Agent"</span><span class="p">,</span><span class="w"> </span><span class="c1">//(1)!</span>
+<span class="w">    </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Agent with HTTP, MCP, and Custom Tool capabilities."</span><span class="p">,</span><span class="w"> </span><span class="c1">//(2)!</span>
+<span class="w">    </span><span class="nt">"prompt"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Use all available tools to answer the query."</span><span class="p">,</span><span class="w"> </span><span class="c1">//(3)!</span>
+<span class="w">    </span><span class="nt">"inputSchema"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">//(4)!</span>
+<span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"additionalProperties"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"required"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">"location"</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"location"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Location to know weather for"</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">"outputSchema"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">//(5)!</span>
+<span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"condition"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">"temperature"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">"required"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">"condition"</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">"temperature"</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"additionalProperties"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">"capabilities"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="c1">//(6)!</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"REMOTE_HTTP_CALLS"</span><span class="p">,</span><span class="w"> </span><span class="c1">//(7)!</span>
+<span class="w">        </span><span class="nt">"selectedTools"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">//(8)!</span>
+<span class="w">          </span><span class="nt">"weatherserver"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="c1">//(9)!</span>
+<span class="w">            </span><span class="s2">"get_weather_for_location"</span><span class="w"> </span><span class="c1">//(10)!</span>
+<span class="w">          </span><span class="p">]</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"MCP"</span><span class="p">,</span><span class="w"> </span><span class="c1">//(11)!</span>
+<span class="w">        </span><span class="nt">"selectedTools"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">//(12)!</span>
+<span class="w">          </span><span class="nt">"mcp"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="c1">//(13)!</span>
+<span class="w">            </span><span class="s2">"add"</span><span class="p">,</span><span class="w"> </span><span class="c1">//(14)!</span>
+<span class="w">            </span><span class="s2">"subtract"</span>
+<span class="w">          </span><span class="p">]</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"CUSTOM_TOOLS"</span><span class="p">,</span><span class="w"> </span><span class="c1">//(15)!</span>
+<span class="w">        </span><span class="nt">"selectedTools"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="c1">//(16)!</span>
+<span class="w">          </span><span class="s2">"getWeather"</span><span class="p">,</span>
+<span class="w">          </span><span class="s2">"doSomethingCustom"</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="err">...</span><span class="w"> </span><span class="c1">//more agents</span>
+<span class="p">]</span>
+</code></pre></div><p></p>
+<ol>
+<li>Name of the agent (Mandatory)</li>
+<li>Description of the agent (Mandatory)</li>
+<li>Prompt to be used by the agent (Mandatory)</li>
+<li>Input schema for the agent. (Optional, defaults to a simple string input schema)</li>
+<li>Output schema for the agent (Optional, defaults to a simple string output schema)</li>
+<li>Capabilities of the agent (Optional, defaults to no capabilities).</li>
+<li>Fixed for Remote HTTP calls.</li>
+<li>HTTP tools exposed to this agent.</li>
+<li>Name of HTTP upstream as specified in <a href="#making-remote-http-calls" target="_blank">HTTPToolboxFactory</a> configuration.</li>
+<li>Set of tools selected from this upstream.</li>
+<li>Fixed for MCP calls.</li>
+<li>MCP tools exposed to this agent.</li>
+<li>Name of MCP upstream as specified when configuring MCP servers in <a href="#using-tools-from-mcp-servers" target="_blank">MCPToolBoxFactory</a>.</li>
+<li>Set of tools selected from this upstream.</li>
+<li>Fixed for Custom/local tools.</li>
+<li>Set of custom/local tools exposed to this agent as explained in <a href="#using-custom-tools" target="_blank">Using Custom Tools</a>.</li>
+</ol>
+<h2 id="tools-for-configured-agents">Tools for Configured Agents<a class="headerlink" href="#tools-for-configured-agents" title="Permanent link">¶</a></h2>
+<p>Configured agents can use tools from different sources. Sentinel AI provides built-in support for the following tool
+sources:</p>
+<ul>
+<li><strong>HTTP ToolBox</strong>: Tools that make remote HTTP calls to upstream services. Check the section on
+  <a href="calling-remote-services.html" target="_blank">HTTP ToolBox</a> for more details.</li>
+<li><strong>MCP ToolBox</strong>: Tools that make calls to MCP servers. Check the section on
+  <a href="using-mcp-servers.html" target="_blank">MCP ToolBox</a> for more details.</li>
+<li><strong>Custom ToolBox</strong>: Tools that are implemented in local code and registered with the agent factory.</li>
+</ul>
+<pre class="mermaid"><code>flowchart TD
+    USER["User/Client"]
+    TOP_AGENT["Planner/Orchestrator Agent"]
+    subgraph ToolSources["Tool Sources"]
+        HTTP[HTTP Tool Box Factory]
+        MCP[MCP Tool Box Factory]
+        CUSTOM[Custom Tool Box]
+    end
+    AGENT_FACTORY["Agent Factory"]
+    REGISTRY["Agent Registry (Extension)"]
+    subgraph Agents["Configured Agents"]
+        AGENT1[ConfiguredAgent A]
+        AGENT2[ConfiguredAgent B]
+    end
+
+    USER -- Requests Work --&gt; TOP_AGENT
+    TOP_AGENT -- Calls agents using tool calls --&gt; REGISTRY --&gt; AGENT_FACTORY -- Creates on the fly --&gt; Agents
+    ToolSources -- Globally Registered Tools --&gt; AGENT_FACTORY
+    Agents -- Uses Tools From --&gt; ToolSources
+    TOP_AGENT -.-&gt; Agents</code></pre>
+<p>When using Configured Agents and Agent Registry, tools from remote HTTP sources, MCP servers and local code are globally
+registered to the AgentRegistry itself. Once registered, such tools can be used by individual agents as configured using
+<code>AgentCapability</code> when configuring it. This prevents pollution of the prompts sent to models being used individual agents.</p>
+<h3 id="making-remote-http-calls">Making remote HTTP calls<a class="headerlink" href="#making-remote-http-calls" title="Permanent link">¶</a></h3>
+<p>As we have seen in the section on <a href="calling-remote-services.html" target="_blank">HTTP ToolBox</a>, Sentinel AI provides a flexible
+way to configure and expose HTTP API calls to upstream services as parameterized tools that agents can use.
+The <code>HttpToolboxFactory</code> is used to create instances of <code>HttpToolbox</code> on the fly as and when needed.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">//Create HTTP Tool Source</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">toolSource</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">InMemoryHttpToolSource</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span><span class="w"> </span><span class="c1">//Create tool source</span>
+<span class="w">                </span><span class="p">.</span><span class="na">mapper</span><span class="p">(</span><span class="n">MAPPER</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+<span class="c1">//Bulk Load tools from YAML file</span>
+<span class="n">HttpToolReaders</span><span class="p">.</span><span class="na">loadToolsFromYAML</span><span class="p">(</span><span class="n">Paths</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="s">"http-tools.yaml"</span><span class="p">),</span><span class="w"> </span><span class="n">toolSource</span><span class="p">);</span>
+
+<span class="c1">//Register custom HTTP tools to toolSource</span>
+<span class="n">toolSource</span><span class="p">.</span><span class="na">registerTool</span><span class="p">(</span><span class="s">"my-service"</span><span class="p">,</span><span class="w"> </span><span class="p">...);</span>
+
+<span class="c1">//Add tools to toolSource any other way you want</span>
+
+<span class="c1">//Create OkHttpClient instance to make the actual HTTP calls</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">okHttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">OkHttpClient</span><span class="p">.</span><span class="na">Builder</span><span class="p">()</span>
+<span class="w">                </span><span class="p">...</span><span class="w"> </span><span class="c1">//Custom configurations</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="c1">//Create and pass the HttpToolboxFactory to ConfiguredAgentFactory</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentFactory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ConfiguredAgentFactory</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="na">httpToolboxFactory</span><span class="p">(</span><span class="n">HttpToolboxFactory</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span><span class="w"> </span><span class="c1">//All params mandatory</span>
+<span class="w">                                            </span><span class="p">.</span><span class="na">toolConfigSource</span><span class="p">(</span><span class="n">toolSource</span><span class="p">)</span>
+<span class="w">                                            </span><span class="p">.</span><span class="na">okHttpClient</span><span class="p">(</span><span class="n">okHttpClient</span><span class="p">)</span>
+<span class="w">                                            </span><span class="p">.</span><span class="na">objectMapper</span><span class="p">(</span><span class="n">objectMapper</span><span class="p">)</span>
+<span class="w">                                            </span><span class="p">.</span><span class="na">upstreamResolver</span><span class="p">(</span><span class="n">UpstreamResolver</span><span class="p">.</span><span class="na">direct</span><span class="p">())</span>
+<span class="w">                                            </span><span class="p">.</span><span class="na">build</span><span class="p">())</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">OkHttp Client Provider</p>
+<p>The <code>HttpToolboxFactory</code> class provides another builder <code>httpClientProvidingBuilder</code> which lets you configure a
+provider function that resolves to a specific instance of OkHttpClient depending on the upstream name.</p>
+<div class="highlight"><pre><span></span><code><span class="w"> </span><span class="n">HttpToolboxFactory</span><span class="p">.</span><span class="na">httpClientProvidingBuilder</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">okHttpClientProvider</span><span class="p">(</span><span class="n">upstream</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">myClientRegistery</span><span class="p">.</span><span class="na">getClient</span><span class="p">(</span><span class="n">upstream</span><span class="p">))</span><span class="w"> </span><span class="c1">//or so on</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="w">    </span><span class="p">.</span><span class="na">build</span><span class="p">()</span>
+</code></pre></div>
+</div>
+<p>Once configured, tools from this factory can be used by configured agents by using the 
+<code>AgentCapabilities.remoteHttpCalls</code> capability.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">weatherAgentConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentConfiguration</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">                </span><span class="c1">//Standard config</span>
+<span class="w">                </span><span class="p">...</span>
+<span class="w">                </span><span class="c1">//Add http tool call capabilites</span>
+<span class="w">                </span><span class="p">.</span><span class="na">capability</span><span class="p">(</span><span class="n">AgentCapabilities</span><span class="p">.</span><span class="na">remoteHttpCalls</span><span class="p">(</span>
+<span class="w">                        </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"userservice"</span><span class="p">,</span><span class="w"> </span><span class="c1">//Upstream name</span>
+<span class="w">                               </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"get_user_name"</span><span class="p">,</span><span class="w"> </span><span class="s">"get_location_from_user"</span><span class="p">),</span><span class="w">  </span><span class="c1">//Set of tools from this upstream</span>
+<span class="w">                               </span><span class="s">"weatherserver"</span><span class="p">,</span><span class="w"> </span><span class="c1">//Upstream name</span>
+<span class="w">                               </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"get_weather_for_location"</span><span class="p">)</span><span class="w">  </span><span class="c1">//Set of tools from upstream</span>
+<span class="w">                        </span><span class="p">)))</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div>
+<h3 id="using-tools-from-mcp-servers">Using tools from MCP servers<a class="headerlink" href="#using-tools-from-mcp-servers" title="Permanent link">¶</a></h3>
+<p>Similar to <code>HttpToolboxFactory</code>, the <code>McpToolboxFactory</code> is used to create instances of <code>McpToolbox</code> on the fly as and
+when needed. check the section on <a href="using-mcp-servers.html" target="_blank">MCP ToolBox</a> for more details on how to use
+MCP servers with Sentinel AI.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Load MCP json config from file</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">mcpToolboxFactory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MCPToolBoxFactory</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">                                           </span><span class="p">.</span><span class="na">objectMapper</span><span class="p">(</span><span class="n">MAPPER</span><span class="p">)</span>
+<span class="w">                                           </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="c1">// (Optionally) Load MCP server details from mcp JSON file</span>
+<span class="n">mcpToolboxFactory</span><span class="p">.</span><span class="na">loadFromFile</span><span class="p">(</span><span class="s">"/path/to/mcp_config.json"</span><span class="p">);</span>
+
+<span class="c1">// (Optionally) Register clients for specific upstreams programmatically</span>
+<span class="n">mcpToolboxFactory</span><span class="p">.</span><span class="na">registerMcpClient</span><span class="p">(</span><span class="s">"my-upstream"</span><span class="p">,</span><span class="w"> </span><span class="n">mcpClient</span><span class="p">);</span>
+
+<span class="c1">// Create agent factory and pass the MCP toolbox factory</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentFactory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ConfiguredAgentFactory</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="na">mcpToolboxFactory</span><span class="p">(</span><span class="n">mcpToolboxFactory</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Custom MCP Client resolution</p>
+<p>You can also provide a custom MCP client resolver function to the <code>McpToolboxFactory</code> builder that can resolve to a
+specific instance of
+<code>McpClient</code> depending on the upstream name. This is useful when you have multiple MCP clients to connect to different
+MCP servers and for some reason the registry won't work for you.</p>
+<div class="highlight"><pre><span></span><code><span class="w"> </span><span class="n">MCPToolBoxFactory</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">mcpClientProvider</span><span class="p">(</span><span class="n">upstream</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">myMcpClientRegistery</span><span class="p">.</span><span class="na">getClient</span><span class="p">(</span><span class="n">upstream</span><span class="p">))</span><span class="w"> </span><span class="c1">//or so on</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="w">    </span><span class="p">.</span><span class="na">build</span><span class="p">()</span>
+</code></pre></div>
+</div>
+<p>Once configured, tools from this factory can be used by configured agents by using the <code>AgentCapabilities.mcpCalls</code>
+capability.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">mathAgentConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentConfiguration</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">                </span><span class="c1">//Standard config, http tool boc factory etc</span>
+<span class="w">                </span><span class="p">...</span>
+<span class="w">                </span><span class="c1">//Add mcp tool call capabilites</span>
+<span class="w">                </span><span class="p">.</span><span class="na">capability</span><span class="p">(</span><span class="n">AgentCapabilities</span><span class="p">.</span><span class="na">mcpCalls</span><span class="p">(</span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+<span class="w">                        </span><span class="s">"metricservice"</span><span class="p">,</span><span class="w"> </span><span class="c1">// Upstream/MCP server name as specified in MCP JSON config or during client registration</span>
+<span class="w">                        </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"load_timeseries"</span><span class="p">),</span><span class="w"> </span><span class="c1">// Set of tools from this MCP server</span>
+<span class="w">                        </span><span class="s">"mathservice"</span><span class="p">,</span><span class="w"> </span><span class="c1">// Upstream/MCP server name</span>
+<span class="w">                        </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"multiply"</span><span class="p">,</span><span class="w"> </span><span class="s">"divide"</span><span class="p">)</span><span class="w"> </span><span class="c1">// Set of tools from this MCP server</span>
+<span class="w">                    </span><span class="p">)));</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div>
+<h3 id="using-custom-tools">Using Custom Tools<a class="headerlink" href="#using-custom-tools" title="Permanent link">¶</a></h3>
+<p>Custom tools are those that are implemented in local code and registered with the <code>ConfiguredAgentFactory</code>. Custom tools
+can be used to perform tasks that are specific to your application or domain and cannot be easily achieved using remote
+HTTP calls or MCP calls. Custom tools can be anything from simple utility functions to complex business logic
+implementations. Custom tools are registered globally with the <code>ConfiguredAgentFactory</code> and individual agents get access to
+only those tools that they are configured to use using the <code>AgentCapabilities.customToolCalls</code> capability.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">//Define tools as usual</span>
+<span class="nd">@Tool</span><span class="p">(</span><span class="s">"Provides the weather for a location"</span><span class="p">)</span>
+<span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">getWeather</span><span class="p">(</span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Name of the city to get weather for"</span><span class="p">)</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">city</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s">"""</span>
+<span class="s">            {</span>
+<span class="s">            "location" : "Bangalore",</span>
+<span class="s">            "temperature" : "33 centigrade",</span>
+<span class="s">            "condition" : "sunny"</span>
+<span class="s">            }</span>
+<span class="s">            """</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// Create a global custom tool box and register custom tools</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">globalCustomToolBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CustomToolBox</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">                                       </span><span class="p">.</span><span class="na">name</span><span class="p">(</span><span class="s">"custom"</span><span class="p">)</span>
+<span class="w">                                       </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="c1">// Register tools</span>
+<span class="n">globalCustomToolBox</span><span class="p">.</span><span class="na">registerToolsFromObject</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+
+<span class="c1">// Register the custom tool box with the agent factory</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentFactory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ConfiguredAgentFactory</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="na">customToolBox</span><span class="p">(</span><span class="n">globalCustomToolBox</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Registering tools of various types</p>
+<p>The <code>CustomToolBox</code> class provides multiple ways to register tools.</p>
+</div>
+<p>Once the tools are registered globally with the <code>ConfiguredAgentFactory</code>, they can be used by configured agents by using
+the <code>AgentCapabilities.customToolCalls</code> capability.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Create agent configured factory and register custom tools</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentConfiguration</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">                </span><span class="c1">//Standard config, http tool boc factory etc</span>
+<span class="w">                </span><span class="p">...</span>
+<span class="w">                </span><span class="c1">//Add custom tool call capabilites</span>
+<span class="w">                </span><span class="p">.</span><span class="na">capability</span><span class="p">(</span><span class="n">AgentCapabilities</span><span class="p">.</span><span class="na">customToolCalls</span><span class="p">(</span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"getWeather"</span><span class="p">,</span><span class="w"> </span><span class="s">"getName"</span><span class="p">)))</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2025  PhonePe Private Limited
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tracking", "navigation.path", "navigation.sections", "content.code.copy", "content.code.annotate", "navigation.expand", "toc.follow", "navigation.top", "search.suggest", "search.highlight", "search.share"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  
+<script id="init-glightbox">document.querySelectorAll('.glightbox').forEach(function(element) {
+    try {
+        var img = element.querySelector('img');
+        if (img && img.src) {
+            element.setAttribute('href', img.src);
+        } else {
+            console.log('No img element with src attribute found');
+        }
+    } catch (error) {
+        console.log('Error:', error);
+    }
+});
+const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

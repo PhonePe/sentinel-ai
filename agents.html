@@ -1,0 +1,2091 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Creating and using agents in Sentinel AI">
+      
+      
+      
+        <link rel="canonical" href="https://phonepe.github.io/sentinel-ai/agents.html">
+      
+      
+        <link rel="prev" href="index.html">
+      
+      
+        <link rel="next" href="tools.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Agents - Sentinel AI Agent Framework</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+        
+        
+        
+        <link rel="stylesheet" href="assets/external/fonts.googleapis.com/css.49ea35f2.css">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/extra.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agent-basics" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Sentinel AI Agent Framework" class="md-header__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sentinel AI Agent Framework
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Agents
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to system preference" type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Sentinel AI Agent Framework" class="md-nav__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    Sentinel AI Agent Framework
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="agents.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#request-and-response-type-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request and Response Type parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instantiating-a-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instantiating a model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retry-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retry Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Retry Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-error-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default Error Codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sample-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sample setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-an-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-agentinput-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The AgentInput class
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-agentoutput-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The AgentOutput class
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The AgentOutput class">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-usage-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Usage Statistics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model Usage Statistics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prompttokendetails-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PromptTokenDetails Class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#responsetokendetails-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ResponseTokenDetails Class
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using the agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#request-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prompts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prompts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Prompts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User prompts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customizing-agent-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Customizing Agent Behaviour
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Customizing Agent Behaviour">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-basic-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Basic Customization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-advanced-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Advanced Customization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extensions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tools.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Tools in Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="using-mcp-servers.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="calling-remote-services.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calling Remote HTTP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-registry.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configured Agents and Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#request-and-response-type-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request and Response Type parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instantiating-a-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instantiating a model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retry-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retry Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Retry Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-error-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default Error Codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sample-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sample setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-an-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-agentinput-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The AgentInput class
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-agentoutput-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The AgentOutput class
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The AgentOutput class">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-usage-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Usage Statistics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model Usage Statistics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prompttokendetails-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PromptTokenDetails Class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#responsetokendetails-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ResponseTokenDetails Class
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using the agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#request-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prompts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prompts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Prompts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User prompts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customizing-agent-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Customizing Agent Behaviour
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Customizing Agent Behaviour">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-basic-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Basic Customization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-advanced-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Advanced Customization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extensions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="agent-basics">Agent Basics<a class="headerlink" href="#agent-basics" title="Permanent link">¶</a></h1>
+<p>The core abstraction of Sentinel AI is the <code>Agent</code> class. The <code>Agent</code> class is a generic class that takes three type
+parameters:</p>
+<ul>
+<li><code>R</code>: The type of the request object that the agent receives. This can be a string or any other complex Java type.</li>
+<li><code>T</code>: The type of the response object that the agent returns. This can also be a string or any other complex Java type.</li>
+<li><code>A</code>: The agent subtype. This is the class you are currently implementing.</li>
+</ul>
+<h2 id="request-and-response-type-parameters">Request and Response Type parameters<a class="headerlink" href="#request-and-response-type-parameters" title="Permanent link">¶</a></h2>
+<p>Sentinel supports sending both text and objects as input and output. The type parameters <code>R</code> and <code>T</code> can be any Java
+type, including strings, lists, maps, or custom objects. The only requirement is that the types must be serializable to
+JSON.</p>
+<p>Sentinel will generate schema for the type parameters and pass is to the model to ensure requests are interpreted
+correctly and responses are generated properly.</p>
+<div class="admonition tip">
+<p class="admonition-title">Use <code>@JsonClassDescription</code> and <code>@JsonPropertyDescription</code> liberally</p>
+<p>Use the <code>@JsonClassDescription</code> and <code>@JsonPropertyDescription</code> annotations to provide copious amounts of
+documentation on the classes and their members wherever they are used, be it as request type, response type, tool
+parameters and so on. This is added to the generated schema. A lot of the accuracy of the agent will finally depend
+on the amount of information you provide to the model. The more information you provide, the better the model will
+be able to interpret the request properly and generate the correct and relevant response.</p>
+</div>
+<p>Sample request type would be like the following:</p>
+<div class="highlight"><span class="filename">BookInfo.java</span><pre><span></span><code><span class="nd">@JsonClassDescription</span><span class="p">(</span><span class="s">"Information about the book to be summarized"</span><span class="p">)</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">record</span> <span class="nc">BookInfo</span><span class="p">(</span>
+<span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Unique ID for the book"</span><span class="p">)</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">isbn</span><span class="p">,</span>
+<span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Title of the book"</span><span class="p">)</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">title</span>
+<span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Similarly, the response type can be a complex object as well. For example, if you are implementing a book summarizer, a
+sample response can be like the following:</p>
+<div class="highlight"><span class="filename">BookSummary.java</span><pre><span></span><code><span class="nd">@JsonClassDescription</span><span class="p">(</span><span class="s">"Summary of the book"</span><span class="p">)</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">record</span> <span class="nc">BookSummary</span><span class="p">(</span>
+<span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Unique ID for the book"</span><span class="p">)</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">isbn</span><span class="p">,</span>
+<span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Summary of the book"</span><span class="p">)</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">summary</span><span class="p">,</span>
+<span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Topics discussed in the book"</span><span class="p">)</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="w"> </span><span class="n">topics</span>
+<span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="instantiating-a-model">Instantiating a model<a class="headerlink" href="#instantiating-a-model" title="Permanent link">¶</a></h2>
+<p>The <code>Model</code> class is a generic abstraction for an LLM model used by an agent. A concrete subclass of the Model needs to
+be instantiated for usage in the agent.</p>
+<p>Currently, we support <em>only</em> OpenAI API compliant model endpoints. The corresponding implementation of <code>Model</code> for this
+is the <code>SimpleOpenAIModel</code> class. The class is available in the <code>sentinel-ai-models-simple-openai</code> module.</p>
+<p>The module needs to be added to the project dependencies as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;dependency&gt;</span>
+<span class="w">    </span><span class="nt">&lt;groupId&gt;</span>com.phonepe.sentinel-ai<span class="nt">&lt;/groupId&gt;</span>
+<span class="w">    </span><span class="nt">&lt;artifactId&gt;</span>sentinel-ai-models-simple-openai<span class="nt">&lt;/artifactId&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</code></pre></div>
+<p>This will add the required dependencies to instantiate the model with the SimpleOpenAI client library. The library
+itself is very flexible, and you should read the documentation for the library to understand how to use it.
+The model can be instantiated as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">SimpleOpenAIModel</span><span class="o">&lt;&gt;</span><span class="p">(</span>
+<span class="w">        </span><span class="s">"gpt-4o"</span><span class="p">,</span>
+<span class="w">        </span><span class="n">SimpleOpenAI</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="na">baseUrl</span><span class="p">(</span><span class="n">EnvLoader</span><span class="p">.</span><span class="na">readEnv</span><span class="p">(</span><span class="s">"OPENAI_ENDPOINT"</span><span class="p">))</span>
+<span class="w">                </span><span class="p">.</span><span class="na">apiKey</span><span class="p">(</span><span class="n">EnvLoader</span><span class="p">.</span><span class="na">readEnv</span><span class="p">(</span><span class="s">"OPENAI_API_KEY"</span><span class="p">))</span>
+<span class="w">                </span><span class="p">.</span><span class="na">objectMapper</span><span class="p">(</span><span class="n">objectMapper</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">clientAdapter</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">OkHttpClientAdapter</span><span class="p">(</span><span class="n">httpClient</span><span class="p">))</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">(),</span>
+<span class="w">        </span><span class="n">objectMapper</span>
+<span class="p">);</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Type parameter for <code>SimpleOpenAIModel</code></p>
+<p>The <code>SimpleOpenAIModel</code> is a generic class. The type is inferred from the type of the model. Leave it as <code>&lt;&gt;</code>.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Endpoint and api key</p>
+<p>The <code>OPENAI_ENDPOINT</code> and <code>OPENAI_API_KEY</code> are environment variables that need to be set in the system. The
+<code>EnvLoader</code> class is a utility class that loads the environment variables. You can use any other method to load
+the environment variables as well.</p>
+</div>
+<h2 id="agent-setup">Agent Setup<a class="headerlink" href="#agent-setup" title="Permanent link">¶</a></h2>
+<p>The <code>AgentSetup</code> class is a configuration class that is used to configure the agent. The class is available in the
+core library itself and can be used to set a variety of settings for the agent. The class provides a builder to allow to
+set only the required parameters and will default whatever it can if not provided.</p>
+<blockquote>
+<p><strong>AgentSetup</strong> object needs to be passed at startup. However, if all parameters are not known or some of them need to
+be
+dynamic, a setup object can be passed as parameter to the <code>execute*</code> methods as well.</p>
+</blockquote>
+<h3 id="available-settings">Available Settings<a class="headerlink" href="#available-settings" title="Permanent link">¶</a></h3>
+<p>Here are all available settings for the <code>AgentSetup</code> class:</p>
+<table>
+<thead>
+<tr>
+<th><strong>Setting</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mapper</code></td>
+<td><code>ObjectMapper</code></td>
+<td>The object mapper to use for serialization/deserialization. If not provided, a default one will be created.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td><code>Model</code></td>
+<td>The LLM to be used for the agent. This can be provided at runtime. If not provided, an error will be thrown.</td>
+</tr>
+<tr>
+<td><code>modelSettings</code></td>
+<td><a href="#model-settings"><code>ModelSettings</code></a></td>
+<td>The settings for the model. This can be provided at runtime. If not provided, an error will be thrown.</td>
+</tr>
+<tr>
+<td><code>executorService</code></td>
+<td><code>ExecutorService</code></td>
+<td>The executor service to use for running the agent. If not provided, a default cached thread pool will be created.</td>
+</tr>
+<tr>
+<td><code>eventBus</code></td>
+<td><code>EventBus</code></td>
+<td>The event bus to be used for the agent. If not provided, a default event bus will be created.</td>
+</tr>
+<tr>
+<td><code>outputGenerationMode</code></td>
+<td><code>OutputGenerationMode</code></td>
+<td>Output generation mode to use for this model. Can be <code>TOOL_BASED</code> (default) or <code>STRUCTURED_OUTPUT</code>. Typically, other than OpenAI models, it is safer to leave it at the default <code>TOOL_BASED</code> mode.</td>
+</tr>
+<tr>
+<td><code>outputGenerationTool</code></td>
+<td><code>UnaryOperator&lt;String&gt;</code></td>
+<td>A function that the model can use to generate the JSON string output. If not provided (recommended), Sentinel AI will use it's built in tool if the <code>outputGenerationMode</code> is set to <code>TOOL_BASED</code></td>
+</tr>
+<tr>
+<td><code>retrySetup</code></td>
+<td><a href="#retry-setup"><code>RetrySetup</code></a></td>
+<td>Retry setup to use for model calls. If not provided, default setup will be added.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition danger">
+<p class="admonition-title">Required parameters</p>
+<ul>
+<li>The <code>model</code>, and <code>modelSettings</code> are required parameters. If not provided, an error will be thrown. However, it is
+  possible that model etc is not known during agent creation. In that case, the parameters can be provided as part of
+  the <code>execute*</code> methods. If neither is available, exception will be provided at runtime.</li>
+<li>All the other parameters are optional. If not provided, a default one will be created/provided.</li>
+</ul>
+</div>
+<h3 id="model-settings">Model Settings<a class="headerlink" href="#model-settings" title="Permanent link">¶</a></h3>
+<p>A variety of settings can be set for the model. The <code>ModelSettings</code> class is a configuration class that is used to
+configure the model. The class is available in the core library itself and provides a builder.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Setting</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>maxTokens</code></td>
+<td><code>Integer</code></td>
+<td>Maximum number of tokens to generate.</td>
+</tr>
+<tr>
+<td><code>temperature</code></td>
+<td><code>Float</code></td>
+<td>Amount of randomness to inject in output. Lower values make the output more predictable.</td>
+</tr>
+<tr>
+<td><code>topP</code></td>
+<td><code>Float</code></td>
+<td>Probabilistic sum of tokens to consider for each subsequent token. Range: 0-1.</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>Float</code></td>
+<td>Timeout for model calls in seconds.</td>
+</tr>
+<tr>
+<td><code>parallelToolCalls</code></td>
+<td><code>Boolean</code></td>
+<td>Whether to call tools in parallel or not.</td>
+</tr>
+<tr>
+<td><code>seed</code></td>
+<td><code>Integer</code></td>
+<td>Seed for random number generator to make output more predictable.</td>
+</tr>
+<tr>
+<td><code>presencePenalty</code></td>
+<td><code>Float</code></td>
+<td>Penalty for adding new tokens based on their presence in the output so far.</td>
+</tr>
+<tr>
+<td><code>frequencyPenalty</code></td>
+<td><code>Float</code></td>
+<td>Penalty for adding new tokens based on how many times they have appeared in the output so far.</td>
+</tr>
+<tr>
+<td><code>logitBias</code></td>
+<td><code>Map&lt;String, Integer&gt;</code></td>
+<td>Controls the likelihood of specific tokens being generated.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="retry-setup">Retry Setup<a class="headerlink" href="#retry-setup" title="Permanent link">¶</a></h3>
+<p>The <code>RetrySetup</code> class is a configuration class that is used to configure the retry mechanism for model calls.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Setting</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>totalAttempts</code></td>
+<td><code>int</code></td>
+<td>Total number of attempts to make. This includes the successful attempts.</td>
+</tr>
+<tr>
+<td><code>delayAfterFailedAttempt</code></td>
+<td><code>Duration</code></td>
+<td>Delay after a failed attempt before retrying.</td>
+</tr>
+<tr>
+<td><code>retriableErrorTypes</code></td>
+<td><code>Set&lt;ErrorTypes&gt;</code></td>
+<td>Specific error types to retry on. If not provided, pre-defined set of error types are retried.  Check <a href="#default-error-codes">relevant section</a>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="default-error-codes">Default Error Codes<a class="headerlink" href="#default-error-codes" title="Permanent link">¶</a></h4>
+<p>The following error codes are retried by default:</p>
+<table>
+<thead>
+<tr>
+<th>Error Code</th>
+<th>Description</th>
+<th>Retriable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SUCCESS</td>
+<td>Success</td>
+<td>No</td>
+</tr>
+<tr>
+<td>NO_RESPONSE</td>
+<td>No response</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>REFUSED</td>
+<td>Refused</td>
+<td>No</td>
+</tr>
+<tr>
+<td>FILTERED</td>
+<td>Content filtered</td>
+<td>No</td>
+</tr>
+<tr>
+<td>LENGTH_EXCEEDED</td>
+<td>Content length exceeded</td>
+<td>No</td>
+</tr>
+<tr>
+<td>TOOL_CALL_PERMANENT_FAILURE</td>
+<td>Tool call failed permanently for tool</td>
+<td>No</td>
+</tr>
+<tr>
+<td>TOOL_CALL_TEMPORARY_FAILURE</td>
+<td>Tool call failed temporarily for tool</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>JSON_ERROR</td>
+<td>Error parsing JSON</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>SERIALIZATION_ERROR</td>
+<td>Error serializing object to JSON</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>DESERIALIZATION_ERROR</td>
+<td>Error deserializing object to JSON</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>UNKNOWN_FINISH_REASON</td>
+<td>Unknown finish reason</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>GENERIC_MODEL_CALL_FAILURE</td>
+<td>Model call failed with error</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>DATA_VALIDATION_FAILURE</td>
+<td>Model data validation failed. Errors</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>FORCED_RETRY</td>
+<td>Retry has been forced</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>UNKNOWN</td>
+<td>Unknown response</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Refer to <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-core/src/main/java/com/phonepe/sentinelai/core/errors/ErrorType.java" target="_blank" rel="noopener">ErrorCode.java</a> to get the latest list of error codes.</p>
+</div>
+<h3 id="sample-setup">Sample setup<a class="headerlink" href="#sample-setup" title="Permanent link">¶</a></h3>
+<p>Sample code for creating settings for an agent:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentSetup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentSetup</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="na">model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="na">mapper</span><span class="p">(</span><span class="n">objectMapper</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="na">modelSettings</span><span class="p">(</span><span class="n">ModelSettings</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">                               </span><span class="p">.</span><span class="na">temperature</span><span class="p">(</span><span class="mf">0.1f</span><span class="p">)</span>
+<span class="w">                               </span><span class="p">.</span><span class="na">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">                               </span><span class="p">.</span><span class="na">build</span><span class="p">())</span>
+<span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div>
+<h2 id="creating-an-agent">Creating an agent<a class="headerlink" href="#creating-an-agent" title="Permanent link">¶</a></h2>
+<p>To create an agent, you need to do the following:</p>
+<ul>
+<li>Implement the <code>Agent</code> interface with the appropriate request and response type parameters</li>
+<li>Provide a system prompt</li>
+<li>Pass a setup object to the agent</li>
+<li>There are other parameters we shall explore in subsequent sections</li>
+</ul>
+<p>Continuing with the example, we want to create an agent that can summarize books. Code for such an agent would look
+something like this:</p>
+<div class="highlight"><span class="filename">BookSummarizingAgent.java</span><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">BookSummarizingAgent</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Agent</span><span class="o">&lt;</span><span class="n">BookInfo</span><span class="p">,</span><span class="w"> </span><span class="n">BookSummary</span><span class="p">,</span><span class="w"> </span><span class="n">BookSummarizingAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">BookSummarizingAgent</span><span class="p">(</span><span class="n">AgentSetup</span><span class="w"> </span><span class="n">setup</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">super</span><span class="p">(</span><span class="n">BookSummary</span><span class="p">.</span><span class="na">class</span><span class="p">,</span>
+<span class="w">              </span><span class="s">"You are an expert in summarizing books. You will be provided with the title and ISBN of a book."</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                      </span><span class="s">" You need to summarize the book and provide the topics discussed in the book."</span><span class="p">,</span>
+<span class="w">              </span><span class="n">setup</span><span class="p">,</span>
+<span class="w">              </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(),</span>
+<span class="w">              </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Override</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s">"book-summarizer"</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="the-agentinput-class">The <code>AgentInput</code> class<a class="headerlink" href="#the-agentinput-class" title="Permanent link">¶</a></h2>
+<p>Sentinel agent <code>execute*</code> requests can take multiple parameters along with the core request(user prompt). The
+<code>AgentInput</code> class wraps all parameters and provides a builder allowing users to easily send or skip additional
+parameters.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Property</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>request</code></td>
+<td><code>R</code></td>
+<td>Request object. This is a required parameter.</td>
+</tr>
+<tr>
+<td><code>facts</code></td>
+<td><code>List&lt;FactList&gt;</code></td>
+<td>List of facts to be passed to the agent. This is passed to LLM as 'knowledge' in the system prompt.</td>
+</tr>
+<tr>
+<td><code>requestMetadata</code></td>
+<td><code>AgentRequestMetadata</code></td>
+<td>Metadata for the request.</td>
+</tr>
+<tr>
+<td><code>oldMessages</code></td>
+<td><code>List&lt;AgentMessage&gt;</code></td>
+<td>List of old messages to be sent to the LLM for this run. If set to <code>null</code>, messages are generated and consumed by the agent in this session.</td>
+</tr>
+<tr>
+<td><code>agentSetup</code></td>
+<td><code>AgentSetup</code></td>
+<td>Setup for the agent. Overrides runtime setup. If set to <code>null</code>, the setup provided during agent creation is used. Fields provided at runtime take precedence.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-agentoutput-class">The <code>AgentOutput</code> class<a class="headerlink" href="#the-agentoutput-class" title="Permanent link">¶</a></h2>
+<p>The return type for all <code>execute*</code> methods is <code>AgentOutput</code> which is a generic class typed with the
+response type <code>T</code>. The class contains the following fields:</p>
+<table>
+<thead>
+<tr>
+<th><strong>Member</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data</code></td>
+<td><code>T</code></td>
+<td>The output of the agent, typed to the required response type. Null in case of errors.</td>
+</tr>
+<tr>
+<td><code>newMessages</code></td>
+<td><code>List&lt;AgentMessage&gt;</code></td>
+<td>New messages generated by the agent. Empty in case of errors.</td>
+</tr>
+<tr>
+<td><code>allMessages</code></td>
+<td><code>List&lt;AgentMessage&gt;</code></td>
+<td>All messages generated by the agent, including the new messages.</td>
+</tr>
+<tr>
+<td><code>usage</code></td>
+<td><code>ModelUsageStats</code></td>
+<td>Usage statistics for the model.</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>SentinelError</code></td>
+<td>Error in case of failure or a success object otherwise.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="model-usage-statistics">Model Usage Statistics<a class="headerlink" href="#model-usage-statistics" title="Permanent link">¶</a></h3>
+<p>The <code>ModelUsageStats</code> class tracks usage statistics for a model, including token usage and request details.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Member</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>requestsForRun</code></td>
+<td><code>int</code></td>
+<td>Number of requests made for this run.</td>
+</tr>
+<tr>
+<td><code>toolCallsForRun</code></td>
+<td><code>int</code></td>
+<td>Number of tool calls made for this run.</td>
+</tr>
+<tr>
+<td><code>requestTokens</code></td>
+<td><code>int</code></td>
+<td>Number of request/prompt tokens used in this run. Equivalent to the "prompt_tokens" parameter in OpenAI usage.</td>
+</tr>
+<tr>
+<td><code>responseTokens</code></td>
+<td><code>int</code></td>
+<td>Number of completion/response tokens used in this run. Equivalent to the "completion_tokens" parameter in OpenAI usage.</td>
+</tr>
+<tr>
+<td><code>totalTokens</code></td>
+<td><code>int</code></td>
+<td>Total tokens used in the whole run. Should generally equal <code>requestTokens + responseTokens</code>.</td>
+</tr>
+<tr>
+<td><code>requestTokenDetails</code></td>
+<td><code>PromptTokenDetails</code></td>
+<td>Token usage details for prompts.</td>
+</tr>
+<tr>
+<td><code>responseTokenDetails</code></td>
+<td><code>ResponseTokenDetails</code></td>
+<td>Token usage details for responses.</td>
+</tr>
+<tr>
+<td><code>details</code></td>
+<td><code>Map&lt;String, Integer&gt;</code></td>
+<td>Additional details about token usage.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="prompttokendetails-class"><code>PromptTokenDetails</code> Class<a class="headerlink" href="#prompttokendetails-class" title="Permanent link">¶</a></h4>
+<p>The <code>PromptTokenDetails</code> class provides detailed information about tokens used in prompts.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Member</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cachedTokens</code></td>
+<td><code>int</code></td>
+<td>Number of cached tokens present in the prompt.</td>
+</tr>
+<tr>
+<td><code>audioTokens</code></td>
+<td><code>int</code></td>
+<td>Number of audio input tokens present in the prompt.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="responsetokendetails-class"><code>ResponseTokenDetails</code> Class<a class="headerlink" href="#responsetokendetails-class" title="Permanent link">¶</a></h4>
+<p>The <code>ResponseTokenDetails</code> class provides detailed information about tokens used in responses.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Member</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reasoningTokens</code></td>
+<td><code>int</code></td>
+<td>Number of tokens generated by the model for reasoning.</td>
+</tr>
+<tr>
+<td><code>acceptedPredictionTokens</code></td>
+<td><code>int</code></td>
+<td>Number of tokens in the prediction that appeared in the completion when using predicted outputs.</td>
+</tr>
+<tr>
+<td><code>rejectedPredictionTokens</code></td>
+<td><code>int</code></td>
+<td>Number of tokens in the prediction that did not appear in the completion when using predicted outputs.</td>
+</tr>
+<tr>
+<td><code>audioTokens</code></td>
+<td><code>int</code></td>
+<td>Number of audio input tokens generated by the model.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="using-the-agent">Using the agent<a class="headerlink" href="#using-the-agent" title="Permanent link">¶</a></h2>
+<p>The agent can be invoked by calling any of the provided <code>execute*</code> methods.</p>
+<ul>
+<li><code>executeAsync()</code> method and it's overloads can be used to (you guessed it) invoke the LLM asynchronously. It returns a
+  <code>CompletableFuture</code> object which can be used to get the result when it is available.</li>
+<li><code>execute()</code> method and it's overloads can be used to invoke the LLM synchronously. It returns the result directly.</li>
+</ul>
+<p>In either case, the agent will be invoked with the provided request object and the response object will be returned
+along with errors and usage information.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">BookSummarizingAgent</span><span class="p">(</span><span class="n">agentSetup</span><span class="p">);</span>
+
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">agent</span><span class="p">.</span><span class="na">execute</span><span class="p">(</span>
+<span class="w">        </span><span class="n">AgentInput</span><span class="p">.</span><span class="o">&lt;</span><span class="n">BookInfo</span><span class="o">&gt;</span><span class="n">builder</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="na">request</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">BookInfo</span><span class="p">(</span><span class="s">"978-0393096729"</span><span class="p">,</span><span class="w"> </span><span class="s">"War and Peace"</span><span class="p">))</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">());</span>
+<span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="n">objectMapper</span><span class="p">.</span><span class="na">writerWithDefaultPrettyPrinter</span><span class="p">()</span>
+<span class="w">                               </span><span class="p">.</span><span class="na">writeValueAsString</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="na">getData</span><span class="p">()));</span>
+</code></pre></div>
+<p>Output from the above would be something like:</p>
+<div class="highlight"><pre><span></span><code>{
+  "isbn" : "978-0393096729",
+  "summary" : "\"War and Peace\" is a historical novel by Leo Tolstoy that intertwines the lives of several families during the Napoleonic Wars in the early 19th century. The narrative explores themes of love, fate, and the impact of war on society. It follows characters such as Pierre Bezukhov, Prince Andrei Bolkonsky, and Natasha Rostova as they navigate personal struggles and the broader historical events that shape their lives. The novel delves into the philosophical questions of history and the nature of power, ultimately portraying the complexity of human experience amidst the chaos of war.",
+  "topics" : [ "Historical fiction", "Napoleonic Wars", "Russian society", "Philosophy of history", "Love and relationships", "Fate and free will", "Family dynamics", "War and its consequences" ]
+}
+</code></pre></div>
+<h2 id="request-metadata">Request Metadata<a class="headerlink" href="#request-metadata" title="Permanent link">¶</a></h2>
+<p>Sometimes it is important to maintain context of the conversation. For example, if you are building a chat agent, you
+may want to keep track of the session or the user the conversation is happening with. SentinelAI provides the
+<code>AgentRequestMetadata</code> class for this purpose. The metadata class also provides the option to send back the
+<code>ModelUsageStats</code> object from previous calls. This can be used to keep track of the usage of the model and the agent
+across calls. If provided, the agent will merge the usage from current execution to the provided usage stats object.</p>
+<div class="admonition note">
+<p class="admonition-title">Request metadata passed to model</p>
+<p>The request metadata passed to execute calls are serialized and passed to the LLM as part of the structured system
+prompt.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th><strong>Property</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sessionId</code></td>
+<td><code>String</code></td>
+<td>Session ID for the current conversation. This is passed to LLM as additional data in the system prompt.</td>
+</tr>
+<tr>
+<td><code>userId</code></td>
+<td><code>String</code></td>
+<td>A User ID for the user the agent is having the current conversation with. This is passed to LLM as additional data in the system prompt.</td>
+</tr>
+<tr>
+<td><code>customParams</code></td>
+<td><code>Map&lt;String, Object&gt;</code></td>
+<td>Any other custom parameters that need to be passed to the agent or the tools being invoked by the agent. This is passed to LLM as additional data in the system prompt.</td>
+</tr>
+<tr>
+<td><code>usageStats</code></td>
+<td><code>ModelUsageStats</code></td>
+<td>Global usage stats object that can be used to track usage of the model across execute calls.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Request metadata is optional and passing <code>null</code> for this param is acceptable.</p>
+</div>
+<h2 id="prompts">Prompts<a class="headerlink" href="#prompts" title="Permanent link">¶</a></h2>
+<p>Sentinel AI has some special handling to improve LLM performance for agentic use cases both for system and user prompts.</p>
+<h3 id="system-prompts">System Prompts<a class="headerlink" href="#system-prompts" title="Permanent link">¶</a></h3>
+<p>SentinelAI converts the system prompt in an XML format for easy parsing by the LLM. The string or object passed as the
+system prompt to the agent is passed in a tag called <code>&lt;role&gt;</code>. Other information such as tools, properties from request
+metadata as well as facts and additional tasks from the registered extensions are added to the prompt as well.</p>
+<div class="admonition danger">
+<p class="admonition-title">Serializability requirements</p>
+<p>The system prompt needs to be serializable to XML. If not, an error will be thrown.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Structured prompts</p>
+<p>We recommend passing the system prompt as a structured object. This will help the LLM understand the context better
+and speed up processing as well. Check the <code>SystemPrompt</code> class for tips on how to use different jackson annotations
+to make system prompts serialize correctly.</p>
+</div>
+<div class="highlight"><span class="filename">Sample system prompt generated by SentinelAI</span><pre><span></span><code><span class="cp">&lt;?xml version='1.1' encoding='UTF-8'?&gt;</span>
+<span class="nt">&lt;SystemPrompt&gt;</span>
+<span class="w">    </span><span class="nt">&lt;coreInstructions&gt;</span>Your<span class="w"> </span>main<span class="w"> </span>job<span class="w"> </span>is<span class="w"> </span>to<span class="w"> </span>answer<span class="w"> </span>the<span class="w"> </span>user<span class="w"> </span>query<span class="w"> </span>as<span class="w"> </span>provided<span class="w"> </span>in<span class="w"> </span>user<span class="w"> </span>prompt<span class="w"> </span>in<span class="w"> </span>the<span class="w"> </span>`user_input`<span class="w"> </span>tag.
+<span class="w">        </span>Perform<span class="w"> </span>the<span class="w"> </span>provided<span class="w"> </span>secondary<span class="w"> </span>tasks<span class="w"> </span>as<span class="w"> </span>well<span class="w"> </span>and<span class="w"> </span>populate<span class="w"> </span>the<span class="w"> </span>output<span class="w"> </span>in<span class="w"> </span>designated<span class="w"> </span>output<span class="w"> </span>field<span class="w"> </span>for<span class="w"> </span>the<span class="w"> </span>task.
+<span class="w">        </span>Use<span class="w"> </span>the<span class="w"> </span>provided<span class="w"> </span>knowledge<span class="w"> </span>and<span class="w"> </span>facts<span class="w"> </span>to<span class="w"> </span>enrich<span class="w"> </span>your<span class="w"> </span>responses<span class="w"> </span>and<span class="w"> </span>avoid<span class="w"> </span>unnecessary<span class="w"> </span>tool<span class="w"> </span>calls.
+<span class="w">    </span><span class="nt">&lt;/coreInstructions&gt;</span>
+<span class="w">    </span><span class="nt">&lt;primaryTask&gt;</span>
+<span class="w">        </span><span class="nt">&lt;role&gt;</span>greet<span class="w"> </span>the<span class="w"> </span>user<span class="nt">&lt;/role&gt;</span><span class="w"> </span><span class="cm">&lt;!--(1)!--&gt;</span>
+<span class="w">        </span><span class="nt">&lt;tools&gt;</span><span class="w"> </span><span class="cm">&lt;!--(2)!--&gt;</span>
+<span class="w">            </span><span class="nt">&lt;tool&gt;</span>
+<span class="w">                </span><span class="nt">&lt;name&gt;</span>test_tool_box_get_location_for_user<span class="nt">&lt;/name&gt;</span>
+<span class="w">                </span><span class="nt">&lt;description&gt;</span>Get<span class="w"> </span>location<span class="w"> </span>for<span class="w"> </span>user<span class="nt">&lt;/description&gt;</span>
+<span class="w">            </span><span class="nt">&lt;/tool&gt;</span>
+<span class="w">            </span><span class="nt">&lt;tool&gt;</span>
+<span class="w">                </span><span class="nt">&lt;name&gt;</span>simple_agent_get_name<span class="nt">&lt;/name&gt;</span>
+<span class="w">                </span><span class="nt">&lt;description&gt;</span>Get<span class="w"> </span>name<span class="w"> </span>of<span class="w"> </span>user<span class="nt">&lt;/description&gt;</span>
+<span class="w">            </span><span class="nt">&lt;/tool&gt;</span>
+<span class="w">            </span><span class="nt">&lt;tool&gt;</span>
+<span class="w">                </span><span class="nt">&lt;name&gt;</span>test_tool_box_get_weather_today<span class="nt">&lt;/name&gt;</span>
+<span class="w">                </span><span class="nt">&lt;description&gt;</span>Get<span class="w"> </span>weather<span class="w"> </span>today<span class="nt">&lt;/description&gt;</span>
+<span class="w">            </span><span class="nt">&lt;/tool&gt;</span>
+<span class="w">            </span><span class="nt">&lt;tool&gt;</span>
+<span class="w">                </span><span class="nt">&lt;name&gt;</span>simple_agent_get_salutation<span class="nt">&lt;/name&gt;</span>
+<span class="w">                </span><span class="nt">&lt;description&gt;</span>Get<span class="w"> </span>salutation<span class="w"> </span>for<span class="w"> </span>user<span class="nt">&lt;/description&gt;</span>
+<span class="w">            </span><span class="nt">&lt;/tool&gt;</span>
+<span class="w">        </span><span class="nt">&lt;/tools&gt;</span>
+<span class="w">    </span><span class="nt">&lt;/primaryTask&gt;</span>
+<span class="w">    </span><span class="nt">&lt;secondaryTasks&gt;</span><span class="w"> </span><span class="cm">&lt;!--(3)!--&gt;</span>
+<span class="w">        </span><span class="nt">&lt;secondaryTask&gt;</span>
+<span class="w">            </span><span class="nt">&lt;instructions&gt;</span>
+<span class="w">                </span><span class="nt">&lt;tasks&gt;</span>
+<span class="w">                    </span><span class="nt">&lt;task&gt;</span>
+<span class="w">                        </span><span class="nt">&lt;objective&gt;</span>EXTRACT<span class="w"> </span>MEMORY<span class="w"> </span>FROM<span class="w"> </span>MESSAGES<span class="w"> </span>AND<span class="w"> </span>POPULATE<span class="w"> </span>`memoryOutput`<span class="w"> </span>FIELD<span class="nt">&lt;/objective&gt;</span>
+<span class="w">                        </span><span class="nt">&lt;outputField&gt;</span>memoryOutput<span class="nt">&lt;/outputField&gt;</span>
+<span class="w">                        </span><span class="nt">&lt;instructions&gt;</span>How<span class="w"> </span>to<span class="w"> </span>extract<span class="w"> </span>different<span class="w"> </span>memory<span class="w"> </span>types:
+<span class="w">                            </span>-<span class="w"> </span>SEMANTIC:<span class="w"> </span>Extract<span class="w"> </span>fact<span class="w"> </span>about<span class="w"> </span>the<span class="w"> </span>session<span class="w"> </span>or<span class="w"> </span>user<span class="w"> </span>or<span class="w"> </span>any<span class="w"> </span>other<span class="w"> </span>subject
+<span class="w">                            </span>-<span class="w"> </span>EPISODIC:<span class="w"> </span>Extract<span class="w"> </span>a<span class="w"> </span>specific<span class="w"> </span>event<span class="w"> </span>or<span class="w"> </span>episode<span class="w"> </span>from<span class="w"> </span>the<span class="w"> </span>conversation
+<span class="w">                            </span>-<span class="w"> </span>PROCEDURAL:<span class="w"> </span>Extract<span class="w"> </span>a<span class="w"> </span>procedure<span class="w"> </span>as<span class="w"> </span>a<span class="w"> </span>list<span class="w"> </span>of<span class="w"> </span>steps<span class="w"> </span>or<span class="w"> </span>a<span class="w"> </span>sequence<span class="w"> </span>of<span class="w"> </span>actions<span class="w"> </span>that<span class="w"> </span>you<span class="w"> </span>can
+<span class="w">                            </span>use<span class="w"> </span>later
+<span class="w">                        </span><span class="nt">&lt;/instructions&gt;</span>
+<span class="w">                        </span><span class="nt">&lt;additionalInstructions&gt;</span>IMPORTANT<span class="w"> </span>INSTRUCTION<span class="w"> </span>FOR<span class="w"> </span>MEMORY<span class="w"> </span>EXTRACTION:
+<span class="w">                            </span>-<span class="w"> </span>Do<span class="w"> </span>not<span class="w"> </span>include<span class="w"> </span>non-reusable<span class="w"> </span>information<span class="w"> </span>as<span class="w"> </span>memories.
+<span class="w">                            </span>-<span class="w"> </span>Extract<span class="w"> </span>as<span class="w"> </span>many<span class="w"> </span>useful<span class="w"> </span>memories<span class="w"> </span>as<span class="w"> </span>possible
+<span class="w">                        </span><span class="nt">&lt;/additionalInstructions&gt;</span>
+<span class="w">                        </span><span class="nt">&lt;tools&gt;</span>
+<span class="w">                            </span><span class="nt">&lt;tool&gt;</span>
+<span class="w">                                </span><span class="nt">&lt;name&gt;</span>agent_memory_extension_find_procedural_memory<span class="nt">&lt;/name&gt;</span>
+<span class="w">                                </span><span class="nt">&lt;description&gt;</span>Find<span class="w"> </span>procedural<span class="w"> </span>memory<span class="w"> </span>about<span class="w"> </span>any<span class="w"> </span>topic<span class="w"> </span>from<span class="w"> </span>the<span class="w"> </span>store<span class="nt">&lt;/description&gt;</span>
+<span class="w">                            </span><span class="nt">&lt;/tool&gt;</span>
+<span class="w">                        </span><span class="nt">&lt;/tools&gt;</span>
+<span class="w">                    </span><span class="nt">&lt;/task&gt;</span>
+<span class="w">                </span><span class="nt">&lt;/tasks&gt;</span>
+<span class="w">            </span><span class="nt">&lt;/instructions&gt;</span>
+<span class="w">        </span><span class="nt">&lt;/secondaryTask&gt;</span>
+<span class="w">    </span><span class="nt">&lt;/secondaryTasks&gt;</span>
+<span class="w">    </span><span class="nt">&lt;additionalData&gt;</span><span class="w"> </span><span class="cm">&lt;!--(4)!--&gt;</span>
+<span class="w">        </span><span class="nt">&lt;sessionId&gt;</span>s1<span class="nt">&lt;/sessionId&gt;</span>
+<span class="w">        </span><span class="nt">&lt;userId&gt;</span>ss<span class="nt">&lt;/userId&gt;</span>
+<span class="w">    </span><span class="nt">&lt;/additionalData&gt;</span>
+<span class="w">    </span><span class="nt">&lt;knowledge&gt;</span><span class="w"> </span><span class="cm">&lt;!--(5)!--&gt;</span>
+<span class="w">        </span><span class="nt">&lt;facts&gt;</span>
+<span class="w">            </span><span class="nt">&lt;description&gt;</span>Memories<span class="w"> </span>about<span class="w"> </span>current<span class="w"> </span>session<span class="nt">&lt;/description&gt;</span>
+<span class="w">            </span><span class="nt">&lt;fact&gt;</span>
+<span class="w">                </span><span class="nt">&lt;name&gt;</span>UserName<span class="nt">&lt;/name&gt;</span>
+<span class="w">                </span><span class="nt">&lt;content&gt;</span>The<span class="w"> </span>user's<span class="w"> </span>name<span class="w"> </span>is<span class="w"> </span>Santanu.<span class="nt">&lt;/content&gt;</span>
+<span class="w">            </span><span class="nt">&lt;/fact&gt;</span>
+<span class="w">            </span><span class="nt">&lt;fact&gt;</span>
+<span class="w">                </span><span class="nt">&lt;name&gt;</span>UserLocation<span class="nt">&lt;/name&gt;</span>
+<span class="w">                </span><span class="nt">&lt;content&gt;</span>The<span class="w"> </span>user<span class="w"> </span>is<span class="w"> </span>located<span class="w"> </span>in<span class="w"> </span>Bangalore.<span class="nt">&lt;/content&gt;</span>
+<span class="w">            </span><span class="nt">&lt;/fact&gt;</span>
+<span class="w">            </span><span class="nt">&lt;fact&gt;</span>
+<span class="w">                </span><span class="nt">&lt;name&gt;</span>WeatherToday<span class="nt">&lt;/name&gt;</span>
+<span class="w">                </span><span class="nt">&lt;content&gt;</span>The<span class="w"> </span>weather<span class="w"> </span>in<span class="w"> </span>Bangalore<span class="w"> </span>today<span class="w"> </span>is<span class="w"> </span>sunny.<span class="nt">&lt;/content&gt;</span>
+<span class="w">            </span><span class="nt">&lt;/fact&gt;</span>
+<span class="w">        </span><span class="nt">&lt;/facts&gt;</span>
+<span class="w">    </span><span class="nt">&lt;/knowledge&gt;</span>
+<span class="nt">&lt;/SystemPrompt&gt;</span>
+</code></pre></div>
+<ol>
+<li>System prompt provided to the <code>Agent</code> class constructor.</li>
+<li>Tools registered with and discovered by the agent.</li>
+<li>Secondary tasks provided by extensions</li>
+<li>Request metadata passed to the agent</li>
+<li>Facts provided by extensions and client</li>
+</ol>
+<h3 id="user-prompts">User prompts<a class="headerlink" href="#user-prompts" title="Permanent link">¶</a></h3>
+<p>The mandatory <code>request</code> property passed in the <code>AgentInput&lt;R&gt;</code> parameter to the <code>execute*</code> methods is converted to a
+structured XML object and wrapped in <code>&lt;user_input&gt;</code> tag.</p>
+<p>For example, for the book summarizer agent, the provided <code>BookInfo</code> object is sent to the LLM as follows:
+</p><div class="highlight"><pre><span></span><code><span class="nt">&lt;user_input&gt;</span>
+<span class="w">  </span><span class="nt">&lt;isbn&gt;</span>978-0393096729<span class="nt">&lt;/isbn&gt;</span>
+<span class="w">  </span><span class="nt">&lt;title&gt;</span>War<span class="w"> </span>and<span class="w"> </span>Peace<span class="nt">&lt;/title&gt;</span>
+<span class="nt">&lt;/user_input&gt;</span>
+</code></pre></div><p></p>
+<p>Original input request for the above would be something like:
+</p><div class="highlight"><pre><span></span><code><span class="n">agent</span><span class="p">.</span><span class="na">execute</span><span class="p">(</span>
+<span class="w">      </span><span class="n">AgentInput</span><span class="p">.</span><span class="o">&lt;</span><span class="n">BookInfo</span><span class="o">&gt;</span><span class="n">builder</span><span class="p">()</span>
+<span class="w">              </span><span class="p">.</span><span class="na">request</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">BookInfo</span><span class="p">(</span><span class="s">"978-0393096729"</span><span class="p">,</span><span class="w"> </span><span class="s">"War and Peace"</span><span class="p">))</span>
+<span class="w">              </span><span class="p">.</span><span class="na">build</span><span class="p">());</span>
+</code></pre></div><p></p>
+<h2 id="customizing-agent-behaviour">Customizing Agent Behaviour<a class="headerlink" href="#customizing-agent-behaviour" title="Permanent link">¶</a></h2>
+<p>The <code>Agent</code> class constructor allows you to customize agent behaviour extensively by passing additional parameters. This
+enables you to control how your agent handles tools, extensions, validation, and error handling.</p>
+<h3 id="constructor-parameters">Constructor Parameters<a class="headerlink" href="#constructor-parameters" title="Permanent link">¶</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Mandatory</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>outputType</td>
+<td>Class&lt;T&gt;</td>
+<td>Yes</td>
+<td>The class of the agent's output type.</td>
+</tr>
+<tr>
+<td>systemPrompt</td>
+<td>String</td>
+<td>Yes</td>
+<td>The system prompt string for the agent.</td>
+</tr>
+<tr>
+<td>setup</td>
+<td>AgentSetup</td>
+<td>Yes</td>
+<td>The setup/configuration for the agent (model, mapper, retry, etc).</td>
+</tr>
+<tr>
+<td>extensions</td>
+<td>List&lt;AgentExtension&lt;R, T, A&gt;&gt;</td>
+<td>No</td>
+<td>List of extensions to add custom logic, facts, or output schemas.</td>
+</tr>
+<tr>
+<td>knownTools</td>
+<td>Map&lt;String, ExecutableTool&gt;</td>
+<td>No</td>
+<td>Map of tool id to tool implementation for registering custom tools.</td>
+</tr>
+<tr>
+<td>toolRunApprovalSeeker</td>
+<td>ToolRunApprovalSeeker&lt;R, T, A&gt;</td>
+<td>No</td>
+<td>(Advanced) Custom approval logic for tool runs.</td>
+</tr>
+<tr>
+<td>outputValidator</td>
+<td>OutputValidator&lt;R, T&gt;</td>
+<td>No</td>
+<td>(Advanced) Custom output validation logic.</td>
+</tr>
+<tr>
+<td>errorHandler</td>
+<td>ErrorResponseHandler&lt;R&gt;</td>
+<td>No</td>
+<td>(Advanced) Custom error handling logic.</td>
+</tr>
+</tbody>
+</table>
+<p>For most use cases, you can use the simpler constructor with just <code>outputType</code>, <code>systemPrompt</code>, <code>setup</code>, <code>extensions</code>, and <code>knownTools</code>. For advanced customization, use the full constructor and pass your own implementations for <code>toolRunApprovalSeeker</code>, <code>outputValidator</code>, or <code>errorHandler</code>.</p>
+<h3 id="example-basic-customization">Example: Basic Customization<a class="headerlink" href="#example-basic-customization" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">BookSummarizingAgent</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Agent</span><span class="o">&lt;</span><span class="n">BookInfo</span><span class="p">,</span><span class="w"> </span><span class="n">BookSummary</span><span class="p">,</span><span class="w"> </span><span class="n">BookSummarizingAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">BookSummarizingAgent</span><span class="p">(</span><span class="n">AgentSetup</span><span class="w"> </span><span class="n">setup</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">super</span><span class="p">(</span><span class="n">BookSummary</span><span class="p">.</span><span class="na">class</span><span class="p">,</span>
+<span class="w">              </span><span class="s">"""</span>
+<span class="s">               You are an expert in summarizing books. You will be provided with the title and ISBN of a book.</span>
+<span class="s">               You need to summarize the book and provide the topics discussed in the book.</span>
+<span class="s">               """</span><span class="p">,</span>
+<span class="w">              </span><span class="n">setup</span><span class="p">,</span>
+<span class="w">              </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(),</span>
+<span class="w">              </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Override</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s">"book-summarizer"</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="example-advanced-customization">Example: Advanced Customization<a class="headerlink" href="#example-advanced-customization" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">CustomAgent</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Agent</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="p">,</span><span class="w"> </span><span class="n">MyResponse</span><span class="p">,</span><span class="w"> </span><span class="n">CustomAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">CustomAgent</span><span class="p">(</span><span class="n">AgentSetup</span><span class="w"> </span><span class="n">setup</span><span class="p">,</span>
+<span class="w">                       </span><span class="n">ToolRunApprovalSeeker</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="p">,</span><span class="w"> </span><span class="n">MyResponse</span><span class="p">,</span><span class="w"> </span><span class="n">CustomAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="n">approvalSeeker</span><span class="p">,</span>
+<span class="w">                       </span><span class="n">OutputValidator</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="p">,</span><span class="w"> </span><span class="n">MyResponse</span><span class="o">&gt;</span><span class="w"> </span><span class="n">validator</span><span class="p">,</span>
+<span class="w">                       </span><span class="n">ErrorResponseHandler</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="o">&gt;</span><span class="w"> </span><span class="n">errorHandler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">super</span><span class="p">(</span><span class="n">MyResponse</span><span class="p">.</span><span class="na">class</span><span class="p">,</span>
+<span class="w">              </span><span class="s">"Custom system prompt"</span><span class="p">,</span>
+<span class="w">              </span><span class="n">setup</span><span class="p">,</span>
+<span class="w">              </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MyExtension</span><span class="p">()),</span>
+<span class="w">              </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"myTool"</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MyTool</span><span class="p">()),</span>
+<span class="w">              </span><span class="n">approvalSeeker</span><span class="p">,</span>
+<span class="w">              </span><span class="n">validator</span><span class="p">,</span>
+<span class="w">              </span><span class="n">errorHandler</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nd">@Override</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s">"custom-agent"</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Use advanced options if you need to:</p>
+<ul>
+<li>Approve or reject tool runs dynamically</li>
+<li>Add custom validation logic for model outputs</li>
+<li>Handle errors in a custom way</li>
+</ul>
+<p>Refer to the Javadoc for the <code>Agent</code> class for more details on each parameter and their advanced usage.</p>
+<h2 id="extensions">Extensions<a class="headerlink" href="#extensions" title="Permanent link">¶</a></h2>
+<p>Extensions are a way to add additional functionality to your agent. They are exposed as modules and can be used to
+extend the functionality of the agent. Agents can be configured to use extensions by adding while creating the agent.
+The extensions are loaded in the order they are added.</p>
+<p>Extensions can be used to:</p>
+<ul>
+<li>Add facts to the knowledge passed to the agent in the system prompt</li>
+<li>Add custom tools to the agent</li>
+<li>Get agent to perform additional tasks</li>
+<li>Generate extra information from the agent</li>
+</ul>
+<p>To create an extension derive and implement the <code>AgentExtension</code> interface.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2025  PhonePe Private Limited
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tracking", "navigation.path", "navigation.sections", "content.code.copy", "content.code.annotate", "navigation.expand", "toc.follow", "navigation.top", "search.suggest", "search.highlight", "search.share"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  
+<script id="init-glightbox">document.querySelectorAll('.glightbox').forEach(function(element) {
+    try {
+        var img = element.querySelector('img');
+        if (img && img.src) {
+            element.setAttribute('href', img.src);
+        } else {
+            console.log('No img element with src attribute found');
+        }
+    } catch (error) {
+        console.log('Error:', error);
+    }
+});
+const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>
