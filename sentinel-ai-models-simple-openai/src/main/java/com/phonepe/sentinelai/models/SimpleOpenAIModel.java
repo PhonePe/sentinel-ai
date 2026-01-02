@@ -149,7 +149,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         final var newMessages = new ArrayList<AgentMessage>();
 
         //Stats for the run
-        final var stats = new ModelUsageStats();
+        final var stats = context.getModelUsageStats();
         final var outputGenerationMode
                 = Objects.requireNonNullElse(agentSetup.getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
         final var outputGenerator = Objects.requireNonNullElseGet(
@@ -208,7 +208,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }
                 logModelResponse(completionResponse);
                 mergeUsage(stats, completionResponse.getUsage());
-                mergeUsage(context.getModelUsageStats(), completionResponse.getUsage());
                 final var response = extractResponse(completionResponse);
                 if (null == response) {
                     return ModelOutput.error(oldMessages, stats, SentinelError.error(ErrorType.NO_RESPONSE));
@@ -343,7 +342,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         final var newMessages = new ArrayList<AgentMessage>();
 
         //Stats for the run
-        final var stats = new ModelUsageStats();
+        final var stats = context.getModelUsageStats();
         final var toolsForExecution = new HashMap<>(Objects.requireNonNullElseGet(tools, Map::of));
         final var outputGenerationMode
                 = Objects.requireNonNullElse(agentSetup.getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
@@ -408,7 +407,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                         .map(completionResponse -> {
                             logModelResponse(completionResponse);
                             mergeUsage(stats, completionResponse.getUsage());
-                            mergeUsage(context.getModelUsageStats(), completionResponse.getUsage());
                             final var response = extractResponse(completionResponse);
                             if (null == response) {
                                 return null; //No response received yet, continue to next chunk
