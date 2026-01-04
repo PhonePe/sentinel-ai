@@ -299,6 +299,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                          false,
                                                                                          null));
         messages.add(new UserPrompt(toXmlContent(inputRequest), LocalDateTime.now()));
+        messages.addAll(extensionMessages(inputRequest, context));
         final var processingMode = ProcessingMode.DIRECT;
         final var modelRunContext = new ModelRunContext(name(),
                                                         runId,
@@ -785,6 +786,13 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         log.debug("Final system prompt: {}", generatedSystemPrompt);
         return generatedSystemPrompt;
 
+    }
+
+    private List<AgentMessage> extensionMessages(R inputRequest, AgentRunContext<R> context) {
+        return extensions.stream().map(extension ->
+                        extension.messages(inputRequest, context, self))
+                .flatMap(List::stream)
+                .toList();
     }
 
 
