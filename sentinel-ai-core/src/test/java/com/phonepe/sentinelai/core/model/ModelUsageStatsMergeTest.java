@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -16,20 +15,18 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeWithNullDoesNotChangeState() {
         var base = new ModelUsageStats()
-                .incrementRequestsForRun(5)
-                .incrementToolCallsForRun(2)
-                .incrementRequestTokens(30)
-                .incrementResponseTokens(40)
-                .incrementTotalTokens(70)
-                .addDetails(Map.of("a", 1, "b", 2));
-        base.getRequestTokenDetails()
-                .incrementCachedTokens(7)
-                .incrementAudioTokens(3);
-        base.getResponseTokenDetails()
-                .incrementReasoningTokens(4)
-                .incrementAcceptedPredictionTokens(5)
-                .incrementRejectedPredictionTokens(6)
-                .incrementAudioTokens(2);
+                .incrementRequestsForRunUnsafe(5)
+                .incrementToolCallsForRunUnsafe(2)
+                .incrementRequestTokensUnsafe(30)
+                .incrementResponseTokensUnsafe(40)
+                .incrementTotalTokensUnsafe(70)
+                .addDetailsUnsafe(Map.of("a", 1, "b", 2))
+                .incrementRequestCachedTokensUnsafe(7)
+                .incrementRequestAudioTokensUnsafe(3)
+                .incrementResponseReasoningTokensUnsafe(4)
+                .incrementResponseAcceptedPredictionTokensUnsafe(5)
+                .incrementResponseRejectedPredictionTokensUnsafe(6)
+                .incrementResponseAudioTokensUnsafe(2);
 
         var detailsBefore = new HashMap<>(base.getDetails());
         var ret = base.merge(null);
@@ -54,15 +51,18 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeWithDefaultOtherDoesNotChangeState() {
         var base = new ModelUsageStats()
-                .incrementRequestsForRun(1)
-                .incrementToolCallsForRun(1)
-                .incrementRequestTokens(10)
-                .incrementResponseTokens(20)
-                .incrementTotalTokens(30)
-                .addDetails(Map.of("k", 100));
-        base.getRequestTokenDetails().incrementCachedTokens(2).incrementAudioTokens(3);
-        base.getResponseTokenDetails().incrementReasoningTokens(4).incrementAcceptedPredictionTokens(5)
-                .incrementRejectedPredictionTokens(6).incrementAudioTokens(7);
+                .incrementRequestsForRunUnsafe(1)
+                .incrementToolCallsForRunUnsafe(1)
+                .incrementRequestTokensUnsafe(10)
+                .incrementResponseTokensUnsafe(20)
+                .incrementTotalTokensUnsafe(30)
+                .addDetailsUnsafe(Map.of("k", 100))
+                .incrementRequestCachedTokensUnsafe(2)
+                .incrementRequestAudioTokensUnsafe(3)
+                .incrementResponseReasoningTokensUnsafe(4)
+                .incrementResponseAcceptedPredictionTokensUnsafe(5)
+                .incrementResponseRejectedPredictionTokensUnsafe(6)
+                .incrementResponseAudioTokensUnsafe(7);
 
         var other = new ModelUsageStats(); // all zeros, details null
 
@@ -82,7 +82,7 @@ class ModelUsageStatsMergeTest {
                 () -> assertEquals(5, base.getResponseTokenDetails().getAcceptedPredictionTokens()),
                 () -> assertEquals(6, base.getResponseTokenDetails().getRejectedPredictionTokens()),
                 () -> assertEquals(7, base.getResponseTokenDetails().getAudioTokens()),
-                () -> assertSame(mapBefore, base.getDetails()),
+                () -> assertEquals(mapBefore, base.getDetails()),
                 () -> assertEquals(1, base.getDetails().size()),
                 () -> assertEquals(100, base.getDetails().get("k"))
                  );
@@ -91,28 +91,34 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeAccumulatesAllScalarAndNestedFields() {
         var base = new ModelUsageStats()
-                .incrementRequestsForRun(1)
-                .incrementToolCallsForRun(2)
-                .incrementRequestTokens(3)
-                .incrementResponseTokens(4)
-                .incrementTotalTokens(5)
-                .addDetails(Map.of("a", 1, "b", 2));
-        base.getRequestTokenDetails().incrementCachedTokens(6).incrementAudioTokens(7);
-        base.getResponseTokenDetails().incrementReasoningTokens(8).incrementAcceptedPredictionTokens(9)
-                .incrementRejectedPredictionTokens(10).incrementAudioTokens(11);
+                .incrementRequestsForRunUnsafe(1)
+                .incrementToolCallsForRunUnsafe(2)
+                .incrementRequestTokensUnsafe(3)
+                .incrementResponseTokensUnsafe(4)
+                .incrementTotalTokensUnsafe(5)
+                .addDetailsUnsafe(Map.of("a", 1, "b", 2))
+                .incrementRequestCachedTokensUnsafe(6)
+                .incrementRequestAudioTokensUnsafe(7)
+                .incrementResponseReasoningTokensUnsafe(8)
+                .incrementResponseAcceptedPredictionTokensUnsafe(9)
+                .incrementResponseRejectedPredictionTokensUnsafe(10)
+                .incrementResponseAudioTokensUnsafe(11);
 
         var other = new ModelUsageStats()
-                .incrementRequestsForRun(10)
-                .incrementToolCallsForRun(20)
-                .incrementRequestTokens(30)
-                .incrementResponseTokens(40)
-                .incrementTotalTokens(50)
-                .addDetails(Map.of("b", 200, "c", 3));
-        other.getRequestTokenDetails().incrementCachedTokens(60).incrementAudioTokens(70);
-        other.getResponseTokenDetails().incrementReasoningTokens(80).incrementAcceptedPredictionTokens(90)
-                .incrementRejectedPredictionTokens(100).incrementAudioTokens(110);
+                .incrementRequestsForRunUnsafe(10)
+                .incrementToolCallsForRunUnsafe(20)
+                .incrementRequestTokensUnsafe(30)
+                .incrementResponseTokensUnsafe(40)
+                .incrementTotalTokensUnsafe(50)
+                .addDetailsUnsafe(Map.of("b", 200, "c", 3))
+                .incrementRequestCachedTokensUnsafe(60)
+                .incrementRequestAudioTokensUnsafe(70)
+                .incrementResponseReasoningTokensUnsafe(80)
+                .incrementResponseAcceptedPredictionTokensUnsafe(90)
+                .incrementResponseRejectedPredictionTokensUnsafe(100)
+                .incrementResponseAudioTokensUnsafe(110);
 
-        var mapIdentityBefore = base.getDetails();
+        final var outputMap = Map.of("a", 1, "b", 200, "c", 3);
 
         base.merge(other);
 
@@ -128,7 +134,7 @@ class ModelUsageStatsMergeTest {
                 () -> assertEquals(99, base.getResponseTokenDetails().getAcceptedPredictionTokens()),
                 () -> assertEquals(110, base.getResponseTokenDetails().getRejectedPredictionTokens()),
                 () -> assertEquals(121, base.getResponseTokenDetails().getAudioTokens()),
-                () -> assertSame(mapIdentityBefore, base.getDetails()),
+                () -> assertEquals(outputMap, base.getDetails()),
                 () -> assertEquals(3, base.getDetails().size()),
                 () -> assertEquals(1, base.getDetails().get("a")),
                 () -> assertEquals(200, base.getDetails().get("b")),
@@ -139,12 +145,12 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeInitializesDetailsWhenNull() {
         var base = new ModelUsageStats(); // details is null initially
-        var other = new ModelUsageStats().addDetails(Map.of("x", 1, "y", 2));
+        var other = new ModelUsageStats().addDetailsUnsafe(Map.of("x", 1, "y", 2));
 
-        assertNull(base.getDetails());
+        assertTrue(base.getDetails().isEmpty());
         base.merge(other);
 
-        assertNotNull(base.getDetails());
+        assertFalse(base.getDetails().isEmpty());
         assertAll(
                 () -> assertEquals(2, base.getDetails().size()),
                 () -> assertEquals(1, base.getDetails().get("x")),
@@ -155,15 +161,18 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeDoesNotMutateOther() {
         var other = new ModelUsageStats()
-                .incrementRequestsForRun(3)
-                .incrementToolCallsForRun(4)
-                .incrementRequestTokens(50)
-                .incrementResponseTokens(60)
-                .incrementTotalTokens(110)
-                .addDetails(Map.of("m", 7, "n", 8));
-        other.getRequestTokenDetails().incrementCachedTokens(9).incrementAudioTokens(10);
-        other.getResponseTokenDetails().incrementReasoningTokens(11).incrementAcceptedPredictionTokens(12)
-                .incrementRejectedPredictionTokens(13).incrementAudioTokens(14);
+                .incrementRequestsForRunUnsafe(3)
+                .incrementToolCallsForRunUnsafe(4)
+                .incrementRequestTokensUnsafe(50)
+                .incrementResponseTokensUnsafe(60)
+                .incrementTotalTokensUnsafe(110)
+                .addDetailsUnsafe(Map.of("m", 7, "n", 8))
+                .incrementRequestCachedTokensUnsafe(9)
+                .incrementRequestAudioTokensUnsafe(10)
+                .incrementResponseReasoningTokensUnsafe(11)
+                .incrementResponseAcceptedPredictionTokensUnsafe(12)
+                .incrementResponseRejectedPredictionTokensUnsafe(13)
+                .incrementResponseAudioTokensUnsafe(14);
 
         var otherSnapshot = snapshot(other);
 
@@ -192,8 +201,8 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeReturnsThisAndSupportsChaining() {
         var base = new ModelUsageStats();
-        var a = new ModelUsageStats().incrementRequestsForRun(1);
-        var b = new ModelUsageStats().incrementRequestsForRun(2);
+        var a = new ModelUsageStats().incrementRequestsForRunUnsafe(1);
+        var b = new ModelUsageStats().incrementRequestsForRunUnsafe(2);
 
         var ret = base.merge(a).merge(b);
 
@@ -208,25 +217,29 @@ class ModelUsageStatsMergeTest {
         var base = new ModelUsageStats();
         int threads = 20;
 
-        ExecutorService pool = Executors.newFixedThreadPool(Math.min(threads,
-                                                                     Runtime.getRuntime().availableProcessors()));
-        CountDownLatch start = new CountDownLatch(1);
-        CountDownLatch done = new CountDownLatch(threads);
+        final var pool = Executors.newFixedThreadPool(Math.min(threads,
+                                                               Runtime.getRuntime().availableProcessors()));
+        final var start = new CountDownLatch(1);
+        final var done = new CountDownLatch(threads);
 
         for (int i = 0; i < threads; i++) {
             final int index = i;
             pool.submit(() -> {
                 try {
                     var other = new ModelUsageStats()
-                            .incrementRequestsForRun(1)
-                            .incrementToolCallsForRun(2)
-                            .incrementRequestTokens(3)
-                            .incrementResponseTokens(4)
-                            .incrementTotalTokens(7)
-                            .addDetails(Map.of("k" + index, index));
-                    other.getRequestTokenDetails().incrementCachedTokens(5).incrementAudioTokens(6);
-                    other.getResponseTokenDetails().incrementReasoningTokens(8).incrementAcceptedPredictionTokens(9)
-                            .incrementRejectedPredictionTokens(10).incrementAudioTokens(11);
+                            .safeUpdate(obj -> obj
+                                    .incrementRequestsForRunUnsafe(1)
+                                    .incrementToolCallsForRunUnsafe(2)
+                                    .incrementRequestTokensUnsafe(3)
+                                    .incrementResponseTokensUnsafe(4)
+                                    .incrementTotalTokensUnsafe(7)
+                                    .addDetailsUnsafe(Map.of("k" + index, index))
+                                    .incrementRequestCachedTokensUnsafe(5)
+                                    .incrementRequestAudioTokensUnsafe(6)
+                                    .incrementResponseReasoningTokensUnsafe(8)
+                                    .incrementResponseAcceptedPredictionTokensUnsafe(9)
+                                    .incrementResponseRejectedPredictionTokensUnsafe(10)
+                                    .incrementResponseAudioTokensUnsafe(11));
 
                     start.await();
                     base.merge(other);
@@ -269,25 +282,31 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeSupportsNegativeValuesAsAdditiveBehavior() {
         var base = new ModelUsageStats()
-                .incrementRequestsForRun(10)
-                .incrementToolCallsForRun(10)
-                .incrementRequestTokens(100)
-                .incrementResponseTokens(100)
-                .incrementTotalTokens(200)
-                .addDetails(Map.of("x", 1));
-        base.getRequestTokenDetails().incrementCachedTokens(10).incrementAudioTokens(10);
-        base.getResponseTokenDetails().incrementReasoningTokens(10).incrementAcceptedPredictionTokens(10)
-                .incrementRejectedPredictionTokens(10).incrementAudioTokens(10);
+                .incrementRequestsForRunUnsafe(10)
+                .incrementToolCallsForRunUnsafe(10)
+                .incrementRequestTokensUnsafe(100)
+                .incrementResponseTokensUnsafe(100)
+                .incrementTotalTokensUnsafe(200)
+                .addDetailsUnsafe(Map.of("x", 1))
+                .incrementRequestCachedTokensUnsafe(10)
+                .incrementRequestAudioTokensUnsafe(10)
+                .incrementResponseReasoningTokensUnsafe(10)
+                .incrementResponseAcceptedPredictionTokensUnsafe(10)
+                .incrementResponseRejectedPredictionTokensUnsafe(10)
+                .incrementResponseAudioTokensUnsafe(10);
 
         var other = new ModelUsageStats()
-                .incrementRequestsForRun(-3)
-                .incrementToolCallsForRun(-2)
-                .incrementRequestTokens(-10)
-                .incrementResponseTokens(-20)
-                .incrementTotalTokens(-30);
-        other.getRequestTokenDetails().incrementCachedTokens(-4).incrementAudioTokens(-5);
-        other.getResponseTokenDetails().incrementReasoningTokens(-6).incrementAcceptedPredictionTokens(-7)
-                .incrementRejectedPredictionTokens(-8).incrementAudioTokens(-9);
+                .incrementRequestsForRunUnsafe(-3)
+                .incrementToolCallsForRunUnsafe(-2)
+                .incrementRequestTokensUnsafe(-10)
+                .incrementResponseTokensUnsafe(-20)
+                .incrementTotalTokensUnsafe(-30)
+                .incrementRequestCachedTokensUnsafe(-4)
+                .incrementRequestAudioTokensUnsafe(-5)
+                .incrementResponseReasoningTokensUnsafe(-6)
+                .incrementResponseAcceptedPredictionTokensUnsafe(-7)
+                .incrementResponseRejectedPredictionTokensUnsafe(-8)
+                .incrementResponseAudioTokensUnsafe(-9);
 
         base.merge(other);
 

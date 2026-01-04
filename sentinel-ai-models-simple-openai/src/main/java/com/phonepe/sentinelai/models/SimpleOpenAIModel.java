@@ -184,12 +184,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             ModelOutput output = null;
             do {
                 final var error = preProcessMessages(context,
-                                                       oldMessages,
-                                                       messagesPreProcessors,
-                                                       stats,
-                                                       allMessages,
-                                                       newMessages,
-                                                       openAiMessages)
+                                                     oldMessages,
+                                                     messagesPreProcessors,
+                                                     stats,
+                                                     allMessages,
+                                                     newMessages,
+                                                     openAiMessages)
                         .orElse(null);
 
                 if (error != null) {
@@ -211,7 +211,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 addToolChoice(toolsForExecution, builder, outputGenerationMode);
                 raiseMessageSentEvent(context, allMessages);
                 final var stopwatch = Stopwatch.createStarted();
-                stats.incrementRequestsForRun();
+                stats.safeUpdate(ModelUsageStats::incrementRequestsForRunUnsafe);
 
                 final var request = builder.build();
                 logModelRequest(request);
@@ -378,12 +378,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             ModelOutput output = null;
             do {
                 final var error = preProcessMessages(context,
-                                                       oldMessages,
-                                                       messagesPreProcessors,
-                                                       stats,
-                                                       allMessages,
-                                                       newMessages,
-                                                       openAiMessages)
+                                                     oldMessages,
+                                                     messagesPreProcessors,
+                                                     stats,
+                                                     allMessages,
+                                                     newMessages,
+                                                     openAiMessages)
                         .orElse(null);
                 if (error != null) {
                     output = error;
@@ -403,7 +403,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }
                 addToolChoice(toolsForExecution, builder, outputGenerationMode);
                 final var stopwatch = Stopwatch.createStarted();
-                stats.incrementRequestsForRun();
+                stats.safeUpdate(ModelUsageStats::incrementRequestsForRunUnsafe);
 
                 final var request = builder.build();
                 logModelRequest(request);
@@ -903,21 +903,23 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
     public static void mergeUsage(ModelUsageStats stats, Usage usage) {
         if (null != usage) {
-            stats.incrementRequestTokens(safeGetInt(usage::getPromptTokens))
-                    .incrementResponseTokens(safeGetInt(usage::getCompletionTokens))
-                    .incrementTotalTokens(safeGetInt(usage::getTotalTokens));
-            final var promptTokensDetails = usage.getPromptTokensDetails();
-            if (promptTokensDetails != null) {
-                stats.getRequestTokenDetails()
-                        .incrementAudioTokens(safeGetInt(promptTokensDetails::getAudioTokens))
-                        .incrementCachedTokens(safeGetInt(promptTokensDetails::getCachedTokens));
-            }
-            final var completionTokensDetails = usage.getCompletionTokensDetails();
-            if (completionTokensDetails != null) {
-                stats.getResponseTokenDetails()
-                        .incrementAudioTokens(safeGetInt(completionTokensDetails::getAudioTokens))
-                        .incrementReasoningTokens(safeGetInt(completionTokensDetails::getReasoningTokens));
-            }
+            stats.safeUpdate(obj -> {
+                obj.incrementRequestTokensUnsafe(safeGetInt(usage::getPromptTokens))
+                        .incrementResponseTokensUnsafe(safeGetInt(usage::getCompletionTokens))
+                        .incrementTotalTokensUnsafe(safeGetInt(usage::getTotalTokens));
+                final var promptTokensDetails = usage.getPromptTokensDetails();
+                if (promptTokensDetails != null) {
+                    obj.incrementRequestAudioTokensUnsafe(safeGetInt(promptTokensDetails::getAudioTokens))
+                            .incrementRequestCachedTokensUnsafe(safeGetInt(promptTokensDetails::getCachedTokens));
+                }
+                final var completionTokensDetails = usage.getCompletionTokensDetails();
+                if (completionTokensDetails != null) {
+                    obj.incrementResponseAudioTokensUnsafe(safeGetInt(completionTokensDetails::getAudioTokens))
+                            .incrementResponseReasoningTokensUnsafe(safeGetInt(completionTokensDetails::getReasoningTokens));
+                }
+                return obj;
+            });
+
         }
     }
 
@@ -1063,7 +1065,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     agentMessages.getNewMessages().add(toolCallMessage);
                     agentMessages.getAllMessages().add(toolCallResponse);
                     agentMessages.getNewMessages().add(toolCallResponse);
-                    stats.incrementToolCallsForRun();
+                    stats.safeUpdate(ModelUsageStats::incrementToolCallsForRunUnsafe);
                 });
     }
 
@@ -1133,13 +1135,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
     /**
      * This will run pre-processors in sequence and replace messages content with pre-processed output
-     * @param context Execution context
-     * @param oldMessages Incoming messages to model run call
+     *
+     * @param context               Execution context
+     * @param oldMessages           Incoming messages to model run call
      * @param messagesPreProcessors List of preprocessors
-     * @param stats Usage stats might be updated
-     * @param allMessages All messages currently in context
-     * @param newMessages New messages generated in the context
-     * @param openAiMessages OpenAI format messages converted from allMessages
+     * @param stats                 Usage stats might be updated
+     * @param allMessages           All messages currently in context
+     * @param newMessages           New messages generated in the context
+     * @param openAiMessages        OpenAI format messages converted from allMessages
      * @return Error if something has failed during pre-processor runs or empty if all good
      */
     private Optional<ModelOutput> preProcessMessages(
@@ -1167,14 +1170,15 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         catch (InvalidAgentMessagesException ie) {
             log.error("Preprocessor returned invalid messages ", ie);
             return Optional.of(ModelOutput.error(oldMessages,
-                                     stats,
-                                     SentinelError.error(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID, ie.getMessage())));
+                                                 stats,
+                                                 SentinelError.error(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID,
+                                                                     ie.getMessage())));
         }
         catch (Exception e) {
             final var message = AgentUtils.rootCause(e).getMessage();
             log.error("Error running preprocessor: " + message, e);
             return Optional.of(ModelOutput.error(oldMessages, stats,
-                                     SentinelError.error(ErrorType.PREPROCESSOR_RUN_FAILURE, message)));
+                                                 SentinelError.error(ErrorType.PREPROCESSOR_RUN_FAILURE, message)));
         }
         return Optional.empty();
     }
