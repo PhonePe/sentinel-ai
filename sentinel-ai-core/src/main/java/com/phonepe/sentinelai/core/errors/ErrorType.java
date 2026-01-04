@@ -29,7 +29,7 @@ public enum ErrorType {
     UNKNOWN("Unknown response", true),
     MODEL_RUN_TERMINATED("Model run was terminated", false),
     PREPROCESSOR_RUN_FAILURE("Agent messages preprocessor failed: %s", true),
-    PREPROCESSOR_MESSAGES_OUTPUT_INVALID("Output invalid: %s", false)
+    PREPROCESSOR_MESSAGES_OUTPUT_INVALID("Invalid output from Pre-Processor: %s", false)
     ;
 
     private final String message;
