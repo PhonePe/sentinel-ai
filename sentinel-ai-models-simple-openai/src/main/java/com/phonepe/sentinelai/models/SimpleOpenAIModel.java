@@ -391,7 +391,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }
 
                 final var builder = createChatRequestBuilder(openAiMessages);
-                applyModelSettings(modelSettings, builder, tools);
+                applyModelSettings(modelSettings, builder, toolsForExecution);
                 addToolList(toolsForExecution, builder);
                 if (streamProcessingMode.equals(Agent.StreamProcessingMode.TYPED)
                         && outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
@@ -639,7 +639,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             ToolRunner toolRunner,
             ModelUsageStats stats,
             Stopwatch stopwatch,
-            AtomicReference<String> generatesOutput,
+            AtomicReference<String> generatedOutput,
             ArrayList<ChatMessage> openAiMessages,
             ArrayList<AgentMessage> allMessages,
             ArrayList<AgentMessage> newMessages,
@@ -659,7 +659,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                     .build(),
                             stats,
                             stopwatch);
-            return Optional.ofNullable(generatesOutput.get())
+            return Optional.ofNullable(generatedOutput.get())
                     .map(data -> processOutput(
                             context,
                             data,
@@ -981,7 +981,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     /**
      * Handle tool calls from the model
      */
-    private static <R, T, A extends Agent<R, T, A>> void handleToolCalls(
+    private static void handleToolCalls(
             ModelRunContext context,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
@@ -1150,7 +1150,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             final List<AgentMessage> newMessages,
             final List<ChatMessage> openAiMessages) {
         try {
-            executeMessagesPreProcessors(messagesPreProcessors, context, allMessages, newMessages)
+            runPreProcessors(messagesPreProcessors, context, allMessages, newMessages)
                     .ifPresent(processedAgentMessages -> {
                         // If pre-processing has returned responses
                         // Replace contents to be sent to the model
@@ -1186,7 +1186,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      * is passed as an input for the next processor in the chain.
      *
      */
-    private Optional<PreProcessorExecutionResults> executeMessagesPreProcessors(
+    private Optional<PreProcessorExecutionResults> runPreProcessors(
             final List<AgentMessagesPreProcessor> messagesPreProcessors,
             final ModelRunContext context,
             final List<AgentMessage> allMessages,
