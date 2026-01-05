@@ -7,6 +7,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
@@ -85,16 +86,7 @@ class SimpleOpenAIModelStreamingTest {
     @SneakyThrows
     void testAgent(final WireMockRuntimeInfo wiremock) {
         //Setup stub for SSE
-        IntStream.rangeClosed(1, 5)
-                .forEach(i -> {
-                    stubFor(post("/chat/completions?api-version=2024-10-21")
-                                    .inScenario("model-test")
-                                    .whenScenarioStateIs(i == 1 ? Scenario.STARTED : Objects.toString(i))
-                                    .willReturn(okForContentType("text/event-stream",
-                                                                 readStubFile(i, "events", getClass())))
-                                    .willSetStateTo(Objects.toString(i + 1)));
-
-                });
+        setupSseStubs();
         final var objectMapper = JsonUtils.createMapper();
 
         final var stats = new ModelUsageStats(); //We want to collect stats from the whole session
@@ -158,6 +150,55 @@ class SimpleOpenAIModelStreamingTest {
         assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
                 response.getError().getErrorType(),
                 "Expected TIMEOUT after retries, got: " + response.getError());
+    }
+
+    @Test
+    @SneakyThrows
+    void testPreProcessorIsCalled(final WireMockRuntimeInfo wiremock) {
+        setupSseStubs();
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var executor = Executors.newCachedThreadPool();
+        final var httpClient = new OkHttpClient.Builder()
+                .build();
+        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
+        AtomicBoolean preProcessorCalled = new AtomicBoolean(false);
+        agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
+            preProcessorCalled.set(true);
+            return new AgentMessagesPreProcessResult(null, null);
+        });
+
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                                .request("Hi")
+                                .build(),
+                        new TextStreamer(objectMapper, executor, data -> print(data, outputStream)))
+                .join();
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertTrue(preProcessorCalled.get());
+    }
+
+    @Test
+    @SneakyThrows
+    void testPreProcessorsThrowingException(final WireMockRuntimeInfo wiremock) {
+        setupSseStubs();
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var executor = Executors.newCachedThreadPool();
+        final var httpClient = new OkHttpClient.Builder()
+                .build();
+        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
+        agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
+            throw new RuntimeException("Errored");
+        });
+
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                                .request("Hi")
+                                .build(),
+                        new TextStreamer(objectMapper, executor, data -> print(data, outputStream)))
+                .join();
+        assertEquals(ErrorType.PREPROCESSOR_RUN_FAILURE, response.getError().getErrorType());
     }
 
     private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock,
@@ -226,5 +267,19 @@ class SimpleOpenAIModelStreamingTest {
                 .executorService(executor)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                 .build());
+    }
+
+    private void setupSseStubs() {
+        //Setup stub for SSE
+        IntStream.rangeClosed(1, 5)
+                .forEach(i -> {
+                    stubFor(post("/chat/completions?api-version=2024-10-21")
+                            .inScenario("model-test")
+                            .whenScenarioStateIs(i == 1 ? Scenario.STARTED : Objects.toString(i))
+                            .willReturn(okForContentType("text/event-stream",
+                                    readStubFile(i, "events", getClass())))
+                            .willSetStateTo(Objects.toString(i + 1)));
+
+                });
     }
 }

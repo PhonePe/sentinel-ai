@@ -21,6 +21,7 @@ import com.phonepe.sentinelai.core.errorhandling.ErrorResponseHandler;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.events.EventBus;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
@@ -48,6 +49,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -106,6 +108,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final XmlMapper xmlMapper = new XmlMapper();
     private final ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> requestCompleted =
             new ConsumingFireForgetSignal<>();
+    private final List<AgentMessagesPreProcessor> agentMessagesPreProcessors = new CopyOnWriteArrayList<>();
 
     @SuppressWarnings("unchecked")
     private final A self = (A) this;
@@ -226,6 +229,27 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             log.debug("No tools registered");
         }
         this.knownTools.putAll(tools);
+        return self;
+    }
+
+    /**
+     * Register agent message pre-processor. This is thread safe and can be called at runtime.
+     * @param agentMessagesPreProcessor processor instance
+     * @return this
+     */
+    public A registerAgentMessagesPreProcessor(AgentMessagesPreProcessor agentMessagesPreProcessor) {
+        this.agentMessagesPreProcessors.add(agentMessagesPreProcessor);
+        log.debug("Registering messages pre-processor: {} for agent: {}", agentMessagesPreProcessor.getClass().getSimpleName(), name());
+        return self;
+    }
+
+    /**
+     * Register list of agent message pre-processor. This is thread safe and can be called at runtime.
+     * @param agentMessagesPreProcessors processor instances
+     * @return this
+     */
+    public A registerAgentMessagesPreProcessors(List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
+        agentMessagesPreProcessors.forEach(self::registerAgentMessagesPreProcessor);
         return self;
     }
 
@@ -488,7 +512,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         try {
             final var errorResponse = Agent.<T>handleErrorResponse(modelOutput).orElse(null);
             if (errorResponse != null) {
-                processingContext.messages.addAll(modelOutput.getNewMessages());
+                mergeModelOutput(processingContext, modelOutput);
                 return errorResponse;
             }
             //Creating an empty object here as we don't want to waste time doing null checks
@@ -617,7 +641,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                    mergedAgentSetup,
                                                    toolRunApprovalSeeker,
                                                    context),
-                            earlyTerminationStrategy)
+                            earlyTerminationStrategy,
+                            agentMessagesPreProcessors)
                     .get();
         }
         catch (InterruptedException e) {
@@ -660,7 +685,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                 knownTools,
                                 toolRunner,
                                 earlyTerminationStrategy,
-                                streamHandler);
+                                streamHandler,
+                                agentMessagesPreProcessors);
             }
             else {
                 modelFuture = mergedAgentSetup.getModel()
@@ -670,7 +696,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                 knownTools,
                                 toolRunner,
                                 earlyTerminationStrategy,
-                                streamHandler);
+                                streamHandler,
+                                agentMessagesPreProcessors);
             }
             return modelFuture.get();
         }
@@ -783,5 +810,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             return xmlMapper.createObjectNode().put("data", Objects.toString(object));
         }
         return xmlMapper.valueToTree(object);
+    }
+
+    private static <R> void mergeModelOutput(final ModelOutputProcessingContext<R> processingContext, final ModelOutput modelOutput) {
+        processingContext.messages.clear();
+        processingContext.messages.addAll(modelOutput.getAllMessages());
     }
 }

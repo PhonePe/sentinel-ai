@@ -16,7 +16,10 @@ import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
+import com.phonepe.sentinelai.models.DefaultChatCompletionServiceFactory;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
+import com.phonepe.sentinelai.models.SimpleOpenAIModelOptions;
+import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.*;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpCallTemplate;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.InMemoryHttpToolSource;
@@ -26,6 +29,7 @@ import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -104,10 +108,11 @@ class AgentRegistryTest {
     @ParameterizedTest
     @SneakyThrows
     @MethodSource("generateSimpleTestConfig")
-    void testSimpleAgent(AgentMetadataAccessMode metadataAccessMode,
-                         int numMocks,
-                         String mockPrefix,
-                         WireMockRuntimeInfo wiremock) {
+    void testSimpleAgent(
+            AgentMetadataAccessMode metadataAccessMode,
+            int numMocks,
+            String mockPrefix,
+            WireMockRuntimeInfo wiremock) {
         TestUtils.setupMocks(numMocks, mockPrefix, getClass());
         final var agentSource = new InMemoryAgentConfigurationSource();
         final var okHttpClient = new OkHttpClient.Builder()
@@ -126,16 +131,11 @@ class AgentRegistryTest {
         registerSummmarizingAgent(registry);
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
-                SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
-                        .apiVersion("2024-10-21")
-                        .objectMapper(MAPPER)
-                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                        .build(),
-                MAPPER
+                multiModelProviderFactory(okHttpClient, wiremock),
+                MAPPER,
+                SimpleOpenAIModelOptions.builder()
+                        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.REQUIRED)
+                        .build()
         );
 
         final var setup = AgentSetup.builder()
@@ -158,7 +158,6 @@ class AgentRegistryTest {
                 .join();
         printAgentResponse(response);
     }
-
 
     @ParameterizedTest
     @SneakyThrows
@@ -241,20 +240,16 @@ class AgentRegistryTest {
         final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
                 .agentSource(agentSource)
                 .agentFactory(agentFactory::createAgent)
+                .agentMetadataAccessMode(AgentMetadataAccessMode.METADATA_TOOL_LOOKUP)
                 .build();
         registerSummmarizingAgent(registry);
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
-                SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
-                        .apiVersion("2024-10-21")
-                        .objectMapper(MAPPER)
-                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                        .build(),
-                MAPPER
+                multiModelProviderFactory(okHttpClient, wiremock),
+                MAPPER,
+                SimpleOpenAIModelOptions.builder()
+                        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.REQUIRED)
+                        .build()
         );
 
         final var setup = AgentSetup.builder()
@@ -418,59 +413,127 @@ class AgentRegistryTest {
                 .readTimeout(Duration.ofSeconds(180))
                 .writeTimeout(Duration.ofSeconds(120))
                 .build();
+
+        final var agentFactory = ConfiguredAgentFactory.builder()
+                .mcpToolboxFactory(toolBoxFactory)
+                .build();
+        final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
+                .agentSource(agentSource)
+                .agentFactory(agentFactory::createAgent)
+                .agentMetadataAccessMode(AgentMetadataAccessMode.METADATA_TOOL_LOOKUP)
+                .build();
+
+        // Let's create weather agent configuration
+
+        final var mathAgentConfig = AgentConfiguration.builder()
+                .agentName("Math Agent")
+                .description("Provides simple math operations.")
+                .prompt("Respond with the answer for provided query.")
+                .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
+                .build();
+        log.info("Math agent id: {}",
+                 registry.configureAgent(mathAgentConfig)
+                         .map(AgentMetadata::getId)
+                         .orElseThrow());
+
+        final var model = new SimpleOpenAIModel<>(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+//                    .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                    .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(MAPPER)
+                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                        .build(),
+                MAPPER
+        );
+
+        final var setup = AgentSetup.builder()
+                .mapper(MAPPER)
+                .model(model)
+                .modelSettings(ModelSettings.builder()
+                                       .temperature(0f)
+                                       .seed(0)
+                                       .parallelToolCalls(false)
+                                       .build())
+                .build();
+
+
+        final var topAgent = PlannerAgent.builder()
+                .setup(setup)
+                .extension(registry)
+                .build();
+        final var response = topAgent.executeAsync(AgentInput.<String>builder()
+                                                           .request("What is the sum of 3 and 6?")
+                                                           .build())
+                .join();
+        printAgentResponse(response);
+        assertTrue(response.getData().matches(".*9.*"));
+        ensureOutputGenerated(response);
+    }
+
+    @Test
+    @SneakyThrows
+    void testRealAgentRegistration(WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(4, "art.reg", getClass());
+
+        final var agentSource = new InMemoryAgentConfigurationSource();
+        final var okHttpClient = new OkHttpClient.Builder()
+                .callTimeout(Duration.ofSeconds(180))
+                .connectTimeout(Duration.ofSeconds(120))
+                .readTimeout(Duration.ofSeconds(180))
+                .writeTimeout(Duration.ofSeconds(120))
+                .build();
+        final var agentFactory = ConfiguredAgentFactory.builder()
+                .build();
+        final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
+                .agentSource(agentSource)
+                .agentFactory(agentFactory::createAgent)
+                .build();
+        final var model = new SimpleOpenAIModel<>(
+                "gpt-4o",
+                SimpleOpenAIAzure.builder()
+//                    .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                    .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .apiKey("BLAH")
+                        .apiVersion("2024-10-21")
+                        .objectMapper(MAPPER)
+                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                        .build(),
+                MAPPER
+        );
+
+        final var setup = AgentSetup.builder()
+                .mapper(MAPPER)
+                .model(model)
+                .modelSettings(ModelSettings.builder()
+                                       .temperature(0f)
+                                       .seed(0)
+                                       .parallelToolCalls(false)
+                                       .build())
+                .build();
+
+        final var mathAgentConfig = AgentConfiguration.builder()
+                .agentName("Math Agent")
+                .description("Provides simple math operations.")
+                .prompt("Respond with the answer for provided query.")
+                .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
+                .build();
         final var params = ServerParameters.builder("npx")
                 .args("-y", "@modelcontextprotocol/server-everything")
                 .build();
-        final var transport = new StdioClientTransport(params);
-
-        try (final var mcpClient = McpClient.sync(transport)
-                .build()) {
+        final var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(MAPPER));
+        try (final var mcpClient = McpClient.sync(transport).build()) {
             mcpClient.initialize();
-            final var agentFactory = ConfiguredAgentFactory.builder()
-                    .mcpToolboxFactory(toolBoxFactory)
-                    .build();
-            final var registry = AgentRegistry.<String, String, PlannerAgent>builder()
-                    .agentSource(agentSource)
-                    .agentFactory(agentFactory::createAgent)
-                    .build();
+            final var mathAgent = new MathAgent(mathAgentConfig, setup)
+                    .registerToolbox(new MCPToolBox("mcp", mcpClient, MAPPER, Set.of("add")));
 
-            // Let's create weather agent configuration
-
-            final var mathAgentConfig = AgentConfiguration.builder()
-                    .agentName("Math Agent")
-                    .description("Provides simple math operations.")
-                    .prompt("Respond with the answer for provided query.")
-                    .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
-                    .build();
-            log.info("Math agent id: {}",
-                     registry.configureAgent(mathAgentConfig)
-                             .map(AgentMetadata::getId)
-                             .orElseThrow());
-
-            final var model = new SimpleOpenAIModel<>(
-                    "gpt-4o",
-                    SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                            .baseUrl(wiremock.getHttpBaseUrl())
-                            .apiKey("BLAH")
-                            .apiVersion("2024-10-21")
-                            .objectMapper(MAPPER)
-                            .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                            .build(),
-                    MAPPER
-            );
-
-            final var setup = AgentSetup.builder()
-                    .mapper(MAPPER)
-                    .model(model)
-                    .modelSettings(ModelSettings.builder()
-                                           .temperature(0f)
-                                           .seed(0)
-                                           .parallelToolCalls(false)
-                                           .build())
-                    .build();
-
+            final var metadata = registry.configureAgent(mathAgent)
+                    .orElseThrow();
+            assertEquals("math_agent", metadata.getId());
             final var topAgent = PlannerAgent.builder()
                     .setup(setup)
                     .extension(registry)
@@ -559,6 +622,7 @@ class AgentRegistryTest {
         printAgentResponse(response);
         assertTrue(response.getData().matches(".*[sS]unny.*"));
         ensureOutputGenerated(response);
+        log.info("Model usage stats: {}", response.getUsage());
     }
 
     @Test
@@ -628,7 +692,7 @@ class AgentRegistryTest {
         final var weatherAgentConfiguration = AgentConfiguration.builder()
                 .agentName("Weather Agent")
                 .description("Provides the weather information for a given location. Planner must call me instead of "
-                        + "directly calling the weather tools.")
+                                     + "directly calling the weather tools.")
                 .prompt("Respond with the current weather for the given location.")
                 .inputSchema(schema(WeatherAgentInput.class))
                 .outputSchema(schema(WeatherAgentOutput.class))
@@ -667,11 +731,11 @@ class AgentRegistryTest {
                 .build()
                 .registerToolbox(HttpToolBox.builder()
                                          .upstream("weatherserver")
-                                       .httpToolSource(toolSource)
-                                       .httpClient(okHttpClient)
+                                         .httpToolSource(toolSource)
+                                         .httpClient(okHttpClient)
                                          .upstreamResolver(upstream -> wiremock.getHttpBaseUrl())
-                                       .mapper(MAPPER)
-                                       .build());
+                                         .mapper(MAPPER)
+                                         .build());
         final var response = topAgent.executeAsync(AgentInput.<String>builder()
                                                            .request("How is the weather in Bangalore?")
                                                            .build())
@@ -742,9 +806,10 @@ class AgentRegistryTest {
         final var params = ServerParameters.builder("npx")
                 .args("-y", "@modelcontextprotocol/server-everything")
                 .build();
-        final var transport = new StdioClientTransport(params);
+        final var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(MAPPER));
         final var mcpClient = McpClient.sync(transport)
                 .build();
+        mcpClient.initialize();
         return Stream.of(
                 Arguments.of("art.mcp", 5,
                              MCPToolBoxFactory.builder()
@@ -772,7 +837,7 @@ class AgentRegistryTest {
         return Stream.of(
                 Arguments.of("wmg",
                              2,
-                             " Call tool agent_registry_get_agent_metadata with wrong agent id. Fail on error."),
+                             " Call function agent_registry_get_agent_metadata with wrong agent id. Fail on error."),
                 Arguments.of("wmi", 2, " Call agent_registry_invoke_agent with wrong agent id. Fail on error.")
                         );
     }
@@ -795,6 +860,32 @@ class AgentRegistryTest {
                 Arguments.of("baex", 4, errorAgent));
     }
 
+
+    private static DefaultChatCompletionServiceFactory multiModelProviderFactory(
+            OkHttpClient okHttpClient,
+            WireMockRuntimeInfo wiremock) {
+        return new DefaultChatCompletionServiceFactory()
+                .registerDefaultProvider(SimpleOpenAIAzure.builder()
+//                                         .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
+//                                         .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                                         .baseUrl(wiremock.getHttpBaseUrl())
+                                         .apiKey("BLAH")
+                                         .apiVersion("2024-10-21")
+                                         .objectMapper(MAPPER)
+                                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                                         .build())
+                .registerProvider("gpt-5",
+                                  SimpleOpenAIAzure.builder()
+//                                         .baseUrl(EnvLoader.readEnv("AZURE_GPT5_ENDPOINT"))
+//                                          .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
+                                            .baseUrl(wiremock.getHttpBaseUrl())
+                                            .apiKey("BLAH")
+                                          .apiVersion("2024-10-21")
+                                          .objectMapper(MAPPER)
+                                          .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                                          .build());
+    }
+
     private static void printAgentResponse(AgentOutput<String> response) throws JsonProcessingException {
         log.info("Agent response: {}", MAPPER.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(response.getData()));
@@ -814,6 +905,13 @@ class AgentRegistryTest {
                 .capability(AgentCapabilities.remoteHttpCalls(Map.of("weatherserver",
                                                                      Set.of("get_weather_for_location"))))
                 .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
+                .modelConfiguration(ModelConfiguration.builder()
+                                            .name("gpt-5")
+                                            .settings(ModelSettings.builder()
+                                                              .seed(42)
+                                                              .temperature(1.0f)
+                                                              .build())
+                                            .build())
                 .build();
         log.info("Summarizing agent id: {}",
                  registry.configureAgent(summarizerAgentConfig)
