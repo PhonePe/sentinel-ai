@@ -211,7 +211,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 addToolChoice(toolsForExecution, builder, outputGenerationMode);
                 raiseMessageSentEvent(context, allMessages);
                 final var stopwatch = Stopwatch.createStarted();
-                stats.safeUpdate(ModelUsageStats::incrementRequestsForRunUnsafe);
+                stats.incrementRequestsForRun();
 
                 final var request = builder.build();
                 logModelRequest(request);
@@ -403,7 +403,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }
                 addToolChoice(toolsForExecution, builder, outputGenerationMode);
                 final var stopwatch = Stopwatch.createStarted();
-                stats.safeUpdate(ModelUsageStats::incrementRequestsForRunUnsafe);
+                stats.incrementRequestsForRun();
 
                 final var request = builder.build();
                 logModelRequest(request);
@@ -903,23 +903,19 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
     public static void mergeUsage(ModelUsageStats stats, Usage usage) {
         if (null != usage) {
-            stats.safeUpdate(obj -> {
-                obj.incrementRequestTokensUnsafe(safeGetInt(usage::getPromptTokens))
-                        .incrementResponseTokensUnsafe(safeGetInt(usage::getCompletionTokens))
-                        .incrementTotalTokensUnsafe(safeGetInt(usage::getTotalTokens));
-                final var promptTokensDetails = usage.getPromptTokensDetails();
-                if (promptTokensDetails != null) {
-                    obj.incrementRequestAudioTokensUnsafe(safeGetInt(promptTokensDetails::getAudioTokens))
-                            .incrementRequestCachedTokensUnsafe(safeGetInt(promptTokensDetails::getCachedTokens));
-                }
-                final var completionTokensDetails = usage.getCompletionTokensDetails();
-                if (completionTokensDetails != null) {
-                    obj.incrementResponseAudioTokensUnsafe(safeGetInt(completionTokensDetails::getAudioTokens))
-                            .incrementResponseReasoningTokensUnsafe(safeGetInt(completionTokensDetails::getReasoningTokens));
-                }
-                return obj;
-            });
-
+            stats.incrementRequestTokens(safeGetInt(usage::getPromptTokens))
+                    .incrementResponseTokens(safeGetInt(usage::getCompletionTokens))
+                    .incrementTotalTokens(safeGetInt(usage::getTotalTokens));
+            final var promptTokensDetails = usage.getPromptTokensDetails();
+            if (promptTokensDetails != null) {
+                stats.incrementRequestAudioTokens(safeGetInt(promptTokensDetails::getAudioTokens))
+                        .incrementRequestCachedTokens(safeGetInt(promptTokensDetails::getCachedTokens));
+            }
+            final var completionTokensDetails = usage.getCompletionTokensDetails();
+            if (completionTokensDetails != null) {
+                stats.incrementResponseAudioTokens(safeGetInt(completionTokensDetails::getAudioTokens))
+                        .incrementResponseReasoningTokens(safeGetInt(completionTokensDetails::getReasoningTokens));
+            }
         }
     }
 
@@ -1065,7 +1061,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     agentMessages.getNewMessages().add(toolCallMessage);
                     agentMessages.getAllMessages().add(toolCallResponse);
                     agentMessages.getNewMessages().add(toolCallResponse);
-                    stats.safeUpdate(ModelUsageStats::incrementToolCallsForRunUnsafe);
+                    stats.incrementToolCallsForRun();
                 });
     }
 

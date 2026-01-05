@@ -15,18 +15,18 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeWithNullDoesNotChangeState() {
         var base = new ModelUsageStats()
-                .incrementRequestsForRunUnsafe(5)
-                .incrementToolCallsForRunUnsafe(2)
-                .incrementRequestTokensUnsafe(30)
-                .incrementResponseTokensUnsafe(40)
-                .incrementTotalTokensUnsafe(70)
-                .addDetailsUnsafe(Map.of("a", 1, "b", 2))
-                .incrementRequestCachedTokensUnsafe(7)
-                .incrementRequestAudioTokensUnsafe(3)
-                .incrementResponseReasoningTokensUnsafe(4)
-                .incrementResponseAcceptedPredictionTokensUnsafe(5)
-                .incrementResponseRejectedPredictionTokensUnsafe(6)
-                .incrementResponseAudioTokensUnsafe(2);
+                .incrementRequestsForRun(5)
+                .incrementToolCallsForRun(2)
+                .incrementRequestTokens(30)
+                .incrementResponseTokens(40)
+                .incrementTotalTokens(70)
+                .addDetails(Map.of("a", 1, "b", 2))
+                .incrementRequestCachedTokens(7)
+                .incrementRequestAudioTokens(3)
+                .incrementResponseReasoningTokens(4)
+                .incrementResponseAcceptedPredictionTokens(5)
+                .incrementResponseRejectedPredictionTokens(6)
+                .incrementResponseAudioTokens(2);
 
         var detailsBefore = new HashMap<>(base.getDetails());
         var ret = base.merge(null);
@@ -51,18 +51,18 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeWithDefaultOtherDoesNotChangeState() {
         var base = new ModelUsageStats()
-                .incrementRequestsForRunUnsafe(1)
-                .incrementToolCallsForRunUnsafe(1)
-                .incrementRequestTokensUnsafe(10)
-                .incrementResponseTokensUnsafe(20)
-                .incrementTotalTokensUnsafe(30)
-                .addDetailsUnsafe(Map.of("k", 100))
-                .incrementRequestCachedTokensUnsafe(2)
-                .incrementRequestAudioTokensUnsafe(3)
-                .incrementResponseReasoningTokensUnsafe(4)
-                .incrementResponseAcceptedPredictionTokensUnsafe(5)
-                .incrementResponseRejectedPredictionTokensUnsafe(6)
-                .incrementResponseAudioTokensUnsafe(7);
+                .incrementRequestsForRun(1)
+                .incrementToolCallsForRun(1)
+                .incrementRequestTokens(10)
+                .incrementResponseTokens(20)
+                .incrementTotalTokens(30)
+                .addDetails(Map.of("k", 100))
+                .incrementRequestCachedTokens(2)
+                .incrementRequestAudioTokens(3)
+                .incrementResponseReasoningTokens(4)
+                .incrementResponseAcceptedPredictionTokens(5)
+                .incrementResponseRejectedPredictionTokens(6)
+                .incrementResponseAudioTokens(7);
 
         var other = new ModelUsageStats(); // all zeros, details null
 
@@ -91,32 +91,32 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeAccumulatesAllScalarAndNestedFields() {
         var base = new ModelUsageStats()
-                .incrementRequestsForRunUnsafe(1)
-                .incrementToolCallsForRunUnsafe(2)
-                .incrementRequestTokensUnsafe(3)
-                .incrementResponseTokensUnsafe(4)
-                .incrementTotalTokensUnsafe(5)
-                .addDetailsUnsafe(Map.of("a", 1, "b", 2))
-                .incrementRequestCachedTokensUnsafe(6)
-                .incrementRequestAudioTokensUnsafe(7)
-                .incrementResponseReasoningTokensUnsafe(8)
-                .incrementResponseAcceptedPredictionTokensUnsafe(9)
-                .incrementResponseRejectedPredictionTokensUnsafe(10)
-                .incrementResponseAudioTokensUnsafe(11);
+                .incrementRequestsForRun(1)
+                .incrementToolCallsForRun(2)
+                .incrementRequestTokens(3)
+                .incrementResponseTokens(4)
+                .incrementTotalTokens(5)
+                .addDetails(Map.of("a", 1, "b", 2))
+                .incrementRequestCachedTokens(6)
+                .incrementRequestAudioTokens(7)
+                .incrementResponseReasoningTokens(8)
+                .incrementResponseAcceptedPredictionTokens(9)
+                .incrementResponseRejectedPredictionTokens(10)
+                .incrementResponseAudioTokens(11);
 
         var other = new ModelUsageStats()
-                .incrementRequestsForRunUnsafe(10)
-                .incrementToolCallsForRunUnsafe(20)
-                .incrementRequestTokensUnsafe(30)
-                .incrementResponseTokensUnsafe(40)
-                .incrementTotalTokensUnsafe(50)
-                .addDetailsUnsafe(Map.of("b", 200, "c", 3))
-                .incrementRequestCachedTokensUnsafe(60)
-                .incrementRequestAudioTokensUnsafe(70)
-                .incrementResponseReasoningTokensUnsafe(80)
-                .incrementResponseAcceptedPredictionTokensUnsafe(90)
-                .incrementResponseRejectedPredictionTokensUnsafe(100)
-                .incrementResponseAudioTokensUnsafe(110);
+                .incrementRequestsForRun(10)
+                .incrementToolCallsForRun(20)
+                .incrementRequestTokens(30)
+                .incrementResponseTokens(40)
+                .incrementTotalTokens(50)
+                .addDetails(Map.of("b", 200, "c", 3))
+                .incrementRequestCachedTokens(60)
+                .incrementRequestAudioTokens(70)
+                .incrementResponseReasoningTokens(80)
+                .incrementResponseAcceptedPredictionTokens(90)
+                .incrementResponseRejectedPredictionTokens(100)
+                .incrementResponseAudioTokens(110);
 
         final var outputMap = Map.of("a", 1, "b", 200, "c", 3);
 
@@ -145,7 +145,7 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeInitializesDetailsWhenNull() {
         var base = new ModelUsageStats(); // details is null initially
-        var other = new ModelUsageStats().addDetailsUnsafe(Map.of("x", 1, "y", 2));
+        var other = new ModelUsageStats().addDetails(Map.of("x", 1, "y", 2));
 
         assertTrue(base.getDetails().isEmpty());
         base.merge(other);
@@ -161,18 +161,18 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeDoesNotMutateOther() {
         var other = new ModelUsageStats()
-                .incrementRequestsForRunUnsafe(3)
-                .incrementToolCallsForRunUnsafe(4)
-                .incrementRequestTokensUnsafe(50)
-                .incrementResponseTokensUnsafe(60)
-                .incrementTotalTokensUnsafe(110)
-                .addDetailsUnsafe(Map.of("m", 7, "n", 8))
-                .incrementRequestCachedTokensUnsafe(9)
-                .incrementRequestAudioTokensUnsafe(10)
-                .incrementResponseReasoningTokensUnsafe(11)
-                .incrementResponseAcceptedPredictionTokensUnsafe(12)
-                .incrementResponseRejectedPredictionTokensUnsafe(13)
-                .incrementResponseAudioTokensUnsafe(14);
+                .incrementRequestsForRun(3)
+                .incrementToolCallsForRun(4)
+                .incrementRequestTokens(50)
+                .incrementResponseTokens(60)
+                .incrementTotalTokens(110)
+                .addDetails(Map.of("m", 7, "n", 8))
+                .incrementRequestCachedTokens(9)
+                .incrementRequestAudioTokens(10)
+                .incrementResponseReasoningTokens(11)
+                .incrementResponseAcceptedPredictionTokens(12)
+                .incrementResponseRejectedPredictionTokens(13)
+                .incrementResponseAudioTokens(14);
 
         var otherSnapshot = snapshot(other);
 
@@ -201,8 +201,8 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeReturnsThisAndSupportsChaining() {
         var base = new ModelUsageStats();
-        var a = new ModelUsageStats().incrementRequestsForRunUnsafe(1);
-        var b = new ModelUsageStats().incrementRequestsForRunUnsafe(2);
+        var a = new ModelUsageStats().incrementRequestsForRun(1);
+        var b = new ModelUsageStats().incrementRequestsForRun(2);
 
         var ret = base.merge(a).merge(b);
 
@@ -227,19 +227,18 @@ class ModelUsageStatsMergeTest {
             pool.submit(() -> {
                 try {
                     var other = new ModelUsageStats()
-                            .safeUpdate(obj -> obj
-                                    .incrementRequestsForRunUnsafe(1)
-                                    .incrementToolCallsForRunUnsafe(2)
-                                    .incrementRequestTokensUnsafe(3)
-                                    .incrementResponseTokensUnsafe(4)
-                                    .incrementTotalTokensUnsafe(7)
-                                    .addDetailsUnsafe(Map.of("k" + index, index))
-                                    .incrementRequestCachedTokensUnsafe(5)
-                                    .incrementRequestAudioTokensUnsafe(6)
-                                    .incrementResponseReasoningTokensUnsafe(8)
-                                    .incrementResponseAcceptedPredictionTokensUnsafe(9)
-                                    .incrementResponseRejectedPredictionTokensUnsafe(10)
-                                    .incrementResponseAudioTokensUnsafe(11));
+                            .incrementRequestsForRun(1)
+                            .incrementToolCallsForRun(2)
+                            .incrementRequestTokens(3)
+                            .incrementResponseTokens(4)
+                            .incrementTotalTokens(7)
+                            .addDetails(Map.of("k" + index, index))
+                            .incrementRequestCachedTokens(5)
+                            .incrementRequestAudioTokens(6)
+                            .incrementResponseReasoningTokens(8)
+                            .incrementResponseAcceptedPredictionTokens(9)
+                            .incrementResponseRejectedPredictionTokens(10)
+                            .incrementResponseAudioTokens(11);
 
                     start.await();
                     base.merge(other);
@@ -282,31 +281,31 @@ class ModelUsageStatsMergeTest {
     @Test
     void mergeSupportsNegativeValuesAsAdditiveBehavior() {
         var base = new ModelUsageStats()
-                .incrementRequestsForRunUnsafe(10)
-                .incrementToolCallsForRunUnsafe(10)
-                .incrementRequestTokensUnsafe(100)
-                .incrementResponseTokensUnsafe(100)
-                .incrementTotalTokensUnsafe(200)
-                .addDetailsUnsafe(Map.of("x", 1))
-                .incrementRequestCachedTokensUnsafe(10)
-                .incrementRequestAudioTokensUnsafe(10)
-                .incrementResponseReasoningTokensUnsafe(10)
-                .incrementResponseAcceptedPredictionTokensUnsafe(10)
-                .incrementResponseRejectedPredictionTokensUnsafe(10)
-                .incrementResponseAudioTokensUnsafe(10);
+                .incrementRequestsForRun(10)
+                .incrementToolCallsForRun(10)
+                .incrementRequestTokens(100)
+                .incrementResponseTokens(100)
+                .incrementTotalTokens(200)
+                .addDetails(Map.of("x", 1))
+                .incrementRequestCachedTokens(10)
+                .incrementRequestAudioTokens(10)
+                .incrementResponseReasoningTokens(10)
+                .incrementResponseAcceptedPredictionTokens(10)
+                .incrementResponseRejectedPredictionTokens(10)
+                .incrementResponseAudioTokens(10);
 
         var other = new ModelUsageStats()
-                .incrementRequestsForRunUnsafe(-3)
-                .incrementToolCallsForRunUnsafe(-2)
-                .incrementRequestTokensUnsafe(-10)
-                .incrementResponseTokensUnsafe(-20)
-                .incrementTotalTokensUnsafe(-30)
-                .incrementRequestCachedTokensUnsafe(-4)
-                .incrementRequestAudioTokensUnsafe(-5)
-                .incrementResponseReasoningTokensUnsafe(-6)
-                .incrementResponseAcceptedPredictionTokensUnsafe(-7)
-                .incrementResponseRejectedPredictionTokensUnsafe(-8)
-                .incrementResponseAudioTokensUnsafe(-9);
+                .incrementRequestsForRun(-3)
+                .incrementToolCallsForRun(-2)
+                .incrementRequestTokens(-10)
+                .incrementResponseTokens(-20)
+                .incrementTotalTokens(-30)
+                .incrementRequestCachedTokens(-4)
+                .incrementRequestAudioTokens(-5)
+                .incrementResponseReasoningTokens(-6)
+                .incrementResponseAcceptedPredictionTokens(-7)
+                .incrementResponseRejectedPredictionTokens(-8)
+                .incrementResponseAudioTokens(-9);
 
         base.merge(other);
 
@@ -338,7 +337,7 @@ class ModelUsageStatsMergeTest {
         snap.responseAcceptedPredictionTokens = s.getResponseTokenDetails().getAcceptedPredictionTokens();
         snap.responseRejectedPredictionTokens = s.getResponseTokenDetails().getRejectedPredictionTokens();
         snap.responseAudioTokens = s.getResponseTokenDetails().getAudioTokens();
-        snap.details = s.getDetails() == null ? null : new HashMap<>(s.getDetails());
+        snap.details = s.getDetails();
         return snap;
     }
 
