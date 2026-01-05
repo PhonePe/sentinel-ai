@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Usage Notes:
  *  -
  */
-@Getter
 @NoArgsConstructor
 @ToString
 @EqualsAndHashCode
@@ -63,9 +62,11 @@ public class ModelUsageStats {
     private final AtomicInteger requestTokens = new AtomicInteger(0);
     private final AtomicInteger responseTokens = new AtomicInteger(0);
     private final AtomicInteger totalTokens = new AtomicInteger(0);
-    private final PromptTokenDetails requestTokenDetails = new PromptTokenDetails();
-    private final ResponseTokenDetails responseTokenDetails = new ResponseTokenDetails();
     private final Map<String, Integer> details = new ConcurrentHashMap<>();
+    @Getter
+    private final PromptTokenDetails requestTokenDetails = new PromptTokenDetails();
+    @Getter
+    private final ResponseTokenDetails responseTokenDetails = new ResponseTokenDetails();
 
     public int getRequestsForRun() {
         return requestsForRun.get();
