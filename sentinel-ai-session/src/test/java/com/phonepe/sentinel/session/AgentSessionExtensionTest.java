@@ -29,7 +29,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -147,9 +146,6 @@ class AgentSessionExtensionTest {
                                .build())
                 .extensions(List.of(AgentSessionExtension.<UserInput, String, SimpleAgent>builder()
                                             .sessionStore(new InMemorySessionStore())
-                                            .setup(AgentSessionExtensionSetup.builder()
-                                                           .features(Set.of(AgentSessionExtensionFeature.SUMMARY))
-                                                           .build())
                                             .mapper(objectMapper)
                                             .build()))
                 .build()
@@ -213,9 +209,6 @@ class AgentSessionExtensionTest {
                                                       .build())
                                .build())
                 .extensions(List.of(AgentSessionExtension.<UserInput, String, SimpleAgent>builder()
-//                                            .setup(AgentSessionExtensionSetup.builder()
-//                                                           .features(Set.of(AgentSessionExtensionFeature.HISTORY))
-//                                                           .build())
                                             .mapper(objectMapper)
                                             .sessionStore(sessionStore)
                                             .build()

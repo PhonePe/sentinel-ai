@@ -141,7 +141,7 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                                .build(),
                                        AgentSessionExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                                .setup(AgentSessionExtensionSetup.builder()
-                                                              .maxHistoryMessages(6)
+                                                              .historicalMessagesCount(6)
                                                               .build())
                                                .sessionStore(sessionStorage)
                                                .build());

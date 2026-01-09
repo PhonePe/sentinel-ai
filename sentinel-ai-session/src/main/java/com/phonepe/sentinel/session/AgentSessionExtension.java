@@ -46,14 +46,11 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     @Builder
     public AgentSessionExtension(
             ObjectMapper mapper,
-            SessionStore sessionStore,
+            @NonNull SessionStore sessionStore,
             AgentSessionExtensionSetup setup,
             List<BiFunction<AgentRunContext<R>, List<AgentMessage>, List<AgentMessage>>> historyModifiers) {
         this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
         this.setup = Objects.requireNonNullElse(setup, AgentSessionExtensionSetup.DEFAULT);
-        if (isSummaryEnabled() || isHistoryEnabled()) {
-            Objects.requireNonNull(sessionStore, "SessionStore cannot be null when SUMMARY mode is enabled");
-        }
         this.sessionStore = sessionStore;
         this.historyModifiers = new ArrayList<>(Objects.requireNonNullElseGet(historyModifiers, List::of));
     }
@@ -136,13 +133,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
     @Override
     public List<AgentMessage> messages(AgentRunContext<R> context, A agent, R request) {
-        if (!isHistoryEnabled()) {
-            return List.of();
-        }
         final var sessionId = AgentUtils.sessionId(context);
         if (!Strings.isNullOrEmpty(sessionId)) {
             final var agentMessages = sessionStore.readMessages(sessionId,
-                                                                setup.getMaxHistoryMessages(),
+                                                                setup.getHistoricalMessagesCount(),
                                                                 true);
             if (agentMessages.isEmpty()) {
                 log.info("No messages found for session {}", sessionId);
@@ -263,7 +257,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     }
 
     /**
-     * Reads the last {@link AgentSessionExtensionSetup#getSummarizationThreshold()} messages and summarizes them.
+     * Reads the last {@link AgentSessionExtensionSetup#getMaxMessagesToSummarize()} messages and summarizes them.
      * Updates session with the generated summary.
      *
      * @param data Completed Data
@@ -312,7 +306,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                         "messages. Messages JSON: %s")
                         .formatted(setup.getMaxSummaryLength(),
                                    mapper.writeValueAsString(sessionStore.readMessages(sessionId,
-                                                                                       setup.getSummarizationThreshold(),
+                                                                                       setup.getMaxMessagesToSummarize(),
                                                                                        false))),
                 LocalDateTime.now()));
         final var runId = "message-summarization-" + UUID.randomUUID();
@@ -373,9 +367,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     }
 
     private void saveMessages(AgentRunContext<R> context, List<AgentMessage> messages) {
-        if (!isHistoryEnabled()) {
-            return;
-        }
         final var sessionId = AgentUtils.sessionId(context);
         if (Strings.isNullOrEmpty(sessionId)) {
             log.warn("No session id found in context. History storage will be skipped");
@@ -401,10 +392,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     }
 
     private boolean isSummaryEnabled() {
-        return this.setup.getFeatures().contains(AgentSessionExtensionFeature.SUMMARY);
+        return !this.setup.isDisableSummarization();
     }
 
-    private boolean isHistoryEnabled() {
-        return this.setup.getFeatures().contains(AgentSessionExtensionFeature.HISTORY);
-    }
 }
