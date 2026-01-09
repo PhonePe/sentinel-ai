@@ -20,8 +20,11 @@ public class Text extends AgentResponse {
 
     @Builder
     @Jacksonized
-    public Text(@NonNull String content) {
-        super(AgentMessageType.TEXT_RESPONSE_MESSAGE);
+    public Text(
+            String sessionId,
+            String runId,
+            @NonNull String content) {
+        super(AgentMessageType.TEXT_RESPONSE_MESSAGE, sessionId, runId);
         this.content = content;
     }
 

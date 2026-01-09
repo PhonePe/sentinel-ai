@@ -1,35 +1,36 @@
 {
-  "id" : "chatcmpl-BvemM4k6xvbSIdLXWqnihbywOYnil",
+  "id" : "chatcmpl-Cw3EYCDqHWK1DzmfCsSspuyKJgeMf",
   "object" : "chat.completion",
-  "created" : 1753081150,
+  "created" : 1767951490,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_efad92c60b",
+  "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_A1OJIGaK2tUwuIxdOFSSC6uq",
+        "id" : "call_wYQDBNt2j3XsBkbsNQk09d7x",
         "type" : "function",
         "function" : {
-          "name" : "agent_memory_extension_find_memories",
-          "arguments" : "{\"query\":\"sunny in bangalore\"}"
+          "name" : "simple_agent_get_salutation",
+          "arguments" : "{\"params\":{\"name\":\"Santanu\"}}"
         }
-      } ]
+      } ],
+      "annotations" : [ ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1376,
-    "completion_tokens" : 23,
-    "total_tokens" : 1399,
+    "prompt_tokens" : 1265,
+    "completion_tokens" : 21,
+    "total_tokens" : 1286,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 0
+      "cached_tokens" : 1152
     }
   }
 } 

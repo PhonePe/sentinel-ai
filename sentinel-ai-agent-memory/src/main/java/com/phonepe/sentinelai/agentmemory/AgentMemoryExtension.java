@@ -239,20 +239,29 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
         // Replace the system prompt with the extraction task prompt
         final var messages = new ArrayList<AgentMessage>();
         //Add system prompt to the messages
+        final var context = data.getContext();
+        final var sessionId = AgentUtils.sessionId(context);
         messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
-                objectMapper.writeValueAsString(
-                        extractionTaskPrompt()), false, null));
-        messages.add(new UserPrompt("You must extract memory from the following conversation between user and agent :" +
-                                            " " + objectMapper.writeValueAsString(
-                Map.of("conversation", objectMapper.writeValueAsString(data.getOutput().getNewMessages())
-                      )),
-                                    LocalDateTime.now()));
+                sessionId,
+                context.getRunId(),
+                objectMapper.writeValueAsString(extractionTaskPrompt()),
+                false,
+                null));
+        messages.add(new UserPrompt(
+                sessionId,
+                context.getRunId(),
+                "You must extract memory from the following conversation between user and agent :" +
+                        " " + objectMapper.writeValueAsString(
+                        Map.of("conversation", objectMapper.writeValueAsString(data.getOutput().getNewMessages())
+                              )),
+                LocalDateTime.now()));
+        final var runId = "mem-extraction-" + UUID.randomUUID();
         final var modelRunContext = new ModelRunContext(agent.name(),
-                                                        "mem-extraction-" + UUID.randomUUID(),
-                                                        AgentUtils.sessionId(data.getContext()),
-                                                        AgentUtils.userId(data.getContext()),
+                                                        runId,
+                                                        sessionId,
+                                                        AgentUtils.userId(context),
                                                         data.getAgentSetup(),
-                                                        data.getContext().getModelUsageStats(),
+                                                        context.getModelUsageStats(),
                                                         ProcessingMode.DIRECT);
         final var output = data.getAgentSetup()
                 .getModel()
@@ -260,7 +269,9 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                          List.of(memorySchema()),
                          messages,
                          Map.of(),
-                         new NonContextualDefaultExternalToolRunner(objectMapper),
+                         new NonContextualDefaultExternalToolRunner(sessionId,
+                                                                    runId,
+                                                                    objectMapper),
                          new NeverTerminateEarlyStrategy(),
                          List.of())
                 .join();
@@ -274,7 +285,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
             }
             else {
                 log.debug("Extracted memory output: {}", extractedMemoryData);
-                consume(extractedMemoryData, data.getAgent());
+                consumeAsync(messages, extractedMemoryData, data.getAgent());
             }
         }
         log.info("Model usage stats for memory extraction run: {}", output.getUsage());

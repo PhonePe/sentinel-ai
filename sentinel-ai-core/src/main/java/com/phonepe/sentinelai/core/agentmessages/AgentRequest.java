@@ -12,8 +12,10 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public abstract class AgentRequest extends AgentMessage {
 
-    protected AgentRequest(AgentMessageType requestType) {
-        super(requestType);
+    protected AgentRequest(AgentMessageType requestType,
+                           String sessionId,
+                           String runId) {
+        super(requestType, sessionId, runId);
     }
 
     @Override

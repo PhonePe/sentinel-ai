@@ -1,6 +1,7 @@
 package com.phonepe.sentinelai.storage.session;
 
 import com.phonepe.sentinel.session.SessionSummary;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.storage.ESClient;
 import com.phonepe.sentinelai.storage.ESIntegrationTestBase;
 import com.phonepe.sentinelai.storage.IndexSettings;
@@ -27,7 +28,8 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             final var sessionStore = ESSessionStore.builder()
                     .client(client)
                     .indexPrefix("test")
-                    .indexSettings(IndexSettings.DEFAULT)
+                    .sessionIndexSettings(IndexSettings.DEFAULT)
+                    .messageIndexSettings(IndexSettings.DEFAULT)
                     .build();
 
             // Test saving a session
@@ -36,7 +38,8 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             final var sessionSummary = SessionSummary.builder()
                     .sessionId(sessionId)
                     .summary("Test Summary")
-                    .topics(List.of("topic1", "topic2"))
+                    .keywords(List.of("topic1", "topic2"))
+                    .updatedAt(AgentUtils.epochMicro())
                     .build();
 
             final var savedSession = sessionStore.saveSession(agentName, sessionSummary);
@@ -58,7 +61,8 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             final var updatedSessionSummary = SessionSummary.builder()
                     .sessionId(sessionId)
                     .summary("Updated Summary")
-                    .topics(List.of("topic1", "topic2"))
+                    .keywords(List.of("topic1", "topic2"))
+                    .updatedAt(AgentUtils.epochMicro())
                     .build();
             //Assertions
             final var updatedSession = sessionStore.saveSession(agentName, updatedSessionSummary);
@@ -68,10 +72,11 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             //Test scrolling by inserting and reading 100 documents
             final var savedIds = IntStream.rangeClosed(1, 100)
                     .mapToObj(i -> sessionStore.saveSession(agentName, SessionSummary.builder()
-                                                                    .sessionId("S-" + i)
-                                                                    .summary("Summary " + i)
-                                                                    .topics(List.of())
-                                                                    .build())
+                                    .sessionId("S-" + i)
+                                    .summary("Summary " + i)
+                                    .keywords(List.of())
+                                    .updatedAt(AgentUtils.epochMicro())
+                                    .build())
                             .map(SessionSummary::getSessionId)
                             .orElse(null))
                     .filter(Objects::nonNull)
