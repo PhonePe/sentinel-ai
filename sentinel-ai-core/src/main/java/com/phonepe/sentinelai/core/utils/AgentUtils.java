@@ -8,7 +8,9 @@ import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import lombok.experimental.UtilityClass;
 
+import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -104,5 +106,16 @@ public class AgentUtils {
             return mapper.apply(obj);
         }
         return null;
+    }
+
+    public static long epochMicro() {
+        final var now = Instant.now();
+        return now.getEpochSecond() * 1_000_000 + now.getNano() / 1_000;
+    }
+
+    public static <T> List<T> lastN(List<T> list, int count) {
+        final var fromIndex = Math.max(0, list.size() - count);
+        final var toIndex = fromIndex + Math.min(count, list.size());
+        return list.subList(fromIndex, toIndex);
     }
 }

@@ -1,28 +1,30 @@
 package com.phonepe.sentinelai.storage.session;
 
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.FieldNameConstants;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
- * Document model for storing {@link com.phonepe.sentinelai.agentmemory.AgentMemory} in ElasticSearch
+ * Representation of an agent message for storage in ElasticSearch
  */
 @Value
 @FieldNameConstants
 @Builder
-public class ESSessionDocument {
+public class ESMessageDocument {
+    AgentMessageType messageType;
+
     String sessionId;
 
-    String agentName;
+    String runId;
 
-    String summary;
+    String messageId;
 
-    List<String> topics;
+    long timestamp;
 
-    long updatedAtMicro;
+    String content;
 
     LocalDateTime createdAt;
 

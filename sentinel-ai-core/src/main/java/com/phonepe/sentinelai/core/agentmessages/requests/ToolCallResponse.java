@@ -46,12 +46,14 @@ public class ToolCallResponse extends AgentRequest {
     @Builder
     @Jacksonized
     public ToolCallResponse(
+            String sessionId,
+            String runId,
             @NonNull String toolCallId,
             @NonNull String toolName,
             ErrorType errorType,
             @NonNull String response,
             LocalDateTime sentAt) {
-        super(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE);
+        super(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE, sessionId, runId);
         this.toolCallId = toolCallId;
         this.toolName = toolName;
         this.errorType = errorType;

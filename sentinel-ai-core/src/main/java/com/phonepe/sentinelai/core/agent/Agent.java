@@ -39,10 +39,10 @@ import com.phonepe.sentinelai.core.utils.ToolUtils;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import io.appform.signals.signals.ConsumingFireForgetSignal;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.Value;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -90,8 +90,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private record ModelOutputProcessingContext<R>(
             AgentRunContext<R> context,
             AgentSetup agentSetup,
-            List<AgentMessage> messages
-    ) {
+            List<AgentMessage> messages) {
     }
 
     private final Class<T> outputType;
@@ -154,7 +153,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         this.toolRunApprovalSeeker = Objects.requireNonNullElseGet(toolRunApprovalSeeker, ApproveAllToolRuns::new);
         this.outputValidator = Objects.requireNonNullElseGet(outputValidator, DefaultOutputValidator::new);
         this.errorHandler = Objects.requireNonNullElseGet(errorHandler, DefaultErrorHandler::new);
-        this.earlyTerminationStrategy = Objects.requireNonNullElseGet(earlyTerminationStrategy, NeverTerminateEarlyStrategy::new);
+        this.earlyTerminationStrategy = Objects.requireNonNullElseGet(earlyTerminationStrategy,
+                                                                      NeverTerminateEarlyStrategy::new);
 
         xmlMapper.registerModule(new JavaTimeModule());
         xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
@@ -234,17 +234,21 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     /**
      * Register agent message pre-processor. This is thread safe and can be called at runtime.
+     *
      * @param agentMessagesPreProcessor processor instance
      * @return this
      */
     public A registerAgentMessagesPreProcessor(AgentMessagesPreProcessor agentMessagesPreProcessor) {
         this.agentMessagesPreProcessors.add(agentMessagesPreProcessor);
-        log.debug("Registering messages pre-processor: {} for agent: {}", agentMessagesPreProcessor.getClass().getSimpleName(), name());
+        log.debug("Registering messages pre-processor: {} for agent: {}",
+                  agentMessagesPreProcessor.getClass().getSimpleName(),
+                  name());
         return self;
     }
 
     /**
      * Register list of agent message pre-processor. This is thread safe and can be called at runtime.
+     *
      * @param agentMessagesPreProcessors processor instances
      * @return this
      */
@@ -295,11 +299,18 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                        SentinelError.error(ErrorType.SERIALIZATION_ERROR,
                                                                                            e)));
         }
-        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(finalSystemPrompt,
-                                                                                         false,
-                                                                                         null));
-        messages.add(new UserPrompt(toXmlContent(inputRequest), LocalDateTime.now()));
+        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
+                AgentUtils.sessionId(context),
+                runId,
+                finalSystemPrompt,
+                false,
+                null));
         messages.addAll(extensionMessages(inputRequest, context));
+        messages.add(new UserPrompt(
+                AgentUtils.sessionId(context),
+                context.getRunId(),
+                toXmlContent(inputRequest),
+                LocalDateTime.now()));
         final var processingMode = ProcessingMode.DIRECT;
         final var modelRunContext = new ModelRunContext(name(),
                                                         runId,
@@ -447,8 +458,16 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                            e)));
         }
         messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
-                finalSystemPrompt, false, null));
-        messages.add(new UserPrompt(toXmlContent(request), LocalDateTime.now()));
+                AgentUtils.sessionId(context),
+                runId,
+                finalSystemPrompt,
+                false,
+                null));
+        messages.add(new UserPrompt(
+                AgentUtils.sessionId(context),
+                context.getRunId(),
+                toXmlContent(request),
+                LocalDateTime.now()));
         final var modelRunContext = new ModelRunContext(name(),
                                                         runId,
                                                         AgentUtils.sessionId(context),
@@ -531,7 +550,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             final var translatedData = translateData(agentOutputData, mergedAgentSetup);
             final var validationOutput = outputValidator.validate(context, translatedData);
             if (validationOutput.isSuccessful()) {
-                processExtensionData(data);
+                processExtensionData(context, messages, data);
                 return AgentOutput.success(translatedData,
                                            modelOutput.getNewMessages(),
                                            modelOutput.getAllMessages(),
@@ -542,11 +561,14 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                   .stream()
                                   .map(OutputValidationResults.ValidationFailure::getMessage)
                                   .toList());
-            messages.add(new UserPrompt(toXmlContent(
-                    new ValidationErrorFixPrompt(validationErrors,
-                                                 mergedAgentSetup.getMapper()
-                                                         .writeValueAsString(agentOutputData))),
-                                        LocalDateTime.now()));
+            messages.add(new UserPrompt(
+                    AgentUtils.sessionId(context),
+                    context.getRunId(),
+                    toXmlContent(
+                            new ValidationErrorFixPrompt(validationErrors,
+                                                         mergedAgentSetup.getMapper()
+                                                                 .writeValueAsString(agentOutputData))),
+                    LocalDateTime.now()));
             return AgentOutput.error(modelOutput.getNewMessages(),
                                      modelOutput.getNewMessages(),
                                      modelOutput.getUsage(),
@@ -588,23 +610,26 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                    modelOutput.getUsage());
     }
 
-    private void processExtensionData(JsonNode data) {
+    private void processExtensionData(AgentRunContext<R> context, List<AgentMessage> messages, JsonNode data) {
         extensions.forEach(extension -> {
             final var outputDefinition = extension.outputSchema(ProcessingMode.DIRECT);
             final var outputName = outputDefinition
                     .map(ModelOutputDefinition::getName)
                     .orElse(null);
             if (outputDefinition.isEmpty() || Strings.isNullOrEmpty(outputName)) {
-                log.info("Empty output name found for extension {}. Extension will not consume any data.", extension.name());
+                log.info("Empty output name found for extension {}. Extension will not consume any data.",
+                         extension.name());
                 return;
             }
             final var extensionOutputData = data.get(outputName);
             if (JsonUtils.empty(extensionOutputData)) {
-                log.warn("No output from model for extension data named: {} for extension: {}", outputName, extension.name());
+                log.warn("No output from model for extension data named: {} for extension: {}",
+                         outputName,
+                         extension.name());
                 return;
             }
             try {
-                extension.consume(extensionOutputData, self);
+                extension.consumeSync(context, messages, extensionOutputData, self);
             }
             catch (Exception e) {
                 log.error("Error processing model output by extension {}: {}",
@@ -641,8 +666,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                    mergedAgentSetup,
                                                    toolRunApprovalSeeker,
                                                    context),
-                            earlyTerminationStrategy,
-                            agentMessagesPreProcessors)
+                             earlyTerminationStrategy,
+                             agentMessagesPreProcessors)
                     .get();
         }
         catch (InterruptedException e) {
@@ -735,8 +760,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
     private String systemPrompt(
             AgentRunContext<R> context,
-            List<FactList> facts
-                               ) throws JsonProcessingException {
+            List<FactList> facts) throws JsonProcessingException {
         final var secondaryTasks = this.extensions
                 .stream()
                 .flatMap(extension -> extension
@@ -789,8 +813,14 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     }
 
     private List<AgentMessage> extensionMessages(R inputRequest, AgentRunContext<R> context) {
-        return extensions.stream().map(extension ->
-                        extension.messages(inputRequest, context, self))
+        return extensions.stream()
+                .map(extension -> {
+                    final var messages = extension.messages(context, self, inputRequest);
+                    if (!messages.isEmpty()) {
+                        log.debug("Extension: {} added {} messages", extension.name(), messages.size());
+                    }
+                    return messages;
+                })
                 .flatMap(List::stream)
                 .toList();
     }
@@ -812,7 +842,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         return xmlMapper.valueToTree(object);
     }
 
-    private static <R> void mergeModelOutput(final ModelOutputProcessingContext<R> processingContext, final ModelOutput modelOutput) {
+    private static <R> void mergeModelOutput(
+            final ModelOutputProcessingContext<R> processingContext,
+            final ModelOutput modelOutput) {
         processingContext.messages.clear();
         processingContext.messages.addAll(modelOutput.getAllMessages());
     }

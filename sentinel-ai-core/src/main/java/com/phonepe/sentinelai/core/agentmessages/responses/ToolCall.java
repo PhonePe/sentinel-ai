@@ -30,8 +30,13 @@ public class ToolCall extends AgentResponse {
 
     @Builder
     @Jacksonized
-    public ToolCall(@NonNull String toolCallId, @NonNull String toolName, String arguments) {
-        super(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE);
+    public ToolCall(
+            String sessionId,
+            String runId,
+            @NonNull String toolCallId,
+            @NonNull String toolName,
+            String arguments) {
+        super(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE, sessionId, runId);
         this.toolCallId = toolCallId;
         this.toolName = toolName;
         this.arguments = arguments;

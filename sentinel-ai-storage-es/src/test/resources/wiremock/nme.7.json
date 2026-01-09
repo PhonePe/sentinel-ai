@@ -1,0 +1,38 @@
+{
+  "id" : "chatcmpl-Cw3EgJbN4psbMB5VRooHaZuQDQKgf",
+  "object" : "chat.completion",
+  "created" : 1767951498,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_f97eff32c5",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_RAYYbwH2QqSoBWLd9xoawvqB",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":{\"message\":\"Hello, Mr. Santanu! It's great to hear that today is sunny in Bangalore. How can I assist you today?\",\"username\":\"Santanu\"},\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"The user, Santanu, is located in Bangalore.\",\"name\":\"UserLocation\",\"reusabilityScore\":8,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"location\",\"Bangalore\"],\"type\":\"SEMANTIC\"}]}}"
+        }
+      } ],
+      "annotations" : [ ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1576,
+    "completion_tokens" : 106,
+    "total_tokens" : 1682,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 1536
+    }
+  }
+} 
+
+

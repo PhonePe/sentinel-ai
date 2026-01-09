@@ -1,6 +1,6 @@
 package com.phonepe.sentinel.session;
 
-public enum AgentSessionExtensionMode {
+public enum AgentSessionExtensionFeature {
     SUMMARY,
     HISTORY
 }

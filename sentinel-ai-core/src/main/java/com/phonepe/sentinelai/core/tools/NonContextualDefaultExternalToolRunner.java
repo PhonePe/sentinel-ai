@@ -17,9 +17,16 @@ import java.util.Objects;
  * calling for output generation.
  */
 public class NonContextualDefaultExternalToolRunner implements ToolRunner {
+    private final String sessionId;
+    private final String runId;
     private final ObjectMapper mapper;
 
-    public NonContextualDefaultExternalToolRunner(ObjectMapper mapper) {
+    public NonContextualDefaultExternalToolRunner(
+            String sessionId,
+            String runId,
+            ObjectMapper mapper) {
+        this.sessionId = sessionId;
+        this.runId = runId;
         this.mapper = mapper;
     }
 
@@ -35,12 +42,14 @@ public class NonContextualDefaultExternalToolRunner implements ToolRunner {
                                 .apply(null,
                                        toolCall.getToolCallId(),
                                        toolCall.getArguments());
-                return new ToolCallResponse(toolCall.getToolCallId(),
-                                            toolCall.getToolName(),
-                                            ErrorType.SUCCESS,
-                                            mapper.writeValueAsString(response.response()),
-                                            LocalDateTime.now());
-
+                return new ToolCallResponse(
+                        sessionId,
+                        runId,
+                        toolCall.getToolCallId(),
+                        toolCall.getToolName(),
+                        ErrorType.SUCCESS,
+                        mapper.writeValueAsString(response.response()),
+                        LocalDateTime.now());
             }
 
             @Override

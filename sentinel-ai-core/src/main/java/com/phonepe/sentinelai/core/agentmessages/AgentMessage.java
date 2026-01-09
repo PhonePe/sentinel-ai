@@ -9,9 +9,12 @@ import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+
+import java.util.UUID;
 
 /**
  * Messages exchanged between the system and LLM
@@ -37,6 +40,18 @@ import lombok.Data;
 )
 public abstract class AgentMessage {
     private final AgentMessageType messageType;
+    private final String sessionId;
+    private final String runId;
+    private final String messageId;
+    private final long timestamp;
+
+    protected AgentMessage(AgentMessageType messageType, String sessionId, String runId) {
+        this.messageType = messageType;
+        this.sessionId = sessionId;
+        this.runId = runId;
+        this.messageId = AgentUtils.id(messageType.name(), UUID.randomUUID().toString());
+        this.timestamp = AgentUtils.epochMicro();
+    }
 
     public abstract <T> T accept(AgentMessageVisitor<T> visitor);
 }

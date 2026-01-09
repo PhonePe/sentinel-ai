@@ -120,7 +120,9 @@ class SimpleOpenAIModelTest {
                 List.of((ctx, allMessages, newMessages) -> {
 
                     final var processedMessages = new ArrayList<>(allMessages);
-                    processedMessages.add(new GenericText(AgentGenericMessage.Role.ASSISTANT,"123-" + iter.getAndIncrement()));
+                    processedMessages.add(new GenericText(
+                            "s1", "r1", AgentGenericMessage.Role.ASSISTANT, "123-" + iter.getAndIncrement()
+                    ));
 
                     return new AgentMessagesPreProcessResult(processedMessages, List.of());
                 })
@@ -141,7 +143,7 @@ class SimpleOpenAIModelTest {
                 List.of((ctx, allMessages, newMessages) -> {
 
                     List<AgentMessage> transformedMessages = List.of(
-                            new GenericText(AgentGenericMessage.Role.ASSISTANT,"123-"));
+                            new GenericText("s1", "r1", AgentGenericMessage.Role.ASSISTANT, "123-"));
 
                     return new AgentMessagesPreProcessResult(transformedMessages, List.of());
                 })
@@ -196,7 +198,8 @@ class SimpleOpenAIModelTest {
                 4,
                 "tool-output",
                 List.of((ctx, allMessages, newMessages)
-                        -> new AgentMessagesPreProcessResult(allMessages, List.of(new GenericText(AgentGenericMessage.Role.USER, "TEST"))))
+                        -> new AgentMessagesPreProcessResult(allMessages, List.of(
+                                new GenericText("s1", "r1", AgentGenericMessage.Role.USER, "TEST"))))
         );
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertEquals(1, response.getNewMessages()
