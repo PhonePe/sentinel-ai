@@ -21,8 +21,8 @@ public abstract class AgentGenericMessage extends AgentMessage {
 
     private final Role role;
 
-    protected AgentGenericMessage(AgentMessageType messageType, Role role) {
-        super(messageType);
+    protected AgentGenericMessage(String sessionId, String runId, AgentMessageType messageType, Role role) {
+        super(messageType, sessionId, runId);
         this.role = role;
     }
 

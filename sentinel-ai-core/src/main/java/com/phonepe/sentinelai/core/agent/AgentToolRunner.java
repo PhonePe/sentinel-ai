@@ -6,9 +6,9 @@ import com.google.common.primitives.Primitives;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.events.ToolCallApprovalDeniedAgentEvent;
 import com.phonepe.sentinelai.core.events.ToolCallCompletedAgentEvent;
 import com.phonepe.sentinelai.core.events.ToolCalledAgentEvent;
-import com.phonepe.sentinelai.core.events.ToolCallApprovalDeniedAgentEvent;
 import com.phonepe.sentinelai.core.tools.*;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
@@ -45,11 +45,14 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
                                                                  AgentUtils.userId(context),
                                                                  toolCall.getToolCallId(),
                                                                  toolCall.getToolName()));
-            return new ToolCallResponse(toolCall.getToolCallId(),
-                                        toolCall.getToolName(),
-                                        ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                        "Tool call was not approved by the user",
-                                        LocalDateTime.now());
+            return new ToolCallResponse(
+                    AgentUtils.sessionId(context),
+                    context.getRunId(),
+                    toolCall.getToolCallId(),
+                    toolCall.getToolName(),
+                    ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                    "Tool call was not approved by the user",
+                    LocalDateTime.now());
         }
         eventBus.notify(new ToolCalledAgentEvent(agent.name(),
                                                  context.getRunId(),
@@ -77,16 +80,19 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
             ToolCall toolCall) {
         final var tool = tools.get(toolCall.getToolName());
         if (null == tool) {
-            return new ToolCallResponse(toolCall.getToolCallId(),
-                                        toolCall.getToolName(),
-                                        ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                        ("Tool call %s failed. There is no tool with name: %s. " +
-                                                "Retry by calling any of the following available tools with the" +
-                                                " appropriate parameters: %s.")
-                                                .formatted(toolCall.getToolCallId(),
-                                                           toolCall.getToolName(),
-                                                           Set.copyOf(tools.keySet())),
-                                        LocalDateTime.now());
+            return new ToolCallResponse(
+                    AgentUtils.sessionId(context),
+                    context.getRunId(),
+                    toolCall.getToolCallId(),
+                    toolCall.getToolName(),
+                    ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                    ("Tool call %s failed. There is no tool with name: %s. " +
+                            "Retry by calling any of the following available tools with the" +
+                            " appropriate parameters: %s.")
+                            .formatted(toolCall.getToolCallId(),
+                                       toolCall.getToolName(),
+                                       Set.copyOf(tools.keySet())),
+                    LocalDateTime.now());
         }
         //TODO::RETRY LOGIC
         return tool.accept(new ExecutableToolVisitor<>() {
@@ -118,23 +124,29 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
             log.debug("Calling internal tool: {} [{}] Arguments: {}",
                       toolCall.getToolCallId(), toolCall.getToolName(), toolCall.getArguments());
             var resultObject = callable.invoke(internalTool.getInstance(), args.toArray());
-            return new ToolCallResponse(toolCall.getToolCallId(),
-                                        toolCall.getToolName(),
-                                        ErrorType.SUCCESS,
-                                        toStringContent(internalTool, resultObject),
-                                        LocalDateTime.now());
+            return new ToolCallResponse(
+                    AgentUtils.sessionId(context),
+                    context.getRunId(),
+                    toolCall.getToolCallId(),
+                    toolCall.getToolName(),
+                    ErrorType.SUCCESS,
+                    toStringContent(internalTool, resultObject),
+                    LocalDateTime.now());
         }
         catch (InvocationTargetException e) {
             log.error("Local error making tool call " + toolCall.getToolCallId(), e);
             final var rootCause = AgentUtils.rootCause(e);
-            return new ToolCallResponse(toolCall.getToolCallId(),
-                                        toolCall.getToolName(),
-                                        ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                        "Tool call local failure: %s".formatted(rootCause.getMessage()),
-                                        LocalDateTime.now());
+            return new ToolCallResponse(
+                    AgentUtils.sessionId(context),
+                    context.getRunId(),
+                    toolCall.getToolCallId(),
+                    toolCall.getToolName(),
+                    ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                    "Tool call local failure: %s".formatted(rootCause.getMessage()),
+                    LocalDateTime.now());
         }
         catch (Exception e) {
-            return processUnhandledException(toolCall, e);
+            return processUnhandledException(context, toolCall, e);
         }
     }
 
@@ -152,6 +164,8 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
             if (!error.equals(ErrorType.SUCCESS)) {
                 printToolCallError(toolCall, response.response());
                 return new ToolCallResponse(
+                        AgentUtils.sessionId(context),
+                        context.getRunId(),
                         toolCall.getToolCallId(),
                         toolCall.getToolName(),
                         error,
@@ -161,7 +175,7 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
             return successResponse(response, toolCall, context);
         }
         catch (Exception e) {
-            return processUnhandledException(toolCall, e);
+            return processUnhandledException(context, toolCall, e);
         }
     }
 
@@ -172,17 +186,21 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
      * @param e        Exception being handled
      * @return
      */
-    private static ToolCallResponse processUnhandledException(ToolCall toolCall, Exception e) {
+    private static ToolCallResponse processUnhandledException(
+            AgentRunContext<?> context, ToolCall toolCall, Exception e) {
         final var errorMessage = AgentUtils.rootCause(e).getMessage();
         printToolCallError(toolCall, errorMessage);
         if (log.isDebugEnabled()) {
             log.error("Error stacktrace for %s".formatted(toolCall.getToolCallId()), e);
         }
-        return new ToolCallResponse(toolCall.getToolCallId(),
-                                    toolCall.getToolName(),
-                                    ErrorType.TOOL_CALL_TEMPORARY_FAILURE,
-                                    "Error running tool: %s".formatted(errorMessage),
-                                    LocalDateTime.now());
+        return new ToolCallResponse(
+                AgentUtils.sessionId(context),
+                context.getRunId(),
+                toolCall.getToolCallId(),
+                toolCall.getToolName(),
+                ErrorType.TOOL_CALL_TEMPORARY_FAILURE,
+                "Error running tool: %s".formatted(errorMessage),
+                LocalDateTime.now());
     }
 
 
@@ -196,21 +214,27 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
             ToolCall toolCall,
             AgentRunContext<R> context) {
         try {
-            return new ToolCallResponse(toolCall.getToolCallId(),
-                                        toolCall.getToolName(),
-                                        ErrorType.SUCCESS,
-                                        context.getAgentSetup()
-                                                .getMapper()
-                                                .writeValueAsString(response.response()),
-                                        LocalDateTime.now());
+            return new ToolCallResponse(
+                    AgentUtils.sessionId(context),
+                    context.getRunId(),
+                    toolCall.getToolCallId(),
+                    toolCall.getToolName(),
+                    ErrorType.SUCCESS,
+                    context.getAgentSetup()
+                            .getMapper()
+                            .writeValueAsString(response.response()),
+                    LocalDateTime.now());
         }
         catch (JsonProcessingException e) {
-            return new ToolCallResponse(toolCall.getToolCallId(),
-                                        toolCall.getToolName(),
-                                        ErrorType.SERIALIZATION_ERROR,
-                                        "Error serializing external tool response: %s".
-                                                formatted(Objects.toString(response.response())),
-                                        LocalDateTime.now());
+            return new ToolCallResponse(
+                    AgentUtils.sessionId(context),
+                    context.getRunId(),
+                    toolCall.getToolCallId(),
+                    toolCall.getToolName(),
+                    ErrorType.SERIALIZATION_ERROR,
+                    "Error serializing external tool response: %s".
+                            formatted(Objects.toString(response.response())),
+                    LocalDateTime.now());
         }
     }
 

@@ -227,7 +227,8 @@ public class SentinelMCPClient implements AutoCloseable {
                                Function.identity()));
     }
 
-    private McpSchema.CreateMessageResult handleSamplingRequest(McpSchema.CreateMessageRequest createMessageRequest) {
+    private McpSchema.CreateMessageResult handleSamplingRequest(
+            McpSchema.CreateMessageRequest createMessageRequest) {
         if (null == agent) {
             return new McpSchema.CreateMessageResult(
                     McpSchema.Role.ASSISTANT,
@@ -241,9 +242,14 @@ public class SentinelMCPClient implements AutoCloseable {
                 .withMaxTokens(createMessageRequest.maxTokens())
                 .withTemperature(Objects.requireNonNullElse(createMessageRequest.temperature(), 0.0f).floatValue());
         final var messages = new ArrayList<AgentMessage>();
-        messages.add(new SystemPrompt(createMessageRequest.systemPrompt(), true, null));
-        messages.addAll(convertFromSamplingToAgentMessages(createMessageRequest.messages()));
         final var runId = "sampling-" + UUID.randomUUID();
+        messages.add(new SystemPrompt(
+                null,
+                runId,
+                createMessageRequest.systemPrompt(),
+                true,
+                null));
+        messages.addAll(convertFromSamplingToAgentMessages(null, runId, createMessageRequest.messages()));
         final var modelRunContext = new ModelRunContext(agent.name(),
                                                         runId,
                                                         null,
@@ -259,7 +265,7 @@ public class SentinelMCPClient implements AutoCloseable {
                                                                JsonUtils.schema(String.class))),
                              messages,
                              Map.of(),
-                             new NonContextualDefaultExternalToolRunner(mapper),
+                             new NonContextualDefaultExternalToolRunner(null, runId, mapper),
                              new NeverTerminateEarlyStrategy(),
                              List.of())
                     .join();
@@ -311,29 +317,43 @@ public class SentinelMCPClient implements AutoCloseable {
     }
 
     private List<AgentMessage> convertFromSamplingToAgentMessages(
+            String sessionId,
+            String runId,
             List<McpSchema.SamplingMessage> messages) {
         return messages
                 .stream()
                 .map(message -> switch (message.content().type()) {
-                    case "text" -> new GenericText(translateRole(message.role()),
-                                                   ((McpSchema.TextContent) message.content()).text());
-                    case "resource" -> convertResourceResponse(message);
+                    case "text" -> new GenericText(
+                            sessionId,
+                            runId,
+                            translateRole(message.role()), ((McpSchema.TextContent) message.content()).text()
+                    );
+                    case "resource" -> convertResourceResponse(sessionId, runId, message);
                     default -> throw new IllegalArgumentException("Unsupported type");
                 })
                 .toList();
     }
 
     @SneakyThrows
-    private AgentMessage convertResourceResponse(McpSchema.SamplingMessage message) {
+    private AgentMessage convertResourceResponse(
+            String sessionId,
+            String runId,
+            McpSchema.SamplingMessage message) {
         final var embeddedResource = (McpSchema.EmbeddedResource) message.content();
         return switch (embeddedResource.type()) {
-            case "text" -> new GenericResource(translateRole(message.role()),
-                                               GenericResource.ResourceType.TEXT,
-                                               embeddedResource.resource().uri(),
-                                               embeddedResource.resource().mimeType(),
-                                               ((McpSchema.TextResourceContents) embeddedResource.resource()).text(),
-                                               mapper.writeValueAsString(embeddedResource.resource()));
-            case "blob" -> new GenericResource(translateRole(message.role()),
+            case "text" -> new GenericResource(
+                    sessionId,
+                    runId,
+                    translateRole(message.role()),
+                    GenericResource.ResourceType.TEXT,
+                    embeddedResource.resource().uri(),
+                    embeddedResource.resource().mimeType(),
+                    ((McpSchema.TextResourceContents) embeddedResource.resource()).text(),
+                    mapper.writeValueAsString(embeddedResource.resource()));
+            case "blob" -> new GenericResource(
+                    sessionId,
+                    runId,
+                    translateRole(message.role()),
                                                GenericResource.ResourceType.BLOB,
                                                embeddedResource.resource().uri(),
                                                embeddedResource.resource().mimeType(),

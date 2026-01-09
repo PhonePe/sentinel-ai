@@ -26,13 +26,15 @@ public class GenericResource extends AgentGenericMessage {
     String serializedJson;
 
     public GenericResource(
+            String sessionId,
+            String runId,
             Role role,
             ResourceType resourceType,
             String uri,
             String mimeType,
             String content,
             String serializedJson) {
-        super(AgentMessageType.GENERIC_RESOURCE_MESSAGE, role);
+        super(sessionId, runId, AgentMessageType.GENERIC_RESOURCE_MESSAGE, role);
         this.resourceType = resourceType;
         this.uri = uri;
         this.mimeType = mimeType;

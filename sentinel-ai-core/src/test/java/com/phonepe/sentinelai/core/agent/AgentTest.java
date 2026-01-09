@@ -125,7 +125,9 @@ class AgentTest {
                                                                 assertTrue(tools.containsKey("test_agent_get_name"));
                                                                 final var response = toolRunner.runTool(
                                                                         tools,
-                                                                        new ToolCall("TC1",
+                                                                        new ToolCall("s1",
+                                                                                     "r1",
+                                                                                     "TC1",
                                                                                      "test_agent_get_name",
                                                                                      "{}"));
                                                                 assertTrue(response.isSuccess());
@@ -133,7 +135,9 @@ class AgentTest {
                                                                 final var messages =
                                                                         new ArrayList<>(oldMessages);
                                                                 final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
+                                                                        new ToolCallResponse("s1",
+                                                                                             "r1",
+                                                                                             response.getToolCallId(),
                                                                                              response.getToolName(),
                                                                                              response.getErrorType(),
                                                                                              response.getResponse(),
@@ -184,7 +188,9 @@ class AgentTest {
                                                                 assertTrue(tools.containsKey("test_agent_get_name"));
                                                                 final var response = toolRunner.runTool(
                                                                         tools,
-                                                                        new ToolCall("TC1",
+                                                                        new ToolCall("s1",
+                                                                                     "r1",
+                                                                                     "TC1",
                                                                                      "test_agent_get_name",
                                                                                      "{}"));
                                                                 assertFalse(response.isSuccess());
@@ -192,7 +198,9 @@ class AgentTest {
                                                                 final var messages =
                                                                         new ArrayList<>(oldMessages);
                                                                 final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
+                                                                        new ToolCallResponse("s1",
+                                                                                             "r1",
+                                                                                             response.getToolCallId(),
                                                                                              response.getToolName(),
                                                                                              response.getErrorType(),
                                                                                              response.getResponse(),
@@ -247,7 +255,9 @@ class AgentTest {
                                                                         "test_agent_session_summary"));
                                                                 final var response = toolRunner.runTool(
                                                                         tools,
-                                                                        new ToolCall("TC1",
+                                                                        new ToolCall("s1",
+                                                                                     "r1",
+                                                                                     "TC1",
                                                                                      "test_agent_session_summary",
                                                                                      """
                                                                                              { "input": "Test Data" }
@@ -257,7 +267,9 @@ class AgentTest {
                                                                 final var messages =
                                                                         new ArrayList<>(oldMessages);
                                                                 final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
+                                                                        new ToolCallResponse("s1",
+                                                                                             "r1",
+                                                                                             response.getToolCallId(),
                                                                                              response.getToolName(),
                                                                                              response.getErrorType(),
                                                                                              response.getResponse(),
@@ -309,7 +321,9 @@ class AgentTest {
                                                                 assertTrue(tools.containsKey("test_agent_void_tool"));
                                                                 final var response = toolRunner.runTool(
                                                                         tools,
-                                                                        new ToolCall("TC1",
+                                                                        new ToolCall("s1",
+                                                                                     "r1",
+                                                                                     "TC1",
                                                                                      "test_agent_void_tool",
                                                                                      "{}"));
                                                                 assertTrue(response.isSuccess());
@@ -317,7 +331,9 @@ class AgentTest {
                                                                 final var messages =
                                                                         new ArrayList<>(oldMessages);
                                                                 final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
+                                                                        new ToolCallResponse("s1",
+                                                                                             "r1",
+                                                                                             response.getToolCallId(),
                                                                                              response.getToolName(),
                                                                                              response.getErrorType(),
                                                                                              response.getResponse(),
@@ -368,7 +384,9 @@ class AgentTest {
                                                                         "test_agent_structured_tool"));
                                                                 final var response = toolRunner.runTool(
                                                                         tools,
-                                                                        new ToolCall("TC1",
+                                                                        new ToolCall("s1",
+                                                                                     "r1",
+                                                                                     "TC1",
                                                                                      "test_agent_structured_tool",
                                                                                      """
                                                                                              {
@@ -382,7 +400,9 @@ class AgentTest {
                                                                 final var messages =
                                                                         new ArrayList<>(oldMessages);
                                                                 final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
+                                                                        new ToolCallResponse("s1",
+                                                                                             "r1",
+                                                                                             response.getToolCallId(),
                                                                                              response.getToolName(),
                                                                                              response.getErrorType(),
                                                                                              response.getResponse(),
@@ -434,7 +454,9 @@ class AgentTest {
                                                                 assertTrue(tools.containsKey("test_agent_throw_tool"));
                                                                 final var response = toolRunner.runTool(
                                                                         tools,
-                                                                        new ToolCall("TC1",
+                                                                        new ToolCall("s1",
+                                                                                     "r1",
+                                                                                     "TC1",
                                                                                      "test_agent_throw_tool",
                                                                                      "{}"));
                                                                 assertFalse(response.isSuccess());
@@ -442,7 +464,9 @@ class AgentTest {
                                                                 final var messages =
                                                                         new ArrayList<>(oldMessages);
                                                                 final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
+                                                                        new ToolCallResponse("s1",
+                                                                                             "r1",
+                                                                                             response.getToolCallId(),
                                                                                              response.getToolName(),
                                                                                              response.getErrorType(),
                                                                                              response.getResponse(),
@@ -493,7 +517,9 @@ class AgentTest {
                                                             return CompletableFuture.supplyAsync(() -> {
                                                                 final var response = toolRunner.runTool(
                                                                         tools,
-                                                                        new ToolCall("TC1",
+                                                                        new ToolCall("s1",
+                                                                                     "r1",
+                                                                                     "TC1",
                                                                                      "getUnknown",
                                                                                      "{}"));
                                                                 assertFalse(response.isSuccess());
@@ -501,7 +527,9 @@ class AgentTest {
                                                                 final var messages =
                                                                         new ArrayList<>(oldMessages);
                                                                 final var message =
-                                                                        new ToolCallResponse(response.getToolCallId(),
+                                                                        new ToolCallResponse("s1",
+                                                                                             "r1",
+                                                                                             response.getToolCallId(),
                                                                                              response.getToolName(),
                                                                                              response.getErrorType(),
                                                                                              response.getResponse(),

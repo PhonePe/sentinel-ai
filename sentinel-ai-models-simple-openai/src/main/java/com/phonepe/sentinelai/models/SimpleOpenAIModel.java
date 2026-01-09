@@ -790,7 +790,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             ArrayList<AgentMessage> newMessages,
             Stopwatch stopwatch) {
         if (!Strings.isNullOrEmpty(content)) {
-            final var newMessage = new StructuredOutput(content);
+            final var newMessage = new StructuredOutput(context.getSessionId(),
+                                                        context.getRunId(),
+                                                        content);
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, newMessage, stopwatch);
@@ -824,7 +826,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             Stopwatch stopwatch) {
         //Model has sent all response
         if (!Strings.isNullOrEmpty(content)) {
-            final var newMessage = new Text(content); //Always text output
+            final var newMessage = new Text(context.getSessionId(),
+                                            context.getRunId(),
+                                            content); //Always text output
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, newMessage, stopwatch);
@@ -1019,9 +1023,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 .filter(toolCall -> !Strings.isNullOrEmpty(toolCall.getId()))
                 .map(toolCall -> CompletableFuture.supplyAsync(
                         () -> {
-                            final var toolCallMessage = new ToolCall(toolCall.getId(),
-                                                                     toolCall.getFunction().getName(),
-                                                                     toolCall.getFunction().getArguments());
+                            final var toolCallMessage = new ToolCall(
+                                    sessionId,
+                                    runId,
+                                    toolCall.getId(),
+                                    toolCall.getFunction().getName(),
+                                    toolCall.getFunction().getArguments());
                             raiseMessageReceivedEvent(
                                     agentName,
                                     runId,
@@ -1030,7 +1037,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                     agentSetup,
                                     toolCallMessage,
                                     stopwatch);
-                            final var toolCallResponse = callTool(tools, toolRunner, toolCallMessage);
+                            final var toolCallResponse = callTool(sessionId, runId, tools, toolRunner, toolCallMessage);
                             return Pair.of(toolCallMessage, toolCallResponse);
                         }, agentSetup.getExecutorService()))
                 .toList();
@@ -1066,17 +1073,22 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     private static ToolCallResponse callTool(
+            String sessionId,
+            String runId,
             Map<String, ExecutableTool> tools,
             ToolRunner toolRunner,
             ToolCall toolCallMessage) {
         return null != toolRunner
                ? toolRunner.runTool(tools, toolCallMessage)
-               : new ToolCallResponse(toolCallMessage.getToolCallId(),
-                                      toolCallMessage.getToolName(),
-                                      ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                      "Tool runner not provided for tool call %s[%s]".formatted(toolCallMessage.getToolCallId(),
-                                                                                                toolCallMessage.getToolName()),
-                                      LocalDateTime.now());
+               : new ToolCallResponse(
+                       sessionId,
+                       runId,
+                       toolCallMessage.getToolCallId(),
+                       toolCallMessage.getToolName(),
+                       ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                       "Tool runner not provided for tool call %s[%s]".formatted(toolCallMessage.getToolCallId(),
+                                                                                 toolCallMessage.getToolName()),
+                       LocalDateTime.now());
     }
 
     /**

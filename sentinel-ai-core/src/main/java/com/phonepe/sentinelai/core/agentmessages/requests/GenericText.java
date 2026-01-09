@@ -15,8 +15,12 @@ public class GenericText extends AgentGenericMessage {
 
     String text;
 
-    public GenericText(Role role, String text) {
-        super(AgentMessageType.GENERIC_TEXT_MESSAGE, role);
+    public GenericText(
+            String sessionId,
+            String runId,
+            Role role,
+            String text) {
+        super(sessionId, runId, AgentMessageType.GENERIC_TEXT_MESSAGE, role);
         this.text = text;
     }
 

@@ -17,9 +17,13 @@ public class SessionSummary {
     @JsonPropertyDescription("Session id for this session")
     String sessionId;
 
+    String title;
+
     @JsonPropertyDescription("A short summary of the conversation thus far between the user and the agent")
     String summary;
 
     @JsonPropertyDescription("A short list of topics being discussed")
-    List<String> topics;
+    List<String> keywords;
+
+    long updatedAt;
 }
