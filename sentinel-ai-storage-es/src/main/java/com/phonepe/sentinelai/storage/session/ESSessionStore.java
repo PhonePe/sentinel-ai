@@ -228,7 +228,7 @@ public class ESSessionStore implements SessionStore {
                                                       .limit(count)
                                                       .toList());
         final var nextResultSPointer = hits.isEmpty()
-                                       ? ""
+                                       ? nextPointer
                                        : mapper.writeValueAsString(new MessageScrollPointer(
                                                hits.get(hits.size() - 1).sort().get(0).longValue(),
                                                hits.get(hits.size() - 1).sort().get(1).stringValue()

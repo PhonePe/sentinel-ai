@@ -43,8 +43,6 @@ public class ToolCallResponse extends AgentRequest {
      */
     LocalDateTime sentAt;
 
-    @Builder
-    @Jacksonized
     public ToolCallResponse(
             String sessionId,
             String runId,
@@ -53,7 +51,30 @@ public class ToolCallResponse extends AgentRequest {
             ErrorType errorType,
             @NonNull String response,
             LocalDateTime sentAt) {
-        super(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE, sessionId, runId);
+        this(sessionId,
+             runId,
+             null,
+             null,
+             toolCallId,
+             toolName,
+             errorType,
+             response,
+             sentAt);
+    }
+
+    @Builder
+    @Jacksonized
+    public ToolCallResponse(
+            String sessionId,
+            String runId,
+            String messageId,
+            Long timestamp,
+            @NonNull String toolCallId,
+            @NonNull String toolName,
+            ErrorType errorType,
+            @NonNull String response,
+            LocalDateTime sentAt) {
+        super(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE, sessionId, runId, messageId, timestamp);
         this.toolCallId = toolCallId;
         this.toolName = toolName;
         this.errorType = errorType;

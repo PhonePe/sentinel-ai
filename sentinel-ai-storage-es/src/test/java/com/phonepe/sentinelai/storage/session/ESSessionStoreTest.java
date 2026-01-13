@@ -1,7 +1,16 @@
 package com.phonepe.sentinelai.storage.session;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import com.phonepe.sentinel.session.SessionSummary;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
+import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
+import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.agentmessages.responses.Text;
+import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.storage.ESClient;
 import com.phonepe.sentinelai.storage.ESIntegrationTestBase;
@@ -12,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -21,7 +31,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
 
     @Test
     @SneakyThrows
-    void testSessionStore() {
+    void testSessionStorage() {
         try (final var client = ESClient.builder()
                 .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
                 .apiKey("test")
@@ -35,7 +45,6 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     .build();
 
 
-            // Test saving a session
             final var sessionId = "test-session";
             final var agentName = "test-agent";
             final var sessionSummary = SessionSummary.builder()
@@ -49,32 +58,27 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             assertTrue(savedSession.isPresent());
             assertEquals(sessionId, savedSession.get().getSessionId());
 
-            // Test retrieving a session
             final var retrievedSession = sessionStore.session(sessionId);
             assertTrue(retrievedSession.isPresent());
             assertEquals("Test Summary", retrievedSession.get().getSummary());
 
-            // Test retrieving all sessions
             final var sessions = sessionStore.sessions(10, null);
             assertFalse(sessions.getItems().isEmpty());
             assertEquals(1, sessions.getItems().size());
             assertEquals(sessionId, sessions.getItems().get(0).getSessionId());
 
-            //test session summary update
             final var updatedSessionSummary = SessionSummary.builder()
                     .sessionId(sessionId)
                     .summary("Updated Summary")
                     .keywords(List.of("topic1", "topic2"))
                     .updatedAt(AgentUtils.epochMicro())
                     .build();
-            //Assertions
             final var updatedSession = sessionStore.saveSession(agentName, updatedSessionSummary);
             assertTrue(updatedSession.isPresent());
             assertEquals("Updated Summary", updatedSession.get().getSummary());
             assertTrue(sessionStore.deleteSession(sessionId));
             assertFalse(sessionStore.session(sessionId).isPresent());
 
-            //Test scrolling by inserting and reading 100 documents
             final var savedIds = IntStream.rangeClosed(1, 25)
                     .mapToObj(i -> sessionStore.saveSession(agentName, SessionSummary.builder()
                                     .sessionId("S-" + i)
@@ -102,6 +106,106 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                 return "Expected to retrieve %d sessions, but got %d. Extra: %s".formatted(savedSize, retrievedSize, String.join(",", diff));
             });
             assertTrue(retrieved.containsAll(savedIds), () -> "Retrieved sessions do not contain all saved sessions. Missing: " + String.join(",", Sets.difference(savedIds, retrieved)));
+        }
+    }
+
+    @Test
+    @SneakyThrows
+    void testSessionMessageStorage() {
+        try (final var client = ESClient.builder()
+                .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
+                .apiKey("test")
+                .build()) {
+
+            final var sessionStore = ESSessionStore.builder()
+                    .client(client)
+                    .indexPrefix("test-msg")
+                    .sessionIndexSettings(IndexSettings.DEFAULT)
+                    .messageIndexSettings(IndexSettings.DEFAULT)
+                    .build();
+
+            final var sessionId = "msg-session";
+            final var runId = UUID.randomUUID().toString();
+
+            final var messages = IntStream.rangeClosed(1, 50)
+                    .mapToObj(i -> {
+                        if (i % 5 == 0) {
+                            return ToolCall.builder()
+                                    .sessionId(sessionId)
+                                    .runId(runId)
+                                    .toolCallId("tc-" + i)
+                                    .toolName("echo")
+                                    .arguments("{\"i\":" + i + "}")
+                                    .build();
+                        }
+                        if (i % 4 == 0) {
+                            return ToolCallResponse.builder()
+                                    .sessionId(sessionId)
+                                    .runId(runId)
+                                    .toolCallId("tcr-" + i)
+                                    .toolName("echo")
+                                    .errorType(ErrorType.SUCCESS)
+                                    .response("response-" + i)
+                                    .build();
+                        }
+                        if (i % 3 == 0) {
+                            return SystemPrompt.builder()
+                                    .sessionId(sessionId)
+                                    .runId(runId)
+                                    .content("system-" + i)
+                                    .dynamic(false)
+                                    .methodReference(null)
+                                    .build();
+                        }
+                        if (i % 2 == 0) {
+                            return UserPrompt.builder()
+                                    .sessionId(sessionId)
+                                    .runId(runId)
+                                    .content("user-" + i)
+                                    .sentAt(null)
+                                    .build();
+                        }
+                        return Text.builder()
+                                .sessionId(sessionId)
+                                .runId(runId)
+                                .content("text-" + i)
+                                .build();
+                    })
+                    .toList();
+
+            final var expectedIds = messages.stream()
+                    .map(AgentMessage::getMessageId)
+                    .collect(Collectors.toUnmodifiableSet());
+
+            sessionStore.saveMessages(sessionId, runId, messages);
+
+            String nextPointer = null;
+            String prevPointer;
+            final var retrieved = new HashSet<String>();
+            final var maxIterations = 100;
+            var iter = 0;
+            while (iter++ < maxIterations) {
+                final var response = sessionStore.readMessages(sessionId, 10, false, nextPointer);
+                response.getItems().forEach(m -> retrieved.add(m.getMessageId()));
+                if (retrieved.containsAll(expectedIds)) {
+                    break;
+                }
+                prevPointer = nextPointer;
+                nextPointer = response.getNextPageToken();
+                if (Strings.isNullOrEmpty(nextPointer) || nextPointer.equals(prevPointer)) {
+                    break;
+                }
+            }
+
+            assertEquals(expectedIds.size(), retrieved.size());
+            assertTrue(retrieved.containsAll(expectedIds),
+                       () -> "Retrieved messages do not contain all saved messages. Missing: " +
+                               String.join(",", Sets.difference(expectedIds, retrieved)));
+
+            final var responseSkipSystem = sessionStore.readMessages(sessionId, 100, true, null);
+            final var anySystem = responseSkipSystem.getItems().stream()
+                    .anyMatch(m -> m.getMessageType().equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
+            assertFalse(anySystem);
         }
     }
 }

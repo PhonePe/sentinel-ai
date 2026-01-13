@@ -28,15 +28,32 @@ public class ToolCall extends AgentResponse {
      */
     String arguments;
 
-    @Builder
-    @Jacksonized
     public ToolCall(
             String sessionId,
             String runId,
             @NonNull String toolCallId,
             @NonNull String toolName,
             String arguments) {
-        super(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE, sessionId, runId);
+        this(sessionId,
+             runId,
+             null,
+             null,
+             toolCallId,
+             toolName,
+             arguments);
+    }
+
+    @Builder
+    @Jacksonized
+    public ToolCall(
+            String sessionId,
+            String runId,
+            String messageId,
+            Long timestamp,
+            @NonNull String toolCallId,
+            @NonNull String toolName,
+            String arguments) {
+        super(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE, sessionId, runId, messageId, timestamp);
         this.toolCallId = toolCallId;
         this.toolName = toolName;
         this.arguments = arguments;

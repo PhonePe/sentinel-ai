@@ -28,15 +28,32 @@ public class SystemPrompt extends AgentRequest {
      */
     String methodReference;
 
-    @Builder
-    @Jacksonized
     public SystemPrompt(
             String sessionId,
             String runId,
             @NonNull String content,
             boolean dynamic,
             String methodReference) {
-        super(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE, sessionId, runId);
+        this(sessionId,
+             runId,
+             null,
+             null,
+             content,
+             dynamic,
+             methodReference);
+    }
+
+    @Builder
+    @Jacksonized
+    public SystemPrompt(
+            String sessionId,
+            String runId,
+            String messageId,
+            Long timestamp,
+            @NonNull String content,
+            boolean dynamic,
+            String methodReference) {
+        super(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE, sessionId, runId, messageId, timestamp);
         this.content = content;
         this.dynamic = dynamic;
         this.methodReference = methodReference;

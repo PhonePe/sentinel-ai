@@ -14,8 +14,10 @@ public abstract class AgentResponse extends AgentMessage {
 
     protected AgentResponse(AgentMessageType messageType,
                             String sessionId,
-                            String runId) {
-        super(messageType, sessionId, runId);
+                            String runId,
+                            String messageId,
+                            Long timestamp) {
+        super(messageType, sessionId, runId, messageId, timestamp);
     }
 
     @Override
