@@ -1,5 +1,6 @@
 package com.phonepe.sentinelai.storage.session;
 
+import com.google.common.collect.Sets;
 import com.phonepe.sentinel.session.SessionSummary;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.storage.ESClient;
@@ -8,6 +9,7 @@ import com.phonepe.sentinelai.storage.IndexSettings;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -32,6 +34,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     .messageIndexSettings(IndexSettings.DEFAULT)
                     .build();
 
+
             // Test saving a session
             final var sessionId = "test-session";
             final var agentName = "test-agent";
@@ -52,10 +55,10 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             assertEquals("Test Summary", retrievedSession.get().getSummary());
 
             // Test retrieving all sessions
-            final var sessions = sessionStore.sessions(agentName);
-            assertFalse(sessions.isEmpty());
-            assertEquals(1, sessions.size());
-            assertEquals(sessionId, sessions.get(0).getSessionId());
+            final var sessions = sessionStore.sessions(10, null);
+            assertFalse(sessions.getItems().isEmpty());
+            assertEquals(1, sessions.getItems().size());
+            assertEquals(sessionId, sessions.getItems().get(0).getSessionId());
 
             //test session summary update
             final var updatedSessionSummary = SessionSummary.builder()
@@ -68,9 +71,11 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             final var updatedSession = sessionStore.saveSession(agentName, updatedSessionSummary);
             assertTrue(updatedSession.isPresent());
             assertEquals("Updated Summary", updatedSession.get().getSummary());
+            assertTrue(sessionStore.deleteSession(sessionId));
+            assertFalse(sessionStore.session(sessionId).isPresent());
 
             //Test scrolling by inserting and reading 100 documents
-            final var savedIds = IntStream.rangeClosed(1, 100)
+            final var savedIds = IntStream.rangeClosed(1, 25)
                     .mapToObj(i -> sessionStore.saveSession(agentName, SessionSummary.builder()
                                     .sessionId("S-" + i)
                                     .summary("Summary " + i)
@@ -81,11 +86,22 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                             .orElse(null))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toUnmodifiableSet());
-            final var retrieved = sessionStore.sessions(agentName)
-                    .stream()
-                    .map(SessionSummary::getSessionId)
-                    .collect(Collectors.toUnmodifiableSet());
-            assertTrue(retrieved.containsAll(savedIds));
+            var nextPointer = "";
+            final var retrieved = new HashSet<String>();
+            do {
+                final var response = sessionStore.sessions(10, nextPointer);
+                response.getItems().forEach(s -> retrieved.add(s.getSessionId()));
+                nextPointer = response.getNextPageToken();
+            } while (!retrieved.containsAll(savedIds));
+            assertEquals(savedIds.size(), retrieved.size(), () -> {
+                final var savedSize = savedIds.size();
+                final var retrievedSize = retrieved.size();
+                final var diff = savedSize > retrievedSize
+                        ? Sets.difference(savedIds, retrieved)
+                        : Sets.difference(retrieved, savedIds);
+                return "Expected to retrieve %d sessions, but got %d. Extra: %s".formatted(savedSize, retrievedSize, String.join(",", diff));
+            });
+            assertTrue(retrieved.containsAll(savedIds), () -> "Retrieved sessions do not contain all saved sessions. Missing: " + String.join(",", Sets.difference(savedIds, retrieved)));
         }
     }
 }

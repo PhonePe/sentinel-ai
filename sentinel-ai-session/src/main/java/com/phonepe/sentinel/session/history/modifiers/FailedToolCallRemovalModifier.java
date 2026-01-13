@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class FailedToolCallRemovalModifier<R> implements BiFunction<AgentRunContext<R>, List<AgentMessage>,
         List<AgentMessage>> {
-    private static final AgentMessageVisitor<String> FAILED_TOOL_CALL_FINDER = new AgentMessageVisitor<String>() {
+    private static final AgentMessageVisitor<String> FAILED_TOOL_CALL_FINDER = new AgentMessageVisitor<>() {
         @Override
         public String visit(AgentRequest request) {
             return request.accept(new AgentRequestVisitor<>() {
@@ -107,7 +107,7 @@ public class FailedToolCallRemovalModifier<R> implements BiFunction<AgentRunCont
         public Boolean visit(AgentGenericMessage genericMessage) {
             return true;
         }
-    };
+    }
 
     @Override
     public List<AgentMessage> apply(AgentRunContext<R> context, List<AgentMessage> agentMessages) {

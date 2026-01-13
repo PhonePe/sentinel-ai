@@ -1,7 +1,5 @@
 package com.phonepe.sentinel.session;
 
-import com.fasterxml.jackson.annotation.JsonClassDescription;
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,13 +7,10 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.phonepe.sentinel.session.history.modifiers.FailedToolCallRemovalModifier;
 import com.phonepe.sentinel.session.history.modifiers.SystemPromptRemovalModifier;
+import com.phonepe.sentinel.session.history.selectors.UnpairedToolCallsRemover;
 import com.phonepe.sentinelai.core.agent.*;
-import com.phonepe.sentinelai.core.agentmessages.*;
-import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
-import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
-import com.phonepe.sentinelai.core.agentmessages.responses.Text;
-import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
@@ -28,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.stream.Collectors;
 
 
 /**
@@ -38,6 +32,7 @@ import java.util.stream.Collectors;
 @Getter(value = AccessLevel.PACKAGE, onMethod_ = {@VisibleForTesting})
 public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
     private static final String OUTPUT_KEY = "sessionOutput";
+
     ObjectMapper mapper;
     SessionStore sessionStore;
     AgentSessionExtensionSetup setup;
@@ -86,8 +81,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         final var sessionId = AgentUtils.sessionId(context);
         if (!isSummaryEnabled() || Strings.isNullOrEmpty(sessionId)) {
             log.trace(
-                    "Session extension summary feature is disabled or session id is missing. Skipping fact generation" +
-                            ".");
+                    "Session extension summary feature is disabled or session id is missing. Skipping fact generation.");
             return List.of();
         }
         return sessionStore.session(sessionId)
@@ -123,13 +117,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return Optional.empty();
     }
 
-    @Data
-    @RequiredArgsConstructor
-    private static final class ToolCallData {
-        private final String messageId;
-        boolean hasRequest;
-        boolean hasResponse;
-    }
 
     @Override
     public List<AgentMessage> messages(AgentRunContext<R> context, A agent, R request) {
@@ -137,87 +124,14 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         if (!Strings.isNullOrEmpty(sessionId)) {
             final var agentMessages = sessionStore.readMessages(sessionId,
                                                                 setup.getHistoricalMessagesCount(),
-                                                                true);
+                                                                true,
+                                                                null)
+                    .getItems();
             if (agentMessages.isEmpty()) {
                 log.info("No messages found for session {}", sessionId);
                 return List.of();
             }
-            //Remove all partial tool calls
-            //create a map of tool calls that are incomplete, ie has request and not response or response and not
-            // request
-            final var toolCallDataMap = new HashMap<String, ToolCallData>();
-            for (var message : agentMessages) {
-                log.debug("Fetched message for session {}: {}", sessionId, message);
-                message.accept(new AgentMessageVisitor<Void>() {
-                    @Override
-                    public Void visit(AgentRequest request) {
-                        return request.accept(new AgentRequestVisitor<Void>() {
-                            ;
-
-                            @Override
-                            public Void visit(com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt systemPrompt) {
-                                return null;
-                            }
-
-                            @Override
-                            public Void visit(UserPrompt userPrompt) {
-                                return null;
-                            }
-
-                            @Override
-                            public Void visit(ToolCallResponse toolCallResponse) {
-                                toolCallDataMap.computeIfAbsent(toolCallResponse.getToolCallId(),
-                                                                k -> new ToolCallData(toolCallResponse.getMessageId()))
-                                        .setHasResponse(true);
-                                return null;
-                            }
-                        });
-                    }
-
-                    @Override
-                    public Void visit(AgentResponse response) {
-                        return response.accept(new AgentResponseVisitor<Void>() {
-                            ;
-
-                            @Override
-                            public Void visit(Text text) {
-                                return null;
-                            }
-
-                            @Override
-                            public Void visit(StructuredOutput structuredOutput) {
-                                return null;
-                            }
-
-                            @Override
-                            public Void visit(ToolCall toolCall) {
-                                toolCallDataMap.computeIfAbsent(toolCall.getToolCallId(),
-                                                                k -> new ToolCallData(toolCall.getMessageId()))
-                                        .setHasRequest(true);
-                                return null;
-                            }
-                        });
-                    }
-
-                    @Override
-                    public Void visit(AgentGenericMessage genericMessage) {
-                        return null;
-                    }
-                });
-            }
-
-            final var nonPairedCalls = toolCallDataMap.values()
-                    .stream()
-                    .filter(toolCallData -> toolCallData.isHasRequest() != toolCallData.isHasResponse())
-                    .map(ToolCallData::getMessageId)
-                    .collect(Collectors.toUnmodifiableSet());
-            log.info("Found unpaired tool call message IDs: {}", nonPairedCalls);
-            final var allowedMessages = new ArrayList<>(agentMessages);
-            allowedMessages.removeIf(message -> nonPairedCalls.contains(message.getMessageId()));
-            log.info("Returning {} messages for session {} after removing unpaired tool calls",
-                     allowedMessages.size(),
-                     sessionId);
-            return allowedMessages;
+            return new UnpairedToolCallsRemover().select(sessionId, agentMessages);
         }
         return List.of();
     }
@@ -245,7 +159,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return new ModelOutputDefinition(
                 OUTPUT_KEY,
                 "Schema summary for this session and run",
-                JsonUtils.schema(Summary.class));
+                JsonUtils.schema(ExtractedSummary.class));
     }
 
     @SneakyThrows
@@ -271,22 +185,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
     }
 
-    @Value
-    @JsonClassDescription("Summary of the session till now and the current run")
-    private static class Summary {
-
-        @JsonPropertyDescription("A summary of the conversation thus far between the user and the agent. " +
-                "Formatted in a structured manner so that it can be used by an LLM to understand the conversation " +
-                "history thus far without needing all the raw messages")
-        String sessionSummary;
-
-        @JsonPropertyDescription("A short title for the session summarizing the main topic being discussed")
-        String title;
-
-        @JsonPropertyDescription("Important one-word keywords/topics being discussed in the session")
-        List<String> keywords;
-    }
-
     private void summarizeConversationImpl(Agent.ProcessingCompletedData<R, T, A> data) throws JsonProcessingException {
         final var context = data.getContext();
 
@@ -307,7 +205,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                         .formatted(setup.getMaxSummaryLength(),
                                    mapper.writeValueAsString(sessionStore.readMessages(sessionId,
                                                                                        setup.getMaxMessagesToSummarize(),
-                                                                                       false))),
+                                                                                       false,
+                                                                                       null))),
                 LocalDateTime.now()));
         final var runId = "message-summarization-" + UUID.randomUUID();
         final var modelRunContext = new ModelRunContext(data.getAgent().name(),
@@ -349,7 +248,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         if (isSummaryEnabled()) {
             final var sessionId = AgentUtils.sessionId(context);
             try {
-                final var summary = mapper.treeToValue(output, Summary.class);
+                final var summary = mapper.treeToValue(output, ExtractedSummary.class);
                 final var updated = sessionStore.saveSession(agent.name(),
                                                              new SessionSummary(sessionId,
                                                                                 summary.getTitle(),

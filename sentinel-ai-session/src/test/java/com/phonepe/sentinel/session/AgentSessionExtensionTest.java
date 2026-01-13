@@ -65,8 +65,13 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public List<SessionSummary> sessions(String agentName) {
-            return List.copyOf(sessionData.values());
+        public ListResponse<SessionSummary> sessions(int count, String nextPagePointer) {
+            return new ListResponse<>(List.copyOf(sessionData.values()), null);
+        }
+
+        @Override
+        public boolean deleteSession(String sessionId) {
+            return sessionData.remove(sessionId) != null;
         }
 
         @Override
@@ -81,8 +86,9 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public List<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt) {
-            return AgentUtils.lastN(messageData.getOrDefault(sessionId, List.of()), count);
+        public ListResponse<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
+                                                       String nextPointer) {
+            return new ListResponse<>(AgentUtils.lastN(messageData.getOrDefault(sessionId, List.of()), count), null);
         }
 
     }
@@ -232,7 +238,9 @@ class AgentSessionExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> sessionStore.session("s1").isPresent());
         final var oldSession = sessionStore.session("s1").orElseThrow();
-        assertEquals(8, sessionStore.readMessages("s1", Integer.MAX_VALUE, false).size());
+        assertEquals(8, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null)
+                .getItems()
+                .size());
         //Thread.sleep(1000);
         //assertEquals(1, historyStore.history("s1").orElseThrow().getMessages().size());
 //        System.out.println("MESSAGES:" + sessionStore.readMessages("s1", Integer.MAX_VALUE));
@@ -259,7 +267,9 @@ class AgentSessionExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> sessionStore.session("s1").map(SessionSummary::getUpdatedAt).orElse(-1L) > oldSession.getUpdatedAt());
         assertNotNull(sessionStore.session("s1").orElse(null));
-        assertEquals(16, sessionStore.readMessages("s1", Integer.MAX_VALUE, false).size());
+        assertEquals(16, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null)
+                .getItems()
+                .size());
     }
 
     /**

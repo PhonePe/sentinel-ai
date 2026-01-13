@@ -1,6 +1,7 @@
 package com.phonepe.sentinelai.storage.session;
 
-import co.elastic.clients.elasticsearch._types.Refresh;
+import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
@@ -11,11 +12,11 @@ import co.elastic.clients.elasticsearch.ingest.SetProcessor;
 import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 import com.phonepe.sentinel.session.SessionStore;
 import com.phonepe.sentinel.session.SessionSummary;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
-import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.storage.ESClient;
 import com.phonepe.sentinelai.storage.IndexSettings;
@@ -31,11 +32,21 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.UnaryOperator;
 
+import static co.elastic.clients.elasticsearch._types.Refresh.True;
+
 /**
  * Storage for session data
  */
 @Slf4j
 public class ESSessionStore implements SessionStore {
+    /**
+     * Pointer for scroll based pagination
+     * @param timestamp A microsecond timestamp used to identify the update time
+     * @param id ID to search for
+     */
+    record SessionScrollPointer(long timestamp, String id) {}
+    record MessageScrollPointer(long timestamp, String id) {}
+
     private static final String SESSIONS_INDEX = "agent-sessions";
     private static final String SESSION_AUTO_UPDATE_PIPELINE = "update_session_summary_created_updated";
 
@@ -65,7 +76,8 @@ public class ESSessionStore implements SessionStore {
     public Optional<SessionSummary> session(String sessionId) {
         final var indexName = sessionIndexName();
         final var doc = client.getElasticsearchClient().get(g -> g.index(indexName)
-                .id(sessionId), ESSessionDocument.class);
+                .id(sessionId)
+                .refresh(true), ESSessionDocument.class);
         if (doc.found() && doc.source() != null) {
             return Optional.of(doc.source())
                     .map(this::toWireSession);
@@ -73,40 +85,71 @@ public class ESSessionStore implements SessionStore {
         return Optional.empty();
     }
 
+
     @Override
     @SneakyThrows
-    public List<SessionSummary> sessions(String agentName) {
+    public ListResponse<SessionSummary> sessions(
+            int count,
+            String nextPagePointer) {
         final var indexName = sessionIndexName();
         final var searchResult = client.getElasticsearchClient()
-                .search(s -> s.index(indexName)
-                                .query(q -> q.term(t -> t.field(ESSessionDocument.Fields.agentName)
-                                        .value(agentName)))
-                                .scroll(sc -> sc.time("1m"))
-                        , ESSessionDocument.class);
-        final var scrollId = searchResult.scrollId();
+                .search(s -> sessionQuery(count, indexName, s, nextPagePointer),
+                        ESSessionDocument.class);
         final var hits = searchResult.hits().hits();
-
-        final var documents = new ArrayList<>(hits.stream()
-                                                      .map(Hit::source)
-                                                      .filter(Objects::nonNull)
-                                                      .toList());
-
-        while (!hits.isEmpty()) {
-            final var scrollResult = client.getElasticsearchClient()
-                    .scroll(s -> s.scrollId(scrollId)
-                            .scroll(sc -> sc.time("1m")), ESSessionDocument.class);
-            documents.addAll(scrollResult.hits().hits().stream()
-                                     .map(Hit::source)
-                                     .filter(Objects::nonNull)
-                                     .toList());
-            if (scrollResult.hits().hits().isEmpty()) {
-                break;
-            }
-        }
-
-        return documents.stream()
+        final var summaries = hits.stream()
+                .map(Hit::source)
+                .filter(Objects::nonNull)
                 .map(this::toWireSession)
                 .toList();
+        var scrollId =  "";
+        if(!summaries.isEmpty()) {
+            final var sort = hits.get(hits.size() - 1).sort();
+            scrollId = mapper.writeValueAsString(new SessionScrollPointer(
+                    sort.get(0).longValue(),
+                    sort.get(1).stringValue()
+            ));
+        }
+        return new ListResponse<>(summaries, scrollId);
+    }
+
+    @Override
+    @SneakyThrows
+    public boolean deleteSession(String sessionId) {
+        final var result = client.getElasticsearchClient()
+                .delete(d -> d.index(sessionIndexName())
+                        .id(sessionId)
+                        .refresh(True));
+        log.info("Result of deleting session {}: {}", sessionId, result.result());
+        return true;
+    }
+
+    @SneakyThrows
+    private List<FieldValue> sortOptions(String pointer) {
+        if(Strings.isNullOrEmpty(pointer)) {
+            return null;
+        }
+        final var scrollPointer = mapper.readValue(pointer, SessionScrollPointer.class);
+        final List<FieldValue> sortOptions = new ArrayList<>();
+        sortOptions.add(FieldValue.of(scrollPointer.timestamp()));
+        sortOptions.add(FieldValue.of(scrollPointer.id()));
+        return sortOptions;
+    }
+
+    private SearchRequest.Builder sessionQuery(
+            final int count,
+            final String indexName,
+            final SearchRequest.Builder searchBuilder,
+            final String nextPagePointer) {
+        searchBuilder.index(indexName)
+                .sort(so -> so.field(f -> f.field(ESSessionDocument.Fields.updatedAtMicro)
+                        .order(SortOrder.Desc)))
+                .sort(so -> so.field(f -> f.field(ESSessionDocument.Fields.sessionId)
+                                .order(SortOrder.Desc)))
+                .size(count);
+        if (!Strings.isNullOrEmpty(nextPagePointer)) {
+            searchBuilder.searchAfter(sortOptions(nextPagePointer));
+        }
+        return searchBuilder;
     }
 
     @Override
@@ -119,7 +162,7 @@ public class ESSessionStore implements SessionStore {
                                 .id(stored.getSessionId())
                                 .doc(stored)
                                 .docAsUpsert(true)
-                                .refresh(Refresh.True),
+                                .refresh(True),
                         ESSessionDocument.class
                        )
                 .result();
@@ -134,15 +177,17 @@ public class ESSessionStore implements SessionStore {
         final var indexName = messagesIndexName();
         final var bulkOpBuilder = new BulkRequest.Builder();
         final var currIndex = new AtomicInteger(0);
+        final var idPrefix = UUID.nameUUIDFromBytes((sessionId + "-" + runId).getBytes(StandardCharsets.UTF_8))
+                .toString();
         messages.forEach(message -> {
             final var storedMessage = toStoredMessage(sessionId, runId, message);
             bulkOpBuilder.operations(op -> op.update(
                     idx -> idx.index(indexName)
-                            .id("%s-%04d".formatted(storedMessage.getRunId(), currIndex.getAndIncrement()))
+                            .id("%s-%04d".formatted(idPrefix, currIndex.getAndIncrement()))
                             .action(u -> u.doc(storedMessage)
                                     .docAsUpsert(true))));
         });
-        bulkOpBuilder.refresh(Refresh.True);
+        bulkOpBuilder.refresh(True);
         final var response = client.getElasticsearchClient()
                 .bulk(bulkOpBuilder.build());
         log.debug("Bulk message indexing response: {}", response);
@@ -150,27 +195,31 @@ public class ESSessionStore implements SessionStore {
 
     @Override
     @SneakyThrows
-    public List<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt) {
-        final var indexName = messagesIndexName();
-        final var queryBuilder = new SearchRequest.Builder().index(messagesIndexName());
+    public ListResponse<AgentMessage> readMessages(
+            String sessionId,
+            int count,
+            boolean skipSystemPrompt,
+            String nextPointer) {
+        final var pointer = Strings.isNullOrEmpty(nextPointer)
+                            ? null
+                            : mapper.readValue(nextPointer, MessageScrollPointer.class);
+        final var queryBuilder = new SearchRequest.Builder()
+                .index(messagesIndexName());
         final var boolBuilder = new BoolQuery.Builder();
         boolBuilder.filter(f -> f.term(t ->
                                                t.field(ESMessageDocument.Fields.sessionId).value(sessionId)));
-        if(skipSystemPrompt) {
+        if (skipSystemPrompt) {
             boolBuilder.mustNot(f -> f.term(t -> t.field(ESMessageDocument.Fields.messageType)
                     .value(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE.name())));
         }
         queryBuilder.query(q -> q.bool(boolBuilder.build()));
+        queryBuilder.sort(s -> s.field(f -> f.field(ESMessageDocument.Fields.timestamp).order(SortOrder.Desc)))
+                .sort(s -> s.field(f -> f.field(ESMessageDocument.Fields.messageId).order(SortOrder.Desc)));
+        if (null != pointer) {
+            queryBuilder.searchAfter(List.of(FieldValue.of(pointer.timestamp()), FieldValue.of(pointer.id())));
+        }
         final var searchResult = client.getElasticsearchClient()
-                /*.search(s -> s.index(indexName)
-                                .query(q -> q.term(t -> t.field(ESMessageDocument.Fields.sessionId)
-                                        .value(sessionId)))
-//                                .sort(sort -> sort
-//                                        .field(f -> f.field(ESMessageDocument.Fields.timestamp).order(SortOrder.Desc)))
-                                .scroll(sc -> sc.time("1m"))
-                        , ESMessageDocument.class);*/
-                .search(queryBuilder.scroll(sc -> sc.time("1m")).build(), ESMessageDocument.class);
-        final var scrollId = searchResult.scrollId();
+                .search(queryBuilder.build(), ESMessageDocument.class);
         final var hits = searchResult.hits().hits();
 
         final var documents = new ArrayList<>(hits.stream()
@@ -178,32 +227,18 @@ public class ESSessionStore implements SessionStore {
                                                       .filter(Objects::nonNull)
                                                       .limit(count)
                                                       .toList());
-
-        while (!hits.isEmpty()) {
-            final var scrollResult = client.getElasticsearchClient()
-                    .scroll(s -> s.scrollId(scrollId)
-                            .scroll(sc -> sc.time("1m")), ESMessageDocument.class);
-            documents.addAll(scrollResult.hits().hits().stream()
-                                     .map(Hit::source)
-                                     .filter(Objects::nonNull)
-                                     .toList());
-            if (scrollResult.hits().hits().isEmpty() || documents.size() >= count) {
-                break;
-            }
-        }
-
-        return documents.stream()
+        final var nextResultSPointer = hits.isEmpty()
+                                       ? ""
+                                       : mapper.writeValueAsString(new MessageScrollPointer(
+                                               hits.get(hits.size() - 1).sort().get(0).longValue(),
+                                               hits.get(hits.size() - 1).sort().get(1).stringValue()
+                                       ));
+        final var convertedMessages = documents.stream()
                 .limit(count)
                 .map(this::toWireMessage)
                 .sorted(Comparator.comparingLong(AgentMessage::getTimestamp))
                 .toList();
-    }
-
-
-    private static String docIdForMessage(ESMessageDocument storedMessage) {
-        return UUID.nameUUIDFromBytes(AgentUtils.id(storedMessage.getSessionId(),
-                                                    storedMessage.getMessageId())
-                                              .getBytes(StandardCharsets.UTF_8)).toString();
+        return new ListResponse<>(List.copyOf(Lists.reverse(convertedMessages)), nextResultSPointer);
     }
 
     private SessionSummary toWireSession(ESSessionDocument document) {

@@ -1,6 +1,7 @@
 package com.phonepe.sentinel.session;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import lombok.Value;
 
 import java.util.List;
 import java.util.Optional;
@@ -9,14 +10,22 @@ import java.util.Optional;
  * A storage system for agent session
  */
 public interface SessionStore {
+    @Value
+    class ListResponse<T> {
+        List<T> items;
+        String nextPageToken;
+    }
+
     Optional<SessionSummary> session(String sessionId);
 
-    List<SessionSummary> sessions(String agentName);
+    ListResponse<SessionSummary> sessions(int count, String nextPagePointer);
+
+    boolean deleteSession(String sessionId);
 
     Optional<SessionSummary> saveSession(String agentName, SessionSummary sessionSummary);
 
     void saveMessages(String sessionId, String runId, List<AgentMessage> messages);
 
-    List<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt);
+    ListResponse<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt, String nextPointer);
 
 }

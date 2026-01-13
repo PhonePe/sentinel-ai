@@ -7,7 +7,9 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinel.session.AgentSessionExtension;
 import com.phonepe.sentinel.session.AgentSessionExtensionSetup;
+import com.phonepe.sentinel.session.SelectingSessionStore;
 import com.phonepe.sentinel.session.SessionSummary;
+import com.phonepe.sentinel.session.history.selectors.UnpairedToolCallsRemover;
 import com.phonepe.sentinelai.agentmemory.AgentMemoryExtension;
 import com.phonepe.sentinelai.agentmemory.MemoryExtractionMode;
 import com.phonepe.sentinelai.core.agent.*;
@@ -129,11 +131,12 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                 .build();
 
         final var memoryStorage = new ESAgentMemoryStorage(client, new HuggingfaceEmbeddingModel(), indexPrefix(this));
-        final var sessionStorage = new ESSessionStore(client,
-                                                      indexPrefix(this),
-                                                      IndexSettings.DEFAULT,
-                                                      IndexSettings.DEFAULT,
-                                                      objectMapper);
+        final var sessionStorage = new SelectingSessionStore(new ESSessionStore(client,
+                                                                                indexPrefix(this),
+                                                                                IndexSettings.DEFAULT,
+                                                                                IndexSettings.DEFAULT,
+                                                                                objectMapper));
+        sessionStorage.registerSelectors(new UnpairedToolCallsRemover());
         final var extensions = List.of(AgentMemoryExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                                .objectMapper(objectMapper)
                                                .memoryStore(memoryStorage)
@@ -180,7 +183,9 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
         }
         Awaitility.await()
                 .atMost(Duration.ofSeconds(30))
-                .until(() -> sessionStorage.session("s1").map(SessionSummary::getUpdatedAt).orElse(0L) > updatedTime.get());
+                .until(() -> sessionStorage.session("s1")
+                        .map(SessionSummary::getUpdatedAt)
+                        .orElse(0L) > updatedTime.get());
         updatedTime.set(sessionStorage.session("s1").get().getUpdatedAt());
         log.info("Messages saved in session store.");
         {
@@ -205,7 +210,9 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
         assertTrue(session.isPresent());
         Awaitility.await()
                 .atMost(Duration.ofSeconds(30))
-                .until(() -> sessionStorage.session("s1").map(SessionSummary::getUpdatedAt).orElse(0L) > updatedTime.get());
+                .until(() -> sessionStorage.session("s1")
+                        .map(SessionSummary::getUpdatedAt)
+                        .orElse(0L) > updatedTime.get());
         updatedTime.set(sessionStorage.session("s1").get().getUpdatedAt());
     }
 
