@@ -82,7 +82,7 @@ class MCPToolBoxTest {
                 Map.of() // No tools for now
         );
         final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything")
+                .args("-y", "@modelcontextprotocol/server-everything@2025.12.18")
                 .build();
         final var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(objectMapper));
 
@@ -123,7 +123,7 @@ class MCPToolBoxTest {
                                            objectMapper,
                                            MCPStdioServerConfig.builder()
                                                    .command("npx")
-                                                   .args(List.of("-y", "@modelcontextprotocol/server-everything"))
+                                                   .args(List.of("-y", "@modelcontextprotocol/server-everything@2025.12.18"))
                                                    .exposedTools(Set.of())
                                                    .build()
         );
