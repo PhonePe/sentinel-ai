@@ -217,8 +217,7 @@ class AgentSessionExtensionTest {
                 .extensions(List.of(AgentSessionExtension.<UserInput, String, SimpleAgent>builder()
                                             .mapper(objectMapper)
                                             .sessionStore(sessionStore)
-                                            .build()
-                                            .addDefaultModifiers()))
+                                            .build()))
                 .build()
                 .registerToolbox(toolbox);
 

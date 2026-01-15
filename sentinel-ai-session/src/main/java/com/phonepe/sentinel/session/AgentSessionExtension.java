@@ -5,8 +5,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
-import com.phonepe.sentinel.session.history.modifiers.FailedToolCallRemovalModifier;
-import com.phonepe.sentinel.session.history.modifiers.SystemPromptRemovalModifier;
+import com.phonepe.sentinel.session.history.modifiers.FailedToolCallRemovalPreFilter;
+import com.phonepe.sentinel.session.history.modifiers.MessagePersistencePreFilter;
+import com.phonepe.sentinel.session.history.modifiers.SystemPromptRemovalPreFilter;
+import com.phonepe.sentinel.session.history.selectors.MessageSelector;
 import com.phonepe.sentinel.session.history.selectors.UnpairedToolCallsRemover;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
@@ -22,11 +24,11 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.BiFunction;
 
 
 /**
- * Manages session for an agent
+ * Manages session for an agent. Saves the message history and summarizes the session after each run.
+ * Injects session summary as fact in the system prompt. Also provides messages from the session history to the agent.
  */
 @Slf4j
 @Getter(value = AccessLevel.PACKAGE, onMethod_ = {@VisibleForTesting})
@@ -36,36 +38,60 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     ObjectMapper mapper;
     SessionStore sessionStore;
     AgentSessionExtensionSetup setup;
-    List<BiFunction<AgentRunContext<R>, List<AgentMessage>, List<AgentMessage>>> historyModifiers;
+    List<MessagePersistencePreFilter<R>> historyModifiers;
+    List<MessageSelector> messageSelectors;
 
     @Builder
     public AgentSessionExtension(
             ObjectMapper mapper,
             @NonNull SessionStore sessionStore,
             AgentSessionExtensionSetup setup,
-            List<BiFunction<AgentRunContext<R>, List<AgentMessage>, List<AgentMessage>>> historyModifiers) {
+            List<MessagePersistencePreFilter<R>> historyModifiers,
+            List<MessageSelector> messageSelectors) {
         this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
         this.setup = Objects.requireNonNullElse(setup, AgentSessionExtensionSetup.DEFAULT);
         this.sessionStore = sessionStore;
-        this.historyModifiers = new ArrayList<>(Objects.requireNonNullElseGet(historyModifiers, List::of));
+        this.historyModifiers = new ArrayList<>(
+                Objects.requireNonNullElseGet(
+                        historyModifiers,
+                        () -> List.of(new SystemPromptRemovalPreFilter<>(),
+                                      new FailedToolCallRemovalPreFilter<>())));
+        this.messageSelectors = new ArrayList<>(
+                Objects.requireNonNullElseGet(
+                        messageSelectors,
+                        () -> List.of(new UnpairedToolCallsRemover())));
     }
 
-    public AgentSessionExtension<R, T, A> addHistoryModifier(
-            BiFunction<AgentRunContext<R>, List<AgentMessage>, List<AgentMessage>> modifier) {
-        this.addHistoryModifiers(List.of(modifier));
-        return this;
+    public AgentSessionExtension<R, T, A> addMessagePersistencePreFilter(
+            MessagePersistencePreFilter<R> modifier) {
+        return addMessagePersistencePreFilters(List.of(modifier));
     }
 
-    public AgentSessionExtension<R, T, A> addHistoryModifiers(
-            List<BiFunction<AgentRunContext<R>, List<AgentMessage>, List<AgentMessage>>> modifiers) {
+    public AgentSessionExtension<R, T, A> addMessagePersistencePreFilters(
+            List<MessagePersistencePreFilter<R>> modifiers) {
         this.historyModifiers.addAll(modifiers);
         return this;
     }
 
-    public AgentSessionExtension<R, T, A> addDefaultModifiers() {
-        return addHistoryModifiers(List.of(
-                new SystemPromptRemovalModifier<>(),
-                new FailedToolCallRemovalModifier<>()));
+    public AgentSessionExtension<R, T, A> resetMessagePersistencePreFilters() {
+        this.historyModifiers.clear();
+        log.warn("All message persistence pre-filters have been cleared.");
+        return this;
+    }
+
+    public AgentSessionExtension<R, T, A> addMessageSelector(MessageSelector selector) {
+        return addMessageSelectors(List.of(selector));
+    }
+
+    public AgentSessionExtension<R, T, A> addMessageSelectors(List<MessageSelector> selectors) {
+        this.messageSelectors.addAll(selectors);
+        return this;
+    }
+
+    public AgentSessionExtension<R, T, A> resetMessageSelectors() {
+        this.messageSelectors.clear();
+        log.warn("All message selectors have been cleared.");
+        return this;
     }
 
     @Override
@@ -81,7 +107,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         final var sessionId = AgentUtils.sessionId(context);
         if (!isSummaryEnabled() || Strings.isNullOrEmpty(sessionId)) {
             log.trace(
-                    "Session extension summary feature is disabled or session id is missing. Skipping fact generation.");
+                    "Session extension summary feature is disabled or session id is missing. Skipping fact generation" +
+                            ".");
             return List.of();
         }
         return sessionStore.session(sessionId)
@@ -122,10 +149,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     public List<AgentMessage> messages(AgentRunContext<R> context, A agent, R request) {
         final var sessionId = AgentUtils.sessionId(context);
         if (!Strings.isNullOrEmpty(sessionId)) {
-            final var agentMessages = sessionStore.readMessages(sessionId,
-                                                                setup.getHistoricalMessagesCount(),
-                                                                true,
-                                                                null)
+            final var agentMessages = readMessages(
+                    sessionId, setup.getHistoricalMessagesCount(), true)
                     .getItems();
             if (agentMessages.isEmpty()) {
                 log.info("No messages found for session {}", sessionId);
@@ -203,10 +228,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 ("Generate a %d character summary of the conversation between user and agent from the following " +
                         "messages. Messages JSON: %s")
                         .formatted(setup.getMaxSummaryLength(),
-                                   mapper.writeValueAsString(sessionStore.readMessages(sessionId,
-                                                                                       setup.getMaxMessagesToSummarize(),
-                                                                                       false,
-                                                                                       null))),
+                                   mapper.writeValueAsString(readMessages(sessionId,
+                                                                          setup.getMaxMessagesToSummarize(),
+                                                                          false
+                                                                         ))),
                 LocalDateTime.now()));
         final var runId = "message-summarization-" + UUID.randomUUID();
         final var modelRunContext = new ModelRunContext(data.getAgent().name(),
@@ -244,6 +269,30 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
     }
 
+    private SessionStore.ListResponse<AgentMessage> readMessages(
+            String sessionId,
+            int count,
+            boolean skipSystemPrompt) {
+        int totalMessagesCount = 0;
+        var outputMessages = new ArrayList<AgentMessage>();
+        var pointer = "";
+        do {
+            final var response = sessionStore.readMessages(sessionId, count, skipSystemPrompt, pointer);
+            var messages = response.getItems();
+            pointer = response.getNextPageToken();
+            if (messages.isEmpty()) {
+                break;
+            }
+            for (final var filter : messageSelectors) {
+                messages = filter.select(sessionId, messages);
+            }
+            outputMessages.addAll(messages);
+            totalMessagesCount += messages.size();
+        } while (totalMessagesCount < count && pointer != null);
+        final var nextPageToken = totalMessagesCount >= count ? pointer : null;
+        return new SessionStore.ListResponse<>(outputMessages.stream().limit(count).toList(), nextPageToken);
+    }
+
     private void saveSummary(AgentRunContext<R> context, JsonNode output, A agent) {
         if (isSummaryEnabled()) {
             final var sessionId = AgentUtils.sessionId(context);
@@ -277,7 +326,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 .toList();
 
         for (var modifier : historyModifiers) {
-            newMessages = modifier.apply(context, newMessages);
+            newMessages = modifier.filter(context, newMessages);
         }
         if (newMessages.isEmpty()) {
             log.warn("No new messages to save after applying modifiers");

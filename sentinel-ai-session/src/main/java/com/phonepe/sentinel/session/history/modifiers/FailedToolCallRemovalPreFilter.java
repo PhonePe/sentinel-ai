@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -23,8 +22,7 @@ import java.util.stream.Collectors;
  * Removes all failed tool call responses from the agent message history.
  */
 @Slf4j
-public class FailedToolCallRemovalModifier<R> implements BiFunction<AgentRunContext<R>, List<AgentMessage>,
-        List<AgentMessage>> {
+public class FailedToolCallRemovalPreFilter<R> implements MessagePersistencePreFilter<R> {
     private static final AgentMessageVisitor<String> FAILED_TOOL_CALL_FINDER = new AgentMessageVisitor<>() {
         @Override
         public String visit(AgentRequest request) {
@@ -110,7 +108,7 @@ public class FailedToolCallRemovalModifier<R> implements BiFunction<AgentRunCont
     }
 
     @Override
-    public List<AgentMessage> apply(AgentRunContext<R> context, List<AgentMessage> agentMessages) {
+    public List<AgentMessage> filter(AgentRunContext<R> context, List<AgentMessage> agentMessages) {
         // Find all failed tool calls and then remove all the call requests and responses
         final var failedCallIds = agentMessages.stream()
                 .map(message -> message.accept(FAILED_TOOL_CALL_FINDER))
