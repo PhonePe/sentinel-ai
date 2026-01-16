@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 
 /**
@@ -51,12 +52,12 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
         this.setup = Objects.requireNonNullElse(setup, AgentSessionExtensionSetup.DEFAULT);
         this.sessionStore = sessionStore;
-        this.historyModifiers = new ArrayList<>(
+        this.historyModifiers = new CopyOnWriteArrayList<>(
                 Objects.requireNonNullElseGet(
                         historyModifiers,
                         () -> List.of(new SystemPromptRemovalPreFilter<>(),
                                       new FailedToolCallRemovalPreFilter<>())));
-        this.messageSelectors = new ArrayList<>(
+        this.messageSelectors = new CopyOnWriteArrayList<>(
                 Objects.requireNonNullElseGet(
                         messageSelectors,
                         () -> List.of(new UnpairedToolCallsRemover())));
@@ -125,18 +126,12 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             AgentRunContext<R> context,
             A agent,
             ProcessingMode processingMode) {
-        final var prompts = new ArrayList<SystemPrompt.Task>();
-        if (isSummaryEnabled() && processingMode.equals(ProcessingMode.DIRECT)) {
-            prompts.add(sessionAndRunSummaryExtractionTaskPrompt(AgentUtils.sessionId(context)));
-        }
-
         final var hints = new ArrayList<>();
         if (!Strings.isNullOrEmpty(AgentUtils.sessionId(context))) {
             hints.add("USE SESSION INFORMATION TO CONTEXTUALIZE RESPONSES");
         }
-        return new ExtensionPromptSchema(prompts, hints);
+        return new ExtensionPromptSchema(List.of(), hints);
     }
-
 
     @Override
     public Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode) {
@@ -149,8 +144,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     public List<AgentMessage> messages(AgentRunContext<R> context, A agent, R request) {
         final var sessionId = AgentUtils.sessionId(context);
         if (!Strings.isNullOrEmpty(sessionId)) {
-            final var agentMessages = readMessages(
-                    sessionId, setup.getHistoricalMessagesCount(), true)
+            final var messagesToFetch = Math.max(
+                    setup.getHistoricalMessagesCount(),
+                    setup.getHistoricalMessageFetchSize());
+            final var agentMessages = readMessages(sessionId, messagesToFetch, true)
                     .getItems();
             if (agentMessages.isEmpty()) {
                 log.info("No messages found for session {}", sessionId);

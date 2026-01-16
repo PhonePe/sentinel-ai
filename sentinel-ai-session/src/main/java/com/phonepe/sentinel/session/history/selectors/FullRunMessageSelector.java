@@ -32,7 +32,7 @@ public class FullRunMessageSelector implements MessageSelector {
                 .map(Map.Entry::getKey)
                 .collect(toUnmodifiableSet());
         final var candidates = new ArrayList<>(messages);
-        messages.removeIf(m -> !runMessages.contains(m.getRunId()));
+        candidates.removeIf(m -> !runMessages.contains(m.getRunId()));
         return candidates;
     }
 }
