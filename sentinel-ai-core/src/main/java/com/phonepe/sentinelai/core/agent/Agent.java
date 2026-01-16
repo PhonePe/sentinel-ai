@@ -12,7 +12,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Primitives;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
@@ -426,11 +425,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             boolean isTextStreaming,
             BiFunction<ModelOutputProcessingContext<R>, ModelOutput, AgentOutput<U>> outputProcessor) {
         final var mergedAgentSetup = AgentUtils.mergeAgentSetup(input.getAgentSetup(), this.setup);
-        final var messages = new ArrayList<>(Objects.requireNonNullElse(input.getOldMessages(), List.<AgentMessage>of())
-                                                     .stream()
-                                                     .filter(message -> !message.getMessageType()
-                                                             .equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE))
-                                                     .toList());
+        final var messages = new ArrayList<>(Objects.requireNonNullElse(input.getOldMessages(), List.of()));
+
         final var runId = UUID.randomUUID().toString();
         final var requestMetadata = input.getRequestMetadata();
         final var request = input.getRequest();
@@ -463,10 +459,11 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 finalSystemPrompt,
                 false,
                 null));
+        messages.addAll(extensionMessages(input.getRequest(), context));
         messages.add(new UserPrompt(
                 AgentUtils.sessionId(context),
                 context.getRunId(),
-                toXmlContent(request),
+                toXmlContent(input),
                 LocalDateTime.now()));
         final var modelRunContext = new ModelRunContext(name(),
                                                         runId,
