@@ -126,7 +126,7 @@ public class ESSessionStore implements SessionStore {
     @SneakyThrows
     private List<FieldValue> sortOptions(String pointer) {
         if(Strings.isNullOrEmpty(pointer)) {
-            return null;
+            return List.of();
         }
         final var scrollPointer = mapper.readValue(pointer, SessionScrollPointer.class);
         final List<FieldValue> sortOptions = new ArrayList<>();

@@ -27,6 +27,7 @@ public class GenericResource extends AgentGenericMessage {
     String content;
     String serializedJson;
 
+    @SuppressWarnings("java:S107")
     public GenericResource(
             String sessionId,
             String runId,
