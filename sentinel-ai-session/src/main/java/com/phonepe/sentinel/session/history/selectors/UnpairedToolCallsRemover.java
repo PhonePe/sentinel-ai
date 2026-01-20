@@ -38,7 +38,6 @@ public class UnpairedToolCallsRemover implements MessageSelector {
                 @Override
                 public Void visit(AgentRequest request) {
                     return request.accept(new AgentRequestVisitor<>() {
-                        ;
 
                         @Override
                         public Void visit(com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt systemPrompt) {
@@ -54,7 +53,7 @@ public class UnpairedToolCallsRemover implements MessageSelector {
                         public Void visit(ToolCallResponse toolCallResponse) {
                             toolCallDataMap.computeIfAbsent(toolCallResponse.getToolCallId(),
                                                             k -> new ToolCallData(toolCallResponse.getMessageId()))
-                                    .setHasResponse(true);
+                                    .setHasResponse(true); //Tool Call executed and Response sent to model
                             return null;
                         }
                     });
@@ -79,7 +78,7 @@ public class UnpairedToolCallsRemover implements MessageSelector {
                         public Void visit(ToolCall toolCall) {
                             toolCallDataMap.computeIfAbsent(toolCall.getToolCallId(),
                                                             k -> new ToolCallData(toolCall.getMessageId()))
-                                    .setHasRequest(true);
+                                    .setHasRequest(true); //Tool call execution request received from model
                             return null;
                         }
                     });

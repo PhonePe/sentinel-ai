@@ -48,7 +48,7 @@ public abstract class AgentMessage {
             String messageId,
             Long timestamp) {
         this.messageType = messageType;
-        this.sessionId = sessionId;
+        this.sessionId = Objects.requireNonNullElse(sessionId, runId);
         this.runId = runId;
         this.messageId = Objects.requireNonNullElseGet(
                 messageId,

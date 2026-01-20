@@ -240,9 +240,6 @@ class AgentSessionExtensionTest {
         assertEquals(8, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null)
                 .getItems()
                 .size());
-        //Thread.sleep(1000);
-        //assertEquals(1, historyStore.history("s1").orElseThrow().getMessages().size());
-//        System.out.println("MESSAGES:" + sessionStore.readMessages("s1", Integer.MAX_VALUE));
 
         final var response2 = agent.executeAsync(
                         AgentInput.<UserInput>builder()
@@ -257,10 +254,6 @@ class AgentSessionExtensionTest {
                     .writeValueAsString(response2.getAllMessages()));
         }
 
-//        Thread.sleep(100_000);
-        //Thread.sleep(1000);
-        //assertEquals(2, historyStore.history("s1").orElseThrow().getMessages().size());
-//        TestUtils.
         Awaitility.await()
                 .pollDelay(Duration.ofSeconds(1))
                 .atMost(Duration.ofMinutes(1))
