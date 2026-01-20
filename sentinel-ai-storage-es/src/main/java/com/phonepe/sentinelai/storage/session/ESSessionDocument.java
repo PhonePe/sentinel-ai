@@ -22,6 +22,8 @@ public class ESSessionDocument {
 
     List<String> topics;
 
+    long updatedAtMicro;
+
     LocalDateTime createdAt;
 
     LocalDateTime updatedAt;

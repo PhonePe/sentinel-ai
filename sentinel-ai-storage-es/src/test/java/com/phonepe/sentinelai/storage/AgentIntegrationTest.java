@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinel.session.AgentSessionExtension;
+import com.phonepe.sentinel.session.AgentSessionExtensionSetup;
+import com.phonepe.sentinel.session.SessionSummary;
 import com.phonepe.sentinelai.agentmemory.AgentMemoryExtension;
 import com.phonepe.sentinelai.agentmemory.MemoryExtractionMode;
 import com.phonepe.sentinelai.core.agent.*;
@@ -29,10 +31,12 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -48,7 +52,8 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
     }
 
     @JsonClassDescription("Parameter to be passed to get salutation for a user")
-    public record SalutationParams(@JsonPropertyDescription("Name of the user") @JsonProperty(required = true) String name) {
+    public record SalutationParams(
+            @JsonPropertyDescription("Name of the user") @JsonProperty(required = true) String name) {
     }
 
     @JsonClassDescription("User input")
@@ -60,7 +65,10 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
 
     public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions, Map<String, ExecutableTool> tools) {
+        public SimpleAgent(
+                AgentSetup setup,
+                List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions,
+                Map<String, ExecutableTool> tools) {
             super(OutputObject.class,
                   "greet the user. extract memories about the user to make conversations easier in the future.",
                   setup,
@@ -89,7 +97,7 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(13, "me", getClass());
+        TestUtils.setupMocks(11, "nme", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
@@ -121,15 +129,21 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                 .build();
 
         final var memoryStorage = new ESAgentMemoryStorage(client, new HuggingfaceEmbeddingModel(), indexPrefix(this));
-        final var sessionStorage = new ESSessionStore(client, indexPrefix(this), IndexSettings.DEFAULT);
+        final var sessionStorage = new ESSessionStore(client,
+                                                      indexPrefix(this),
+                                                      IndexSettings.DEFAULT,
+                                                      IndexSettings.DEFAULT,
+                                                      objectMapper);
         final var extensions = List.of(AgentMemoryExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                                .objectMapper(objectMapper)
                                                .memoryStore(memoryStorage)
                                                .memoryExtractionMode(MemoryExtractionMode.INLINE)
                                                .build(),
                                        AgentSessionExtension.<UserInput, OutputObject, SimpleAgent>builder()
+                                               .setup(AgentSessionExtensionSetup.builder()
+                                                              .historicalMessagesCount(6)
+                                                              .build())
                                                .sessionStore(sessionStorage)
-                                               .updateSummaryAfterSession(true)
                                                .build());
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
@@ -151,6 +165,11 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                                        .build());
             log.debug("Agent response: {}", response.getData().message());
         }
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .until(() -> sessionStorage.session("s1").isPresent());
+        final var updatedTime = new AtomicLong(sessionStorage.session("s1").get().getUpdatedAt());
+        log.info("Session created with updated time: {}", updatedTime);
         {
             final var response = agent.execute(AgentInput.<UserInput>builder()
                                                        .request(new UserInput("Today is sunny in bangalore"))
@@ -159,6 +178,13 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
             log.debug("Agent response: {}", response.getData().message());
             ensureOutputGenerated(response);
         }
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .until(() -> sessionStorage.session("s1")
+                        .map(SessionSummary::getUpdatedAt)
+                        .orElse(0L) > updatedTime.get());
+        updatedTime.set(sessionStorage.session("s1").get().getUpdatedAt());
+        log.info("Messages saved in session store.");
         {
             final var response2 = agent.execute(
                     AgentInput.<UserInput>builder()
@@ -179,6 +205,12 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
         final var session = sessionStorage.session("s1");
         log.info("Session: {}", session);
         assertTrue(session.isPresent());
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .until(() -> sessionStorage.session("s1")
+                        .map(SessionSummary::getUpdatedAt)
+                        .orElse(0L) > updatedTime.get());
+        updatedTime.set(sessionStorage.session("s1").get().getUpdatedAt());
     }
 
     /**

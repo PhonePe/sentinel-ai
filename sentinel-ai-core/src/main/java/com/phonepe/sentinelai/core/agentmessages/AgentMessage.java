@@ -9,15 +9,16 @@ import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import lombok.Data;
+
+import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Messages exchanged between the system and LLM
  */
 @Data
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "messageType")
 @JsonSubTypes(
         {
@@ -37,6 +38,23 @@ import lombok.Data;
 )
 public abstract class AgentMessage {
     private final AgentMessageType messageType;
+    private final String sessionId;
+    private final String runId;
+    private final String messageId;
+    private final long timestamp;
+
+    protected AgentMessage(
+            AgentMessageType messageType, String sessionId, String runId,
+            String messageId,
+            Long timestamp) {
+        this.messageType = messageType;
+        this.sessionId = Objects.requireNonNullElse(sessionId, runId);
+        this.runId = runId;
+        this.messageId = Objects.requireNonNullElseGet(
+                messageId,
+                () -> AgentUtils.id(messageType.name(), UUID.randomUUID().toString()));
+        this.timestamp = Objects.requireNonNullElseGet(timestamp, AgentUtils::epochMicro);
+    }
 
     public abstract <T> T accept(AgentMessageVisitor<T> visitor);
 }

@@ -49,7 +49,7 @@ Then create the MCP client:
 ```java title="TestAgent.java"
 // Build the client as prescribed in https://modelcontextprotocol.io/sdk/java/mcp-client
 final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything")
+                .args("-y", "@modelcontextprotocol/server-everything@2025.12.18")
                 .build();
 final var transport = new StdioClientTransport(params);
 
@@ -124,7 +124,7 @@ Format:
       "command": "npx", //(4)!
       "args": [ //(5)!
         "-y",
-        "@modelcontextprotocol/server-everything"
+        "@modelcontextprotocol/server-everything@2025.12.18"
       ],
       "env" : { //(6)!
         "VAR1": "value1",
@@ -190,7 +190,7 @@ To build a `ComposingToolBox` programmatically, you can use the following code:
 ```java title="TestAgent.java"
 // Build the client as prescribed in https://modelcontextprotocol.io/sdk/java/mcp-client
 final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything")
+                .args("-y", "@modelcontextprotocol/server-everything@2025.12.18")
                 .build();
 final var transport = new StdioClientTransport(params);
 

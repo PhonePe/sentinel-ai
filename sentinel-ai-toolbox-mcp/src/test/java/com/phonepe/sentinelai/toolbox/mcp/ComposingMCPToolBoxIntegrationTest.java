@@ -117,7 +117,7 @@ class ComposingMCPToolBoxIntegrationTest {
 
     private ComposingMCPToolBox buildToolBox(JsonMapper objectMapper) {
         final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything")
+                .args("-y", "@modelcontextprotocol/server-everything@2025.12.18")
                 .build();
         final var transport = new StdioClientTransport(params,
                                                        new JacksonMcpJsonMapper(objectMapper));

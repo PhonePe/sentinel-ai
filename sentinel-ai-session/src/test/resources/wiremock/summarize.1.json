@@ -1,28 +1,29 @@
 {
-  "id" : "chatcmpl-BvemM4k6xvbSIdLXWqnihbywOYnil",
+  "id" : "chatcmpl-Cy9hTQIU8AYFwcx6GjMeXr2JD6j8M",
   "object" : "chat.completion",
-  "created" : 1753081150,
+  "created" : 1768453003,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_efad92c60b",
+  "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_A1OJIGaK2tUwuIxdOFSSC6uq",
+        "id" : "call_4MRJh0D3mtoxxhAcWdG4oXVR",
         "type" : "function",
         "function" : {
-          "name" : "agent_memory_extension_find_memories",
-          "arguments" : "{\"query\":\"sunny in bangalore\"}"
+          "name" : "simple_agent_get_name",
+          "arguments" : "{}"
         }
-      } ]
+      } ],
+      "annotations" : [ ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1376,
-    "completion_tokens" : 23,
-    "total_tokens" : 1399,
+    "prompt_tokens" : 577,
+    "completion_tokens" : 13,
+    "total_tokens" : 590,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

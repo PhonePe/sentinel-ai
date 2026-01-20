@@ -1,28 +1,29 @@
 {
-  "id" : "chatcmpl-BvemWGh9wWWwgbofedFJwZDenxB4O",
+  "id" : "chatcmpl-CxR5shUttexlapW5hzgReLhmSzCRY",
   "object" : "chat.completion",
-  "created" : 1753081160,
+  "created" : 1768281536,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_efad92c60b",
+  "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_HU47kdrBBw8TAXYwQMbULwtF",
+        "id" : "call_ZBhjlO9buEsSmfMW0wqOMfp5",
         "type" : "function",
         "function" : {
-          "name" : "simple_agent_get_name",
-          "arguments" : "{}"
+          "name" : "agent_memory_extension_find_memories",
+          "arguments" : "{\"query\":\"Bangalore\"}"
         }
-      } ]
+      } ],
+      "annotations" : [ ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1405,
-    "completion_tokens" : 13,
-    "total_tokens" : 1418,
+    "prompt_tokens" : 1641,
+    "completion_tokens" : 20,
+    "total_tokens" : 1661,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

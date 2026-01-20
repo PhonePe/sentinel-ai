@@ -523,7 +523,7 @@ class AgentRegistryTest {
                 .capability(AgentCapabilities.mcpCalls(Map.of("mcp", Set.of("add"))))
                 .build();
         final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything")
+                .args("-y", "@modelcontextprotocol/server-everything@2025.12.18")
                 .build();
         final var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(MAPPER));
         try (final var mcpClient = McpClient.sync(transport).build()) {
@@ -804,7 +804,7 @@ class AgentRegistryTest {
 
     public static Stream<Arguments> generateMcpTBFactory() {
         final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything")
+                .args("-y", "@modelcontextprotocol/server-everything@2025.12.18")
                 .build();
         final var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(MAPPER));
         final var mcpClient = McpClient.sync(transport)

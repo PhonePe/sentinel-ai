@@ -19,10 +19,29 @@ public class UserPrompt extends AgentRequest {
     String content;
     LocalDateTime sentAt;
 
+    public UserPrompt(
+            String sessionId,
+            String runId,
+            @NonNull String content,
+            LocalDateTime sentAt) {
+        this(sessionId,
+             runId,
+             null,
+             null,
+             content,
+             sentAt);
+    }
+
     @Builder
     @Jacksonized
-    public UserPrompt(@NonNull String content, LocalDateTime sentAt) {
-        super(AgentMessageType.USER_PROMPT_REQUEST_MESSAGE);
+    public UserPrompt(
+            String sessionId,
+            String runId,
+            String messageId,
+            Long timestamp,
+            @NonNull String content,
+            LocalDateTime sentAt) {
+        super(AgentMessageType.USER_PROMPT_REQUEST_MESSAGE, sessionId, runId, messageId, timestamp);
         this.content = content;
         this.sentAt = Objects.requireNonNullElse(sentAt, LocalDateTime.now());
     }

@@ -78,7 +78,15 @@ class SimpleOpenAIModelTest {
                 List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions,
                 Map<String, ExecutableTool> tools,
                 EarlyTerminationStrategy earlyTerminationStrategy) {
-            super(OutputObject.class, "greet the user", setup, extensions, tools, null, null, null, earlyTerminationStrategy);
+            super(OutputObject.class,
+                  "greet the user",
+                  setup,
+                  extensions,
+                  tools,
+                  null,
+                  null,
+                  null,
+                  earlyTerminationStrategy);
         }
 
         @Tool("Get name of user")
@@ -114,13 +122,15 @@ class SimpleOpenAIModelTest {
     @SneakyThrows
     void testNewMessagesAreAddedByThePreprocessor(final WireMockRuntimeInfo wiremock) {
         AtomicInteger iter = new AtomicInteger(0);
-         var response = testInternal(wiremock,
-                4,
-                "tool-output",
-                List.of((ctx, allMessages, newMessages) -> {
+        var response = testInternal(wiremock,
+                                    4,
+                                    "tool-output",
+                                    List.of((ctx, allMessages, newMessages) -> {
 
                     final var processedMessages = new ArrayList<>(allMessages);
-                    processedMessages.add(new GenericText(AgentGenericMessage.Role.ASSISTANT,"123-" + iter.getAndIncrement()));
+                    processedMessages.add(new GenericText(
+                            "s1", "r1", AgentGenericMessage.Role.ASSISTANT, "123-" + iter.getAndIncrement()
+                    ));
 
                     return new AgentMessagesPreProcessResult(processedMessages, List.of());
                 })
@@ -136,16 +146,16 @@ class SimpleOpenAIModelTest {
     @SneakyThrows
     void testAbsenceOfSystemPromptInPreprocessorOutput(final WireMockRuntimeInfo wiremock) {
         var response = testInternal(wiremock,
-                4,
-                "tool-output",
-                List.of((ctx, allMessages, newMessages) -> {
+                                    4,
+                                    "tool-output",
+                                    List.of((ctx, allMessages, newMessages) -> {
 
                     List<AgentMessage> transformedMessages = List.of(
-                            new GenericText(AgentGenericMessage.Role.ASSISTANT,"123-"));
+                            new GenericText("s1", "r1", AgentGenericMessage.Role.ASSISTANT, "123-"));
 
-                    return new AgentMessagesPreProcessResult(transformedMessages, List.of());
-                })
-        );
+                                        return new AgentMessagesPreProcessResult(transformedMessages, List.of());
+                                    })
+                                   );
         assertEquals(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID, response.getError().getErrorType());
     }
 
@@ -165,11 +175,11 @@ class SimpleOpenAIModelTest {
     @SneakyThrows
     void testNoopPreProcessor(final WireMockRuntimeInfo wiremock) {
         var response = testInternal(wiremock,
-                4,
-                "tool-output",
-                List.of((ctx, allMessages, newMessages)
-                        -> new AgentMessagesPreProcessResult(null, null))
-        );
+                                    4,
+                                    "tool-output",
+                                    List.of((ctx, allMessages, newMessages)
+                                                    -> new AgentMessagesPreProcessResult(null, null))
+                                   );
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
 
         // system prompt + user message + 4 tool calls req/resp + structured output
@@ -181,11 +191,11 @@ class SimpleOpenAIModelTest {
     @SneakyThrows
     void testEmptyListReturnedByAProcessorFails(final WireMockRuntimeInfo wiremock) {
         var response = testInternal(wiremock,
-                4,
-                "tool-output",
-                List.of((ctx, allMessages, newMessages)
-                        -> new AgentMessagesPreProcessResult(List.of(), null))
-        );
+                                    4,
+                                    "tool-output",
+                                    List.of((ctx, allMessages, newMessages)
+                                                    -> new AgentMessagesPreProcessResult(List.of(), null))
+                                   );
         assertEquals(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID, response.getError().getErrorType());
     }
 
@@ -196,14 +206,15 @@ class SimpleOpenAIModelTest {
                 4,
                 "tool-output",
                 List.of((ctx, allMessages, newMessages)
-                        -> new AgentMessagesPreProcessResult(allMessages, List.of(new GenericText(AgentGenericMessage.Role.USER, "TEST"))))
+                        -> new AgentMessagesPreProcessResult(allMessages, List.of(
+                                new GenericText("s1", "r1", AgentGenericMessage.Role.USER, "TEST"))))
         );
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertEquals(1, response.getNewMessages()
                 .stream()
                 .filter(x -> x.getMessageType().equals(AgentMessageType.GENERIC_TEXT_MESSAGE))
                 .map(AgentGenericMessage.class::cast)
-                .filter( x -> x.getRole().equals(AgentGenericMessage.Role.USER))
+                .filter(x -> x.getRole().equals(AgentGenericMessage.Role.USER))
                 .map(GenericText.class::cast)
                 .filter(x -> x.getText().equals("TEST"))
                 .count());
@@ -213,12 +224,12 @@ class SimpleOpenAIModelTest {
     @SneakyThrows
     void testExceptionRaisedByPreprocessor(final WireMockRuntimeInfo wiremock) {
         var response = testInternal(wiremock,
-                4,
-                "tool-output",
-                List.of((ctx, allMessages, newMessages) -> {
-                    throw new RuntimeException("Errored");
-                })
-        );
+                                    4,
+                                    "tool-output",
+                                    List.of((ctx, allMessages, newMessages) -> {
+                                        throw new RuntimeException("Errored");
+                                    })
+                                   );
 
         assertEquals(ErrorType.PREPROCESSOR_RUN_FAILURE, response.getError().getErrorType());
 
@@ -243,10 +254,10 @@ class SimpleOpenAIModelTest {
         };
 
         var response = testInternalWithTerminationStrategy(wiremock,
-                     3,
-                     "structured-output",
-                     setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
-                     earlyTerminationStrategy);
+                                                           3,
+                                                           "structured-output",
+                                                           setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
+                                                           earlyTerminationStrategy);
         assertTrue(terminationInvoked.get(), "Early termination strategy should have been invoked");
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
     }
@@ -259,14 +270,14 @@ class SimpleOpenAIModelTest {
         final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> {
             isStrategyInvoked.set(true);
             return EarlyTerminationStrategyResponse.terminate(ErrorType.MODEL_RUN_TERMINATED,
-                    "Terminating run early as per strategy");
+                                                              "Terminating run early as per strategy");
         };
 
         var response = testInternalWithTerminationStrategy(wiremock,
-                     3,
-                     "structured-output",
-                     setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
-                     earlyTerminationStrategy);
+                                                           3,
+                                                           "structured-output",
+                                                           setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
+                                                           earlyTerminationStrategy);
         assertTrue(isStrategyInvoked.get(), "Early termination strategy should have been invoked");
         assertEquals(ErrorType.MODEL_RUN_TERMINATED, response.getError().getErrorType());
         assertEquals("Terminating run early as per strategy", response.getError().getMessage());
@@ -283,10 +294,10 @@ class SimpleOpenAIModelTest {
         };
 
         var response = testInternalWithTerminationStrategy(wiremock,
-                3,
-                "structured-output",
-                setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
-                earlyTerminationStrategy);
+                                                           3,
+                                                           "structured-output",
+                                                           setup -> setup.outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT),
+                                                           earlyTerminationStrategy);
         assertTrue(isStrategyInvoked.get(), "Early termination strategy should have been invoked");
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
     }
@@ -304,13 +315,13 @@ class SimpleOpenAIModelTest {
 
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
-                                .mapper(objectMapper)
-                                .model(model)
-                                .modelSettings(ModelSettings.builder()
-                                        .temperature(0.1f)
-                                        .seed(42)
-                                        .build())
-                        .build())
+                               .mapper(objectMapper)
+                               .model(model)
+                               .modelSettings(ModelSettings.builder()
+                                                      .temperature(0.1f)
+                                                      .seed(42)
+                                                      .build())
+                               .build())
                 .build();
         agent.registerAgentMessagesPreProcessors(agentMessagesPreProcessors);
 
@@ -319,9 +330,9 @@ class SimpleOpenAIModelTest {
                 .userId("ss")
                 .build();
         return agent.execute(AgentInput.<UserInput>builder()
-                .request(new UserInput("Hi?"))
-                .requestMetadata(requestMetadata)
-                .build());
+                                     .request(new UserInput("Hi?"))
+                                     .requestMetadata(requestMetadata)
+                                     .build());
     }
 
     @SneakyThrows
@@ -482,12 +493,12 @@ class SimpleOpenAIModelTest {
                 .build();
 
         final var model = setupModel("gpt-4o",
-                wiremock, JsonUtils.createMapper(), httpClient);
+                                     wiremock, JsonUtils.createMapper(), httpClient);
 
         final var response = executeAgentWithModel(model);
         assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
-                response.getError().getErrorType(),
-                "Expected TIMEOUT after retries, got: " + response.getError());
+                   response.getError().getErrorType(),
+                   "Expected TIMEOUT after retries, got: " + response.getError());
     }
 
     @ParameterizedTest
@@ -497,8 +508,8 @@ class SimpleOpenAIModelTest {
         TestUtils.setupMocksWithFault(fault);
         final var response = executeAgent(wiremock);
         assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
-                response.getError().getErrorType(),
-                "Expected COMMUNICATION_ERROR after retries, got: " + response.getError());
+                   response.getError().getErrorType(),
+                   "Expected COMMUNICATION_ERROR after retries, got: " + response.getError());
     }
 
     public static Stream<Arguments> generateHttpCallFailures() {
@@ -525,32 +536,34 @@ class SimpleOpenAIModelTest {
         final var mapper = JsonUtils.createMapper();
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
-                        .mapper(mapper)
-                        .model(model)
-                        .retrySetup(RetrySetup.builder()
-                                .totalAttempts(3)
-                                .delayAfterFailedAttempt(Duration.ofMillis(50))
-                                .build())
-                        .build())
+                               .mapper(mapper)
+                               .model(model)
+                               .retrySetup(RetrySetup.builder()
+                                                   .totalAttempts(3)
+                                                   .delayAfterFailedAttempt(Duration.ofMillis(50))
+                                                   .build())
+                               .build())
                 .build();
         return agent.execute(AgentInput.<UserInput>builder()
-                .request(new UserInput("Hi?"))
-                .build());
+                                     .request(new UserInput("Hi?"))
+                                     .build());
     }
 
-    private static SimpleOpenAIModel<SimpleOpenAIAzure> setupModel(final String modelName,
-                                                                   final WireMockRuntimeInfo wiremock,
-                                                                   final JsonMapper mapper) {
+    private static SimpleOpenAIModel<SimpleOpenAIAzure> setupModel(
+            final String modelName,
+            final WireMockRuntimeInfo wiremock,
+            final JsonMapper mapper) {
         final var httpClient = new OkHttpClient.Builder()
                 .build();
 
         return setupModel(modelName, wiremock, mapper, httpClient);
     }
 
-    private static SimpleOpenAIModel<SimpleOpenAIAzure> setupModel(final String modelName,
-                                                                   final WireMockRuntimeInfo wiremock,
-                                                                   final JsonMapper mapper,
-                                                                   final OkHttpClient okHttpClient) {
+    private static SimpleOpenAIModel<SimpleOpenAIAzure> setupModel(
+            final String modelName,
+            final WireMockRuntimeInfo wiremock,
+            final JsonMapper mapper,
+            final OkHttpClient okHttpClient) {
 
         return new SimpleOpenAIModel<>(
                 modelName,
@@ -561,8 +574,8 @@ class SimpleOpenAIModelTest {
                         .objectMapper(mapper)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
                         .retryConfig(RetryConfig.builder()
-                                .maxAttempts(1) // disabling implicit retries by default for tests
-                                .build())
+                                             .maxAttempts(1) // disabling implicit retries by default for tests
+                                             .build())
                         .build(),
                 mapper);
     }
