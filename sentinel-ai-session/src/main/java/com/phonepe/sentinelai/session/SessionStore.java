@@ -1,4 +1,4 @@
-package com.phonepe.sentinel.session;
+package com.phonepe.sentinelai.session;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import lombok.Value;

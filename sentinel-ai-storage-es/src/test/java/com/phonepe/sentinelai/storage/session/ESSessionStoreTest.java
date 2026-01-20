@@ -2,7 +2,7 @@ package com.phonepe.sentinelai.storage.session;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
-import com.phonepe.sentinel.session.SessionSummary;
+import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;

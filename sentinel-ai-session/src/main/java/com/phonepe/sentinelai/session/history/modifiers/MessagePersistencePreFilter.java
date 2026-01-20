@@ -1,4 +1,4 @@
-package com.phonepe.sentinel.session.history.modifiers;
+package com.phonepe.sentinelai.session.history.modifiers;
 
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * This interface is used to implement filters that are applied to the list of agent messages
- * before they are persisted to the {@link com.phonepe.sentinel.session.SessionStore}
+ * before they are persisted to the {@link com.phonepe.sentinelai.session.SessionStore}
  */
 @FunctionalInterface
 public interface MessagePersistencePreFilter<R> {

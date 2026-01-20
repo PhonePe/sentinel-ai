@@ -1,15 +1,15 @@
-package com.phonepe.sentinel.session;
+package com.phonepe.sentinelai.session;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
-import com.phonepe.sentinel.session.history.modifiers.FailedToolCallRemovalPreFilter;
-import com.phonepe.sentinel.session.history.modifiers.MessagePersistencePreFilter;
-import com.phonepe.sentinel.session.history.modifiers.SystemPromptRemovalPreFilter;
-import com.phonepe.sentinel.session.history.selectors.MessageSelector;
-import com.phonepe.sentinel.session.history.selectors.UnpairedToolCallsRemover;
+import com.phonepe.sentinelai.session.history.modifiers.FailedToolCallRemovalPreFilter;
+import com.phonepe.sentinelai.session.history.modifiers.MessagePersistencePreFilter;
+import com.phonepe.sentinelai.session.history.modifiers.SystemPromptRemovalPreFilter;
+import com.phonepe.sentinelai.session.history.selectors.MessageSelector;
+import com.phonepe.sentinelai.session.history.selectors.UnpairedToolCallsRemover;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
