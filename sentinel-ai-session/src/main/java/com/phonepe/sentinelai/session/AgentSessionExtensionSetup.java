@@ -18,6 +18,7 @@ public class AgentSessionExtensionSetup {
 
     public static final AgentSessionExtensionSetup DEFAULT = new AgentSessionExtensionSetup(
             DEFAULT_HISTORICAL_MESSAGES_COUNT,
+            DEFAULT_HISTORICAL_MESSAGES_FETCH_COUNT,
             DEFAULT_MAX_MESSAGES_TO_SUMMARIZE,
             DEFAULT_MAX_SUMMARY_LENGTH,
             DEFAULT_DISABLE_SUMMARIZATION);
@@ -37,6 +38,7 @@ public class AgentSessionExtensionSetup {
      * In case of difference between historicalMessagesCount and historicalMessageFetchSize, the maximum value
      * between the two will be used to fetch messages.
      */
+    @Builder.Default
     int historicalMessageFetchSize = DEFAULT_HISTORICAL_MESSAGES_FETCH_COUNT;
 
     /**

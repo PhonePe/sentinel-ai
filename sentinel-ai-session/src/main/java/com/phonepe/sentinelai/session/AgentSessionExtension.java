@@ -5,41 +5,29 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
-import com.phonepe.sentinelai.session.history.modifiers.FailedToolCallRemovalPreFilter;
-import com.phonepe.sentinelai.session.history.modifiers.MessagePersistencePreFilter;
-import com.phonepe.sentinelai.session.history.modifiers.SystemPromptRemovalPreFilter;
-import com.phonepe.sentinelai.session.history.selectors.MessageSelector;
-import com.phonepe.sentinelai.session.history.selectors.UnpairedToolCallsRemover;
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentExtension;
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
-import com.phonepe.sentinelai.core.agent.Fact;
-import com.phonepe.sentinelai.core.agent.FactList;
-import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
-import com.phonepe.sentinelai.core.agent.ProcessingMode;
-import com.phonepe.sentinelai.core.agent.SystemPrompt;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.agentmessages.*;
+import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
+import com.phonepe.sentinelai.core.agentmessages.responses.Text;
+import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.tools.NonContextualDefaultExternalToolRunner;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.SneakyThrows;
+import com.phonepe.sentinelai.session.history.modifiers.FailedToolCallRemovalPreFilter;
+import com.phonepe.sentinelai.session.history.modifiers.MessagePersistencePreFilter;
+import com.phonepe.sentinelai.session.history.modifiers.SystemPromptRemovalPreFilter;
+import com.phonepe.sentinelai.session.history.selectors.MessageSelector;
+import com.phonepe.sentinelai.session.history.selectors.UnpairedToolCallsRemover;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 
@@ -169,7 +157,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 log.info("No messages found for session {}", sessionId);
                 return List.of();
             }
-            return new UnpairedToolCallsRemover().select(sessionId, agentMessages);
+            final var selected = new UnpairedToolCallsRemover().select(sessionId, agentMessages);
+            return rearrangeMessages(selected);
         }
         return List.of();
     }
@@ -304,6 +293,124 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         } while (totalMessagesCount < count && pointer != null);
         final var nextPageToken = totalMessagesCount >= count ? pointer : null;
         return new SessionStore.ListResponse<>(outputMessages.stream().limit(count).toList(), nextPageToken);
+    }
+
+    /**
+     * Rearranges tool call messages to ensure that each tool call request is immediately followed by its response.
+     * @param outputMessages List of messages to rearrange
+     * @return Rearranged list of messages
+     */
+    private static ArrayList<AgentMessage> rearrangeMessages(List<AgentMessage> outputMessages) {
+        final var toolCallIds = groupToolCallMessages(outputMessages);
+        final var rearrangedMessages = new ArrayList<AgentMessage>();
+        final var processedToolCallIds = new HashSet<String>();
+        for (final var message : outputMessages) {
+            switch (message.getMessageType()) {
+                case TOOL_CALL_REQUEST_MESSAGE, TOOL_CALL_RESPONSE_MESSAGE -> {
+                    final var key = toolCallId(message);
+                    if (!processedToolCallIds.contains(key) && toolCallIds.containsKey(key)) {
+                        final var msgs = toolCallIds.get(key);
+                        if (msgs.size() != 2) {
+                            log.warn("Tool call id {} does not have both request and response. Messages: {}",
+                                     key,
+                                     msgs);
+                        }
+                        else {
+                            rearrangedMessages.add(msgs.get(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE));
+                            rearrangedMessages.add(msgs.get(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE));
+                        }
+                        processedToolCallIds.add(key);
+                    }
+                }
+                default -> rearrangedMessages.add(message);
+            }
+        }
+        return rearrangedMessages;
+    }
+
+    /**
+     * Regroups tool call messages by their tool call ids
+     * @param messages Message list
+     * @return Map of tool call ids to their request and response messages
+     */
+    private static Map<String, Map<AgentMessageType, AgentMessage>> groupToolCallMessages(
+            List<AgentMessage> messages) {
+        //Rearrange messages to put the tool call and its response one after the other
+        final var toolCallIds = new TreeMap<String, Map<AgentMessageType, AgentMessage>>();
+        //Construct the map by iterating over outputMessages
+        messages.forEach(outputMessage -> {
+            switch (outputMessage.getMessageType()) {
+                case TOOL_CALL_REQUEST_MESSAGE, TOOL_CALL_RESPONSE_MESSAGE -> {
+                    final var key = toolCallId(outputMessage);
+                    if (!Strings.isNullOrEmpty(key)) {
+                        toolCallIds.computeIfAbsent(key, id -> new HashMap<>())
+                                .put(outputMessage.getMessageType(), outputMessage);
+                    }
+                    else {
+                        log.warn("Tool call message with empty tool call id found: {}", outputMessage);
+                    }
+                }
+                default -> {
+                    //Do nothing
+                }
+            }
+        });
+        return toolCallIds;
+    }
+
+    /**
+     * Extracts tool call IDs from list of messages
+     * @param message Agent message
+     * @return A tool call id for the message or empty string
+     */
+    private static String toolCallId(final AgentMessage message) {
+        return message.accept(new AgentMessageVisitor<>() {
+            @Override
+            public String visit(AgentRequest request) {
+                return request.accept(new AgentRequestVisitor<>() {
+
+                    @Override
+                    public String visit(com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt systemPrompt) {
+                        return "";
+                    }
+
+                    @Override
+                    public String visit(UserPrompt userPrompt) {
+                        return "";
+                    }
+
+                    @Override
+                    public String visit(ToolCallResponse toolCallResponse) {
+                        return toolCallResponse.getToolCallId();
+                    }
+                });
+            }
+
+            @Override
+            public String visit(AgentResponse response) {
+                return response.accept(new AgentResponseVisitor<String>() {
+                    @Override
+                    public String visit(Text text) {
+                        return "";
+                    }
+
+                    @Override
+                    public String visit(StructuredOutput structuredOutput) {
+                        return "";
+                    }
+
+                    @Override
+                    public String visit(ToolCall toolCall) {
+                        return toolCall.getToolCallId();
+                    }
+                });
+            }
+
+            @Override
+            public String visit(AgentGenericMessage genericMessage) {
+                return "";
+            }
+        });
     }
 
     private void saveSummary(AgentRunContext<R> context, JsonNode output, A agent) {
