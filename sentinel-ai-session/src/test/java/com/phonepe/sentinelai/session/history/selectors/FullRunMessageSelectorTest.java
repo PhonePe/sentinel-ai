@@ -1,4 +1,4 @@
-package com.phonepe.sentinel.session.history.selectors;
+package com.phonepe.sentinelai.session.history.selectors;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;

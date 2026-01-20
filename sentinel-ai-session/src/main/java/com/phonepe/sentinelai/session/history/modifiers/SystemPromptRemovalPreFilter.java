@@ -1,4 +1,4 @@
-package com.phonepe.sentinel.session.history.modifiers;
+package com.phonepe.sentinelai.session.history.modifiers;
 
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
