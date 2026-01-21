@@ -158,7 +158,11 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 return List.of();
             }
             final var selected = new UnpairedToolCallsRemover().select(sessionId, agentMessages);
-            return rearrangeMessages(selected);
+            final var sortedMessages = selected.stream()
+                    .sorted(Comparator.comparingLong(AgentMessage::getTimestamp)
+                                    .thenComparing(AgentMessage::getMessageId))
+                    .toList();
+            return rearrangeMessages(sortedMessages);
         }
         return List.of();
     }
