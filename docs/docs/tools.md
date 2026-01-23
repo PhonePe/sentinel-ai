@@ -80,7 +80,7 @@ create a library of tools that can be used by multiple agents. The tools can be 
 registered individually.
 
 ### Registering methods from other classes as tools
-You can register methods from other classes as tools when instantiating the agent. SentinelAI provides the `ToolReader` 
+You can register methods from other classes as tools when instantiating the agent. SentinelAI provides the `ToolUtils` 
 utility class to easily read and register methods from other classes. The methods need to be annotated with
 `@Tool` for this functionality to work.
 
@@ -107,7 +107,7 @@ public class TestAgent extends Agent<String, String, TestAgent> {
               "Greet the user",
               setup,
               List.of(),
-              ToolReader.readTools(new ExternalClass()));//(1)!
+              ToolUtils.readTools(new ExternalClass()));//(1)!
     }
 
     @Override
@@ -117,7 +117,7 @@ public class TestAgent extends Agent<String, String, TestAgent> {
 }
 ```
 
-1. The `ToolReader.readTools` method will read all the methods annotated with `@Tool` and register them with the agent. 
+1. The `ToolUtils.readTools` method will read all the methods annotated with `@Tool` and register them with the agent. 
     The methods can have complex object types as input and output. They can also optionally have an instance of
    `AgentRunContext` as the first parameter.
 
