@@ -16,8 +16,6 @@ import java.util.List;
 public class ESSessionDocument {
     String sessionId;
 
-    String agentName;
-
     String summary;
 
     List<String> topics;

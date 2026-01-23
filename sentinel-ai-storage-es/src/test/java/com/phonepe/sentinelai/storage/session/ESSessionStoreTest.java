@@ -54,7 +54,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     .updatedAt(AgentUtils.epochMicro())
                     .build();
 
-            final var savedSession = sessionStore.saveSession(agentName, sessionSummary);
+            final var savedSession = sessionStore.saveSession(sessionSummary);
             assertTrue(savedSession.isPresent());
             assertEquals(sessionId, savedSession.get().getSessionId());
 
@@ -73,14 +73,14 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     .keywords(List.of("topic1", "topic2"))
                     .updatedAt(AgentUtils.epochMicro())
                     .build();
-            final var updatedSession = sessionStore.saveSession(agentName, updatedSessionSummary);
+            final var updatedSession = sessionStore.saveSession(updatedSessionSummary);
             assertTrue(updatedSession.isPresent());
             assertEquals("Updated Summary", updatedSession.get().getSummary());
             assertTrue(sessionStore.deleteSession(sessionId));
             assertFalse(sessionStore.session(sessionId).isPresent());
 
             final var savedIds = IntStream.rangeClosed(1, 25)
-                    .mapToObj(i -> sessionStore.saveSession(agentName, SessionSummary.builder()
+                    .mapToObj(i -> sessionStore.saveSession(SessionSummary.builder()
                                     .sessionId("S-" + i)
                                     .summary("Summary " + i)
                                     .keywords(List.of())

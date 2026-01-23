@@ -22,7 +22,7 @@ public interface SessionStore {
 
     boolean deleteSession(String sessionId);
 
-    Optional<SessionSummary> saveSession(String agentName, SessionSummary sessionSummary);
+    Optional<SessionSummary> saveSession(SessionSummary sessionSummary);
 
     void saveMessages(String sessionId, String runId, List<AgentMessage> messages);
 
