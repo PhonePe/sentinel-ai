@@ -36,14 +36,14 @@ public class ModelOutput {
     SentinelError error;
 
     public static ModelOutput success(JsonNode data, List<AgentMessage> newMessages, List<AgentMessage> allMessages, ModelUsageStats usage) {
-        return new ModelOutput(data, newMessages, allMessages, usage, SentinelError.success());
+        return new ModelOutput(data, List.copyOf(newMessages), List.copyOf(allMessages), usage, SentinelError.success());
     }
 
     public static ModelOutput error(List<AgentMessage> oldMessages, ModelUsageStats stats, SentinelError error) {
-        return new ModelOutput(null, List.of(), oldMessages, stats, error);
+        return new ModelOutput(null, List.of(), List.copyOf(oldMessages), stats, error);
     }
 
     public static ModelOutput error(List<AgentMessage> newMessages, List<AgentMessage> allMessages, ModelUsageStats stats, SentinelError error) {
-        return new ModelOutput(null, newMessages, allMessages, stats, error);
+        return new ModelOutput(null, List.copyOf(newMessages), List.copyOf(allMessages), stats, error);
     }
 }

@@ -75,7 +75,7 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public Optional<SessionSummary> saveSession(String agentName, SessionSummary sessionSummary) {
+        public Optional<SessionSummary> saveSession(SessionSummary sessionSummary) {
             sessionData.put(sessionSummary.getSessionId(), sessionSummary);
             return session(sessionSummary.getSessionId());
         }

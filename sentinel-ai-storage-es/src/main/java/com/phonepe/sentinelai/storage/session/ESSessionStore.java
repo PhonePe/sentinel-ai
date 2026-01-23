@@ -154,8 +154,8 @@ public class ESSessionStore implements SessionStore {
 
     @Override
     @SneakyThrows
-    public Optional<SessionSummary> saveSession(String agentName, SessionSummary sessionSummary) {
-        final var stored = toStoredSession(agentName, sessionSummary);
+    public Optional<SessionSummary> saveSession(SessionSummary sessionSummary) {
+        final var stored = toStoredSession(sessionSummary);
         final var indexName = sessionIndexName();
         final var result = client.getElasticsearchClient()
                 .update(u -> u.index(indexName)
@@ -250,10 +250,9 @@ public class ESSessionStore implements SessionStore {
                 .build();
     }
 
-    private ESSessionDocument toStoredSession(String agentName, SessionSummary sessionSummary) {
+    private ESSessionDocument toStoredSession(SessionSummary sessionSummary) {
         return ESSessionDocument.builder()
                 .sessionId(sessionSummary.getSessionId())
-                .agentName(agentName)
                 .summary(sessionSummary.getSummary())
                 .topics(sessionSummary.getKeywords())
                 .updatedAtMicro(sessionSummary.getUpdatedAt())
@@ -283,8 +282,6 @@ public class ESSessionStore implements SessionStore {
                     builder -> builder.mappings(
                             mapping -> mapping
                                     .properties(ESSessionDocument.Fields.sessionId,
-                                                p -> p.keyword(t -> t))
-                                    .properties(ESSessionDocument.Fields.agentName,
                                                 p -> p.keyword(t -> t))
                                     .properties(ESSessionDocument.Fields.summary,
                                                 p -> p.text(t -> t))

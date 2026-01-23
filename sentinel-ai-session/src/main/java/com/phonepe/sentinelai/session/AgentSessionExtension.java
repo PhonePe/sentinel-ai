@@ -270,7 +270,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             }
             else {
                 log.debug("Extracted session summary output: {}", summaryData);
-                saveSummary(context, summaryData, data.getAgent());
+                saveSummary(context, summaryData);
             }
         }
     }
@@ -417,13 +417,12 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         });
     }
 
-    private void saveSummary(AgentRunContext<R> context, JsonNode output, A agent) {
+    private void saveSummary(AgentRunContext<R> context, JsonNode output) {
         if (isSummaryEnabled()) {
             final var sessionId = AgentUtils.sessionId(context);
             try {
                 final var summary = mapper.treeToValue(output, ExtractedSummary.class);
-                final var updated = sessionStore.saveSession(agent.name(),
-                                                             new SessionSummary(sessionId,
+                final var updated = sessionStore.saveSession(new SessionSummary(sessionId,
                                                                                 summary.getTitle(),
                                                                                 summary.getSessionSummary(),
                                                                                 summary.getKeywords(),
