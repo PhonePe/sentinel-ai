@@ -191,7 +191,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     break;
                 }
                 prevPointer = nextPointer;
-                nextPointer = response.getNextPointer();
+                nextPointer = response.getOlder();
                 if (Strings.isNullOrEmpty(nextPointer) || nextPointer.equals(prevPointer)) {
                     break;
                 }

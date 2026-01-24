@@ -88,7 +88,7 @@ class AgentSessionExtensionTest {
         @Override
         public MessageScrollable readMessages(String sessionId, int count, boolean skipSystemPrompt,
                                                        String nextPointer) {
-            return new MessageScrollable(AgentUtils.lastN(messageData.getOrDefault(sessionId, List.of()), count), null);
+            return new MessageScrollable(AgentUtils.lastN(messageData.getOrDefault(sessionId, List.of()), count), null, null);
         }
 
     }

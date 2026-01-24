@@ -17,5 +17,6 @@ import java.util.List;
 @NoArgsConstructor(force = true)
 public class MessageScrollable {
     List<AgentMessage> messages;
-    String nextPointer;
+    String older;
+    String newer;
 }

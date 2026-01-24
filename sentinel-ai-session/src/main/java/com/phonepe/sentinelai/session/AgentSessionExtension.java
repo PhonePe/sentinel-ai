@@ -285,7 +285,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         do {
             final var response = sessionStore.readMessages(sessionId, count, skipSystemPrompt, pointer);
             var messages = response.getMessages();
-            pointer = response.getNextPointer();
+            pointer = response.getOlder();
             if (messages.isEmpty()) {
                 break;
             }
@@ -296,8 +296,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             totalMessagesCount += messages.size();
         } while (totalMessagesCount < count && pointer != null);
         final var nextPageToken = totalMessagesCount >= count ? pointer : null;
-        return new MessageScrollable(outputMessages.stream().limit(count).toList(), nextPageToken);
+        return new MessageScrollable(outputMessages.stream().limit(count).toList(), nextPageToken, null);
     }
+
 
     /**
      * Rearranges tool call messages to ensure that each tool call request is immediately followed by its response.

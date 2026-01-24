@@ -239,7 +239,7 @@ public class ESSessionStore implements SessionStore {
                 .map(this::toWireMessage)
                 .sorted(Comparator.comparingLong(AgentMessage::getTimestamp))
                 .toList();
-        return new MessageScrollable(List.copyOf(Lists.reverse(convertedMessages)), nextResultSPointer);
+        return new MessageScrollable(List.copyOf(Lists.reverse(convertedMessages)), nextResultSPointer, null);
     }
 
     private SessionSummary toWireSession(ESSessionDocument document) {
