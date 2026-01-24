@@ -188,8 +188,8 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             var iter = 0;
             while (iter++ < maxIterations) {
                 final var response = sessionStore.readMessages(sessionId, 10, false, nextPointer, QueryDirection.OLDER);
-                assertNotNull(response.getMessages());
-                response.getMessages().forEach(m -> retrieved.add(m.getMessageId()));
+                assertNotNull(response.getItems());
+                response.getItems().forEach(m -> retrieved.add(m.getMessageId()));
                 if (retrieved.containsAll(expectedIds)) {
                     break;
                 }
@@ -206,18 +206,18 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                                String.join(",", Sets.difference(expectedIds, retrieved)));
 
             final var responseSkipSystem = sessionStore.readMessages(sessionId, 100, true, null, QueryDirection.OLDER);
-            final var anySystem = responseSkipSystem.getMessages().stream()
+            final var anySystem = responseSkipSystem.getItems().stream()
                     .anyMatch(m -> m.getMessageType().equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
             assertFalse(anySystem);
 
             final var responseNewer = sessionStore.readMessages(sessionId, 10, true, null, QueryDirection.NEWER);
-            assertFalse(responseNewer.getMessages().isEmpty());
-            assertTrue(responseNewer.getMessages().get(0).getTimestamp() <= responseNewer.getMessages().get(1).getTimestamp());
+            assertFalse(responseNewer.getItems().isEmpty());
+            assertTrue(responseNewer.getItems().get(0).getTimestamp() <= responseNewer.getItems().get(1).getTimestamp());
             assertNotNull(responseNewer.getNewer());
 
             final var secondBatchNewer = sessionStore.readMessages(sessionId, 10, true, responseNewer.getNewer(), QueryDirection.NEWER);
-            assertFalse(secondBatchNewer.getMessages().isEmpty());
-            assertTrue(secondBatchNewer.getMessages().get(0).getTimestamp() >= responseNewer.getMessages().get(responseNewer.getMessages().size() - 1).getTimestamp());
+            assertFalse(secondBatchNewer.getItems().isEmpty());
+            assertTrue(secondBatchNewer.getItems().get(0).getTimestamp() >= responseNewer.getItems().get(responseNewer.getItems().size() - 1).getTimestamp());
         }
     }
 }

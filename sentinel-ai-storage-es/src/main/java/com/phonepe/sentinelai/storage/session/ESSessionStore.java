@@ -16,7 +16,6 @@ import com.google.common.collect.Lists;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.session.MessageScrollable;
 import com.phonepe.sentinelai.session.QueryDirection;
 import com.phonepe.sentinelai.session.ScrollableResponse;
 import com.phonepe.sentinelai.session.SessionStore;
@@ -207,7 +206,7 @@ public class ESSessionStore implements SessionStore {
 
     @Override
     @SneakyThrows
-    public MessageScrollable readMessages(
+    public ScrollableResponse<AgentMessage> readMessages(
             String sessionId,
             int count,
             boolean skipSystemPrompt,
@@ -260,7 +259,7 @@ public class ESSessionStore implements SessionStore {
         final var older = queryDirection == QueryDirection.OLDER ? nextResultSPointer : null;
         final var newer = queryDirection == QueryDirection.NEWER ? nextResultSPointer : null;
 
-        return new MessageScrollable(messages, older, newer);
+        return new ScrollableResponse<>(messages, older, newer);
     }
 
     private SessionSummary toWireSession(ESSessionDocument document) {

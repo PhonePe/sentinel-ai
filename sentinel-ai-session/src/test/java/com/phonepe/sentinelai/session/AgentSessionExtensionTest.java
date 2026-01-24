@@ -86,14 +86,14 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public MessageScrollable readMessages(String sessionId, int count, boolean skipSystemPrompt,
+        public ScrollableResponse<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
                                                        String nextPointer, QueryDirection queryDirection) {
             var messages = messageData.getOrDefault(sessionId, List.of());
             if (queryDirection == QueryDirection.OLDER) {
                 // Return newest first (reverse chronological) to match ESSessionStore
                 messages = com.google.common.collect.Lists.reverse(messages);
             }
-            return new MessageScrollable(AgentUtils.lastN(messages, count), null, null);
+            return new ScrollableResponse<>(AgentUtils.lastN(messages, count), null, null);
         }
 
     }
@@ -243,7 +243,7 @@ class AgentSessionExtensionTest {
                 .until(() -> sessionStore.session("s1").isPresent());
         final var oldSession = sessionStore.session("s1").orElseThrow();
         assertEquals(8, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null, QueryDirection.OLDER)
-                .getMessages()
+                .getItems()
                 .size());
 
         final var response2 = agent.executeAsync(
@@ -265,7 +265,7 @@ class AgentSessionExtensionTest {
                 .until(() -> sessionStore.session("s1").map(SessionSummary::getUpdatedAt).orElse(-1L) > oldSession.getUpdatedAt());
         assertNotNull(sessionStore.session("s1").orElse(null));
         assertEquals(16, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null, QueryDirection.OLDER)
-                .getMessages()
+                .getItems()
                 .size());
     }
 

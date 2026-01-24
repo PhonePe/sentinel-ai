@@ -152,7 +152,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                     setup.getHistoricalMessagesCount(),
                     setup.getHistoricalMessageFetchSize());
             final var agentMessages = readMessages(sessionId, messagesToFetch, true)
-                    .getMessages();
+                    .getItems();
             if (agentMessages.isEmpty()) {
                 log.info("No messages found for session {}", sessionId);
                 return List.of();
@@ -275,7 +275,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
     }
 
-    private MessageScrollable readMessages(
+    private ScrollableResponse<AgentMessage> readMessages(
             String sessionId,
             int count,
             boolean skipSystemPrompt) {
@@ -286,7 +286,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         do {
             final var response = sessionStore.readMessages(sessionId, count, skipSystemPrompt, pointer, QueryDirection.OLDER);
             newPointer = Strings.isNullOrEmpty(newPointer) ? response.getNewer() : newPointer;
-            final var batch = response.getMessages();
+            final var batch = response.getItems();
             pointer = response.getOlder();
             if (batch.isEmpty()) {
                 break;
@@ -304,7 +304,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
         final var total = filteredHistory.size();
         final var result = List.copyOf(filteredHistory.subList(Math.max(0, total - count), total));
-        return new MessageScrollable(result, pointer, newPointer);
+        return new ScrollableResponse<>(result, pointer, newPointer);
     }
 
     /**

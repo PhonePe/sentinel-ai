@@ -19,6 +19,6 @@ public interface SessionStore {
 
     void saveMessages(String sessionId, String runId, List<AgentMessage> messages);
 
-    MessageScrollable readMessages(String sessionId, int count, boolean skipSystemPrompt, String pointer, QueryDirection queryDirection);
+    ScrollableResponse<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt, String pointer, QueryDirection queryDirection);
 
 }
