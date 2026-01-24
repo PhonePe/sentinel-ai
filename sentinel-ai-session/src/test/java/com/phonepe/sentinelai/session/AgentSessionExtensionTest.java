@@ -65,8 +65,8 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public ListResponse<SessionSummary> sessions(int count, String nextPagePointer) {
-            return new ListResponse<>(List.copyOf(sessionData.values()), null);
+        public ScrollableResponse<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection) {
+            return new ScrollableResponse<>(List.copyOf(sessionData.values()), null, null);
         }
 
         @Override
@@ -87,8 +87,13 @@ class AgentSessionExtensionTest {
 
         @Override
         public MessageScrollable readMessages(String sessionId, int count, boolean skipSystemPrompt,
-                                                       String nextPointer) {
-            return new MessageScrollable(AgentUtils.lastN(messageData.getOrDefault(sessionId, List.of()), count), null, null);
+                                                       String nextPointer, QueryDirection queryDirection) {
+            var messages = messageData.getOrDefault(sessionId, List.of());
+            if (queryDirection == QueryDirection.OLDER) {
+                // Return newest first (reverse chronological) to match ESSessionStore
+                messages = com.google.common.collect.Lists.reverse(messages);
+            }
+            return new MessageScrollable(AgentUtils.lastN(messages, count), null, null);
         }
 
     }
@@ -237,7 +242,7 @@ class AgentSessionExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> sessionStore.session("s1").isPresent());
         final var oldSession = sessionStore.session("s1").orElseThrow();
-        assertEquals(8, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null)
+        assertEquals(8, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null, QueryDirection.OLDER)
                 .getMessages()
                 .size());
 
@@ -259,7 +264,7 @@ class AgentSessionExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> sessionStore.session("s1").map(SessionSummary::getUpdatedAt).orElse(-1L) > oldSession.getUpdatedAt());
         assertNotNull(sessionStore.session("s1").orElse(null));
-        assertEquals(16, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null)
+        assertEquals(16, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null, QueryDirection.OLDER)
                 .getMessages()
                 .size());
     }

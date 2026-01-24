@@ -279,26 +279,33 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             String sessionId,
             int count,
             boolean skipSystemPrompt) {
-        int totalMessagesCount = 0;
-        var outputMessages = new ArrayList<AgentMessage>();
+        final var rawAccumulated = new ArrayList<AgentMessage>();
         var pointer = "";
+        var filteredHistory = List.<AgentMessage>of();
+        var newPointer = "";
         do {
-            final var response = sessionStore.readMessages(sessionId, count, skipSystemPrompt, pointer);
-            var messages = response.getMessages();
+            final var response = sessionStore.readMessages(sessionId, count, skipSystemPrompt, pointer, QueryDirection.OLDER);
+            newPointer = Strings.isNullOrEmpty(newPointer) ? response.getNewer() : newPointer;
+            final var batch = response.getMessages();
             pointer = response.getOlder();
-            if (messages.isEmpty()) {
+            if (batch.isEmpty()) {
                 break;
             }
-            for (final var filter : messageSelectors) {
-                messages = filter.select(sessionId, messages);
-            }
-            outputMessages.addAll(messages);
-            totalMessagesCount += messages.size();
-        } while (totalMessagesCount < count && pointer != null);
-        final var nextPageToken = totalMessagesCount >= count ? pointer : null;
-        return new MessageScrollable(outputMessages.stream().limit(count).toList(), nextPageToken, null);
-    }
+            rawAccumulated.addAll(batch);
 
+            // Filter holistic chronological history
+            List<AgentMessage> chronological = new ArrayList<>(rawAccumulated);
+            Collections.reverse(chronological);
+            for (final var filter : messageSelectors) {
+                chronological = filter.select(sessionId, chronological);
+            }
+            filteredHistory = chronological;
+        } while (filteredHistory.size() < count && !Strings.isNullOrEmpty(pointer));
+
+        final var total = filteredHistory.size();
+        final var result = List.copyOf(filteredHistory.subList(Math.max(0, total - count), total));
+        return new MessageScrollable(result, pointer, newPointer);
+    }
 
     /**
      * Rearranges tool call messages to ensure that each tool call request is immediately followed by its response.

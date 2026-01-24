@@ -1,7 +1,6 @@
 package com.phonepe.sentinelai.session;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import lombok.Value;
 
 import java.util.List;
 import java.util.Optional;
@@ -10,15 +9,9 @@ import java.util.Optional;
  * A storage system for agent session
  */
 public interface SessionStore {
-    @Value
-    class ListResponse<T> {
-        List<T> items;
-        String nextPageToken;
-    }
-
     Optional<SessionSummary> session(String sessionId);
 
-    ListResponse<SessionSummary> sessions(int count, String nextPagePointer);
+    ScrollableResponse<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection);
 
     boolean deleteSession(String sessionId);
 
@@ -26,6 +19,6 @@ public interface SessionStore {
 
     void saveMessages(String sessionId, String runId, List<AgentMessage> messages);
 
-    MessageScrollable readMessages(String sessionId, int count, boolean skipSystemPrompt, String nextPointer);
+    MessageScrollable readMessages(String sessionId, int count, boolean skipSystemPrompt, String pointer, QueryDirection queryDirection);
 
 }
