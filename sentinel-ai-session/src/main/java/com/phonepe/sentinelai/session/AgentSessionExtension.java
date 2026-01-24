@@ -152,7 +152,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                     setup.getHistoricalMessagesCount(),
                     setup.getHistoricalMessageFetchSize());
             final var agentMessages = readMessages(sessionId, messagesToFetch, true)
-                    .getItems();
+                    .getMessages();
             if (agentMessages.isEmpty()) {
                 log.info("No messages found for session {}", sessionId);
                 return List.of();
@@ -275,7 +275,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
     }
 
-    private SessionStore.ListResponse<AgentMessage> readMessages(
+    private MessageScrollable readMessages(
             String sessionId,
             int count,
             boolean skipSystemPrompt) {
@@ -284,8 +284,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         var pointer = "";
         do {
             final var response = sessionStore.readMessages(sessionId, count, skipSystemPrompt, pointer);
-            var messages = response.getItems();
-            pointer = response.getNextPageToken();
+            var messages = response.getMessages();
+            pointer = response.getNextPointer();
             if (messages.isEmpty()) {
                 break;
             }
@@ -296,7 +296,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             totalMessagesCount += messages.size();
         } while (totalMessagesCount < count && pointer != null);
         final var nextPageToken = totalMessagesCount >= count ? pointer : null;
-        return new SessionStore.ListResponse<>(outputMessages.stream().limit(count).toList(), nextPageToken);
+        return new MessageScrollable(outputMessages.stream().limit(count).toList(), nextPageToken);
     }
 
     /**

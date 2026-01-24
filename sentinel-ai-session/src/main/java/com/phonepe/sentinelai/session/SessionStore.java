@@ -26,6 +26,6 @@ public interface SessionStore {
 
     void saveMessages(String sessionId, String runId, List<AgentMessage> messages);
 
-    ListResponse<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt, String nextPointer);
+    MessageScrollable readMessages(String sessionId, int count, boolean skipSystemPrompt, String nextPointer);
 
 }

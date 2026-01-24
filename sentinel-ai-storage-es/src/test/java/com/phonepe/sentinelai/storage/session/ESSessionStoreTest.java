@@ -186,12 +186,12 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             var iter = 0;
             while (iter++ < maxIterations) {
                 final var response = sessionStore.readMessages(sessionId, 10, false, nextPointer);
-                response.getItems().forEach(m -> retrieved.add(m.getMessageId()));
+                response.getMessages().forEach(m -> retrieved.add(m.getMessageId()));
                 if (retrieved.containsAll(expectedIds)) {
                     break;
                 }
                 prevPointer = nextPointer;
-                nextPointer = response.getNextPageToken();
+                nextPointer = response.getNextPointer();
                 if (Strings.isNullOrEmpty(nextPointer) || nextPointer.equals(prevPointer)) {
                     break;
                 }
@@ -203,7 +203,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                                String.join(",", Sets.difference(expectedIds, retrieved)));
 
             final var responseSkipSystem = sessionStore.readMessages(sessionId, 100, true, null);
-            final var anySystem = responseSkipSystem.getItems().stream()
+            final var anySystem = responseSkipSystem.getMessages().stream()
                     .anyMatch(m -> m.getMessageType().equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
             assertFalse(anySystem);
         }

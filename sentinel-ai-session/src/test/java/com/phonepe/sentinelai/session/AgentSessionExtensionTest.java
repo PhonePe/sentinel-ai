@@ -86,9 +86,9 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public ListResponse<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
+        public MessageScrollable readMessages(String sessionId, int count, boolean skipSystemPrompt,
                                                        String nextPointer) {
-            return new ListResponse<>(AgentUtils.lastN(messageData.getOrDefault(sessionId, List.of()), count), null);
+            return new MessageScrollable(AgentUtils.lastN(messageData.getOrDefault(sessionId, List.of()), count), null);
         }
 
     }
@@ -238,7 +238,7 @@ class AgentSessionExtensionTest {
                 .until(() -> sessionStore.session("s1").isPresent());
         final var oldSession = sessionStore.session("s1").orElseThrow();
         assertEquals(8, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null)
-                .getItems()
+                .getMessages()
                 .size());
 
         final var response2 = agent.executeAsync(
@@ -260,7 +260,7 @@ class AgentSessionExtensionTest {
                 .until(() -> sessionStore.session("s1").map(SessionSummary::getUpdatedAt).orElse(-1L) > oldSession.getUpdatedAt());
         assertNotNull(sessionStore.session("s1").orElse(null));
         assertEquals(16, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null)
-                .getItems()
+                .getMessages()
                 .size());
     }
 

@@ -13,6 +13,7 @@ import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.phonepe.sentinelai.session.MessageScrollable;
 import com.phonepe.sentinelai.session.SessionStore;
 import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
@@ -195,7 +196,7 @@ public class ESSessionStore implements SessionStore {
 
     @Override
     @SneakyThrows
-    public ListResponse<AgentMessage> readMessages(
+    public MessageScrollable readMessages(
             String sessionId,
             int count,
             boolean skipSystemPrompt,
@@ -238,7 +239,7 @@ public class ESSessionStore implements SessionStore {
                 .map(this::toWireMessage)
                 .sorted(Comparator.comparingLong(AgentMessage::getTimestamp))
                 .toList();
-        return new ListResponse<>(List.copyOf(Lists.reverse(convertedMessages)), nextResultSPointer);
+        return new MessageScrollable(List.copyOf(Lists.reverse(convertedMessages)), nextResultSPointer);
     }
 
     private SessionSummary toWireSession(ESSessionDocument document) {
