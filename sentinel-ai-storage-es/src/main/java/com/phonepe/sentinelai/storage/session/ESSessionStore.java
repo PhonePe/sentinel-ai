@@ -12,12 +12,12 @@ import co.elastic.clients.elasticsearch.ingest.SetProcessor;
 import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.session.QueryDirection;
-import com.phonepe.sentinelai.session.ScrollableResponse;
+import com.phonepe.sentinelai.session.BiScrollable;
 import com.phonepe.sentinelai.session.SessionStore;
 import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.storage.ESClient;
@@ -94,7 +94,7 @@ public class ESSessionStore implements SessionStore {
 
     @Override
     @SneakyThrows
-    public ScrollableResponse<SessionSummary> sessions(
+    public BiScrollable<SessionSummary> sessions(
             int count,
             String nextPointer,
             QueryDirection queryDirection) {
@@ -118,7 +118,7 @@ public class ESSessionStore implements SessionStore {
 
         final var older = queryDirection == QueryDirection.OLDER ? nextResultPointer : null;
         final var newer = queryDirection == QueryDirection.NEWER ? nextResultPointer : null;
-        return new ScrollableResponse<>(summaries, older, newer);
+        return new BiScrollable<>(summaries, older, newer);
     }
 
     @Override
@@ -206,12 +206,15 @@ public class ESSessionStore implements SessionStore {
 
     @Override
     @SneakyThrows
-    public ScrollableResponse<AgentMessage> readMessages(
+    public BiScrollable<AgentMessage> readMessages(
             String sessionId,
             int count,
             boolean skipSystemPrompt,
-            String nextPointer,
+            BiScrollable<AgentMessage> inPointer,
             QueryDirection queryDirection) {
+        final var nextPointer = queryDirection == QueryDirection.OLDER
+                                ? AgentUtils.getIfNotNull(inPointer, BiScrollable::getOlder, "")
+                                : AgentUtils.getIfNotNull(inPointer, BiScrollable::getNewer, "");
         final var pointer = Strings.isNullOrEmpty(nextPointer)
                             ? null
                             : mapper.readValue(nextPointer, MessageScrollPointer.class);
@@ -256,10 +259,14 @@ public class ESSessionStore implements SessionStore {
                 .toList();
 
         final var messages = List.copyOf(convertedMessages);
-        final var older = queryDirection == QueryDirection.OLDER ? nextResultSPointer : null;
-        final var newer = queryDirection == QueryDirection.NEWER ? nextResultSPointer : null;
-
-        return new ScrollableResponse<>(messages, older, newer);
+        return switch (queryDirection) {
+            case NEWER -> new BiScrollable<>(messages,
+                                             AgentUtils.getIfNotNull(inPointer, BiScrollable::getOlder, ""),
+                                             nextResultSPointer);
+            case OLDER -> new BiScrollable<>(messages,
+                                             nextResultSPointer,
+                                             AgentUtils.getIfNotNull(inPointer, BiScrollable::getNewer, ""));
+        };
     }
 
     private SessionSummary toWireSession(ESSessionDocument document) {

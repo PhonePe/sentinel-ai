@@ -3,7 +3,7 @@ package com.phonepe.sentinelai.storage.session;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import com.phonepe.sentinelai.session.QueryDirection;
-import com.phonepe.sentinelai.session.ScrollableResponse;
+import com.phonepe.sentinelai.session.BiScrollable;
 import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
@@ -186,8 +186,9 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             final var retrieved = new HashSet<String>();
             final var maxIterations = 100;
             var iter = 0;
+            BiScrollable<AgentMessage> response = null;
             while (iter++ < maxIterations) {
-                final var response = sessionStore.readMessages(sessionId, 10, false, nextPointer, QueryDirection.OLDER);
+                response = sessionStore.readMessages(sessionId, 10, false, response, QueryDirection.OLDER);
                 assertNotNull(response.getItems());
                 response.getItems().forEach(m -> retrieved.add(m.getMessageId()));
                 if (retrieved.containsAll(expectedIds)) {
@@ -215,7 +216,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             assertTrue(responseNewer.getItems().get(0).getTimestamp() <= responseNewer.getItems().get(1).getTimestamp());
             assertNotNull(responseNewer.getNewer());
 
-            final var secondBatchNewer = sessionStore.readMessages(sessionId, 10, true, responseNewer.getNewer(), QueryDirection.NEWER);
+            final var secondBatchNewer = sessionStore.readMessages(sessionId, 10, true, responseNewer, QueryDirection.NEWER);
             assertFalse(secondBatchNewer.getItems().isEmpty());
             assertTrue(secondBatchNewer.getItems().get(0).getTimestamp() >= responseNewer.getItems().get(responseNewer.getItems().size() - 1).getTimestamp());
         }

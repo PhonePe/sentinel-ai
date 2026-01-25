@@ -65,8 +65,8 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public ScrollableResponse<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection) {
-            return new ScrollableResponse<>(List.copyOf(sessionData.values()), null, null);
+        public BiScrollable<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection) {
+            return new BiScrollable<>(List.copyOf(sessionData.values()), null, null);
         }
 
         @Override
@@ -86,14 +86,14 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public ScrollableResponse<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
-                                                       String nextPointer, QueryDirection queryDirection) {
+        public BiScrollable<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
+                                                       BiScrollable<AgentMessage> pointer, QueryDirection queryDirection) {
             var messages = messageData.getOrDefault(sessionId, List.of());
             if (queryDirection == QueryDirection.OLDER) {
                 // Return newest first (reverse chronological) to match ESSessionStore
                 messages = com.google.common.collect.Lists.reverse(messages);
             }
-            return new ScrollableResponse<>(AgentUtils.lastN(messages, count), null, null);
+            return new BiScrollable<>(AgentUtils.lastN(messages, count), null, null);
         }
 
     }

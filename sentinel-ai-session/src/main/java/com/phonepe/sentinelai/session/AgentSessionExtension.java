@@ -275,7 +275,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
     }
 
-    private ScrollableResponse<AgentMessage> readMessages(
+    private BiScrollable<AgentMessage> readMessages(
             String sessionId,
             int count,
             boolean skipSystemPrompt) {
@@ -283,8 +283,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         var pointer = "";
         var filteredHistory = List.<AgentMessage>of();
         var newPointer = "";
+        BiScrollable<AgentMessage> response = null;
         do {
-            final var response = sessionStore.readMessages(sessionId, count, skipSystemPrompt, pointer, QueryDirection.OLDER);
+            response = sessionStore.readMessages(sessionId, count, skipSystemPrompt, response, QueryDirection.OLDER);
             newPointer = Strings.isNullOrEmpty(newPointer) ? response.getNewer() : newPointer;
             final var batch = response.getItems();
             pointer = response.getOlder();
@@ -304,7 +305,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
         final var total = filteredHistory.size();
         final var result = List.copyOf(filteredHistory.subList(Math.max(0, total - count), total));
-        return new ScrollableResponse<>(result, pointer, newPointer);
+        return new BiScrollable<>(result, pointer, newPointer);
     }
 
     /**
