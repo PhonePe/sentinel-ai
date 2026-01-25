@@ -20,18 +20,16 @@ public interface SessionStore {
     void saveMessages(String sessionId, String runId, List<AgentMessage> messages);
 
     /**
-     * Reads messages for a specific session with pagination support. This method helps clients keep their state management
+     * Reads messages for a specific session with pagination support. This method helps clients keep their state
+     * management
      * simpler. Basically the same {@link BiScrollable} can be passed back to the server to get the next set of messages
-     * in both directions.
-     * Message Ordering:
-     *  - Messages are chronologically sorted older to newer if {@code queryDirection} is {@link QueryDirection#OLDER}
-     *  - Messages are chronologically sorted newer to older if {@code queryDirection} is {@link QueryDirection#NEWER}
+     * in both directions. Messages are always returned in chronological order (oldest to newest).
      *
      * @param sessionId        The unique identifier for the session.
      * @param count            The maximum number of messages to retrieve.
      * @param skipSystemPrompt If true, system prompt request messages will be excluded from the result.
-     * @param pointer          The {@link BiScrollable} used by the client to indicate the current position in
-     *                         the message list.
+     * @param pointer          The {@link com.phonepe.sentinelai.session.BiScrollable.DataPointer} used by the client
+     *                        to indicate the current position in the message list.
      * @param queryDirection   The direction to scroll in: {@link QueryDirection#OLDER} to fetch messages before the
      *                         pointer,
      *                         or {@link QueryDirection#NEWER} to fetch messages after the pointer.
@@ -42,7 +40,7 @@ public interface SessionStore {
             String sessionId,
             int count,
             boolean skipSystemPrompt,
-            BiScrollable<AgentMessage> pointer,
+            BiScrollable.DataPointer pointer,
             QueryDirection queryDirection);
 
 }

@@ -285,10 +285,15 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         var newPointer = "";
         BiScrollable<AgentMessage> response = null;
         do {
-            response = sessionStore.readMessages(sessionId, count, skipSystemPrompt, response, QueryDirection.OLDER);
-            newPointer = Strings.isNullOrEmpty(newPointer) ? response.getNewer() : newPointer;
+            response = sessionStore.readMessages(
+                    sessionId,
+                    count,
+                    skipSystemPrompt,
+                    AgentUtils.getIfNotNull(response, BiScrollable::getPointer, null),
+                    QueryDirection.OLDER);
+            newPointer = Strings.isNullOrEmpty(newPointer) ? response.getPointer().getNewer() : newPointer;
             final var batch = response.getItems();
-            pointer = response.getOlder();
+            pointer = response.getPointer().getOlder();
             if (batch.isEmpty()) {
                 break;
             }
@@ -305,11 +310,12 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
         final var total = filteredHistory.size();
         final var result = List.copyOf(filteredHistory.subList(Math.max(0, total - count), total));
-        return new BiScrollable<>(result, pointer, newPointer);
+        return new BiScrollable<>(result, new BiScrollable.DataPointer(pointer, newPointer));
     }
 
     /**
      * Rearranges tool call messages to ensure that each tool call request is immediately followed by its response.
+     *
      * @param outputMessages List of messages to rearrange
      * @return Rearranged list of messages
      */
@@ -343,6 +349,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
     /**
      * Regroups tool call messages by their tool call ids
+     *
      * @param messages Message list
      * @return Map of tool call ids to their request and response messages
      */
@@ -373,6 +380,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
     /**
      * Extracts tool call IDs from list of messages
+     *
      * @param message Agent message
      * @return A tool call id for the message or empty string
      */

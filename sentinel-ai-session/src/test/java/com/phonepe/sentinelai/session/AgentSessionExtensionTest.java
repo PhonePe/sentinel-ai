@@ -66,7 +66,7 @@ class AgentSessionExtensionTest {
 
         @Override
         public BiScrollable<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection) {
-            return new BiScrollable<>(List.copyOf(sessionData.values()), null, null);
+            return new BiScrollable<>(List.copyOf(sessionData.values()), new BiScrollable.DataPointer(null, null));
         }
 
         @Override
@@ -87,13 +87,13 @@ class AgentSessionExtensionTest {
 
         @Override
         public BiScrollable<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
-                                                       BiScrollable<AgentMessage> pointer, QueryDirection queryDirection) {
+                                                       BiScrollable.DataPointer pointer, QueryDirection queryDirection) {
             var messages = messageData.getOrDefault(sessionId, List.of());
             if (queryDirection == QueryDirection.OLDER) {
                 // Return newest first (reverse chronological) to match ESSessionStore
                 messages = com.google.common.collect.Lists.reverse(messages);
             }
-            return new BiScrollable<>(AgentUtils.lastN(messages, count), null, null);
+            return new BiScrollable<>(AgentUtils.lastN(messages, count), new BiScrollable.DataPointer(null, null));
         }
 
     }

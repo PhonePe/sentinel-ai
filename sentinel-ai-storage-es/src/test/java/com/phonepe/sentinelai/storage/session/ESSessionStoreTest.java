@@ -96,8 +96,10 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             final var retrieved = new HashSet<String>();
             do {
                 final var response = sessionStore.sessions(10, nextPointer, QueryDirection.OLDER);
+                assertNotNull(response.getItems());
                 response.getItems().forEach(s -> retrieved.add(s.getSessionId()));
-                nextPointer = response.getOlder();
+                assertNotNull(response.getPointer());
+                nextPointer = response.getPointer().getOlder();
             } while (!retrieved.containsAll(savedIds));
             assertEquals(savedIds.size(), retrieved.size(), () -> {
                 final var savedSize = savedIds.size();
@@ -188,14 +190,20 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             var iter = 0;
             BiScrollable<AgentMessage> response = null;
             while (iter++ < maxIterations) {
-                response = sessionStore.readMessages(sessionId, 10, false, response, QueryDirection.OLDER);
+                response = sessionStore.readMessages(
+                        sessionId,
+                        10,
+                        false,
+                        AgentUtils.getIfNotNull(response, BiScrollable::getPointer, null),
+                        QueryDirection.OLDER);
                 assertNotNull(response.getItems());
                 response.getItems().forEach(m -> retrieved.add(m.getMessageId()));
                 if (retrieved.containsAll(expectedIds)) {
                     break;
                 }
                 prevPointer = nextPointer;
-                nextPointer = response.getOlder();
+                assertNotNull(response.getPointer());
+                nextPointer = response.getPointer().getOlder();
                 if (Strings.isNullOrEmpty(nextPointer) || nextPointer.equals(prevPointer)) {
                     break;
                 }
@@ -207,16 +215,28 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                                String.join(",", Sets.difference(expectedIds, retrieved)));
 
             final var responseSkipSystem = sessionStore.readMessages(sessionId, 100, true, null, QueryDirection.OLDER);
+            assertNotNull(responseSkipSystem.getItems());
             final var anySystem = responseSkipSystem.getItems().stream()
                     .anyMatch(m -> m.getMessageType().equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
             assertFalse(anySystem);
 
-            final var responseNewer = sessionStore.readMessages(sessionId, 10, true, null, QueryDirection.NEWER);
+            final var responseNewer = sessionStore.readMessages(sessionId,
+                                                                10,
+                                                                true,
+                                                                null,
+                                                                QueryDirection.NEWER);
+            assertNotNull(responseNewer.getItems());
             assertFalse(responseNewer.getItems().isEmpty());
             assertTrue(responseNewer.getItems().get(0).getTimestamp() <= responseNewer.getItems().get(1).getTimestamp());
-            assertNotNull(responseNewer.getNewer());
+            assertNotNull(responseNewer.getPointer());
+            assertNotNull(responseNewer.getPointer().getNewer());
 
-            final var secondBatchNewer = sessionStore.readMessages(sessionId, 10, true, responseNewer, QueryDirection.NEWER);
+            final var secondBatchNewer = sessionStore.readMessages(sessionId,
+                                                                   10,
+                                                                   true,
+                                                                   responseNewer.getPointer(),
+                                                                   QueryDirection.NEWER);
+            assertNotNull(secondBatchNewer.getItems());
             assertFalse(secondBatchNewer.getItems().isEmpty());
             assertTrue(secondBatchNewer.getItems().get(0).getTimestamp() >= responseNewer.getItems().get(responseNewer.getItems().size() - 1).getTimestamp());
         }

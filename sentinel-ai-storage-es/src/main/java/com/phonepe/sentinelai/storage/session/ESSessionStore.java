@@ -16,8 +16,8 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.session.QueryDirection;
 import com.phonepe.sentinelai.session.BiScrollable;
+import com.phonepe.sentinelai.session.QueryDirection;
 import com.phonepe.sentinelai.session.SessionStore;
 import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.storage.ESClient;
@@ -110,15 +110,15 @@ public class ESSessionStore implements SessionStore {
                 .toList();
 
         final var nextResultPointer = hits.isEmpty()
-                                       ? null
-                                       : mapper.writeValueAsString(new SessionScrollPointer(
-                                               hits.get(hits.size() - 1).sort().get(0).longValue(),
-                                               hits.get(hits.size() - 1).sort().get(1).stringValue()
-                                       ));
+                                      ? null
+                                      : mapper.writeValueAsString(new SessionScrollPointer(
+                                              hits.get(hits.size() - 1).sort().get(0).longValue(),
+                                              hits.get(hits.size() - 1).sort().get(1).stringValue()
+                                      ));
 
         final var older = queryDirection == QueryDirection.OLDER ? nextResultPointer : null;
         final var newer = queryDirection == QueryDirection.NEWER ? nextResultPointer : null;
-        return new BiScrollable<>(summaries, older, newer);
+        return new BiScrollable<>(summaries, new BiScrollable.DataPointer(older, newer));
     }
 
     @Override
@@ -210,11 +210,11 @@ public class ESSessionStore implements SessionStore {
             String sessionId,
             int count,
             boolean skipSystemPrompt,
-            BiScrollable<AgentMessage> inPointer,
+            BiScrollable.DataPointer inPointer,
             QueryDirection queryDirection) {
         final var nextPointer = queryDirection == QueryDirection.OLDER
-                                ? AgentUtils.getIfNotNull(inPointer, BiScrollable::getOlder, "")
-                                : AgentUtils.getIfNotNull(inPointer, BiScrollable::getNewer, "");
+                                ? AgentUtils.getIfNotNull(inPointer, BiScrollable.DataPointer::getOlder, "")
+                                : AgentUtils.getIfNotNull(inPointer, BiScrollable.DataPointer::getNewer, "");
         final var pointer = Strings.isNullOrEmpty(nextPointer)
                             ? null
                             : mapper.readValue(nextPointer, MessageScrollPointer.class);
@@ -260,12 +260,16 @@ public class ESSessionStore implements SessionStore {
 
         final var messages = List.copyOf(convertedMessages);
         return switch (queryDirection) {
-            case NEWER -> new BiScrollable<>(messages,
-                                             AgentUtils.getIfNotNull(inPointer, BiScrollable::getOlder, ""),
-                                             nextResultSPointer);
-            case OLDER -> new BiScrollable<>(messages,
-                                             nextResultSPointer,
-                                             AgentUtils.getIfNotNull(inPointer, BiScrollable::getNewer, ""));
+            case NEWER -> new BiScrollable<>(
+                    messages,
+                    new BiScrollable.DataPointer(
+                            AgentUtils.getIfNotNull(inPointer, BiScrollable.DataPointer::getOlder, ""),
+                            nextResultSPointer));
+            case OLDER -> new BiScrollable<>(
+                    messages,
+                    new BiScrollable.DataPointer(
+                            nextResultSPointer,
+                            AgentUtils.getIfNotNull(inPointer, BiScrollable.DataPointer::getNewer, "")));
         };
     }
 

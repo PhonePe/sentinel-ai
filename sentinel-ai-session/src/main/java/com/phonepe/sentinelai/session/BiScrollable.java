@@ -17,18 +17,25 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor(force = true)
 public class BiScrollable<T> {
+    @Value
+    public static class DataPointer {
+        /**
+         * A pointer to fetch the next page of older items. Will be null if there are no older items or if the query direction was NEWER.
+         */
+        String older;
+
+        /**
+         * A pointer to fetch the next page of newer items. Will be null if there are no newer items or if the query direction was OLDER.
+         */
+        String newer;
+    }
     /**
      * The list of items retrieved in the current page.
      */
     List<T> items;
 
     /**
-     * A pointer to fetch the next page of older items. Will be null if there are no older items or if the query direction was NEWER.
+     * Pointers to data items.
      */
-    String older;
-
-    /**
-     * A pointer to fetch the next page of newer items. Will be null if there are no newer items or if the query direction was OLDER.
-     */
-    String newer;
+    DataPointer pointer;
 }
