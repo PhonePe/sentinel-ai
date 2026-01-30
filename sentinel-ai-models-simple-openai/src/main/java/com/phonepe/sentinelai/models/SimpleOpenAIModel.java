@@ -40,6 +40,9 @@ import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
 import io.github.sashirestela.openai.common.tool.ToolType;
 import io.github.sashirestela.openai.domain.chat.Chat;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
+import com.knuddels.jtokkit.Encodings;
+import com.knuddels.jtokkit.api.EncodingRegistry;
+import com.knuddels.jtokkit.api.Encoding;
 import io.github.sashirestela.openai.domain.chat.ChatRequest;
 import io.github.sashirestela.openai.service.ChatCompletionServices;
 import lombok.Builder;
@@ -339,6 +342,72 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                           Agent.StreamProcessingMode.TEXT,
                           agentMessagesPreProcessors);
     }
+
+    @Override
+    public int estimateTokenCount(List<AgentMessage> messages) {
+        try {
+            final var openAiMessages = convertToOpenAIMessages(messages);
+
+            // Pick encoding for model; fallback to cl100k_base when unknown
+            final Encoding encoding;
+            try {
+                final EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
+                final var maybe = registry.getEncodingForModel(modelName);
+                if (maybe.isPresent()) {
+                    encoding = maybe.get();
+                }
+                else {
+                    encoding = registry.getEncoding("cl100k_base");
+                }
+            }
+            catch (Exception e) {
+                final EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
+                encoding = registry.getEncoding("cl100k_base");
+            }
+
+            int tokensPerMessage = 3; // heuristic used by OpenAI for chat formats
+            int tokensPerName = 1;
+            int total = 0;
+
+            for (ChatMessage m : openAiMessages) {
+                total += tokensPerMessage;
+                // extract textual content from ChatMessage implementations
+                try {
+                    var contentMethod = m.getClass().getMethod("getContent");
+                    Object contentObj = contentMethod.invoke(m);
+                    if (contentObj != null) {
+                        String content = contentObj.toString();
+                        total += encoding.countTokens(content);
+                    }
+                }
+                catch (NoSuchMethodException ignore) {
+                    total += encoding.countTokens(m.toString());
+                }
+                try {
+                    var nameMethod = m.getClass().getMethod("getName");
+                    Object nameObj = nameMethod.invoke(m);
+                    if (nameObj != null) {
+                        String name = nameObj.toString();
+                        total += tokensPerName;
+                        total += encoding.countTokens(name);
+                    }
+                }
+                catch (NoSuchMethodException ignore) {
+                    // ignore
+                }
+                // role token counted as part of tokensPerMessage; no-op
+            }
+
+            // assistant reply priming
+            total += 3;
+            return total;
+        }
+        catch (Throwable t) {
+            log.debug("Failed to estimate token count: {}", t.getMessage());
+            return Model.super.estimateTokenCount(messages);
+        }
+    }
+
 
     @SuppressWarnings({"java:S107", "java:S3776"})
     private CompletableFuture<ModelOutput> streamImpl(
@@ -905,7 +974,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }
     }
 
-    public static void mergeUsage(ModelUsageStats stats, Usage usage) {
+    private static void mergeUsage(ModelUsageStats stats, Usage usage) {
         if (null != usage) {
             stats.incrementRequestTokens(safeGetInt(usage::getPromptTokens))
                     .incrementResponseTokens(safeGetInt(usage::getCompletionTokens))

@@ -36,6 +36,12 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- jtokkit for token counting (tiktoken compatible) -->
+        <dependency>
+            <groupId>com.knuddels</groupId>
+            <artifactId>jtokkit</artifactId>
+            <version>1.1.0</version>
+        </dependency>
         <!-- OkHttp dependency is optional if you decide to use it with simple-openai -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>

@@ -18,6 +18,9 @@ import java.util.function.Consumer;
  */
 public interface Model {
 
+    static int TOKEN_COUNT_UNKNOWN = -1;
+
+
     /**
      * Process messages and generate structured output. Supports both structured and tool based outputs.
      * Response will consist of a JsonNode in the form of a Map<String, Object> where the keys are the
@@ -93,5 +96,15 @@ public interface Model {
             Consumer<byte[]> streamHandler,
             List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
         throw new NotImplementedException();
+    }
+
+    /**
+     * Estimates the token count for the given messages.
+     *
+     * @param messages The list of messages to estimate the token count for.
+     * @return The estimated token count, or TOKEN_COUNT_UNKNOWN if not implemented.
+     */
+    default int estimateTokenCount(List<AgentMessage> messages) {
+        return TOKEN_COUNT_UNKNOWN;
     }
 }
