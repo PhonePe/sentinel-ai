@@ -1,10 +1,13 @@
 package com.phonepe.sentinelai.core.events;
 
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import lombok.*;
-import lombok.extern.jackson.Jacksonized;
-
 import java.time.Duration;
+
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
 /**
  * A response was received from the LLM
