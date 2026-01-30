@@ -224,20 +224,17 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
                 sessionId,
                 context.getRunId(),
-                mapper.writeValueAsString(sessionAndRunSummaryExtractionTaskPrompt(sessionId
-                                                                                  )),
+                mapper.writeValueAsString(sessionAndRunSummaryExtractionTaskPrompt(sessionId)),
                 false,
                 null));
+        final var sessionMessages = readMessages(sessionId, setup.getMaxMessagesToSummarize(), false);
         messages.add(new UserPrompt(
                 sessionId,
                 context.getRunId(),
                 ("Generate a %d character summary of the conversation between user and agent from the following " +
                         "messages. Messages JSON: %s")
                         .formatted(setup.getMaxSummaryLength(),
-                                   mapper.writeValueAsString(readMessages(sessionId,
-                                                                          setup.getMaxMessagesToSummarize(),
-                                                                          false
-                                                                         ))),
+                                   mapper.writeValueAsString(sessionMessages)),
                 LocalDateTime.now()));
         final var runId = "message-summarization-" + UUID.randomUUID();
         final var modelRunContext = new ModelRunContext(data.getAgent().name(),
@@ -269,8 +266,15 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 log.debug("No summary extracted from the output");
             }
             else {
+                final var newestMessageId = sessionMessages.getItems()
+                    .stream()
+                    .sorted(Comparator.comparing(AgentMessage::getTimestamp)
+                            .thenComparing(AgentMessage::getMessageId))
+                    .map(AgentMessage::getMessageId)
+                    .reduce((first, second) -> second)
+                    .orElse(null);
                 log.debug("Extracted session summary output: {}", summaryData);
-                saveSummary(context, summaryData);
+                saveSummary(context, summaryData, newestMessageId);
             }
         }
     }
@@ -434,7 +438,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         });
     }
 
-    private void saveSummary(AgentRunContext<R> context, JsonNode output) {
+    private void saveSummary(AgentRunContext<R> context, JsonNode output, String newestMessageId) {
         if (isSummaryEnabled()) {
             final var sessionId = AgentUtils.sessionId(context);
             try {
@@ -443,6 +447,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                                 summary.getTitle(),
                                                                                 summary.getSessionSummary(),
                                                                                 summary.getKeywords(),
+                                                                                newestMessageId,
                                                                                 AgentUtils.epochMicro()))
                         .orElse(null);
                 log.info("Session summary: {}", updated);

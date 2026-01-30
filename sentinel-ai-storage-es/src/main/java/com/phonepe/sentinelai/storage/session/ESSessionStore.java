@@ -278,6 +278,7 @@ public class ESSessionStore implements SessionStore {
                 .sessionId(document.getSessionId())
                 .summary(document.getSummary())
                 .keywords(document.getTopics())
+                .lastSummarizedMessageId(document.getLastSummarizedMessageId())
                 .updatedAt(document.getUpdatedAtMicro())
                 .build();
     }
@@ -287,6 +288,7 @@ public class ESSessionStore implements SessionStore {
                 .sessionId(sessionSummary.getSessionId())
                 .summary(sessionSummary.getSummary())
                 .topics(sessionSummary.getKeywords())
+                .lastSummarizedMessageId(sessionSummary.getLastSummarizedMessageId())
                 .updatedAtMicro(sessionSummary.getUpdatedAt())
                 .build();
     }
@@ -319,6 +321,8 @@ public class ESSessionStore implements SessionStore {
                                                 p -> p.text(t -> t))
                                     .properties(ESSessionDocument.Fields.topics,
                                                 p -> p.keyword(t -> t))
+                                    .properties(ESSessionDocument.Fields.lastSummarizedMessageId,
+                                                p -> p.text(t -> t.store(false).index(false)))
                                     .properties(ESSessionDocument.Fields.updatedAtMicro,
                                                 p -> p.long_(t -> t))
                                     .properties(ESSessionDocument.Fields.createdAt,
