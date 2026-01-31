@@ -1,9 +1,9 @@
 package com.phonepe.sentinelai.models;
 
+import java.util.Objects;
+
 import lombok.Builder;
 import lombok.Value;
-
-import java.util.Objects;
 
 /**
  * Class for model specific options for {@link SimpleOpenAIModel}.
@@ -29,9 +29,17 @@ public class SimpleOpenAIModelOptions {
      */
     ToolChoice toolChoice;
 
+    /**
+     * Configuration for token counting.
+     *
+     * This config will be used by {@link OpenAICompletionsTokenCounter} to estimate token counts for messages.
+     */
+    TokenCountingConfig tokenCountingConfig;
+
     @Builder
-    public SimpleOpenAIModelOptions(ToolChoice toolChoice) {
+    public SimpleOpenAIModelOptions(ToolChoice toolChoice, TokenCountingConfig tokenCountingConfig) {
         this.toolChoice = Objects.requireNonNullElse(toolChoice, ToolChoice.REQUIRED);
+        this.tokenCountingConfig = Objects.requireNonNullElse(tokenCountingConfig, TokenCountingConfig.DEFAULT);
     }
 
     public SimpleOpenAIModelOptions merge(SimpleOpenAIModelOptions other) {
@@ -39,7 +47,8 @@ public class SimpleOpenAIModelOptions {
             return this;
         }
         return new SimpleOpenAIModelOptions(
-                Objects.requireNonNullElse(other.getToolChoice(), this.toolChoice)
+                Objects.requireNonNullElse(other.getToolChoice(), this.toolChoice),
+                Objects.requireNonNullElse(other.getTokenCountingConfig(), this.tokenCountingConfig)
         );
     }
 

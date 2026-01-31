@@ -42,6 +42,7 @@ import io.github.sashirestela.openai.domain.chat.Chat;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.EncodingRegistry;
+import com.knuddels.jtokkit.api.EncodingType;
 import com.knuddels.jtokkit.api.Encoding;
 import io.github.sashirestela.openai.domain.chat.ChatRequest;
 import io.github.sashirestela.openai.service.ChatCompletionServices;
@@ -65,7 +66,7 @@ import java.util.stream.Stream;
 
 import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
 import static com.phonepe.sentinelai.core.utils.EventUtils.*;
-import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertIndividualMessageToOpenIDFormat;
+import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat;
 import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertToOpenAIMessages;
 
 /**
@@ -119,17 +120,20 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     private final ObjectMapper mapper;
     private final ParameterMapper parameterMapper;
     private final SimpleOpenAIModelOptions modelOptions;
+    private final TokenCounter tokenCounter;
 
     public SimpleOpenAIModel(String modelName, M openAIProvider, ObjectMapper mapper) {
         this(modelName,
              openAIProvider,
              mapper,
-             new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.ToolChoice.REQUIRED));
+             new SimpleOpenAIModelOptions(
+                 SimpleOpenAIModelOptions.ToolChoice.REQUIRED,
+                 TokenCountingConfig.DEFAULT));
     }
 
     public SimpleOpenAIModel(
             final String modelName,
-            final M openAIProvider,
+            @NonNull final ChatCompletionServices openAIProvider,
             final ObjectMapper mapper,
             final SimpleOpenAIModelOptions modelOptions) {
         this(modelName,
@@ -143,13 +147,31 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             @NonNull final ChatCompletionServiceFactory openAIProviderFactory,
             final ObjectMapper mapper,
             final SimpleOpenAIModelOptions modelOptions) {
+        this(modelName,
+             openAIProviderFactory,
+             mapper,
+             modelOptions,
+             null);
+    }
+
+
+    public SimpleOpenAIModel(
+            final String modelName,
+            @NonNull final ChatCompletionServiceFactory openAIProviderFactory,
+            final ObjectMapper mapper,
+            final SimpleOpenAIModelOptions modelOptions,
+            final TokenCounter tokenCounter) {
         this.modelName = modelName;
         this.openAIProviderFactory = openAIProviderFactory;
         this.mapper = mapper;
         this.parameterMapper = new ParameterMapper(mapper);
         this.modelOptions = Objects.requireNonNullElse(
                 modelOptions,
-                new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.DEFAULT_TOOL_CHOICE));
+                new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.DEFAULT_TOOL_CHOICE,
+                                              TokenCountingConfig.DEFAULT));
+        this.tokenCounter = Objects.requireNonNullElse(
+                tokenCounter,
+                new OpenAICompletionsTokenCounter(this.modelOptions.getTokenCountingConfig()));
     }
 
     @Override
@@ -345,67 +367,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
     @Override
     public int estimateTokenCount(List<AgentMessage> messages) {
-        try {
-            final var openAiMessages = convertToOpenAIMessages(messages);
-
-            // Pick encoding for model; fallback to cl100k_base when unknown
-            final Encoding encoding;
-            try {
-                final EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
-                final var maybe = registry.getEncodingForModel(modelName);
-                if (maybe.isPresent()) {
-                    encoding = maybe.get();
-                }
-                else {
-                    encoding = registry.getEncoding("cl100k_base");
-                }
-            }
-            catch (Exception e) {
-                final EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
-                encoding = registry.getEncoding("cl100k_base");
-            }
-
-            int tokensPerMessage = 3; // heuristic used by OpenAI for chat formats
-            int tokensPerName = 1;
-            int total = 0;
-
-            for (ChatMessage m : openAiMessages) {
-                total += tokensPerMessage;
-                // extract textual content from ChatMessage implementations
-                try {
-                    var contentMethod = m.getClass().getMethod("getContent");
-                    Object contentObj = contentMethod.invoke(m);
-                    if (contentObj != null) {
-                        String content = contentObj.toString();
-                        total += encoding.countTokens(content);
-                    }
-                }
-                catch (NoSuchMethodException ignore) {
-                    total += encoding.countTokens(m.toString());
-                }
-                try {
-                    var nameMethod = m.getClass().getMethod("getName");
-                    Object nameObj = nameMethod.invoke(m);
-                    if (nameObj != null) {
-                        String name = nameObj.toString();
-                        total += tokensPerName;
-                        total += encoding.countTokens(name);
-                    }
-                }
-                catch (NoSuchMethodException ignore) {
-                    // ignore
-                }
-                // role token counted as part of tokensPerMessage; no-op
-            }
-
-            // assistant reply priming
-            total += 3;
-            return total;
-        }
-        catch (Throwable t) {
-            log.debug("Failed to estimate token count: {}", t.getMessage());
-            return Model.super.estimateTokenCount(messages);
-        }
+        return tokenCounter.estimateTokenCount(messages);
     }
 
 
@@ -1131,8 +1093,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                   toolCallResponse.getErrorType(),
                                   toolCallResponse.getResponse());
                     }
-                    agentMessages.getOpenAiMessages().add(convertIndividualMessageToOpenIDFormat(toolCallMessage));
-                    agentMessages.getOpenAiMessages().add(convertIndividualMessageToOpenIDFormat(toolCallResponse));
+                    agentMessages.getOpenAiMessages().add(convertIndividualMessageToOpenAIFormat(toolCallMessage));
+                    agentMessages.getOpenAiMessages().add(convertIndividualMessageToOpenAIFormat(toolCallResponse));
                     agentMessages.getAllMessages().add(toolCallMessage);
                     agentMessages.getNewMessages().add(toolCallMessage);
                     agentMessages.getAllMessages().add(toolCallResponse);

@@ -23,7 +23,7 @@ public interface Model {
 
     /**
      * Process messages and generate structured output. Supports both structured and tool based outputs.
-     * Response will consist of a JsonNode in the form of a Map<String, Object> where the keys are the
+     * Response will consist of a JsonNode in the form of a Map where the keys are the
      * output names and the values are the generated outputs.
      *
      * @param context The context of the model run, which includes metadata about the agent and the request.
