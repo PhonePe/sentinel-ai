@@ -10,12 +10,18 @@ import lombok.Value;
  */
 @Value
 public class SimpleOpenAIModelOptions {
+    public static final ToolChoice DEFAULT_TOOL_CHOICE = ToolChoice.AUTO;
+    public static final TokenCountingConfig DEFAULT_TOKEN_COUNTING_CONFIG = TokenCountingConfig.DEFAULT;
+
+    public static final SimpleOpenAIModelOptions DEFAULT = new SimpleOpenAIModelOptions(
+            DEFAULT_TOOL_CHOICE,
+            DEFAULT_TOKEN_COUNTING_CONFIG);
+
     public enum ToolChoice {
         REQUIRED, // Model will always call a tool. This is the default behavior.
         AUTO // Model will call a tool only if it needs to
     }
 
-    public static final ToolChoice DEFAULT_TOOL_CHOICE = ToolChoice.REQUIRED;
 
     /**
      * Use this to set tool_choice parameter for OpenAI models to "required" or "auto".
@@ -25,7 +31,6 @@ public class SimpleOpenAIModelOptions {
      * Please refer to
      * <a href="https://platform.openai.com/docs/guides/function-calling/function-calling-behavior?api-mode=chat#additional-configurations">OpenAI documentation</a>
      * to understand more about the tool_choice parameter.
-     * We do not support the option to set specific functions to be called by the model as tool.
      */
     ToolChoice toolChoice;
 

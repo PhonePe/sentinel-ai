@@ -1,21 +1,18 @@
 package com.phonepe.sentinelai.session;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agent.*;
+import com.phonepe.sentinelai.core.compaction.*;
 import com.phonepe.sentinelai.core.agentmessages.*;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
-import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
-import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.core.model.ModelRunContext;
-import com.phonepe.sentinelai.core.tools.NonContextualDefaultExternalToolRunner;
+import com.phonepe.sentinelai.core.compaction.MessageSummarizer;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.session.history.modifiers.FailedToolCallRemovalPreFilter;
@@ -186,13 +183,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return prompt.build();
     }
 
-    private static ModelOutputDefinition sessionSummarySchema() {
-        return new ModelOutputDefinition(
-                OUTPUT_KEY,
-                "Schema summary for this session and run",
-                JsonUtils.schema(ExtractedSummary.class));
-    }
-
     @SneakyThrows
     private void extractAndStoreHistory(Agent.ProcessingCompletedData<R, T, A> data) {
         saveMessages(data.getContext(), data.getOutput().getAllMessages());
@@ -236,33 +226,23 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                         .formatted(setup.getMaxSummaryLength(),
                                    mapper.writeValueAsString(sessionMessages)),
                 LocalDateTime.now()));
-        final var runId = "message-summarization-" + UUID.randomUUID();
-        final var modelRunContext = new ModelRunContext(data.getAgent().name(),
-                                                        runId,
-                                                        sessionId,
-                                                        AgentUtils.userId(context),
-                                                        data.getAgentSetup()
-                                                                .withModelSettings(data.getAgentSetup()
-                                                                                           .getModelSettings()
-                                                                                           .withParallelToolCalls(false)),
-                                                        context.getModelUsageStats(),
-                                                        ProcessingMode.DIRECT);
-        final var output = data.getAgentSetup()
-                .getModel()
-                .compute(modelRunContext,
-                         List.of(sessionSummarySchema()),
-                         messages,
-                         Map.of(),
-                         new NonContextualDefaultExternalToolRunner(sessionId, runId, mapper),
-                         new NeverTerminateEarlyStrategy(),
-                         List.of())
-                .join();
-        if (output.getError() != null && !output.getError().getErrorType().equals(ErrorType.SUCCESS)) {
-            log.error("Error extracting memory: {}", output.getError());
+        final var agentSetup = data.getAgentSetup();
+        final var needed = isCompationNeeded(data, messages, agentSetup);
+        if(!needed) {
+            log.debug("Summarization not needed based on the current strategy: {}", setup.getCompactionStrategy());
+            return;
         }
-        else {
-            final var summaryData = output.getData().get(OUTPUT_KEY);
-            if (JsonUtils.empty(summaryData)) {
+
+        final var summary = MessageSummarizer.extractSummary(
+                data.getAgent().name(),
+                sessionId,
+                AgentUtils.userId(context),
+                agentSetup,
+                mapper,
+                context.getModelUsageStats(),
+                messages)
+            .orElse(null);
+            if (null == summary) {
                 log.debug("No summary extracted from the output");
             }
             else {
@@ -273,10 +253,33 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                     .map(AgentMessage::getMessageId)
                     .reduce((first, second) -> second)
                     .orElse(null);
-                log.debug("Extracted session summary output: {}", summaryData);
-                saveSummary(context, summaryData, newestMessageId);
+                log.debug("Extracted session summary output: {}", summary.getSessionSummary());
+                saveSummary(context, summary, newestMessageId);
             }
-        }
+    }
+
+    private boolean isCompationNeeded(Agent.ProcessingCompletedData<R, T, A> data,
+            final List<AgentMessage> messages,
+            final AgentSetup agentSetup) {
+        return switch (setup.getCompactionStrategy()) {
+            case AUTOMATIC -> {
+                final var estimateTokenCount = data.getAgentSetup()
+                    .getModel()
+                    .estimateTokenCount(messages);
+                final var contextWindowSize = agentSetup.getModelSettings()
+                    .getModelAttributes()
+                    .getContextWindowSize();
+                final var threshold = setup.getAutoSummarizationThreshold(); 
+                final var currentUsage = contextWindowSize * threshold / 100;
+                final var evalResult = estimateTokenCount >= currentUsage;
+                log.debug(
+                    "Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, " +
+                        "threshold={}%, currentUsage={}, needsSummarization={}",
+                    estimateTokenCount, contextWindowSize, threshold, currentUsage, evalResult);
+                yield evalResult;
+            }
+            case EVERY_RUN -> true;
+        };
     }
 
     private BiScrollable<AgentMessage> readMessages(
@@ -438,11 +441,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         });
     }
 
-    private void saveSummary(AgentRunContext<R> context, JsonNode output, String newestMessageId) {
+    private void saveSummary(AgentRunContext<R> context, final ExtractedSummary summary, String newestMessageId) {
         if (isSummaryEnabled()) {
             final var sessionId = AgentUtils.sessionId(context);
             try {
-                final var summary = mapper.treeToValue(output, ExtractedSummary.class);
                 final var updated = sessionStore.saveSession(new SessionSummary(sessionId,
                                                                                 summary.getTitle(),
                                                                                 summary.getSessionSummary(),
@@ -452,9 +454,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                         .orElse(null);
                 log.info("Session summary: {}", updated);
             }
-            catch (JsonProcessingException e) {
-                log.error("Error converting json node to memory output. Error: %s Json: %s"
-                                  .formatted(e.getMessage(), output), e);
+            catch (Exception e) {
+                log.error("Error converting json node to memory output. Error: %s Summary: %s"
+                                  .formatted(e.getMessage(), summary), e);
             }
         }
     }

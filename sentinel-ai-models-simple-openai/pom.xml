@@ -36,7 +36,7 @@
                 </exclusion>
             </exclusions>
         </dependency>
-       <!-- OkHttp dependency is optional if you decide to use it with simple-openai -->
+        <!-- OkHttp dependency is optional if you decide to use it with simple-openai -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
