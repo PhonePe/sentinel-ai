@@ -9,5 +9,9 @@ public enum CompactionType {
      * Evaluation will be done intelligently based on the amount of tokens being generated
      * Threshold can be specified using {@link AgentSessionExtensionSetup}
      */
-    AUTOMATIC
+    AUTOMATIC,
+    /**
+     * No automatic evaluation will be done
+     */
+    NEVER
 }

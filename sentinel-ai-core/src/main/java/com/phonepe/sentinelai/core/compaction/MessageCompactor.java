@@ -6,9 +6,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
@@ -18,7 +18,6 @@ import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.NonContextualDefaultExternalToolRunner;
-import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 
 
@@ -27,11 +26,11 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @UtilityClass
-public class MessageSummarizer {
+public class MessageCompactor {
 
     private static final String OUTPUT_KEY = "sessionOutput";
 
-    public static Optional<ExtractedSummary> extractSummary(
+    public static CompletableFuture<Optional<ExtractedSummary>> compactMessages(
             final String agentName,
             final String sessionId,
             final String userId,
@@ -49,7 +48,7 @@ public class MessageSummarizer {
                                 .withParallelToolCalls(false)),
                 usageStats,
                 ProcessingMode.DIRECT);
-        final var output = agentSetup.getModel()
+        return agentSetup.getModel()
                 .compute(modelRunContext,
                         List.of(sessionSummarySchema()),
                         messages,
@@ -57,28 +56,28 @@ public class MessageSummarizer {
                         new NonContextualDefaultExternalToolRunner(sessionId, runId, mapper),
                         new NeverTerminateEarlyStrategy(),
                         List.of())
-                .join();
-        log.debug("Summarization usage: {}", usageStats);
-        if (output.getError() != null && !output.getError().getErrorType().equals(ErrorType.SUCCESS)) {
-            log.error("Error extracting session summary: {}", output.getError());
-        }
-        else {
-            final var summaryData = output.getData().get(OUTPUT_KEY);
-            if (JsonUtils.empty(summaryData)) {
-                log.debug("No summary extracted from the output");
-            }
-            else {
-                log.debug("Extracted session summary output: {}", summaryData);
-                try {
-                    return Optional.of(mapper.treeToValue(output.getData(), ExtractedSummary.class));
-                }
-                catch (Exception e) {
-                    log.error("Error extracting summary: %s".formatted(e.getMessage()), e);
-                }
-            }
-        }
-        return Optional.empty();
-
+                .thenApply(output -> {
+                    log.debug("Summarization usage: {}", usageStats);
+                    if (output.getError() != null && !output.getError().getErrorType().equals(ErrorType.SUCCESS)) {
+                        log.error("Error extracting session summary: {}", output.getError());
+                    }
+                    else {
+                        final var summaryData = output.getData().get(OUTPUT_KEY);
+                        if (JsonUtils.empty(summaryData)) {
+                            log.debug("No summary extracted from the output");
+                        }
+                        else {
+                            log.debug("Extracted session summary output from summarization run: {}", summaryData);
+                            try {
+                                return Optional.of(mapper.treeToValue(summaryData, ExtractedSummary.class));
+                            }
+                            catch (Exception e) {
+                                log.error("Error extracting summary: %s".formatted(e.getMessage()), e);
+                            }
+                        }
+                    }
+                    return Optional.<ExtractedSummary>empty();
+                });
     }
 
     private static ModelOutputDefinition sessionSummarySchema() {

@@ -1,18 +1,48 @@
 package com.phonepe.sentinelai.session;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.TreeMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
-import com.phonepe.sentinelai.core.agent.*;
-import com.phonepe.sentinelai.core.compaction.*;
-import com.phonepe.sentinelai.core.agentmessages.*;
+import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentExtension;
+import com.phonepe.sentinelai.core.agent.AgentRunContext;
+import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.Fact;
+import com.phonepe.sentinelai.core.agent.FactList;
+import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
+import com.phonepe.sentinelai.core.agent.ProcessingMode;
+import com.phonepe.sentinelai.core.agent.SystemPrompt;
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageVisitor;
+import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
+import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
+import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
+import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
-import com.phonepe.sentinelai.core.compaction.MessageSummarizer;
+import com.phonepe.sentinelai.core.compaction.ExtractedSummary;
+import com.phonepe.sentinelai.core.compaction.MessageCompactor;
+import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.session.history.modifiers.FailedToolCallRemovalPreFilter;
@@ -20,12 +50,13 @@ import com.phonepe.sentinelai.session.history.modifiers.MessagePersistencePreFil
 import com.phonepe.sentinelai.session.history.modifiers.SystemPromptRemovalPreFilter;
 import com.phonepe.sentinelai.session.history.selectors.MessageSelector;
 import com.phonepe.sentinelai.session.history.selectors.UnpairedToolCallsRemover;
-import lombok.*;
-import lombok.extern.slf4j.Slf4j;
 
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 
 /**
@@ -145,10 +176,12 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     public List<AgentMessage> messages(AgentRunContext<R> context, A agent, R request) {
         final var sessionId = AgentUtils.sessionId(context);
         if (!Strings.isNullOrEmpty(sessionId)) {
-            final var messagesToFetch = Math.max(
-                    setup.getHistoricalMessagesCount(),
-                    setup.getHistoricalMessageFetchSize());
-            final var agentMessages = readMessages(sessionId, messagesToFetch, true)
+            // Find last saved session summary and extract the last message id
+            final var lastSummarizedMessageId = sessionStore.session(sessionId)
+                .map(SessionSummary::getLastSummarizedMessageId)
+                .orElse(null);
+
+            final var agentMessages = readMessages(sessionId, lastSummarizedMessageId, setup.getHistoricalMessagesCount(), true)
                     .getItems();
             if (agentMessages.isEmpty()) {
                 log.info("No messages found for session {}", sessionId);
@@ -204,63 +237,82 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         catch (JsonProcessingException e) {
             log.error("Error during conversation summarization: {}", e.getMessage(), e);
         }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Summarization process was interrupted for session: {}", AgentUtils.sessionId(data.getContext()));
+        }
+        catch (ExecutionException e) {
+            final var error = AgentUtils.rootCause(e);
+            log.error("Execution error during conversation summarization for session {}: {}",
+                      AgentUtils.sessionId(data.getContext()),
+                      error.getMessage(),
+                      error);
+        }
     }
 
-    private void summarizeConversationImpl(Agent.ProcessingCompletedData<R, T, A> data) throws JsonProcessingException {
+    private void summarizeConversationImpl(Agent.ProcessingCompletedData<R, T, A> data)
+            throws JsonProcessingException, InterruptedException, ExecutionException {
         final var context = data.getContext();
 
         final var sessionId = AgentUtils.sessionId(context);
         final var messages = new ArrayList<AgentMessage>();
         messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
-                sessionId,
-                context.getRunId(),
-                mapper.writeValueAsString(sessionAndRunSummaryExtractionTaskPrompt(sessionId)),
-                false,
-                null));
-        final var sessionMessages = readMessages(sessionId, setup.getMaxMessagesToSummarize(), false);
+                         sessionId,
+                         context.getRunId(),
+                         mapper.writeValueAsString(sessionAndRunSummaryExtractionTaskPrompt(sessionId)),
+                         false,
+                         null));
+        final var sessionMessages = readMessagesForSummarization(sessionId,
+                                                                 null,
+                                                                 setup.getMaxMessagesToSummarize(),
+                                                                 false);
         messages.add(new UserPrompt(
-                sessionId,
-                context.getRunId(),
-                ("Generate a %d character summary of the conversation between user and agent from the following " +
-                        "messages. Messages JSON: %s")
-                        .formatted(setup.getMaxSummaryLength(),
-                                   mapper.writeValueAsString(sessionMessages)),
-                LocalDateTime.now()));
+                                    sessionId,
+                                    context.getRunId(),
+                                    ("Generate a %d character summary of the conversation between user and agent from the following messages. Messages JSON: %s")
+                                            .formatted(setup.getMaxSummaryLength(),
+                                                       mapper.writeValueAsString(sessionMessages)),
+                                    LocalDateTime.now()));
         final var agentSetup = data.getAgentSetup();
         final var needed = isCompationNeeded(data, messages, agentSetup);
-        if(!needed) {
+        if (!needed) {
             log.debug("Summarization not needed based on the current strategy: {}", setup.getCompactionStrategy());
             return;
         }
 
-        final var summary = MessageSummarizer.extractSummary(
-                data.getAgent().name(),
-                sessionId,
-                AgentUtils.userId(context),
-                agentSetup,
-                mapper,
-                context.getModelUsageStats(),
-                messages)
-            .orElse(null);
-            if (null == summary) {
-                log.debug("No summary extracted from the output");
-            }
-            else {
-                final var newestMessageId = sessionMessages.getItems()
+        final var summary = MessageCompactor.compactMessages(data.getAgent().name(),
+                                                             sessionId,
+                                                             AgentUtils.userId(context),
+                                                             agentSetup,
+                                                             mapper,
+                                                             context.getModelUsageStats(),
+                                                             messages)
+                .join()
+                .orElse(null);
+        if (null == summary) {
+            log.debug("No summary extracted from the output");
+        }
+        else {
+            final var newestMessageId = sessionMessages.getItems()
                     .stream()
                     .sorted(Comparator.comparing(AgentMessage::getTimestamp)
                             .thenComparing(AgentMessage::getMessageId))
                     .map(AgentMessage::getMessageId)
                     .reduce((first, second) -> second)
                     .orElse(null);
-                log.debug("Extracted session summary output: {}", summary.getSessionSummary());
-                saveSummary(context, summary, newestMessageId);
-            }
+            log.debug("Extracted session summary output: {}", summary.getSessionSummary());
+            saveSummary(context, summary, newestMessageId);
+        }
     }
 
-    private boolean isCompationNeeded(Agent.ProcessingCompletedData<R, T, A> data,
+    private boolean isCompationNeeded(
+            final Agent.ProcessingCompletedData<R, T, A> data,
             final List<AgentMessage> messages,
             final AgentSetup agentSetup) {
+        if(data.getOutput().getError().equals(ErrorType.LENGTH_EXCEEDED)) {
+            log.warn("Compaction needed as the last run ended with LENGTH_EXCEEDED error.");
+            return true;
+        }
         return switch (setup.getCompactionStrategy()) {
             case AUTOMATIC -> {
                 final var estimateTokenCount = data.getAgentSetup()
@@ -270,20 +322,85 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                     .getModelAttributes()
                     .getContextWindowSize();
                 final var threshold = setup.getAutoSummarizationThreshold(); 
-                final var currentUsage = contextWindowSize * threshold / 100;
-                final var evalResult = estimateTokenCount >= currentUsage;
+                final var currentBoundary = (contextWindowSize * threshold) / 100;
+                final var evalResult = estimateTokenCount >= currentBoundary;
                 log.debug(
                     "Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, " +
-                        "threshold={}%, currentUsage={}, needsSummarization={}",
-                    estimateTokenCount, contextWindowSize, threshold, currentUsage, evalResult);
+                        "threshold={}%, currentBoundary={}, needsSummarization={}",
+                    estimateTokenCount, contextWindowSize, threshold, currentBoundary, evalResult);
                 yield evalResult;
             }
             case EVERY_RUN -> true;
+            case NEVER -> {
+                log.warn("Compaction strategy set to NEVER. Skipping summarization.");
+                yield false;
+            }
         };
+    }
+
+    private BiScrollable<AgentMessage> readMessagesForSummarization(
+            String sessionId,
+            String lastSummarizedMessageId,
+            int count,
+            boolean skipSystemPrompt) {
+        var pointer = "";
+        var messagesInThisBatch = List.<AgentMessage>of();
+        var newPointer = "";
+        BiScrollable<AgentMessage> response = null;
+        final var fetchCount = Math.max(count, setup.getHistoricalMessageFetchSize());
+
+        final var messagesFromLastSummary = new ArrayList<AgentMessage>();
+
+        // find all messages till lastSummarizedMessageId or to the beginning (if lastSummarizedMessageId is null) sort them by timestamp by reversing the list
+        do {
+            response = sessionStore.readMessages(
+                    sessionId,
+                    fetchCount,
+                    skipSystemPrompt,
+                    AgentUtils.getIfNotNull(response, BiScrollable::getPointer, null),
+                    QueryDirection.OLDER);
+            newPointer = Strings.isNullOrEmpty(newPointer) ? response.getPointer().getNewer() : newPointer;
+            final var batch = response.getItems();
+            pointer = response.getPointer().getOlder();
+            if (batch.isEmpty()) {
+                break;
+            }
+            messagesInThisBatch = batch;
+
+            // Check if we have reached lastSummarizedMessageId
+            if (lastSummarizedMessageId != null) {
+                var relevantStartIndex = -1;
+                for (int i = 0; i < batch.size(); i++) {
+                    if (batch.get(i).getMessageId().equals(lastSummarizedMessageId)) {
+                        relevantStartIndex = i + 1;
+                        break;
+                    }
+                }
+                if (relevantStartIndex != -1) {
+                    final var relevantMessages = batch.subList(relevantStartIndex, batch.size());
+                    messagesFromLastSummary.addAll(0, relevantMessages);
+                    break;
+                }
+            }
+            messagesFromLastSummary.addAll(0, batch);
+
+        } while (messagesInThisBatch.size() < count && !Strings.isNullOrEmpty(pointer)); // We have hit the beginning of history
+
+        // now apply message selectors on messagesFromLastSummary
+        // Filter holistic chronological history
+        List<AgentMessage> chronological = messagesFromLastSummary;
+        for (final var filter : messageSelectors) {
+            chronological = filter.select(sessionId, chronological);
+        }
+
+        final var total = chronological.size();
+        final var result = List.copyOf(chronological.subList(Math.max(0, total - count), total));
+        return new BiScrollable<>(result, new BiScrollable.DataPointer(pointer, newPointer));
     }
 
     private BiScrollable<AgentMessage> readMessages(
             String sessionId,
+            String lastSummarizedMessageId,
             int count,
             boolean skipSystemPrompt) {
         final var rawAccumulated = new ArrayList<AgentMessage>();
@@ -291,10 +408,11 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         var filteredHistory = List.<AgentMessage>of();
         var newPointer = "";
         BiScrollable<AgentMessage> response = null;
+        final var fetchCount = Math.max(count, setup.getHistoricalMessageFetchSize());
         do {
             response = sessionStore.readMessages(
                     sessionId,
-                    count,
+                    fetchCount,
                     skipSystemPrompt,
                     AgentUtils.getIfNotNull(response, BiScrollable::getPointer, null),
                     QueryDirection.OLDER);
