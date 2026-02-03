@@ -277,7 +277,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         final var agentSetup = data.getAgentSetup();
         final var needed = isCompationNeeded(data, messages, agentSetup);
         if (!needed) {
-            log.debug("Summarization not needed based on the current strategy: {}", setup.getCompactionStrategy());
+            log.debug("Summarization not needed based on current state");
             return;
         }
 
@@ -310,33 +310,28 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             final Agent.ProcessingCompletedData<R, T, A> data,
             final List<AgentMessage> messages,
             final AgentSetup agentSetup) {
-        if(data.getOutput().getError().equals(ErrorType.LENGTH_EXCEEDED)) {
+        if (data.getOutput().getError().equals(ErrorType.LENGTH_EXCEEDED)) {
             log.warn("Compaction needed as the last run ended with LENGTH_EXCEEDED error.");
             return true;
         }
-        return switch (setup.getCompactionStrategy()) {
-            case AUTOMATIC -> {
-                final var estimateTokenCount = data.getAgentSetup()
-                    .getModel()
-                    .estimateTokenCount(messages, data.getAgentSetup());
-                final var contextWindowSize = agentSetup.getModelSettings()
-                    .getModelAttributes()
-                    .getContextWindowSize();
-                final var threshold = setup.getAutoSummarizationThreshold(); 
-                final var currentBoundary = (contextWindowSize * threshold) / 100;
-                final var evalResult = estimateTokenCount >= currentBoundary;
-                log.debug(
-                    "Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, " +
+        final var estimateTokenCount = data.getAgentSetup()
+                .getModel()
+                .estimateTokenCount(messages, data.getAgentSetup());
+        final var contextWindowSize = agentSetup.getModelSettings()
+                .getModelAttributes()
+                .getContextWindowSize();
+        final var threshold = setup.getAutoSummarizationThreshold();
+        if (threshold == 0) {
+            log.debug("Compaction needed as threshold is set to 0 (Every Run).");
+            return true;
+        }
+        final var currentBoundary = (contextWindowSize * threshold) / 100;
+        final var evalResult = estimateTokenCount >= currentBoundary;
+        log.debug(
+                "Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, " +
                         "threshold={}%, currentBoundary={}, needsSummarization={}",
-                    estimateTokenCount, contextWindowSize, threshold, currentBoundary, evalResult);
-                yield evalResult;
-            }
-            case EVERY_RUN -> true;
-            case NEVER -> {
-                log.warn("Compaction strategy set to NEVER. Skipping summarization.");
-                yield false;
-            }
-        };
+                estimateTokenCount, contextWindowSize, threshold, currentBoundary, evalResult);
+        return evalResult;
     }
 
     private BiScrollable<AgentMessage> readMessagesForSummarization(

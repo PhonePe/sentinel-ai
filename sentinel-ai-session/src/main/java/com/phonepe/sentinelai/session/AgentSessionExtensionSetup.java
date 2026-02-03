@@ -16,7 +16,6 @@ public class AgentSessionExtensionSetup {
     public static final int DEFAULT_MAX_MESSAGES_TO_SUMMARIZE = 50;
     public static final int DEFAULT_MAX_SUMMARY_LENGTH = 1000;
     public static final boolean DEFAULT_DISABLE_SUMMARIZATION = false;
-    public static final CompactionType DEFAULT_COMPACTION_STRATEGY = CompactionType.AUTOMATIC;
     private static final int DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD = 0;
 
     public static final AgentSessionExtensionSetup DEFAULT = new AgentSessionExtensionSetup(
@@ -25,7 +24,6 @@ public class AgentSessionExtensionSetup {
             DEFAULT_MAX_MESSAGES_TO_SUMMARIZE,
             DEFAULT_MAX_SUMMARY_LENGTH,
             DEFAULT_DISABLE_SUMMARIZATION,
-            DEFAULT_COMPACTION_STRATEGY,
             DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD);
 
     /**
@@ -60,9 +58,6 @@ public class AgentSessionExtensionSetup {
 
     @Builder.Default
     boolean disableSummarization = DEFAULT_DISABLE_SUMMARIZATION;
-
-    @Builder.Default
-    CompactionType compactionStrategy = DEFAULT_COMPACTION_STRATEGY;
 
     @Builder.Default
     int autoSummarizationThreshold = DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD;
