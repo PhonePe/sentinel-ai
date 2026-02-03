@@ -160,7 +160,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     @Override
     public List<AgentMessage> messages(AgentRunContext<R> context, A agent, R request) {
         final var sessionId = AgentUtils.sessionId(context);
-        if (!Strings.isNullOrEmpty(sessionId)) {
+        if (Strings.isNullOrEmpty(sessionId)) {
             log.warn("No session id found in context. No session messages will be provided.");
             return List.of();
         }
@@ -169,6 +169,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 .map(SessionSummary::getLastSummarizedMessageId)
                 .orElse(null);
 
+        log.debug("Reading messages for session {} since last summarized message id {}",
+                  sessionId,
+                  lastSummarizedMessageId);
         final var agentMessages = readMessagesSinceId(sessionStore,
                 setup,
                 sessionId,
@@ -276,7 +279,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                             .reduce((first, second) -> second)
                             .orElse(null);
             log.debug("Extracted session summary output: {}", summary.getSessionSummary());
-            saveSummary(sessionId, context, summary, newestMessageId);
+            saveSummary(sessionId, context, summary, newestMessageId, lastSummarizedMessageId);
         }
     }
 
@@ -363,12 +366,13 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             final String sessionId,
             final AgentRunContext<R> context,
             final ExtractedSummary summary,
-            final String newestMessageId) {
+            final String newestMessageId,
+            final String lastSummarizedMessageId) {
         try {
             final var existingSessionMessageId = sessionStore.session(sessionId)
                 .map(SessionSummary::getLastSummarizedMessageId)
                 .orElse(null);
-            if(!Objects.equals(newestMessageId, existingSessionMessageId)) {
+            if(lastSummarizedMessageId != null && !Objects.equals(lastSummarizedMessageId, existingSessionMessageId)) {
                 log.warn("Skipping summary save as the newest message id {} does not match existing session's last summarized message id {} for session: {}",
                         newestMessageId, existingSessionMessageId, sessionId);
                 return;

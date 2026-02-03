@@ -64,9 +64,8 @@ public class MessageReadingUtils {
 
         final var messagesFromLastSummary = new ArrayList<AgentMessage>();
 
-        // This loop reads messages in reverse chronological order
-        // Start reading messages in reverse chronological order
-        // until we reach lastSummarizedMessageId or beginning of history
+        // This loop reads messages in batches going back in time.
+        // Each batch is returned in chronological order (oldest to newest).
         // Apply filters after accumulating all messages since last Summary
         // This ensures that filters that need holistic view of history can work correctly
         do {
@@ -93,8 +92,10 @@ public class MessageReadingUtils {
                     }
                 }
                 if (foundIndex != -1) {
-                    // Add messages strictly newer than lastSummarizedMessageId (indices 0 to foundIndex-1)
-                    messagesFromLastSummary.addAll(batch.subList(0, foundIndex));
+                    // Add messages strictly newer than lastSummarizedMessageId (indices foundIndex+1 to batch.size()-1)
+                    if (foundIndex + 1 < batch.size()) {
+                        messagesFromLastSummary.addAll(batch.subList(foundIndex + 1, batch.size()));
+                    }
                     break;
                 }
             }
@@ -102,8 +103,7 @@ public class MessageReadingUtils {
 
         } while (messagesInThisBatch.size() == fetchCount && !Strings.isNullOrEmpty(pointer));
 
-        //Ok this is weird list chronologically. We sort this to get chronological order from old to new
-        // and then apply message selectors
+        // Sort all accumulated messages chronologically from oldest to newest
         List<AgentMessage> chronological = messagesFromLastSummary.stream()
                 .sorted(Comparator.comparing(AgentMessage::getTimestamp)
                         .thenComparing(AgentMessage::getMessageId))
