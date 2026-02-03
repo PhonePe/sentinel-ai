@@ -43,6 +43,7 @@ import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.compaction.ExtractedSummary;
 import com.phonepe.sentinelai.core.compaction.MessageCompactor;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.session.history.modifiers.FailedToolCallRemovalPreFilter;
@@ -317,7 +318,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             case AUTOMATIC -> {
                 final var estimateTokenCount = data.getAgentSetup()
                     .getModel()
-                    .estimateTokenCount(messages);
+                    .estimateTokenCount(messages, data.getAgentSetup());
                 final var contextWindowSize = agentSetup.getModelSettings()
                     .getModelAttributes()
                     .getContextWindowSize();

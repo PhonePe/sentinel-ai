@@ -102,9 +102,10 @@ public interface Model {
      * Estimates the token count for the given messages.
      *
      * @param messages The list of messages to estimate the token count for.
+     * @param agentSetup The setup for the agent, which includes the encoding type.
      * @return The estimated token count, or TOKEN_COUNT_UNKNOWN if not implemented.
      */
-    default int estimateTokenCount(List<AgentMessage> messages) {
+    default int estimateTokenCount(List<AgentMessage> messages, AgentSetup agentSetup) {
         return TOKEN_COUNT_UNKNOWN;
     }
 }

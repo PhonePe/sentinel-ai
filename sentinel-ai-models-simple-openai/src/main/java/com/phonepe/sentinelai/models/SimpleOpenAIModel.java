@@ -182,9 +182,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 modelOptions,
                 new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.DEFAULT_TOOL_CHOICE,
                                               TokenCountingConfig.DEFAULT));
-        this.tokenCounter = Objects.requireNonNullElse(
+        this.tokenCounter = Objects.requireNonNullElseGet(
                 tokenCounter,
-                new OpenAICompletionsTokenCounter(this.modelOptions.getTokenCountingConfig()));
+                OpenAICompletionsTokenCounter::new);
     }
 
     @Override
@@ -379,8 +379,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     @Override
-    public int estimateTokenCount(List<AgentMessage> messages) {
-        return tokenCounter.estimateTokenCount(messages);
+    public int estimateTokenCount(List<AgentMessage> messages, AgentSetup agentSetup) {
+        return tokenCounter.estimateTokenCount(messages,
+                                               this.modelOptions.getTokenCountingConfig(),
+                                               agentSetup.getEncodingType());
     }
 
 

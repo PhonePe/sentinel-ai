@@ -3,6 +3,7 @@ package com.phonepe.sentinelai.models;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
+import com.knuddels.jtokkit.api.EncodingType;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
@@ -29,14 +30,14 @@ class OpenAICompletionsTokenCounterTest {
     @BeforeEach
     void setUp() {
         config = TokenCountingConfig.DEFAULT;
-        tokenCounter = new OpenAICompletionsTokenCounter(config);
+        tokenCounter = new OpenAICompletionsTokenCounter();
         EncodingRegistry encodingRegistry = Encodings.newDefaultEncodingRegistry();
-        encoder = encodingRegistry.getEncoding(config.getEncoding());
+        encoder = encodingRegistry.getEncoding(EncodingType.CL100K_BASE);
     }
 
     @Test
     void testEstimateTokenCountEmptyMessages() {
-        assertEquals(config.getAssistantPrimingOverhead(), tokenCounter.estimateTokenCount(List.of()));
+        assertEquals(TokenCountingConfig.DEFAULT.getMessageOverHead(), tokenCounter.estimateTokenCount(List.of(), TokenCountingConfig.DEFAULT, EncodingType.CL100K_BASE));
     }
 
     @Test
@@ -44,12 +45,12 @@ class OpenAICompletionsTokenCounterTest {
         final var content = "You are a helpful assistant.";
         SystemPrompt systemPrompt = new SystemPrompt("s1", "r1", content, false, null);
 
-        int expected = config.getAssistantPrimingOverhead() +
-                config.getMessageOverHead() +
+        int expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead() +
+                TokenCountingConfig.DEFAULT.getMessageOverHead() +
                 countTokens("SYSTEM") +
                 countTokens(content);
 
-        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(systemPrompt)));
+        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(systemPrompt), TokenCountingConfig.DEFAULT, EncodingType.CL100K_BASE));
     }
 
     @Test
@@ -57,12 +58,12 @@ class OpenAICompletionsTokenCounterTest {
         final var content = "Hello, how are you?";
         UserPrompt userPrompt = new UserPrompt("s1", "r1", content, LocalDateTime.now());
 
-        int expected = config.getAssistantPrimingOverhead() +
-                config.getMessageOverHead() +
+        int expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead() +
+                TokenCountingConfig.DEFAULT.getMessageOverHead() +
                 countTokens("USER") +
                 countTokens(content);
 
-        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(userPrompt)));
+        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(userPrompt), TokenCountingConfig.DEFAULT, EncodingType.CL100K_BASE));
     }
 
     @Test
@@ -70,12 +71,12 @@ class OpenAICompletionsTokenCounterTest {
         final var content = "I am fine, thank you!";
         Text assistantResponse = new Text("s1", "r1", content);
 
-        int expected = config.getAssistantPrimingOverhead() +
-                config.getMessageOverHead() +
+        int expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead() +
+                TokenCountingConfig.DEFAULT.getMessageOverHead() +
                 countTokens("ASSISTANT") +
                 countTokens(content);
 
-        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(assistantResponse)));
+        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(assistantResponse), TokenCountingConfig.DEFAULT, EncodingType.CL100K_BASE));
     }
 
     @Test
@@ -83,12 +84,12 @@ class OpenAICompletionsTokenCounterTest {
         final var content = "{\"answer\": \"fine\"}";
         StructuredOutput structuredOutput = new StructuredOutput("s1", "r1", content);
 
-        int expected = config.getAssistantPrimingOverhead() +
-                config.getMessageOverHead() +
+        int expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead() +
+                TokenCountingConfig.DEFAULT.getMessageOverHead() +
                 countTokens("ASSISTANT") +
                 countTokens(content);
 
-        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(structuredOutput)));
+        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(structuredOutput), TokenCountingConfig.DEFAULT, EncodingType.CL100K_BASE));
     }
 
     @Test
@@ -98,16 +99,16 @@ class OpenAICompletionsTokenCounterTest {
         final var toolCallId = "call_123";
         ToolCall toolCall = new ToolCall("s1", "r1", toolCallId, toolName, arguments);
 
-        int expected = config.getAssistantPrimingOverhead() +
-                config.getMessageOverHead() +
+        int expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead() +
+                TokenCountingConfig.DEFAULT.getMessageOverHead() +
                 countTokens("ASSISTANT") +
                 countTokens(toolCallId) +
                 countTokens(toolName) +
-                config.getFormattingOverhead() +
+                TokenCountingConfig.DEFAULT.getFormattingOverhead() +
                 countTokens(arguments) +
                 countTokens("null"); // Content is null in ToolCall, Objects.toString(null) is "null"
 
-        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(toolCall)));
+        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(toolCall), TokenCountingConfig.DEFAULT, EncodingType.CL100K_BASE));
     }
 
     @Test
@@ -118,14 +119,14 @@ class OpenAICompletionsTokenCounterTest {
         ToolCallResponse toolCallResponse = new ToolCallResponse("s1", "r1", toolCallId, toolName, ErrorType.SUCCESS,
                 response, LocalDateTime.now());
 
-        int expected = config.getAssistantPrimingOverhead() +
-                config.getMessageOverHead() +
+        int expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead() +
+                TokenCountingConfig.DEFAULT.getMessageOverHead() +
                 countTokens("TOOL") +
-                config.getFormattingOverhead() +
+                TokenCountingConfig.DEFAULT.getFormattingOverhead() +
                 countTokens(toolCallId) +
                 countTokens(response);
 
-        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(toolCallResponse)));
+        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(toolCallResponse), TokenCountingConfig.DEFAULT, EncodingType.CL100K_BASE));
     }
 
     @Test
@@ -133,12 +134,12 @@ class OpenAICompletionsTokenCounterTest {
         final var content = "Some generic text";
         GenericText genericText = new GenericText("s1", "r1", AgentGenericMessage.Role.USER, content);
 
-        int expected = config.getAssistantPrimingOverhead() +
-                config.getMessageOverHead() +
+        int expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead() +
+                TokenCountingConfig.DEFAULT.getMessageOverHead() +
                 countTokens("USER") +
                 countTokens(content);
 
-        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(genericText)));
+        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(genericText), TokenCountingConfig.DEFAULT, EncodingType.CL100K_BASE));
     }
 
     @Test
@@ -146,11 +147,11 @@ class OpenAICompletionsTokenCounterTest {
         SystemPrompt systemPrompt = new SystemPrompt("s1", "r1", "System", false, null);
         UserPrompt userPrompt = new UserPrompt("s1", "r1", "User", LocalDateTime.now());
 
-        int expected = config.getAssistantPrimingOverhead() +
-                (config.getMessageOverHead() + countTokens("SYSTEM") + countTokens("System")) +
-                (config.getMessageOverHead() + countTokens("USER") + countTokens("User"));
+        int expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead() +
+                (TokenCountingConfig.DEFAULT.getMessageOverHead() + countTokens("SYSTEM") + countTokens("System")) +
+                (TokenCountingConfig.DEFAULT.getMessageOverHead() + countTokens("USER") + countTokens("User"));
 
-        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(systemPrompt, userPrompt)));
+        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(systemPrompt, userPrompt), TokenCountingConfig.DEFAULT, EncodingType.CL100K_BASE));
     }
 
     private int countTokens(final String content) {

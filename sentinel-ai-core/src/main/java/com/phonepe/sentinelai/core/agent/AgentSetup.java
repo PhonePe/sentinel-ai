@@ -1,6 +1,7 @@
 package com.phonepe.sentinelai.core.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.knuddels.jtokkit.api.EncodingType;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
@@ -64,4 +65,10 @@ public class AgentSetup {
      * Retry setup for model calls
      */
     RetrySetup retrySetup;
+
+    /**
+     * Encoding used for token counting
+     */
+    @Builder.Default
+    EncodingType encodingType = EncodingType.CL100K_BASE;
 }

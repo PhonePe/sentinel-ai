@@ -7,6 +7,7 @@ import com.google.common.base.Strings;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
+import com.knuddels.jtokkit.api.EncodingType;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.models.utils.OpenAIMessageUtils;
 
@@ -17,9 +18,7 @@ import io.github.sashirestela.openai.domain.chat.ChatMessage.SystemMessage;
 import io.github.sashirestela.openai.domain.chat.ChatMessage.ToolMessage;
 import io.github.sashirestela.openai.domain.chat.ChatMessage.UserMessage;
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
 
-@RequiredArgsConstructor(access = AccessLevel.PUBLIC)
 /**
  * Token counter for OpenAI completions models
  *
@@ -27,7 +26,6 @@ import lombok.RequiredArgsConstructor;
  */
 public class OpenAICompletionsTokenCounter implements TokenCounter {
 
-    private final TokenCountingConfig tokenCountingConfig;
     private final EncodingRegistry encodingRegistry = Encodings.newDefaultEncodingRegistry();
 
     /**
@@ -44,38 +42,42 @@ public class OpenAICompletionsTokenCounter implements TokenCounter {
      * - Finally, add a fixed overhead for assistant priming defined in the config
      */
     @Override
-    public int estimateTokenCount(final List<AgentMessage> messages) {
-        final var encoder = encodingRegistry.getEncoding(tokenCountingConfig.getEncoding());
+    public int estimateTokenCount(
+            final List<AgentMessage> messages,
+            final TokenCountingConfig tokenCountingConfig,
+            final EncodingType encodingType) {
+        final var currentEncodingType = Objects.requireNonNullElse(encodingType, EncodingType.CL100K_BASE);
+        final var encoder = encodingRegistry.getEncoding(currentEncodingType);
 
         var totalTokens = 0;
         for (final var message : messages) {
-        final var convertedMessage = OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(message);
+            final var convertedMessage = OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(message);
             // Per message overhead is added irrespective of type of messages
             totalTokens += tokenCountingConfig.getMessageOverHead();
 
             // Add tokens for role. Added for all message types
             totalTokens += countString(encoder, convertedMessage.getRole().name());
 
-            if(convertedMessage instanceof DeveloperMessage developerMessage) {
+            if (convertedMessage instanceof DeveloperMessage developerMessage) {
                 totalTokens += countString(encoder, developerMessage.getContent());
-                if(!Strings.isNullOrEmpty(developerMessage.getName())) {
+                if (!Strings.isNullOrEmpty(developerMessage.getName())) {
                     totalTokens += tokenCountingConfig.getNameOverhead();
                     totalTokens += countString(encoder, developerMessage.getName());
                 }
             }
 
 
-            if(convertedMessage instanceof SystemMessage systemMessage) {
+            if (convertedMessage instanceof SystemMessage systemMessage) {
                 totalTokens += countString(encoder, systemMessage.getContent());
-                if(!Strings.isNullOrEmpty(systemMessage.getName())) {
+                if (!Strings.isNullOrEmpty(systemMessage.getName())) {
                     totalTokens += tokenCountingConfig.getNameOverhead();
                     totalTokens += countString(encoder, systemMessage.getName());
                 }
             }
 
-            if(convertedMessage instanceof UserMessage userMessage) {
+            if (convertedMessage instanceof UserMessage userMessage) {
                 totalTokens += countString(encoder, Objects.toString(userMessage.getContent()));
-                if(!Strings.isNullOrEmpty(userMessage.getName())) {
+                if (!Strings.isNullOrEmpty(userMessage.getName())) {
                     totalTokens += tokenCountingConfig.getNameOverhead();
                     totalTokens += countString(encoder, userMessage.getName());
                 }
@@ -83,33 +85,33 @@ public class OpenAICompletionsTokenCounter implements TokenCounter {
 
             if (convertedMessage instanceof AssistantMessage assistantMessage) {
                 totalTokens += countString(encoder, Objects.toString(assistantMessage.getContent()));
-                if(!Strings.isNullOrEmpty(assistantMessage.getName())) {
+                if (!Strings.isNullOrEmpty(assistantMessage.getName())) {
                     totalTokens += tokenCountingConfig.getNameOverhead();
                     totalTokens += countString(encoder, assistantMessage.getName());
                 }
                 totalTokens += countString(encoder, assistantMessage.getRefusal());
                 final var toolCalls = Objects.requireNonNullElseGet(assistantMessage.getToolCalls(),
-                        List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
+                                                                    List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
 
-                for(final var toolCall : toolCalls) {
+                for (final var toolCall : toolCalls) {
                     totalTokens += countString(encoder, toolCall.getId());
                     final var function = toolCall.getFunction();
                     totalTokens += countString(encoder, function.getName());
-                    if(!Strings.isNullOrEmpty(function.getArguments())) {
+                    if (!Strings.isNullOrEmpty(function.getArguments())) {
                         totalTokens += tokenCountingConfig.getFormattingOverhead();
                         totalTokens += countString(encoder, function.getArguments());
                     }
                 }
             }
 
-            if(convertedMessage instanceof ToolMessage toolMessage) {
+            if (convertedMessage instanceof ToolMessage toolMessage) {
                 totalTokens += tokenCountingConfig.getFormattingOverhead();
                 totalTokens += countString(encoder, toolMessage.getToolCallId());
                 totalTokens += countString(encoder, Objects.toString(toolMessage.getContent()));
             }
 
             // Response specific tokenCountingConfig
-            if(convertedMessage instanceof ResponseMessage responseMessage) {
+            if (convertedMessage instanceof ResponseMessage responseMessage) {
                 totalTokens += countString(encoder, Objects.toString(responseMessage.getContent()));
             }
         }
