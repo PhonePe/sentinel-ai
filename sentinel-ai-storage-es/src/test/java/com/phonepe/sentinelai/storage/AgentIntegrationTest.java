@@ -140,9 +140,6 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                                .memoryExtractionMode(MemoryExtractionMode.INLINE)
                                                .build(),
                                        AgentSessionExtension.<UserInput, OutputObject, SimpleAgent>builder()
-                                               .setup(AgentSessionExtensionSetup.builder()
-                                                              .historicalMessagesCount(6)
-                                                              .build())
                                                .sessionStore(sessionStorage)
                                                .build());
         final var agent = SimpleAgent.builder()

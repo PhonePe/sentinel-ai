@@ -24,12 +24,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class OpenAICompletionsTokenCounterTest {
 
     private OpenAICompletionsTokenCounter tokenCounter;
-    private TokenCountingConfig config;
     private Encoding encoder;
 
     @BeforeEach
     void setUp() {
-        config = TokenCountingConfig.DEFAULT;
         tokenCounter = new OpenAICompletionsTokenCounter();
         EncodingRegistry encodingRegistry = Encodings.newDefaultEncodingRegistry();
         encoder = encodingRegistry.getEncoding(EncodingType.CL100K_BASE);
