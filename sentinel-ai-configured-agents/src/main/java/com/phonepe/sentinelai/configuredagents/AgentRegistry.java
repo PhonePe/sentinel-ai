@@ -105,7 +105,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
 
     /**
      * Register the configuration of a new agent. Will be created when needed using the
-     * {@link ConfiguredAgentFactory::createAgent(AgentMetadata, Agent)} method.
+     * {@link ConfiguredAgentFactory#createAgent(AgentMetadata, Agent)} method.
      *
      * @param configuration Agent configuration
      * @return The metadata of the configured agent if successful, empty otherwise
