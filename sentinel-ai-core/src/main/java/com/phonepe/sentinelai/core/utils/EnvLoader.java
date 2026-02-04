@@ -4,6 +4,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 import lombok.experimental.UtilityClass;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Loads variables from environment
@@ -20,9 +21,8 @@ public class EnvLoader {
      * @param variable the name of the variable
      * @return the value of the variable
      */
-    public static String readEnv(final String variable) {
-        return Objects.requireNonNull(readEnv(variable, null),
-                                      "Please set environment variable: %s".formatted(variable));
+    public static Optional<String> readEnv(final String variable) {
+        return Optional.ofNullable(readEnv(variable, null));
     }
 
     /**
@@ -32,6 +32,7 @@ public class EnvLoader {
      * @return the value of the variable
      */
     public static String readEnv(final String variable, final String defaultValue) {
+        // Implementer's note: Do not replace with Objects.requires.. methods, we decide to support null defaultValue
         var value = DOTENV.get(variable);
         if (value == null) {
             value = System.getenv(variable);

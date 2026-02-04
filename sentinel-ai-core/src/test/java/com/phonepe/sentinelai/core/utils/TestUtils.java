@@ -8,6 +8,7 @@ import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  */
 @UtilityClass
+@Slf4j
 public class TestUtils {
     public static void setupMocks(int numStates, String prefix, Class<?> clazz) {
         IntStream.rangeClosed(1, numStates)
@@ -88,9 +90,10 @@ public class TestUtils {
     public static String getTestProperty(String variable, String mockValue) {
         if ("true".equalsIgnoreCase(System.getProperty("sentinelai.useRealEndpoints"))) {
             String value = EnvLoader.readEnv(variable, mockValue);
-            System.out.println("Using real endpoint for " + variable + ": " + value);
+            log.info("Using real endpoint for {}: {}", variable, value);
             return value;
         }
+        log.info("Using mock endpoint for {}: {}", variable, mockValue);
         return mockValue;
     }
 }

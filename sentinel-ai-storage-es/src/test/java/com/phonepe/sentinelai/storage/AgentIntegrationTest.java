@@ -124,7 +124,7 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                 .build();
         final var client = ESClient.builder()
                 .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
-                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
+                .apiKey("test")
                 .build();
 
         final var memoryStorage = new ESAgentMemoryStorage(client, new HuggingfaceEmbeddingModel(), indexPrefix(this));
