@@ -95,6 +95,7 @@
         <mockito.version>5.20.0</mockito.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <sentinelai.useRealEndpoints>false</sentinelai.useRealEndpoints>
+        <dotenv.file>${project.basedir}/.env</dotenv.file>
     </properties>
 
     <dependencyManagement>
@@ -267,6 +268,7 @@
                     </statelessTestsetInfoReporter>
                     <systemPropertyVariables>
                         <sentinelai.useRealEndpoints>${sentinelai.useRealEndpoints}</sentinelai.useRealEndpoints>
+                        <dotenv.file>${dotenv.file}</dotenv.file>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
