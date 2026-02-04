@@ -62,10 +62,8 @@ class HttpToolBoxIntegrationTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(objectMapper)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
@@ -85,7 +83,7 @@ class HttpToolBoxIntegrationTest {
                                             okHttpClient,
                                             toolSource,
                                             objectMapper,
-                                            wiremock.getHttpBaseUrl());
+                                            TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl()));
         final var requestMetadata = AgentRequestMetadata.builder()
                 .sessionId("s1")
                 .userId("ss")

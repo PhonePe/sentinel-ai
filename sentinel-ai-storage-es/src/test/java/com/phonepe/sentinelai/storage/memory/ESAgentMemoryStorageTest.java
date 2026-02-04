@@ -2,6 +2,7 @@ package com.phonepe.sentinelai.storage.memory;
 
 import com.phonepe.sentinelai.agentmemory.AgentMemory;
 import com.phonepe.sentinelai.agentmemory.MemoryScope;
+import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.embedding.HuggingfaceEmbeddingModel;
 import com.phonepe.sentinelai.storage.ESClient;
 import com.phonepe.sentinelai.storage.ESIntegrationTestBase;
@@ -29,7 +30,7 @@ class ESAgentMemoryStorageTest extends ESIntegrationTestBase {
     void test() {
         try (final var client = ESClient.builder()
                 .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
-                .apiKey("test")
+                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
                 .build()) {
 
             final var storage = new ESAgentMemoryStorage(client,

@@ -3,12 +3,14 @@ package com.phonepe.sentinelai.session;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.With;
 
 /**
  * Setup for Agent Session Extension
  */
 @Value
 @Builder
+@With
 @SuppressWarnings("java:S6548")
 public class AgentSessionExtensionSetup {
     public static final int MAX_HISTORICAL_MESSAGES_FETCH_COUNT = 30;

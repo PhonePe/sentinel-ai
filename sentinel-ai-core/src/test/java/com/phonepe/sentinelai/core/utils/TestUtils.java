@@ -57,26 +57,40 @@ public class TestUtils {
                 "/wiremock/%s.%d.json".formatted(prefix, i))).toURI()));
     }
 
-    public static void assertNoFailedToolCalls(AgentOutput<String> response) {
-        final var failedCall = response.getNewMessages().stream()
+    public static <T> void assertNoFailedToolCalls(AgentOutput<T> response) {
+        final var messages = response.getNewMessages();
+        if (messages == null) {
+            return;
+        }
+        final var failedCall = messages.stream()
                 .filter(agentMessage -> agentMessage.getMessageType()
                         .equals(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE))
+                .filter(ToolCallResponse.class::isInstance)
                 .map(ToolCallResponse.class::cast)
                 .filter(Predicate.not(ToolCallResponse::isSuccess))
                 .toList();
         assertTrue(failedCall.isEmpty(),
                    "Expected no failed tool calls, but found: " + failedCall.stream()
                            .map(ToolCallResponse::getToolName)
-                           .toList());
+                           .collect(java.util.stream.Collectors.joining(", ")));
     }
 
-    public static void ensureOutputGenerated(final AgentOutput<?> response) {
-        assertTrue(response.getNewMessages()
-                           .stream()
+    public static <T> void ensureOutputGenerated(final AgentOutput<T> response) {
+        final var messages = response.getNewMessages();
+        assertTrue(messages != null && messages.stream()
                            .anyMatch(message -> message.getMessageType()
                                    .equals(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE)
                                    && message instanceof ToolCall toolCall
                                    && toolCall.getToolName().equals(Agent.OUTPUT_GENERATOR_ID)),
                    "Expected at least one output function call, but found none.");
+    }
+
+    public static String getTestProperty(String variable, String mockValue) {
+        if ("true".equalsIgnoreCase(System.getProperty("sentinelai.useRealEndpoints"))) {
+            String value = EnvLoader.readEnv(variable, mockValue);
+            System.out.println("Using real endpoint for " + variable + ": " + value);
+            return value;
+        }
+        return mockValue;
     }
 }

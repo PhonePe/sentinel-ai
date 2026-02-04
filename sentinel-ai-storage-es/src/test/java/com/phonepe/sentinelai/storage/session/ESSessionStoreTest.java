@@ -14,6 +14,7 @@ import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.storage.ESClient;
 import com.phonepe.sentinelai.storage.ESIntegrationTestBase;
 import com.phonepe.sentinelai.storage.IndexSettings;
@@ -36,7 +37,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
     void testSessionStorage() {
         try (final var client = ESClient.builder()
                 .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
-                .apiKey("test")
+                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
                 .build()) {
 
             final var sessionStore = ESSessionStore.builder()
@@ -118,7 +119,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
     void testSessionMessageStorage() {
         try (final var client = ESClient.builder()
                 .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
-                .apiKey("test")
+                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
                 .build()) {
 
             final var sessionStore = ESSessionStore.builder()

@@ -12,6 +12,7 @@ import com.phonepe.sentinelai.agentmemory.AgentMemoryExtension;
 import com.phonepe.sentinelai.agentmemory.MemoryExtractionMode;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
@@ -104,10 +105,8 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(objectMapper)
                         .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
@@ -125,7 +124,7 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                 .build();
         final var client = ESClient.builder()
                 .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
-                .apiKey("test")
+                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
                 .build();
 
         final var memoryStorage = new ESAgentMemoryStorage(client, new HuggingfaceEmbeddingModel(), indexPrefix(this));
@@ -141,6 +140,7 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                                .build(),
                                        AgentSessionExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                                .sessionStore(sessionStorage)
+                                               .setup(AgentSessionExtensionSetup.DEFAULT.withAutoSummarizationThreshold(1))
                                                .build());
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
@@ -151,6 +151,7 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                                       .seed(0)
                                                       .parallelToolCalls(false)
                                                       .build())
+                               .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                                .build())
                 .extensions(extensions)
                 .build()
