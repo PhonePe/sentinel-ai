@@ -380,7 +380,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     public int estimateTokenCount(List<AgentMessage> messages, AgentSetup agentSetup) {
         return tokenCounter.estimateTokenCount(messages,
                                                this.modelOptions.getTokenCountingConfig(),
-                                               agentSetup.getEncodingType());
+                                               agentSetup.getModelSettings()
+                                               .getModelAttributes()
+                                               .getEncodingType());
     }
 
 

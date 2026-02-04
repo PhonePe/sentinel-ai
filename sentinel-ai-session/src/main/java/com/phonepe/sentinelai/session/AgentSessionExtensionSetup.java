@@ -27,7 +27,7 @@ public class AgentSessionExtensionSetup {
     /**
      * Number of historical messages to fetch from session store in one go.
      * <p>
-     * The extension may need to fetch more messages than {@link #historicalMessagesFetchCount} to find
+     * The extension may need to fetch more messages than historicalMessagesFetchCount to find
      * all messages that need to be summarized. So it will fetch messages in batches of this size until
      * it has enough messages to summarize or there are no more messages left.
      * */

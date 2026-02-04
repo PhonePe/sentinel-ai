@@ -17,11 +17,18 @@ public class ModelAttributes {
 
     public static final ModelAttributes DEFAULT_MODEL_ATTRIBUTES = ModelAttributes.builder()
             .contextWindowSize(128_000)
+            .encodingType(EncodingType.CL100K_BASE)
             .build();
 
     /**
      * Size of the context window for the model
      */
     int contextWindowSize;
+
+    /**
+     * Encoding used for token counting
+     */
+    @Builder.Default
+    EncodingType encodingType = EncodingType.CL100K_BASE;
 
 }
