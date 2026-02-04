@@ -95,7 +95,9 @@
         <mockito.version>5.20.0</mockito.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <sentinelai.useRealEndpoints>false</sentinelai.useRealEndpoints>
-        <dotenv.file>${project.basedir}/.env</dotenv.file>
+        <dotenv.file>${sentinelai.root}/sentinel-ai-core/src/test/resources/test.env</dotenv.file>
+        <console.disable>true</console.disable>
+        <success.print>false</success.print>
     </properties>
 
     <dependencyManagement>
@@ -164,6 +166,23 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.commonjava.maven.plugins</groupId>
+                <artifactId>directory-maven-plugin</artifactId>
+                <version>1.0</version>
+                <executions>
+                    <execution>
+                        <id>directories</id>
+                        <goals>
+                            <goal>highest-basedir</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                        <configuration>
+                            <property>sentinelai.root</property>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -253,7 +272,7 @@
                 <configuration>
                     <reportFormat>plain</reportFormat>
                     <consoleOutputReporter>
-                        <disable>true</disable>
+                        <disable>${console.disable}</disable>
                     </consoleOutputReporter>
                     <statelessTestsetInfoReporter
                             implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoTreeReporter">
@@ -261,7 +280,7 @@
                         <printStacktraceOnFailure>true</printStacktraceOnFailure>
                         <printStdoutOnError>true</printStdoutOnError>
                         <printStdoutOnFailure>true</printStdoutOnFailure>
-                        <printStdoutOnSuccess>false</printStdoutOnSuccess>
+                        <printStdoutOnSuccess>${success.print}</printStdoutOnSuccess>
                         <printStderrOnError>true</printStderrOnError>
                         <printStderrOnFailure>true</printStderrOnFailure>
                         <printStderrOnSuccess>false</printStderrOnSuccess>
@@ -352,6 +371,9 @@
         <profile>
             <id>real-tests</id>
             <properties>
+                <dotenv.file>${sentinelai.root}/.env</dotenv.file>
+                <console.disable>false</console.disable>
+                <success.print>true</success.print>
                 <sentinelai.useRealEndpoints>true</sentinelai.useRealEndpoints>
             </properties>
         </profile>

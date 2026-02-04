@@ -139,9 +139,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         this(modelName,
              openAIProvider,
              mapper,
-             new SimpleOpenAIModelOptions(
-                 SimpleOpenAIModelOptions.ToolChoice.REQUIRED,
-                 TokenCountingConfig.DEFAULT));
+             SimpleOpenAIModelOptions.DEFAULT);
     }
 
     public SimpleOpenAIModel(

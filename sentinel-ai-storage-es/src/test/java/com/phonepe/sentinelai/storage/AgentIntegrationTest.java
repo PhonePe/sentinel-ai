@@ -98,7 +98,7 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(11, "nme", getClass());
+        TestUtils.setupMocks(13, "nme", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
@@ -151,7 +151,6 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                                       .seed(0)
                                                       .parallelToolCalls(false)
                                                       .build())
-                               .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                                .build())
                 .extensions(extensions)
                 .build()
