@@ -16,10 +16,10 @@
 
 package com.phonepe.sentinelai.models;
 
-import java.util.Objects;
-
 import lombok.Builder;
 import lombok.Value;
+
+import java.util.Objects;
 
 /**
  * Class for model specific options for {@link SimpleOpenAIModel}.
@@ -29,8 +29,7 @@ public class SimpleOpenAIModelOptions {
     public static final ToolChoice DEFAULT_TOOL_CHOICE = ToolChoice.AUTO;
     public static final TokenCountingConfig DEFAULT_TOKEN_COUNTING_CONFIG = TokenCountingConfig.DEFAULT;
 
-    public static final SimpleOpenAIModelOptions DEFAULT = new SimpleOpenAIModelOptions(
-            DEFAULT_TOOL_CHOICE,
+    public static final SimpleOpenAIModelOptions DEFAULT = new SimpleOpenAIModelOptions(DEFAULT_TOOL_CHOICE,
             DEFAULT_TOKEN_COUNTING_CONFIG);
 
     public enum ToolChoice {
@@ -45,7 +44,9 @@ public class SimpleOpenAIModelOptions {
      * to call the output tool. However, it seems like some models like qwen (on vllm) are not calling the output tool
      * even then and the only way to make it call output tool is to set tool_choice to "auto".
      * Please refer to
-     * <a href="https://platform.openai.com/docs/guides/function-calling/function-calling-behavior?api-mode=chat#additional-configurations">OpenAI documentation</a>
+     * <a
+     * href="https://platform.openai.com/docs/guides/function-calling/function-calling-behavior?api-mode=chat#additional-configurations">OpenAI
+     * documentation</a>
      * to understand more about the tool_choice parameter.
      */
     ToolChoice toolChoice;
@@ -67,10 +68,8 @@ public class SimpleOpenAIModelOptions {
         if (other == null) {
             return this;
         }
-        return new SimpleOpenAIModelOptions(
-                Objects.requireNonNullElse(other.getToolChoice(), this.toolChoice),
-                Objects.requireNonNullElse(other.getTokenCountingConfig(), this.tokenCountingConfig)
-        );
+        return new SimpleOpenAIModelOptions(Objects.requireNonNullElse(other.getToolChoice(), this.toolChoice), Objects
+                .requireNonNullElse(other.getTokenCountingConfig(), this.tokenCountingConfig));
     }
 
 }

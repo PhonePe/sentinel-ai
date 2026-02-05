@@ -20,7 +20,12 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
 import com.phonepe.sentinelai.core.errors.ErrorType;
-import lombok.*;
+
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 import java.time.LocalDateTime;
@@ -59,36 +64,10 @@ public class ToolCallResponse extends AgentRequest {
      */
     LocalDateTime sentAt;
 
-    public ToolCallResponse(
-            String sessionId,
-            String runId,
-            @NonNull String toolCallId,
-            @NonNull String toolName,
-            ErrorType errorType,
-            @NonNull String response,
-            LocalDateTime sentAt) {
-        this(sessionId,
-             runId,
-             null,
-             null,
-             toolCallId,
-             toolName,
-             errorType,
-             response,
-             sentAt);
-    }
-
     @Builder
     @Jacksonized
-    public ToolCallResponse(
-            String sessionId,
-            String runId,
-            String messageId,
-            Long timestamp,
-            @NonNull String toolCallId,
-            @NonNull String toolName,
-            ErrorType errorType,
-            @NonNull String response,
+    public ToolCallResponse(String sessionId, String runId, String messageId, Long timestamp,
+            @NonNull String toolCallId, @NonNull String toolName, ErrorType errorType, @NonNull String response,
             LocalDateTime sentAt) {
         super(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE, sessionId, runId, messageId, timestamp);
         this.toolCallId = toolCallId;
@@ -96,6 +75,11 @@ public class ToolCallResponse extends AgentRequest {
         this.errorType = errorType;
         this.response = response;
         this.sentAt = Objects.requireNonNullElse(sentAt, LocalDateTime.now());
+    }
+
+    public ToolCallResponse(String sessionId, String runId, @NonNull String toolCallId, @NonNull String toolName,
+            ErrorType errorType, @NonNull String response, LocalDateTime sentAt) {
+        this(sessionId, runId, null, null, toolCallId, toolName, errorType, response, sentAt);
     }
 
     @Override

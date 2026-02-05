@@ -18,7 +18,17 @@ package com.phonepe.sentinelai.toolbox.remotehttp;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
-import com.phonepe.sentinelai.core.agent.*;
+
+import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
+import io.github.sashirestela.openai.SimpleOpenAIAzure;
+
+import org.junit.jupiter.api.Test;
+
+import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentExtension;
+import com.phonepe.sentinelai.core.agent.AgentInput;
+import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
+import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
@@ -26,13 +36,11 @@ import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpToolReaders;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.InMemoryHttpToolSource;
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.openai.SimpleOpenAIAzure;
+
 import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
-import org.junit.jupiter.api.Test;
 import wiremock.org.eclipse.jetty.http.HttpStatus;
 
 import java.nio.file.Path;
@@ -41,7 +49,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.jsonResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -53,7 +66,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HttpToolBoxIntegrationTest {
     public static class SimpleAgent extends Agent<String, String, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, List<AgentExtension<String, String, SimpleAgent>> extensions, Map<String, ExecutableTool> tools) {
+        public SimpleAgent(AgentSetup setup, List<AgentExtension<String, String, SimpleAgent>> extensions,
+                Map<String, ExecutableTool> tools) {
             super(String.class, "Greet the user and Respond to user queries.", setup, extensions, tools);
         }
 
@@ -63,89 +77,67 @@ class HttpToolBoxIntegrationTest {
         }
     }
 
+    private static void setupApiMocks() {
+        stubFor(get(urlEqualTo("/api/v1/name")).willReturn(jsonResponse("""
+                {
+                "name" : "santanu"
+                }
+                """, HttpStatus.OK_200)));
+        stubFor(post(urlEqualTo("/api/v1/location")).withRequestBody(containing("santanu")).willReturn(jsonResponse("""
+                {
+                "location" : "Bangalore"
+                }
+                """, 200)));
+        stubFor(get(urlEqualTo("/api/v1/weather/Bangalore")).willReturn(jsonResponse("""
+                {
+                "location" : "Bangalore",
+                "weatherValue" : "sunny"
+                }
+                """, 200)));
+    }
+
     @SneakyThrows
     @Test
     void test(WireMockRuntimeInfo wiremock) {
         TestUtils.setupMocks(5, "tt", getClass());
         final var objectMapper = JsonUtils.createMapper();
         setupApiMocks();
-        final var okHttpClient = new OkHttpClient.Builder()
-                .callTimeout(Duration.ofSeconds(180))
+        final var okHttpClient = new OkHttpClient.Builder().callTimeout(Duration.ofSeconds(180))
                 .connectTimeout(Duration.ofSeconds(120))
                 .readTimeout(Duration.ofSeconds(180))
                 .writeTimeout(Duration.ofSeconds(120))
                 .build();
-        final var model = new SimpleOpenAIModel<>(
-                "gpt-4o",
-                SimpleOpenAIAzure.builder()
-                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                        .apiVersion("2024-10-21")
-                        .objectMapper(objectMapper)
-                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                        .build(),
-                objectMapper
-        );
+        final var model = new SimpleOpenAIModel<>("gpt-4o", SimpleOpenAIAzure.builder()
+                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
+                .apiVersion("2024-10-21")
+                .objectMapper(objectMapper)
+                .clientAdapter(new OkHttpClientAdapter(okHttpClient))
+                .build(), objectMapper);
 
-        final var toolSource = InMemoryHttpToolSource.builder()
-                .mapper(objectMapper)
-                .build();
+        final var toolSource = InMemoryHttpToolSource.builder().mapper(objectMapper).build();
 
         final var upstream = "test";
-        HttpToolReaders.loadToolsFromYAML(
-                Path.of(Objects.requireNonNull(getClass().getResource("/templates.yml")).toURI()),
-                toolSource);
-        final var toolBox = new HttpToolBox(upstream,
-                                            okHttpClient,
-                                            toolSource,
-                                            objectMapper,
-                                            TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl()));
-        final var requestMetadata = AgentRequestMetadata.builder()
-                .sessionId("s1")
-                .userId("ss")
-                .build();
+        HttpToolReaders.loadToolsFromYAML(Path.of(Objects.requireNonNull(getClass().getResource("/templates.yml"))
+                .toURI()), toolSource);
+        final var toolBox = new HttpToolBox(upstream, okHttpClient, toolSource, objectMapper, TestUtils.getTestProperty(
+                "REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl()));
+        final var requestMetadata = AgentRequestMetadata.builder().sessionId("s1").userId("ss").build();
 
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
-                               .mapper(objectMapper)
-                               .model(model)
-                               .modelSettings(ModelSettings.builder()
-                                                      .temperature(0f)
-                                                      .seed(0)
-                                                      .parallelToolCalls(false)
-                                                      .build())
-                               .build())
+                        .mapper(objectMapper)
+                        .model(model)
+                        .modelSettings(ModelSettings.builder().temperature(0f).seed(0).parallelToolCalls(false).build())
+                        .build())
                 .build()
                 .registerToolbox(toolBox);
         final var response = agent.execute(AgentInput.<String>builder()
-                                                   .requestMetadata(requestMetadata)
-                                                   .request("How is the weather here?")
-                                                   .build());
+                .requestMetadata(requestMetadata)
+                .request("How is the weather here?")
+                .build());
         log.info("Response: {}", response.getData());
         assertTrue(response.getData().contains("sunny"));
         ensureOutputGenerated(response);
-    }
-
-    private static void setupApiMocks() {
-        stubFor(get(urlEqualTo("/api/v1/name"))
-                        .willReturn(jsonResponse("""
-                                                         {
-                                                         "name" : "santanu"
-                                                         }
-                                                         """, HttpStatus.OK_200)));
-        stubFor(post(urlEqualTo("/api/v1/location"))
-                        .withRequestBody(containing("santanu"))
-                        .willReturn(jsonResponse("""
-                                                         {
-                                                         "location" : "Bangalore"
-                                                         }
-                                                         """, 200)));
-        stubFor(get(urlEqualTo("/api/v1/weather/Bangalore"))
-                        .willReturn(jsonResponse("""
-                                                         {
-                                                         "location" : "Bangalore",
-                                                         "weatherValue" : "sunny"
-                                                         }
-                                                         """, 200)));
     }
 }

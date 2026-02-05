@@ -27,12 +27,12 @@ import java.util.Map;
 public interface ToolBox {
     String name();
 
-    default Map<String, ExecutableTool> tools() {
-        return ToolUtils.readTools(this);
-    }
-
     default <R, T, A extends Agent<R, T, A>> void onToolBoxRegistrationCompleted(A agent) {
         // Do nothing by default
+    }
+
+    default Map<String, ExecutableTool> tools() {
+        return ToolUtils.readTools(this);
     }
 
 }

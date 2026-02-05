@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
+
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
@@ -32,6 +33,47 @@ import java.util.Map;
 @Builder
 @With
 public class HttpCallTemplate {
+    /**
+     * A template for a remote HTTP call.
+     * <p>
+     * This is used to define the structure of the HTTP call, including the method, path, headers, body, and response
+     * mapper.
+     * The path, headers, body, and response mapper can be templatized using different templating engines.
+     */
+    @Value
+    @Builder
+    public static class Template {
+        @NonNull
+        TemplateType type;
+        @NonNull
+        String content;
+
+        public static Template handlebars(String content) {
+            return Template.builder().type(TemplateType.HANDLEBARS).content(content).build();
+        }
+
+        /**
+         * Creates a new text Template
+         *
+         * @param content the content of the template
+         * @return a new Template instance
+         */
+        public static Template text(String content) {
+            return Template.builder().type(TemplateType.TEXT).content(content).build();
+        }
+
+        /**
+         * Creates a new string substitutor Template
+         *
+         * @param content the content of the template, which can contain variables in the form of ${variable}
+         * @return a new Template instance
+         */
+        public static Template textSubstitutor(String content) {
+            return Template.builder().type(TemplateType.TEXT_SUBSTITUTOR).content(content).build();
+        }
+
+    }
+
     /**
      * The type of templating engine used for the template.
      * <p>
@@ -53,52 +95,6 @@ public class HttpCallTemplate {
     }
 
     /**
-     * A template for a remote HTTP call.
-     * <p>
-     * This is used to define the structure of the HTTP call, including the method, path, headers, body, and response mapper.
-     * The path, headers, body, and response mapper can be templatized using different templating engines.
-     */
-    @Value
-    @Builder
-    public static class Template {
-        @NonNull TemplateType type;
-        @NonNull String content;
-
-        /**
-         * Creates a new text Template
-         *
-         * @param content the content of the template
-         * @return a new Template instance
-         */
-        public static Template text(String content) {
-            return Template.builder()
-                    .type(TemplateType.TEXT)
-                    .content(content)
-                    .build();
-        }
-
-        /**
-         * Creates a new string substitutor Template
-         *
-         * @param content the content of the template, which can contain variables in the form of ${variable}
-         * @return a new Template instance
-         */
-        public static Template textSubstitutor(String content) {
-            return Template.builder()
-                    .type(TemplateType.TEXT_SUBSTITUTOR)
-                    .content(content)
-                    .build();
-        }
-
-        public static Template handlebars(String content) {
-            return Template.builder()
-                    .type(TemplateType.HANDLEBARS)
-                    .content(content)
-                    .build();
-        }
-
-    }
-    /**
      * The HTTP method to use for the call.
      */
     @NonNull
@@ -115,7 +111,8 @@ public class HttpCallTemplate {
     Map<String, List<Template>> headers;
 
     /**
-     * The body of the HTTP call, can be a template. Example: {"name": "${name}"}. Supported only in POST and PUT methods.
+     * The body of the HTTP call, can be a template. Example: {"name": "${name}"}. Supported only in POST and PUT
+     * methods.
      */
     Template body;
     /**

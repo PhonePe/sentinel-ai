@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.core.agentmessages;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
@@ -26,6 +27,7 @@ import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
+
 import lombok.Data;
 
 import java.util.Objects;
@@ -36,22 +38,15 @@ import java.util.UUID;
  */
 @Data
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "messageType")
-@JsonSubTypes(
-        {
-                //Agent->LLM
-                @JsonSubTypes.Type(name = "SYSTEM_PROMPT_REQUEST_MESSAGE", value = SystemPrompt.class),
-                @JsonSubTypes.Type(name = "USER_PROMPT_REQUEST_MESSAGE", value = UserPrompt.class),
-                @JsonSubTypes.Type(name = "TOOL_CALL_RESPONSE_MESSAGE", value = ToolCallResponse.class),
+@JsonSubTypes({
+        //Agent->LLM
+        @JsonSubTypes.Type(name = "SYSTEM_PROMPT_REQUEST_MESSAGE", value = SystemPrompt.class), @JsonSubTypes.Type(name = "USER_PROMPT_REQUEST_MESSAGE", value = UserPrompt.class), @JsonSubTypes.Type(name = "TOOL_CALL_RESPONSE_MESSAGE", value = ToolCallResponse.class),
 
-                //LLM->Agent
-                @JsonSubTypes.Type(name = "TEXT_RESPONSE_MESSAGE", value = Text.class),
-                @JsonSubTypes.Type(name = "STRUCTURED_OUTPUT_RESPONSE_MESSAGE", value = StructuredOutput.class),
-                @JsonSubTypes.Type(name = "TOOL_CALL_REQUEST_MESSAGE", value = ToolCall.class),
+        //LLM->Agent
+        @JsonSubTypes.Type(name = "TEXT_RESPONSE_MESSAGE", value = Text.class), @JsonSubTypes.Type(name = "STRUCTURED_OUTPUT_RESPONSE_MESSAGE", value = StructuredOutput.class), @JsonSubTypes.Type(name = "TOOL_CALL_REQUEST_MESSAGE", value = ToolCall.class),
 
-                //Generic messages
-                @JsonSubTypes.Type(name = "GENERIC_TEXT_MESSAGE", value = GenericText.class),
-        }
-)
+        //Generic messages
+        @JsonSubTypes.Type(name = "GENERIC_TEXT_MESSAGE", value = GenericText.class),})
 public abstract class AgentMessage {
     private final AgentMessageType messageType;
     private final String sessionId;
@@ -59,16 +54,14 @@ public abstract class AgentMessage {
     private final String messageId;
     private final long timestamp;
 
-    protected AgentMessage(
-            AgentMessageType messageType, String sessionId, String runId,
-            String messageId,
+    protected AgentMessage(AgentMessageType messageType, String sessionId, String runId, String messageId,
             Long timestamp) {
         this.messageType = messageType;
         this.sessionId = Objects.requireNonNullElse(sessionId, runId);
         this.runId = runId;
-        this.messageId = Objects.requireNonNullElseGet(
-                messageId,
-                () -> AgentUtils.id(messageType.name(), UUID.randomUUID().toString()));
+        this.messageId = Objects.requireNonNullElseGet(messageId, () -> AgentUtils.id(messageType.name(), UUID
+                .randomUUID()
+                .toString()));
         this.timestamp = Objects.requireNonNullElseGet(timestamp, AgentUtils::epochMicro);
     }
 

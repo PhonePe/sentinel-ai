@@ -29,15 +29,8 @@ public class InMemoryAgentConfigurationSource implements AgentConfigurationSourc
     private final Map<String, AgentMetadata> agentConfigurations = new ConcurrentHashMap<>();
 
     @Override
-    public Optional<AgentMetadata> save(String agentId, AgentConfiguration agentConfiguration) {
-        return Optional.of(agentConfigurations.computeIfAbsent(
-                agentId,
-                id -> new AgentMetadata(agentId, agentConfiguration)));
-    }
-
-    @Override
-    public Optional<AgentMetadata> read(String agentId) {
-        return Optional.ofNullable(agentConfigurations.get(agentId));
+    public List<AgentSearchResponse> find(String query) {
+        throw new UnsupportedOperationException("Find operation is not supported in InMemoryAgentConfigurationSource");
     }
 
     @Override
@@ -46,13 +39,19 @@ public class InMemoryAgentConfigurationSource implements AgentConfigurationSourc
     }
 
     @Override
-    public List<AgentSearchResponse> find(String query) {
-        throw new UnsupportedOperationException("Find operation is not supported in InMemoryAgentConfigurationSource");
+    public Optional<AgentMetadata> read(String agentId) {
+        return Optional.ofNullable(agentConfigurations.get(agentId));
     }
 
     @Override
     public boolean remove(String agentId) {
         return agentConfigurations.remove(agentId) != null;
+    }
+
+    @Override
+    public Optional<AgentMetadata> save(String agentId, AgentConfiguration agentConfiguration) {
+        return Optional.of(agentConfigurations.computeIfAbsent(agentId, id -> new AgentMetadata(agentId,
+                agentConfiguration)));
     }
 
 

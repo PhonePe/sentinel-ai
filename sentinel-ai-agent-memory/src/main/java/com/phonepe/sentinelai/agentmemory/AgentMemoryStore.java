@@ -25,19 +25,10 @@ import java.util.Set;
  *
  */
 public interface AgentMemoryStore {
-    List<AgentMemory> findMemories(
-            String scopeId,
-            MemoryScope scope,
-            Set<MemoryType> memoryTypes,
-            List<String> topics,
-            String query,
-            int minReusabilityScore,
-            int count);
+    List<AgentMemory> findMemories(String scopeId, MemoryScope scope, Set<MemoryType> memoryTypes, List<String> topics,
+            String query, int minReusabilityScore, int count);
 
-    default List<AgentMemory> findMemoriesAboutUser(
-            String userId,
-            String query,
-            int count) {
+    default List<AgentMemory> findMemoriesAboutUser(String userId, String query, int count) {
         return findMemories(userId, MemoryScope.ENTITY, EnumSet.of(MemoryType.SEMANTIC), List.of(), query, 0, count);
     }
 

@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.core.outputvalidation;
 
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
+
 import lombok.NonNull;
 import lombok.Value;
 
@@ -28,28 +29,27 @@ import java.util.List;
  * Can be used as a wrapper to do multiple validations.
  */
 @Value
-public class CompositeOutputValidator<R,T> implements OutputValidator<R,T> {
-    List<OutputValidator<R,T>> validators;
+public class CompositeOutputValidator<R, T> implements OutputValidator<R, T> {
+    List<OutputValidator<R, T>> validators;
 
     public CompositeOutputValidator() {
         this(List.of());
     }
 
-    public CompositeOutputValidator(@NonNull Collection<OutputValidator<R,T>> validators) {
+    public CompositeOutputValidator(@NonNull Collection<OutputValidator<R, T>> validators) {
         this.validators = new ArrayList<>(validators);
     }
 
-    public CompositeOutputValidator<R,T> addValidator(final OutputValidator<R,T> outputValidator) {
+    public CompositeOutputValidator<R, T> addValidator(final OutputValidator<R, T> outputValidator) {
         validators.add(outputValidator);
         return this;
     }
 
     @Override
     public OutputValidationResults validate(AgentRunContext<R> context, T agentOutput) {
-        return new OutputValidationResults(
-                validators.stream()
-                        .map(validator -> validator.validate(context, agentOutput))
-                        .flatMap(output -> output.getFailures().stream())
-                        .toList());
+        return new OutputValidationResults(validators.stream()
+                .map(validator -> validator.validate(context, agentOutput))
+                .flatMap(output -> output.getFailures().stream())
+                .toList());
     }
 }

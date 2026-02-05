@@ -26,11 +26,11 @@ import lombok.With;
 public class TokenCountingConfig {
 
     public static final TokenCountingConfig DEFAULT = TokenCountingConfig.builder()
-        .messageOverHead(3)
-        .nameOverhead(1)
-        .assistantPrimingOverhead(3)
-        .formattingOverhead(10)
-        .build();
+            .messageOverHead(3)
+            .nameOverhead(1)
+            .assistantPrimingOverhead(3)
+            .formattingOverhead(10)
+            .build();
 
     /**
      * Overhead per message in tokens

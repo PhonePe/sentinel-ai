@@ -28,6 +28,7 @@ public class ResponseTransformerConfig {
     public enum Type {
         JOLT
     }
+
     Type type;
     String config;
 }

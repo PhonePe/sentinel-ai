@@ -19,7 +19,12 @@ package com.phonepe.sentinelai.configuredagents.capabilities.impl;
 import com.phonepe.sentinelai.configuredagents.ConfiguredAgent;
 import com.phonepe.sentinelai.configuredagents.capabilities.AgentCapability;
 import com.phonepe.sentinelai.configuredagents.capabilities.AgentCapabilityVisitor;
-import lombok.*;
+
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 import java.util.Map;

@@ -24,12 +24,12 @@ public interface AgentEventVisitor<T> {
 
     T visit(MessageSentAgentEvent messageSent);
 
-    T visit(ToolCallApprovalDeniedAgentEvent toolCallApprovalDenied);
+    T visit(OutputGeneratedAgentEvent outputGeneratedAgentEvent);
 
-    T visit(ToolCalledAgentEvent toolCalled);
+    T visit(ToolCallApprovalDeniedAgentEvent toolCallApprovalDenied);
 
     T visit(ToolCallCompletedAgentEvent toolCallCompleted);
 
-    T visit(OutputGeneratedAgentEvent outputGeneratedAgentEvent);
+    T visit(ToolCalledAgentEvent toolCalled);
 
 }

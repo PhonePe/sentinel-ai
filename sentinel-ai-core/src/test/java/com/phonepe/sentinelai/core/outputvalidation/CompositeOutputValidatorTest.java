@@ -18,7 +18,9 @@ package com.phonepe.sentinelai.core.outputvalidation;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests {@link CompositeOutputValidator}
@@ -27,10 +29,10 @@ class CompositeOutputValidatorTest {
 
     @Test
     void test() {
-        final var validator = new CompositeOutputValidator<>()
-                .addValidator((ctx,out) -> OutputValidationResults.success());
+        final var validator = new CompositeOutputValidator<>().addValidator((ctx, out) -> OutputValidationResults
+                .success());
         assertTrue(validator.validate(null, null).isSuccessful());
-        validator.addValidator((ctx,out) -> OutputValidationResults.failure("Fail"));
+        validator.addValidator((ctx, out) -> OutputValidationResults.failure("Fail"));
         assertFalse(validator.validate(null, null).isSuccessful());
         assertThrows(NullPointerException.class, () -> new CompositeOutputValidator<>(null));
     }

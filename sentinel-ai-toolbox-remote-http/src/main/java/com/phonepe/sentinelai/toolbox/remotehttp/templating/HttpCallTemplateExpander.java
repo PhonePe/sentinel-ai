@@ -17,9 +17,10 @@
 package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
-import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.handlebar.HandlebarHttpCallTemplatingEngine;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.TextHttpCallTemplatingEngine;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.TextSubstitutorHttpCallTemplatingEngine;
+import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.handlebar.HandlebarHttpCallTemplatingEngine;
+
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,8 +39,7 @@ public class HttpCallTemplateExpander {
     private final Map<HttpCallTemplate.TemplateType, HttpCallTemplatingEngine> templatingEngines;
 
     public HttpCallTemplateExpander() {
-        this(Map.of(
-                HttpCallTemplate.TemplateType.TEXT, new TextHttpCallTemplatingEngine(),
+        this(Map.of(HttpCallTemplate.TemplateType.TEXT, new TextHttpCallTemplatingEngine(),
                 HttpCallTemplate.TemplateType.TEXT_SUBSTITUTOR, new TextSubstitutorHttpCallTemplatingEngine(),
                 HttpCallTemplate.TemplateType.HANDLEBARS, new HandlebarHttpCallTemplatingEngine()));
     }
@@ -55,20 +55,17 @@ public class HttpCallTemplateExpander {
 
         final var path = convert(template.getPath(), context);
         final var method = template.getMethod();
-        final var headers =
-                Objects.requireNonNullElseGet(template.getHeaders(),
-                                              Map::<String, List<HttpCallTemplate.Template>>of)
-                        .entrySet()
+        final var headers = Objects.requireNonNullElseGet(template.getHeaders(),
+                Map::<String, List<HttpCallTemplate.Template>>of)
+                .entrySet()
+                .stream()
+                .collect(toMap(Map.Entry::getKey, entry -> entry.getValue()
                         .stream()
-                        .collect(toMap(Map.Entry::getKey,
-                                       entry -> entry.getValue()
-                                               .stream()
-                                               .map(t -> convert(t, context))
-                                               .toList()));
+                        .map(t -> convert(t, context))
+                        .toList()));
         final var body = convert(template.getBody(), context);
         final var contentType = template.getContentType();
-        log.debug("Expanding spec: path: {}, method: {}, headers: {}, body: {}",
-                  path, method, headers, body);
+        log.debug("Expanding spec: path: {}, method: {}, headers: {}, body: {}", path, method, headers, body);
         return HttpCallSpec.builder()
                 .method(method)
                 .path(path)
@@ -80,11 +77,10 @@ public class HttpCallTemplateExpander {
     }
 
     private String convert(final HttpCallTemplate.Template template, Map<String, Object> context) {
-        if(null == template) {
+        if (null == template) {
             return null;
         }
         return Objects.requireNonNull(templatingEngines.get(template.getType()),
-                                      "No templating engine found for type: " + template.getType())
-                .convert(template, context);
+                "No templating engine found for type: " + template.getType()).convert(template, context);
     }
 }

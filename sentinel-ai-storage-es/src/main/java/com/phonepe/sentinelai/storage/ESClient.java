@@ -16,18 +16,20 @@
 
 package com.phonepe.sentinelai.storage;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
-import com.phonepe.sentinelai.core.utils.JsonUtils;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NonNull;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.message.BasicHeader;
 import org.elasticsearch.client.RestClient;
+
+import com.phonepe.sentinelai.core.utils.JsonUtils;
+
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
 
 /**
  * Elasticsearch client wrapper
@@ -39,15 +41,11 @@ public class ESClient implements AutoCloseable {
 
     @Builder
     public ESClient(@NonNull String serverUrl, String apiKey) {
-        RestClient restClient = RestClient
-                .builder(HttpHost.create(serverUrl))
-                .setDefaultHeaders(new Header[]{
-                        new BasicHeader("Authorization", "ApiKey " + apiKey)
-                })
+        RestClient restClient = RestClient.builder(HttpHost.create(serverUrl))
+                .setDefaultHeaders(new Header[] {new BasicHeader("Authorization", "ApiKey " + apiKey)})
                 .build();
-        ElasticsearchTransport transport = new RestClientTransport(
-                restClient, new JacksonJsonpMapper(JsonUtils.createMapper())
-                );
+        ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(JsonUtils
+                .createMapper()));
         this.elasticsearchClient = new ElasticsearchClient(transport);
 
     }

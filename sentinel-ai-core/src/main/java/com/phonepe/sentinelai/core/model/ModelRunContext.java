@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.core.model;
 
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
+
 import lombok.Value;
 
 /**

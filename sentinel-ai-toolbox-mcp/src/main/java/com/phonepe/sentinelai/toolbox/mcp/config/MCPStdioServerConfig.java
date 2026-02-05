@@ -16,7 +16,11 @@
 
 package com.phonepe.sentinelai.toolbox.mcp.config;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 import java.util.List;
@@ -36,7 +40,8 @@ public class MCPStdioServerConfig extends MCPServerConfig {
 
     @Builder
     @Jacksonized
-    public MCPStdioServerConfig(Set<String> exposedTools, @NonNull String command, List<String> args, Map<String, String> env) {
+    public MCPStdioServerConfig(Set<String> exposedTools, @NonNull String command, List<String> args,
+            Map<String, String> env) {
         super(MCPServerType.STDIO, exposedTools);
         this.command = command;
         this.args = args;

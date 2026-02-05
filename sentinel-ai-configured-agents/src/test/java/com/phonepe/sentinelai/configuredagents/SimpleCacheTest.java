@@ -18,7 +18,9 @@ package com.phonepe.sentinelai.configuredagents;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for {@link SimpleCache}.
@@ -30,6 +32,7 @@ class SimpleCacheTest {
             return new TestObject(name);
         }
     }
+
     @Test
     void test() {
         final var cache = new SimpleCache<>(TestObject::create);

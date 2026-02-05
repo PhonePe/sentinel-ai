@@ -16,12 +16,14 @@
 
 package com.phonepe.sentinelai.toolbox.mcp;
 
-import com.phonepe.sentinelai.core.utils.JsonUtils;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
+
 import org.junit.jupiter.api.Test;
+
+import com.phonepe.sentinelai.core.utils.JsonUtils;
 
 import java.util.Set;
 
@@ -41,19 +43,13 @@ class SentinelMCPClientTest {
                 .build();
         final var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(objectMapper));
 
-        final var mcpClient = McpClient.sync(transport)
-                .build();
+        final var mcpClient = McpClient.sync(transport).build();
         mcpClient.initialize();
         final var mcpToolBox = new MCPToolBox("Test MCP", mcpClient, objectMapper, Set.of());
 
-        final var allTools = Set.of("test_mcp_annotated_message",
-                                                   "test_mcp_add",
-                                                   "test_mcp_get_resource_reference",
-                                                   "test_mcp_long_running_operation",
-                                                   "test_mcp_get_tiny_image",
-                                                   "test_mcp_echo",
-                                                   "test_mcp_print_env",
-                                                   "test_mcp_sample_llm");
+        final var allTools = Set.of("test_mcp_annotated_message", "test_mcp_add", "test_mcp_get_resource_reference",
+                "test_mcp_long_running_operation", "test_mcp_get_tiny_image", "test_mcp_echo", "test_mcp_print_env",
+                "test_mcp_sample_llm");
         final var allToolsSize = mcpToolBox.tools().size();
         assertTrue(mcpToolBox.tools().keySet().containsAll(allTools));
 

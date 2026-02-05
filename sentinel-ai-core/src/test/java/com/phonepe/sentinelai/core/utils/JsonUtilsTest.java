@@ -18,9 +18,12 @@ package com.phonepe.sentinelai.core.utils;
 
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.NullNode;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JsonUtilsTest {
 
@@ -33,18 +36,10 @@ class JsonUtilsTest {
     }
 
     @Test
-    void testEmptyWithNullNode() {
-        assertTrue(JsonUtils.empty(null));
-        assertTrue(JsonUtils.empty(NullNode.getInstance()));
-        assertTrue(JsonUtils.empty(MissingNode.getInstance()));
-    }
-
-    @Test
-    void testEmptyWithNonEmptyNode() {
+    void testEmptyWithEmptyArrayNode() {
         var mapper = JsonUtils.createMapper();
-        final var node = mapper.createObjectNode();
-        node.put("key", "value");
-        assertFalse(JsonUtils.empty(node));
+        var arrayNode = mapper.createArrayNode();
+        assertTrue(JsonUtils.empty(arrayNode));
     }
 
     @Test
@@ -63,10 +58,18 @@ class JsonUtilsTest {
     }
 
     @Test
-    void testEmptyWithEmptyArrayNode() {
+    void testEmptyWithNonEmptyNode() {
         var mapper = JsonUtils.createMapper();
-        var arrayNode = mapper.createArrayNode();
-        assertTrue(JsonUtils.empty(arrayNode));
+        final var node = mapper.createObjectNode();
+        node.put("key", "value");
+        assertFalse(JsonUtils.empty(node));
+    }
+
+    @Test
+    void testEmptyWithNullNode() {
+        assertTrue(JsonUtils.empty(null));
+        assertTrue(JsonUtils.empty(NullNode.getInstance()));
+        assertTrue(JsonUtils.empty(MissingNode.getInstance()));
     }
 
 }

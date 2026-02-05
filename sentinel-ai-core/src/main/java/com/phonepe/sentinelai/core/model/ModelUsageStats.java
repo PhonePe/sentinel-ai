@@ -16,7 +16,11 @@
 
 package com.phonepe.sentinelai.core.model;
 
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Model usage object.
  * Usage Notes:
- *  -
+ * -
  */
 @NoArgsConstructor
 @ToString
@@ -39,12 +43,12 @@ public class ModelUsageStats {
         private final AtomicInteger cachedTokens = new AtomicInteger(0);
         private final AtomicInteger audioTokens = new AtomicInteger(0);
 
-        public int getCachedTokens() {
-            return cachedTokens.get();
-        }
-
         public int getAudioTokens() {
             return audioTokens.get();
+        }
+
+        public int getCachedTokens() {
+            return cachedTokens.get();
         }
     }
 
@@ -57,22 +61,23 @@ public class ModelUsageStats {
         private final AtomicInteger rejectedPredictionTokens = new AtomicInteger(0);
         private final AtomicInteger audioTokens = new AtomicInteger(0);
 
-        public int getReasoningTokens() {
-            return reasoningTokens.get();
-        }
-
         public int getAcceptedPredictionTokens() {
             return acceptedPredictionTokens.get();
-        }
-
-        public int getRejectedPredictionTokens() {
-            return rejectedPredictionTokens.get();
         }
 
         public int getAudioTokens() {
             return audioTokens.get();
         }
+
+        public int getReasoningTokens() {
+            return reasoningTokens.get();
+        }
+
+        public int getRejectedPredictionTokens() {
+            return rejectedPredictionTokens.get();
+        }
     }
+
     private final AtomicInteger requestsForRun = new AtomicInteger(0);
     private final AtomicInteger toolCallsForRun = new AtomicInteger(0);
     private final AtomicInteger requestTokens = new AtomicInteger(0);
@@ -84,36 +89,83 @@ public class ModelUsageStats {
     @Getter
     private final ResponseTokenDetails responseTokenDetails = new ResponseTokenDetails();
 
-    public int getRequestsForRun() {
-        return requestsForRun.get();
+    public ModelUsageStats addDetails(final Map<String, Integer> otherDetails) {
+        if (null != otherDetails) {
+            details.putAll(otherDetails);
+        }
+        return this;
     }
 
-    public int getToolCallsForRun() {
-        return toolCallsForRun.get();
+    public Map<String, Integer> getDetails() {
+        return Map.copyOf(details);
     }
 
     public int getRequestTokens() {
         return requestTokens.get();
     }
 
+    public int getRequestsForRun() {
+        return requestsForRun.get();
+    }
+
     public int getResponseTokens() {
         return responseTokens.get();
+    }
+
+    public int getToolCallsForRun() {
+        return toolCallsForRun.get();
     }
 
     public int getTotalTokens() {
         return totalTokens.get();
     }
 
-    public Map<String, Integer> getDetails() {
-        return Map.copyOf(details);
+    public ModelUsageStats incrementRequestAudioTokens(int value) {
+        this.requestTokenDetails.audioTokens.addAndGet(value);
+        return this;
     }
-    
+
+    public ModelUsageStats incrementRequestCachedTokens(int value) {
+        this.requestTokenDetails.cachedTokens.addAndGet(value);
+        return this;
+    }
+
+    public ModelUsageStats incrementRequestTokens(int value) {
+        this.requestTokens.addAndGet(value);
+        return this;
+    }
+
     public ModelUsageStats incrementRequestsForRun() {
         return incrementRequestsForRun(1);
     }
 
     public ModelUsageStats incrementRequestsForRun(int value) {
         this.requestsForRun.addAndGet(value);
+        return this;
+    }
+
+    public ModelUsageStats incrementResponseAcceptedPredictionTokens(int value) {
+        this.responseTokenDetails.acceptedPredictionTokens.addAndGet(value);
+        return this;
+    }
+
+    public ModelUsageStats incrementResponseAudioTokens(int value) {
+        this.responseTokenDetails.audioTokens.addAndGet(value);
+        return this;
+    }
+
+    public ModelUsageStats incrementResponseReasoningTokens(int value) {
+        this.responseTokenDetails.reasoningTokens.addAndGet(value);
+        return this;
+    }
+
+    public ModelUsageStats incrementResponseRejectedPredictionTokens(int value) {
+        this.responseTokenDetails.rejectedPredictionTokens.addAndGet(value);
+        return this;
+    }
+
+    public ModelUsageStats incrementResponseTokens(int value) {
+        this.responseTokens.addAndGet(value);
         return this;
     }
 
@@ -126,55 +178,8 @@ public class ModelUsageStats {
         return this;
     }
 
-    public ModelUsageStats incrementRequestTokens(int value) {
-        this.requestTokens.addAndGet(value);
-        return this;
-    }
-
-    public ModelUsageStats incrementResponseTokens(int value) {
-        this.responseTokens.addAndGet(value);
-        return this;
-    }
-
     public ModelUsageStats incrementTotalTokens(int value) {
         this.totalTokens.addAndGet(value);
-        return this;
-    }
-
-    public ModelUsageStats incrementRequestCachedTokens(int value) {
-        this.requestTokenDetails.cachedTokens.addAndGet(value);
-        return this;
-    }
-
-    public ModelUsageStats incrementRequestAudioTokens(int value) {
-        this.requestTokenDetails.audioTokens.addAndGet(value);
-        return this;
-    }
-
-    public ModelUsageStats incrementResponseReasoningTokens(int value) {
-        this.responseTokenDetails.reasoningTokens.addAndGet(value);
-        return this;
-    }
-
-    public ModelUsageStats incrementResponseAcceptedPredictionTokens(int value) {
-        this.responseTokenDetails.acceptedPredictionTokens.addAndGet(value);
-        return this;
-    }
-
-    public ModelUsageStats incrementResponseRejectedPredictionTokens(int value) {
-        this.responseTokenDetails.rejectedPredictionTokens.addAndGet(value);
-        return this;
-    }
-
-    public ModelUsageStats incrementResponseAudioTokens(int value) {
-        this.responseTokenDetails.audioTokens.addAndGet(value);
-        return this;
-    }
-
-    public ModelUsageStats addDetails(final Map<String, Integer> otherDetails) {
-        if (null != otherDetails) {
-            details.putAll(otherDetails);
-        }
         return this;
     }
 
@@ -191,8 +196,10 @@ public class ModelUsageStats {
                 .incrementRequestCachedTokens(other.getRequestTokenDetails().getCachedTokens())
                 .incrementRequestAudioTokens(other.getRequestTokenDetails().getAudioTokens())
                 .incrementResponseReasoningTokens(other.getResponseTokenDetails().getReasoningTokens())
-                .incrementResponseAcceptedPredictionTokens(other.getResponseTokenDetails().getAcceptedPredictionTokens())
-                .incrementResponseRejectedPredictionTokens(other.getResponseTokenDetails().getRejectedPredictionTokens())
+                .incrementResponseAcceptedPredictionTokens(other.getResponseTokenDetails()
+                        .getAcceptedPredictionTokens())
+                .incrementResponseRejectedPredictionTokens(other.getResponseTokenDetails()
+                        .getRejectedPredictionTokens())
                 .incrementResponseAudioTokens(other.getResponseTokenDetails().getAudioTokens());
     }
 }

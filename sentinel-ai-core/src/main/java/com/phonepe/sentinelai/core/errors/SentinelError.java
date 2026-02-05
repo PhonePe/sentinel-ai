@@ -26,11 +26,7 @@ public class SentinelError {
     ErrorType errorType;
     String message;
 
-    public static SentinelError success() {
-        return new SentinelError(ErrorType.SUCCESS, ErrorType.SUCCESS.getMessage());
-    }
-
-    public static SentinelError error(ErrorType errorType, Object ... args) {
+    public static SentinelError error(ErrorType errorType, Object... args) {
         return new SentinelError(errorType, String.format(errorType.getMessage(), args));
     }
 
@@ -44,6 +40,10 @@ public class SentinelError {
             }
         } while (cause != null);
         return SentinelError.error(errorType, message);
+    }
+
+    public static SentinelError success() {
+        return new SentinelError(ErrorType.SUCCESS, ErrorType.SUCCESS.getMessage());
     }
 
 }

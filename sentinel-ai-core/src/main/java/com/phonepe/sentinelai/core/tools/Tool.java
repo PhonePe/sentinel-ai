@@ -33,12 +33,12 @@ public @interface Tool {
     String name() default "";
 
     /**
-     * Description of the tool. This is mandatory
-     */
-    String value();
-
-    /**
      * Number of retries for the tool in case of failures
      */
     int retries() default 0;
+
+    /**
+     * Description of the tool. This is mandatory
+     */
+    String value();
 }

@@ -24,9 +24,9 @@ import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
  * Handle specific response types
  */
 public interface AgentResponseVisitor<T> {
-    T visit(final Text text);
-
     T visit(StructuredOutput structuredOutput);
+
+    T visit(final Text text);
 
     T visit(ToolCall toolCall);
 }

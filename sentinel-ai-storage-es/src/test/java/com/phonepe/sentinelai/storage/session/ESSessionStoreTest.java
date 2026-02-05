@@ -18,9 +18,9 @@ package com.phonepe.sentinelai.storage.session;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
-import com.phonepe.sentinelai.session.QueryDirection;
-import com.phonepe.sentinelai.session.BiScrollable;
-import com.phonepe.sentinelai.session.SessionSummary;
+
+import org.junit.jupiter.api.Test;
+
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
@@ -31,11 +31,14 @@ import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
+import com.phonepe.sentinelai.session.BiScrollable;
+import com.phonepe.sentinelai.session.QueryDirection;
+import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.storage.ESClient;
 import com.phonepe.sentinelai.storage.ESIntegrationTestBase;
 import com.phonepe.sentinelai.storage.IndexSettings;
+
 import lombok.SneakyThrows;
-import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.List;
@@ -44,9 +47,129 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ESSessionStoreTest extends ESIntegrationTestBase {
+
+    @Test
+    @SneakyThrows
+    void testSessionMessageStorage() {
+        try (final var client = ESClient.builder()
+                .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
+                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
+                .build()) {
+
+            final var sessionStore = ESSessionStore.builder()
+                    .client(client)
+                    .indexPrefix("test-msg")
+                    .sessionIndexSettings(IndexSettings.DEFAULT)
+                    .messageIndexSettings(IndexSettings.DEFAULT)
+                    .build();
+
+            final var sessionId = "msg-session";
+            final var runId = UUID.randomUUID().toString();
+
+            final var messages = IntStream.rangeClosed(1, 50).mapToObj(i -> {
+                if (i % 5 == 0) {
+                    return ToolCall.builder()
+                            .sessionId(sessionId)
+                            .runId(runId)
+                            .toolCallId("tc-" + i)
+                            .toolName("echo")
+                            .arguments("{\"i\":" + i + "}")
+                            .build();
+                }
+                if (i % 4 == 0) {
+                    return ToolCallResponse.builder()
+                            .sessionId(sessionId)
+                            .runId(runId)
+                            .toolCallId("tcr-" + i)
+                            .toolName("echo")
+                            .errorType(ErrorType.SUCCESS)
+                            .response("response-" + i)
+                            .build();
+                }
+                if (i % 3 == 0) {
+                    return SystemPrompt.builder()
+                            .sessionId(sessionId)
+                            .runId(runId)
+                            .content("system-" + i)
+                            .dynamic(false)
+                            .methodReference(null)
+                            .build();
+                }
+                if (i % 2 == 0) {
+                    return UserPrompt.builder()
+                            .sessionId(sessionId)
+                            .runId(runId)
+                            .content("user-" + i)
+                            .sentAt(null)
+                            .build();
+                }
+                return Text.builder().sessionId(sessionId).runId(runId).content("text-" + i).build();
+            }).toList();
+
+            final var expectedIds = messages.stream()
+                    .map(AgentMessage::getMessageId)
+                    .collect(Collectors.toUnmodifiableSet());
+
+            sessionStore.saveMessages(sessionId, runId, messages);
+
+            String nextPointer = null;
+            String prevPointer;
+            final var retrieved = new HashSet<String>();
+            final var maxIterations = 100;
+            var iter = 0;
+            BiScrollable<AgentMessage> response = null;
+            while (iter++ < maxIterations) {
+                response = sessionStore.readMessages(sessionId, 10, false, AgentUtils.getIfNotNull(response,
+                        BiScrollable::getPointer, null), QueryDirection.OLDER);
+                assertNotNull(response.getItems());
+                response.getItems().forEach(m -> retrieved.add(m.getMessageId()));
+                if (retrieved.containsAll(expectedIds)) {
+                    break;
+                }
+                prevPointer = nextPointer;
+                assertNotNull(response.getPointer());
+                nextPointer = response.getPointer().getOlder();
+                if (Strings.isNullOrEmpty(nextPointer) || nextPointer.equals(prevPointer)) {
+                    break;
+                }
+            }
+
+            assertEquals(expectedIds.size(), retrieved.size());
+            assertTrue(retrieved.containsAll(expectedIds),
+                    () -> "Retrieved messages do not contain all saved messages. Missing: " + String.join(",", Sets
+                            .difference(expectedIds, retrieved)));
+
+            final var responseSkipSystem = sessionStore.readMessages(sessionId, 100, true, null, QueryDirection.OLDER);
+            assertNotNull(responseSkipSystem.getItems());
+            final var anySystem = responseSkipSystem.getItems()
+                    .stream()
+                    .anyMatch(m -> m.getMessageType().equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
+            assertFalse(anySystem);
+
+            final var responseNewer = sessionStore.readMessages(sessionId, 10, true, null, QueryDirection.NEWER);
+            assertNotNull(responseNewer.getItems());
+            assertFalse(responseNewer.getItems().isEmpty());
+            assertTrue(responseNewer.getItems().get(0).getTimestamp() <= responseNewer.getItems()
+                    .get(1)
+                    .getTimestamp());
+            assertNotNull(responseNewer.getPointer());
+            assertNotNull(responseNewer.getPointer().getNewer());
+
+            final var secondBatchNewer = sessionStore.readMessages(sessionId, 10, true, responseNewer.getPointer(),
+                    QueryDirection.NEWER);
+            assertNotNull(secondBatchNewer.getItems());
+            assertFalse(secondBatchNewer.getItems().isEmpty());
+            assertTrue(secondBatchNewer.getItems().get(0).getTimestamp() >= responseNewer.getItems()
+                    .get(responseNewer.getItems().size() - 1)
+                    .getTimestamp());
+        }
+    }
 
     @Test
     @SneakyThrows
@@ -100,13 +223,11 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
 
             final var savedIds = IntStream.rangeClosed(1, 25)
                     .mapToObj(i -> sessionStore.saveSession(SessionSummary.builder()
-                                    .sessionId("S-" + i)
-                                    .summary("Summary " + i)
-                                    .keywords(List.of())
-                                    .updatedAt(AgentUtils.epochMicro())
-                                    .build())
-                            .map(SessionSummary::getSessionId)
-                            .orElse(null))
+                            .sessionId("S-" + i)
+                            .summary("Summary " + i)
+                            .keywords(List.of())
+                            .updatedAt(AgentUtils.epochMicro())
+                            .build()).map(SessionSummary::getSessionId).orElse(null))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toUnmodifiableSet());
             var nextPointer = "";
@@ -121,141 +242,14 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             assertEquals(savedIds.size(), retrieved.size(), () -> {
                 final var savedSize = savedIds.size();
                 final var retrievedSize = retrieved.size();
-                final var diff = savedSize > retrievedSize
-                        ? Sets.difference(savedIds, retrieved)
-                        : Sets.difference(retrieved, savedIds);
-                return "Expected to retrieve %d sessions, but got %d. Extra: %s".formatted(savedSize, retrievedSize, String.join(",", diff));
+                final var diff = savedSize > retrievedSize ? Sets.difference(savedIds, retrieved) : Sets.difference(
+                        retrieved, savedIds);
+                return "Expected to retrieve %d sessions, but got %d. Extra: %s".formatted(savedSize, retrievedSize,
+                        String.join(",", diff));
             });
-            assertTrue(retrieved.containsAll(savedIds), () -> "Retrieved sessions do not contain all saved sessions. Missing: " + String.join(",", Sets.difference(savedIds, retrieved)));
-        }
-    }
-
-    @Test
-    @SneakyThrows
-    void testSessionMessageStorage() {
-        try (final var client = ESClient.builder()
-                .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
-                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
-                .build()) {
-
-            final var sessionStore = ESSessionStore.builder()
-                    .client(client)
-                    .indexPrefix("test-msg")
-                    .sessionIndexSettings(IndexSettings.DEFAULT)
-                    .messageIndexSettings(IndexSettings.DEFAULT)
-                    .build();
-
-            final var sessionId = "msg-session";
-            final var runId = UUID.randomUUID().toString();
-
-            final var messages = IntStream.rangeClosed(1, 50)
-                    .mapToObj(i -> {
-                        if (i % 5 == 0) {
-                            return ToolCall.builder()
-                                    .sessionId(sessionId)
-                                    .runId(runId)
-                                    .toolCallId("tc-" + i)
-                                    .toolName("echo")
-                                    .arguments("{\"i\":" + i + "}")
-                                    .build();
-                        }
-                        if (i % 4 == 0) {
-                            return ToolCallResponse.builder()
-                                    .sessionId(sessionId)
-                                    .runId(runId)
-                                    .toolCallId("tcr-" + i)
-                                    .toolName("echo")
-                                    .errorType(ErrorType.SUCCESS)
-                                    .response("response-" + i)
-                                    .build();
-                        }
-                        if (i % 3 == 0) {
-                            return SystemPrompt.builder()
-                                    .sessionId(sessionId)
-                                    .runId(runId)
-                                    .content("system-" + i)
-                                    .dynamic(false)
-                                    .methodReference(null)
-                                    .build();
-                        }
-                        if (i % 2 == 0) {
-                            return UserPrompt.builder()
-                                    .sessionId(sessionId)
-                                    .runId(runId)
-                                    .content("user-" + i)
-                                    .sentAt(null)
-                                    .build();
-                        }
-                        return Text.builder()
-                                .sessionId(sessionId)
-                                .runId(runId)
-                                .content("text-" + i)
-                                .build();
-                    })
-                    .toList();
-
-            final var expectedIds = messages.stream()
-                    .map(AgentMessage::getMessageId)
-                    .collect(Collectors.toUnmodifiableSet());
-
-            sessionStore.saveMessages(sessionId, runId, messages);
-
-            String nextPointer = null;
-            String prevPointer;
-            final var retrieved = new HashSet<String>();
-            final var maxIterations = 100;
-            var iter = 0;
-            BiScrollable<AgentMessage> response = null;
-            while (iter++ < maxIterations) {
-                response = sessionStore.readMessages(
-                        sessionId,
-                        10,
-                        false,
-                        AgentUtils.getIfNotNull(response, BiScrollable::getPointer, null),
-                        QueryDirection.OLDER);
-                assertNotNull(response.getItems());
-                response.getItems().forEach(m -> retrieved.add(m.getMessageId()));
-                if (retrieved.containsAll(expectedIds)) {
-                    break;
-                }
-                prevPointer = nextPointer;
-                assertNotNull(response.getPointer());
-                nextPointer = response.getPointer().getOlder();
-                if (Strings.isNullOrEmpty(nextPointer) || nextPointer.equals(prevPointer)) {
-                    break;
-                }
-            }
-
-            assertEquals(expectedIds.size(), retrieved.size());
-            assertTrue(retrieved.containsAll(expectedIds),
-                       () -> "Retrieved messages do not contain all saved messages. Missing: " +
-                               String.join(",", Sets.difference(expectedIds, retrieved)));
-
-            final var responseSkipSystem = sessionStore.readMessages(sessionId, 100, true, null, QueryDirection.OLDER);
-            assertNotNull(responseSkipSystem.getItems());
-            final var anySystem = responseSkipSystem.getItems().stream()
-                    .anyMatch(m -> m.getMessageType().equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
-            assertFalse(anySystem);
-
-            final var responseNewer = sessionStore.readMessages(sessionId,
-                                                                10,
-                                                                true,
-                                                                null,
-                                                                QueryDirection.NEWER);
-            assertNotNull(responseNewer.getItems());
-            assertFalse(responseNewer.getItems().isEmpty());
-            assertTrue(responseNewer.getItems().get(0).getTimestamp() <= responseNewer.getItems().get(1).getTimestamp());
-            assertNotNull(responseNewer.getPointer());
-            assertNotNull(responseNewer.getPointer().getNewer());
-
-            final var secondBatchNewer = sessionStore.readMessages(sessionId,
-                                                                   10,
-                                                                   true,
-                                                                   responseNewer.getPointer(),
-                                                                   QueryDirection.NEWER);
-            assertNotNull(secondBatchNewer.getItems());
-            assertFalse(secondBatchNewer.getItems().isEmpty());
-            assertTrue(secondBatchNewer.getItems().get(0).getTimestamp() >= responseNewer.getItems().get(responseNewer.getItems().size() - 1).getTimestamp());
+            assertTrue(retrieved.containsAll(savedIds),
+                    () -> "Retrieved sessions do not contain all saved sessions. Missing: " + String.join(",", Sets
+                            .difference(savedIds, retrieved)));
         }
     }
 }

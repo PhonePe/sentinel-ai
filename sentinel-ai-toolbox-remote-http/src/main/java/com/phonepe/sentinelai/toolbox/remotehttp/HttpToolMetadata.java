@@ -16,7 +16,11 @@
 
 package com.phonepe.sentinelai.toolbox.remotehttp;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NonNull;
+import lombok.Value;
+import lombok.With;
 
 import java.util.Map;
 
@@ -37,7 +41,8 @@ public class HttpToolMetadata {
     public static class HttpToolParameterMeta {
 
         /**
-         * A description for the parameter. Providing a good description will help the LLM send the correct values to it.
+         * A description for the parameter. Providing a good description will help the LLM send the correct values to
+         * it.
          */
         @NonNull
         String description;

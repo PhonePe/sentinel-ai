@@ -25,20 +25,18 @@ import lombok.experimental.UtilityClass;
 @Getter
 public enum MCPServerType {
 
-    STDIO(Values.STDIO_TEXT),
-    SSE(Values.SSE_TEXT),
-    HTTP(Values.HTTP_TEXT)
-    ;
-    private final String value;
-
-    MCPServerType(String value) {
-        this.value = value;
-    }
+    STDIO(Values.STDIO_TEXT), SSE(Values.SSE_TEXT), HTTP(Values.HTTP_TEXT);
 
     @UtilityClass
     public static final class Values {
         public static final String STDIO_TEXT = "stdio";
         public static final String SSE_TEXT = "sse";
         public static final String HTTP_TEXT = "http";
+    }
+
+    private final String value;
+
+    MCPServerType(String value) {
+        this.value = value;
     }
 }

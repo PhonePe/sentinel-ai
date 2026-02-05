@@ -33,13 +33,19 @@ public interface AgentConfigurationSource {
     }
 
     /**
-     * Saves the agent configuration.Overwrite behaviour is left for the implementation to decide.
+     * Searches for agents based on a query string.
      *
-     * @param agentId              the unique identifier for the agent
-     * @param agentConfiguration   the configuration of the agent to be saved
-     * @return an {@link Optional} containing the saved {@link AgentMetadata} if successful, or empty if not
+     * @param query the search query
+     * @return a list of {@link AgentSearchResponse} containing agent IDs and their configurations that match the query
      */
-    Optional<AgentMetadata> save(final String agentId, final AgentConfiguration agentConfiguration);
+    List<AgentSearchResponse> find(final String query);
+
+    /**
+     * Lists all the agent configurations for this store.
+     *
+     * @return a list of {@link AgentMetadata} for all agents
+     */
+    List<AgentMetadata> list();
 
     /**
      * Reads the agent configuration for the given agentId.
@@ -50,25 +56,19 @@ public interface AgentConfigurationSource {
     Optional<AgentMetadata> read(String agentId);
 
     /**
-     * Lists all the agent configurations for this store.
-     *
-     * @return a list of {@link AgentMetadata} for all agents
-     */
-    List<AgentMetadata> list();
-
-    /**
-     * Searches for agents based on a query string.
-     *
-     * @param query the search query
-     * @return a list of {@link AgentSearchResponse} containing agent IDs and their configurations that match the query
-     */
-    List<AgentSearchResponse> find(final String query);
-
-    /**
      * Removes the agent configuration for the given agentId.
      *
      * @param agentId the unique identifier for the agent to be removed
      * @return true if the agent was successfully removed, false otherwise
      */
     boolean remove(String agentId);
+
+    /**
+     * Saves the agent configuration.Overwrite behaviour is left for the implementation to decide.
+     *
+     * @param agentId            the unique identifier for the agent
+     * @param agentConfiguration the configuration of the agent to be saved
+     * @return an {@link Optional} containing the saved {@link AgentMetadata} if successful, or empty if not
+     */
+    Optional<AgentMetadata> save(final String agentId, final AgentConfiguration agentConfiguration);
 }

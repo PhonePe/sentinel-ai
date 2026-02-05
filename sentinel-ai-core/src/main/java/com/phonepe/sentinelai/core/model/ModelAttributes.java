@@ -16,13 +16,9 @@
 
 package com.phonepe.sentinelai.core.model;
 
-import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.EncodingType;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.NonNull;
 import lombok.Value;
 import lombok.With;
 

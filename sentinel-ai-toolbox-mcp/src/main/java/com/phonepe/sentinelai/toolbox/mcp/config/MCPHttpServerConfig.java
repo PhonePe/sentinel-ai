@@ -16,7 +16,11 @@
 
 package com.phonepe.sentinelai.toolbox.mcp.config;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 import java.util.Map;
@@ -35,10 +39,8 @@ public class MCPHttpServerConfig extends MCPServerConfig {
 
     @Builder
     @Jacksonized
-    public MCPHttpServerConfig(Set<String> exposedTools,
-                               @NonNull String url,
-                               Map<String, String> headers,
-                               Integer timeout) {
+    public MCPHttpServerConfig(Set<String> exposedTools, @NonNull String url, Map<String, String> headers,
+            Integer timeout) {
         super(MCPServerType.HTTP, exposedTools);
         this.url = url;
         this.headers = headers;

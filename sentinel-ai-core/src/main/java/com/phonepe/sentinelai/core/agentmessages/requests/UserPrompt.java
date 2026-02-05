@@ -19,7 +19,12 @@ package com.phonepe.sentinelai.core.agentmessages.requests;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
-import lombok.*;
+
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 import java.time.LocalDateTime;
@@ -35,27 +40,13 @@ public class UserPrompt extends AgentRequest {
     String content;
     LocalDateTime sentAt;
 
-    public UserPrompt(
-            String sessionId,
-            String runId,
-            @NonNull String content,
-            LocalDateTime sentAt) {
-        this(sessionId,
-             runId,
-             null,
-             null,
-             content,
-             sentAt);
+    public UserPrompt(String sessionId, String runId, @NonNull String content, LocalDateTime sentAt) {
+        this(sessionId, runId, null, null, content, sentAt);
     }
 
     @Builder
     @Jacksonized
-    public UserPrompt(
-            String sessionId,
-            String runId,
-            String messageId,
-            Long timestamp,
-            @NonNull String content,
+    public UserPrompt(String sessionId, String runId, String messageId, Long timestamp, @NonNull String content,
             LocalDateTime sentAt) {
         super(AgentMessageType.USER_PROMPT_REQUEST_MESSAGE, sessionId, runId, messageId, timestamp);
         this.content = content;

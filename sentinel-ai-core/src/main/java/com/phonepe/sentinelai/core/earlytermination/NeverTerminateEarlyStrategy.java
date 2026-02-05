@@ -27,7 +27,8 @@ import com.phonepe.sentinelai.core.model.ModelSettings;
 
 public class NeverTerminateEarlyStrategy implements EarlyTerminationStrategy {
     @Override
-    public EarlyTerminationStrategyResponse evaluate(final ModelSettings modelSettings,final ModelRunContext context, final ModelOutput output) {
+    public EarlyTerminationStrategyResponse evaluate(final ModelSettings modelSettings, final ModelRunContext context,
+            final ModelOutput output) {
         return EarlyTerminationStrategyResponse.doNotTerminate();
     }
 }

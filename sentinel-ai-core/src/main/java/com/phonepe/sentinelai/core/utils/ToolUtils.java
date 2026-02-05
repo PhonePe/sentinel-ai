@@ -19,14 +19,25 @@ package com.phonepe.sentinelai.core.utils;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
-import com.phonepe.sentinelai.core.tools.*;
+import com.phonepe.sentinelai.core.tools.ExecutableTool;
+import com.phonepe.sentinelai.core.tools.InternalTool;
+import com.phonepe.sentinelai.core.tools.Tool;
+import com.phonepe.sentinelai.core.tools.ToolDefinition;
+import com.phonepe.sentinelai.core.tools.ToolMethodInfo;
+import com.phonepe.sentinelai.core.tools.ToolParameter;
+
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.toMap;
@@ -37,28 +48,37 @@ import static java.util.stream.Collectors.toMap;
 @Slf4j
 @UtilityClass
 public class ToolUtils {
+    @SneakyThrows
+    public static List<Object> convertToRealParams(ToolMethodInfo methodInfo, String params,
+            ObjectMapper objectMapper) {
+        final var paramNodes = objectMapper.readTree(params);
+        return methodInfo.parameters().stream().map(param -> {
+            final var paramName = param.getName();
+            final var paramType = param.getType();
+            final var paramNode = paramNodes.get(paramName);
+            return objectMapper.convertValue(paramNode, paramType);
+        }).toList();
+    }
+
     public static Map<String, ExecutableTool> readTools(Object instance) {
         Class<?> type = instance.getClass();
         final var tools = new HashMap<String, ExecutableTool>();
         while (type != Object.class) { // Traverse up till we reach Object
             final var className = type.getSimpleName();
             tools.putAll(Arrays.stream(type.getDeclaredMethods())
-                                 .filter(method -> method.isAnnotationPresent(Tool.class))
-                                 .map(method -> {
-                                     final var callableTool = createCallableToolFromLocalMethod(
-                                             instance,
-                                             method);
-                                     log.info("Created tool: {} from {}::{}",
-                                              callableTool.getToolDefinition().getId(),
-                                              className,
-                                              method.getName());
-                                     return callableTool;
-                                 })
-                                 .collect(toMap(tool -> tool.getToolDefinition().getId(), Function.identity())));
+                    .filter(method -> method.isAnnotationPresent(Tool.class))
+                    .map(method -> {
+                        final var callableTool = createCallableToolFromLocalMethod(instance, method);
+                        log.info("Created tool: {} from {}::{}", callableTool.getToolDefinition().getId(), className,
+                                method.getName());
+                        return callableTool;
+                    })
+                    .collect(toMap(tool -> tool.getToolDefinition().getId(), Function.identity())));
             type = type.getSuperclass();
         }
         return tools;
     }
+
 
     public static Pair<ToolDefinition, ToolMethodInfo> toolMetadata(String prefix, Method method) {
         final var toolDef = method.getAnnotation(Tool.class);
@@ -76,41 +96,18 @@ public class ToolUtils {
 
             final var paramAnnotation = param.getAnnotation(JsonPropertyDescription.class);
             final var description = (null != paramAnnotation) ? paramAnnotation.value() : "";
-            params.add(new ToolParameter(param.getName(),
-                                         description,
-                                         TypeFactory.defaultInstance().constructType(paramType)));
+            params.add(new ToolParameter(param.getName(), description, TypeFactory.defaultInstance()
+                    .constructType(paramType)));
         }
         final var toolName = toolDef.name().isBlank() ? method.getName() : toolDef.name();
-        return Pair.of(
-                ToolDefinition.builder()
-                        .id(AgentUtils.id(prefix, toolName))
-                        .name(toolName)
-                        .description(toolDef.value())
-                        .contextAware(hasContext)
-                        .strictSchema(true)
-                        .terminal(false)
-                        .build(),
-                new ToolMethodInfo(params,
-                                   method,
-                                   method.getReturnType()));
-    }
-
-
-    @SneakyThrows
-    public static List<Object> convertToRealParams(
-            ToolMethodInfo methodInfo,
-            String params,
-            ObjectMapper objectMapper) {
-        final var paramNodes = objectMapper.readTree(params);
-        return methodInfo.parameters()
-                .stream()
-                .map(param -> {
-                    final var paramName = param.getName();
-                    final var paramType = param.getType();
-                    final var paramNode = paramNodes.get(paramName);
-                    return objectMapper.convertValue(paramNode, paramType);
-                })
-                .toList();
+        return Pair.of(ToolDefinition.builder()
+                .id(AgentUtils.id(prefix, toolName))
+                .name(toolName)
+                .description(toolDef.value())
+                .contextAware(hasContext)
+                .strictSchema(true)
+                .terminal(false)
+                .build(), new ToolMethodInfo(params, method, method.getReturnType()));
     }
 
     private static InternalTool createCallableToolFromLocalMethod(Object instance, Method method) {

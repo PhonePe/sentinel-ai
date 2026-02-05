@@ -19,7 +19,12 @@ package com.phonepe.sentinelai.core.agentmessages.requests;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
-import lombok.*;
+
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 /**
@@ -44,35 +49,19 @@ public class SystemPrompt extends AgentRequest {
      */
     String methodReference;
 
-    public SystemPrompt(
-            String sessionId,
-            String runId,
-            @NonNull String content,
-            boolean dynamic,
-            String methodReference) {
-        this(sessionId,
-             runId,
-             null,
-             null,
-             content,
-             dynamic,
-             methodReference);
-    }
-
     @Builder
     @Jacksonized
-    public SystemPrompt(
-            String sessionId,
-            String runId,
-            String messageId,
-            Long timestamp,
-            @NonNull String content,
-            boolean dynamic,
-            String methodReference) {
+    public SystemPrompt(String sessionId, String runId, String messageId, Long timestamp, @NonNull String content,
+            boolean dynamic, String methodReference) {
         super(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE, sessionId, runId, messageId, timestamp);
         this.content = content;
         this.dynamic = dynamic;
         this.methodReference = methodReference;
+    }
+
+    public SystemPrompt(String sessionId, String runId, @NonNull String content, boolean dynamic,
+            String methodReference) {
+        this(sessionId, runId, null, null, content, dynamic, methodReference);
     }
 
     @Override

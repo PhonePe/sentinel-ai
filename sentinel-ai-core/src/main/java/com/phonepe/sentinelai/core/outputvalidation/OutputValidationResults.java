@@ -31,8 +31,7 @@ import java.util.Objects;
 public class OutputValidationResults {
 
     public enum FailureType {
-        RETRYABLE,
-        PERMANENT
+        RETRYABLE, PERMANENT
     }
 
     @Value
@@ -51,14 +50,20 @@ public class OutputValidationResults {
         this.failures = new ArrayList<>(failures);
     }
 
-    public boolean isSuccessful() {
-        return failures.isEmpty();
+    public static OutputValidationResults failure(String... failure) {
+        return new OutputValidationResults(toFailureList(failure));
     }
 
-    public boolean isRetriable() {
-        return !isSuccessful()
-                && failures.stream()
-                .allMatch(result -> result.getType().equals(FailureType.RETRYABLE));
+    public static OutputValidationResults success() {
+        return new OutputValidationResults();
+    }
+
+    private static ValidationFailure toFailure(String f) {
+        return new ValidationFailure(FailureType.RETRYABLE, f);
+    }
+
+    private static List<ValidationFailure> toFailureList(String[] failure) {
+        return Arrays.stream(failure).map(OutputValidationResults::toFailure).toList();
     }
 
     public OutputValidationResults addFailure(String failure) {
@@ -68,27 +73,17 @@ public class OutputValidationResults {
 
     public OutputValidationResults addFailures(Collection<String> failures) {
         this.failures.addAll(Objects.requireNonNullElseGet(failures, List::<String>of)
-                                     .stream()
-                                     .map(OutputValidationResults::toFailure)
-                                     .toList());
+                .stream()
+                .map(OutputValidationResults::toFailure)
+                .toList());
         return this;
     }
 
-    private static ValidationFailure toFailure(String f) {
-        return new ValidationFailure(FailureType.RETRYABLE, f);
+    public boolean isRetriable() {
+        return !isSuccessful() && failures.stream().allMatch(result -> result.getType().equals(FailureType.RETRYABLE));
     }
 
-    public static OutputValidationResults success() {
-        return new OutputValidationResults();
-    }
-
-    public static OutputValidationResults failure(String... failure) {
-        return new OutputValidationResults(toFailureList(failure));
-    }
-
-    private static List<ValidationFailure> toFailureList(String[] failure) {
-        return Arrays.stream(failure)
-                .map(OutputValidationResults::toFailure)
-                .toList();
+    public boolean isSuccessful() {
+        return failures.isEmpty();
     }
 }

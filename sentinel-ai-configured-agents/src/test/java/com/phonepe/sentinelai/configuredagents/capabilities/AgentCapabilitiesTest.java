@@ -16,14 +16,17 @@
 
 package com.phonepe.sentinelai.configuredagents.capabilities;
 
+import org.junit.jupiter.api.Test;
+
 import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentMCPCapability;
 import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentRemoteHttpCallCapability;
-import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 /**
  * Tests for {@link AgentCapabilities}
@@ -32,7 +35,8 @@ class AgentCapabilitiesTest {
 
     @Test
     void test() {
-        final var remoteHttpCalls = AgentCapabilities.remoteHttpCalls(Map.of("upstream1", Set.of("http://example.com")));
+        final var remoteHttpCalls = AgentCapabilities.remoteHttpCalls(Map.of("upstream1", Set.of(
+                "http://example.com")));
         assertNotNull(remoteHttpCalls);
         assertInstanceOf(AgentRemoteHttpCallCapability.class, remoteHttpCalls);
         assertThrowsExactly(NullPointerException.class, () -> AgentCapabilities.remoteHttpCalls(null));

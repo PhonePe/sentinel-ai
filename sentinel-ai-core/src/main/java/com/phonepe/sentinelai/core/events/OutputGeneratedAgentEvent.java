@@ -16,14 +16,14 @@
 
 package com.phonepe.sentinelai.core.events;
 
-import java.time.Duration;
-
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.ToString;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
+
+import java.time.Duration;
 
 /**
  * A response was received from the LLM
@@ -43,13 +43,8 @@ public class OutputGeneratedAgentEvent extends AgentEvent {
 
     @Builder
     @Jacksonized
-    public OutputGeneratedAgentEvent(
-            @NonNull String agentName,
-            @NonNull String runId,
-            String sessionId,
-            String userId,
-            @NonNull String content,
-            @NonNull Duration elapsedTime) {
+    public OutputGeneratedAgentEvent(@NonNull String agentName, @NonNull String runId, String sessionId, String userId,
+            @NonNull String content, @NonNull Duration elapsedTime) {
         super(EventType.OUTPUT_GENERATED, agentName, runId, sessionId, userId);
         this.content = content;
         this.elapsedTime = elapsedTime;

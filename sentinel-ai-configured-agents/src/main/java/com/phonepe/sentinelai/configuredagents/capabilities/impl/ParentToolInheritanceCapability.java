@@ -17,8 +17,10 @@
 package com.phonepe.sentinelai.configuredagents.capabilities.impl;
 
 import com.google.common.base.Preconditions;
+
 import com.phonepe.sentinelai.configuredagents.capabilities.AgentCapability;
 import com.phonepe.sentinelai.configuredagents.capabilities.AgentCapabilityVisitor;
+
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;

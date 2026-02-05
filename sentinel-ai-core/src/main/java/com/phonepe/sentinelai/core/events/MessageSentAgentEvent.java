@@ -17,7 +17,12 @@
 package com.phonepe.sentinelai.core.events;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import lombok.*;
+
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 import java.util.List;
@@ -33,11 +38,7 @@ public class MessageSentAgentEvent extends AgentEvent {
 
     @Builder
     @Jacksonized
-    public MessageSentAgentEvent(
-            @NonNull String agentName,
-            @NonNull String runId,
-            String sessionId,
-            String userId,
+    public MessageSentAgentEvent(@NonNull String agentName, @NonNull String runId, String sessionId, String userId,
             @NonNull List<AgentMessage> messages) {
         super(EventType.MESSAGE_SENT, agentName, runId, sessionId, userId);
         this.messages = messages;

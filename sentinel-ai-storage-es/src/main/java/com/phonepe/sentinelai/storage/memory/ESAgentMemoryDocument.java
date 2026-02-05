@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.storage.memory;
 
 import com.phonepe.sentinelai.agentmemory.MemoryScope;
 import com.phonepe.sentinelai.agentmemory.MemoryType;
+
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.FieldNameConstants;

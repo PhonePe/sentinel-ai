@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.configuredagents;
 
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
+
 import lombok.Builder;
 import lombok.NonNull;
 
@@ -41,34 +42,30 @@ public class AgentMessagesPreProcessors {
     }
 
     @Builder
-    public AgentMessagesPreProcessors(@NonNull final Map<String, List<AgentMessagesPreProcessor>> messagesPreProcessors) {
+    public AgentMessagesPreProcessors(
+            @NonNull final Map<String, List<AgentMessagesPreProcessor>> messagesPreProcessors) {
         this.messagesPreProcessors = messagesPreProcessors;
     }
 
-    public AgentMessagesPreProcessors add(final String agentName,
-                                          final AgentMessagesPreProcessor processor) {
-        final var existingProcessors = messagesPreProcessors.computeIfAbsent(
-                agentName, k -> new CopyOnWriteArrayList<>());
+    public static AgentMessagesPreProcessors of(String agentName, final List<AgentMessagesPreProcessor> preProcessors) {
+        return new AgentMessagesPreProcessors().add(agentName, preProcessors);
+    }
+
+    public AgentMessagesPreProcessors add(final String agentName, final AgentMessagesPreProcessor processor) {
+        final var existingProcessors = messagesPreProcessors.computeIfAbsent(agentName,
+                k -> new CopyOnWriteArrayList<>());
 
         existingProcessors.add(processor);
         return this;
     }
 
-    public AgentMessagesPreProcessors add(final String agentName,
-                                          final List<AgentMessagesPreProcessor> preProcessors) {
-        preProcessors.forEach(
-                preProcessor -> add(agentName, preProcessor));
+    public AgentMessagesPreProcessors add(final String agentName, final List<AgentMessagesPreProcessor> preProcessors) {
+        preProcessors.forEach(preProcessor -> add(agentName, preProcessor));
         return this;
     }
 
     public Optional<List<AgentMessagesPreProcessor>> processorsFor(String agentName) {
-        return Optional.ofNullable(
-                messagesPreProcessors.get(agentName));
-    }
-
-    public static AgentMessagesPreProcessors of(String agentName, final List<AgentMessagesPreProcessor> preProcessors) {
-        return new AgentMessagesPreProcessors()
-                .add(agentName, preProcessors);
+        return Optional.ofNullable(messagesPreProcessors.get(agentName));
     }
 
 }

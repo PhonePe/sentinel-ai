@@ -17,11 +17,14 @@
 package com.phonepe.sentinelai.configuredagents;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.modelcontextprotocol.client.McpSyncClient;
+
 import com.phonepe.sentinelai.toolbox.mcp.MCPJsonReader;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPConfiguration;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPServerConfig;
-import io.modelcontextprotocol.client.McpSyncClient;
+
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -50,8 +53,7 @@ public class MCPToolBoxFactory {
     private final Map<String, McpSyncClient> knownClients = new ConcurrentHashMap<>();
 
     @Builder
-    public MCPToolBoxFactory(
-            @NonNull ObjectMapper objectMapper,
+    public MCPToolBoxFactory(@NonNull ObjectMapper objectMapper,
             Function<String, Optional<McpSyncClient>> clientProvider) {
         this.objectMapper = objectMapper;
         this.clientProvider = Objects.requireNonNullElse(clientProvider, upstream -> Optional.empty());
@@ -72,36 +74,22 @@ public class MCPToolBoxFactory {
             log.debug("Found MCPServerConfig for upstream: {}", upstream);
             return tbFromServerConfig;
         }
-        final var tbFromKnownClient = Optional.ofNullable(knownClients.get(upstream))
-                .map(client -> {
-                    log.debug("Found known McpSyncClient for upstream: {}", upstream);
-                    return new MCPToolBox(upstream, client, objectMapper, Set.of());
-                });
+        final var tbFromKnownClient = Optional.ofNullable(knownClients.get(upstream)).map(client -> {
+            log.debug("Found known McpSyncClient for upstream: {}", upstream);
+            return new MCPToolBox(upstream, client, objectMapper, Set.of());
+        });
         if (tbFromKnownClient.isPresent()) {
             return tbFromKnownClient;
         }
         log.debug("No MCPServerConfig or Client found for upstream: {}. Falling back to client provider.", upstream);
-        final var tbClientProvided = clientProvider.apply(upstream)
-                .map(client -> {
-                    log.debug("Client provider provided a client for upstream: {}", upstream);
-                    return new MCPToolBox(upstream, client, objectMapper, Set.of());
-                });
+        final var tbClientProvided = clientProvider.apply(upstream).map(client -> {
+            log.debug("Client provider provided a client for upstream: {}", upstream);
+            return new MCPToolBox(upstream, client, objectMapper, Set.of());
+        });
         if (tbClientProvided.isEmpty()) {
             log.error("No toolbox could be constructed for mcp server name: {}. Returning empty.", upstream);
         }
         return tbClientProvided;
-    }
-
-    /**
-     * Load MCP server configs from server.json file
-     *
-     * @param serverJsonPath Path to server.json file
-     * @return this factory with loaded MCPToolBox instances
-     */
-    @SneakyThrows
-    public MCPToolBoxFactory loadFromFile(String serverJsonPath) {
-        final var contents = Files.readAllBytes(Path.of(serverJsonPath));
-        return loadFromContent(contents);
     }
 
     /**
@@ -115,6 +103,18 @@ public class MCPToolBoxFactory {
         final var config = objectMapper.readValue(contents, MCPConfiguration.class);
         MCPJsonReader.loadServers(config, this::registerMCPServerConfig);
         return this;
+    }
+
+    /**
+     * Load MCP server configs from server.json file
+     *
+     * @param serverJsonPath Path to server.json file
+     * @return this factory with loaded MCPToolBox instances
+     */
+    @SneakyThrows
+    public MCPToolBoxFactory loadFromFile(String serverJsonPath) {
+        final var contents = Files.readAllBytes(Path.of(serverJsonPath));
+        return loadFromContent(contents);
     }
 
     /**

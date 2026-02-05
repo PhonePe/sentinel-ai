@@ -17,11 +17,13 @@
 package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpTool;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolMetadata;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolSource;
+
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,41 +52,34 @@ public class InMemoryHttpToolSource extends TemplatizedHttpToolSource<InMemoryHt
     }
 
     @Override
+    public List<HttpToolMetadata> list(String upstream) {
+        return tools.getOrDefault(upstream, Map.of()).values().stream().map(HttpTool::getMetadata).toList();
+    }
+
+    @Override
     public InMemoryHttpToolSource register(String upstream, List<TemplatizedHttpTool> tool) {
-        if(tool.isEmpty()) {
+        if (tool.isEmpty()) {
             log.warn("No tool provided for upstream {}", upstream);
             return this;
         }
-        tools.compute(upstream,
-                      (u, existing) -> {
-                          final var toolMap = tool.stream()
-                                  .collect(Collectors.toUnmodifiableMap(t -> t.getMetadata().getName(),
-                                                            Function.identity()));
-                            if (existing == null) {
-                                return new ConcurrentHashMap<>(toolMap);
-                            }
-                            existing.putAll(toolMap);
-                            return existing;
-                      });
+        tools.compute(upstream, (u, existing) -> {
+            final var toolMap = tool.stream()
+                    .collect(Collectors.toUnmodifiableMap(t -> t.getMetadata().getName(), Function.identity()));
+            if (existing == null) {
+                return new ConcurrentHashMap<>(toolMap);
+            }
+            existing.putAll(toolMap);
+            return existing;
+        });
         return this;
     }
 
     @Override
-    public List<HttpToolMetadata> list(String upstream) {
-        return tools.getOrDefault(upstream, Map.of())
-                .values()
-                .stream()
-                .map(HttpTool::getMetadata)
-                .toList();
-    }
-
-    @Override
     public HttpCallSpec resolve(String upstream, String toolName, String arguments) {
-        return Optional.ofNullable(tools.getOrDefault(upstream, Map.of())
-                .get(toolName))
+        return Optional.ofNullable(tools.getOrDefault(upstream, Map.of()).get(toolName))
                 .map(tool -> expandTemplate(arguments, tool))
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "No tool %s found for upstream %s".formatted(toolName, upstream)));
+                .orElseThrow(() -> new IllegalArgumentException("No tool %s found for upstream %s".formatted(toolName,
+                        upstream)));
     }
 
     @Override

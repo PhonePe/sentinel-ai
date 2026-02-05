@@ -18,7 +18,12 @@ package com.phonepe.sentinelai.core.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
-import lombok.*;
+
+import lombok.Builder;
+import lombok.Data;
+import lombok.NonNull;
+import lombok.SneakyThrows;
+import lombok.Value;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -31,11 +36,11 @@ import java.util.Map;
  */
 @Data
 public class SystemPrompt {
-    @Value
-    @Builder
-    public static class ToolSummary {
-        String name;
-        String description;
+    @Data
+    public static class AdditionalData {
+        private String sessionId;
+        private String userId;
+        private Map<String, Object> customParams;
     }
 
     @Data
@@ -52,11 +57,11 @@ public class SystemPrompt {
         private List<FactList> facts;
     }
 
-    @Data
-    public static class AdditionalData {
-        private String sessionId;
-        private String userId;
-        private Map<String, Object> customParams;
+    @Value
+    @Builder
+    public static class ToolSummary {
+        String name;
+        String description;
     }
 
     private String name;

@@ -16,9 +16,10 @@
 
 package com.phonepe.sentinelai.core.agent;
 
-import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.errors.SentinelError;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
+
 import lombok.Value;
 
 import java.util.List;
@@ -50,15 +51,17 @@ public class AgentOutput<T> {
      */
     SentinelError error;
 
-    public static <T> AgentOutput<T> success(T data, List<AgentMessage> newMessages, List<AgentMessage> allMessages, ModelUsageStats usage) {
-        return new AgentOutput<>(data, newMessages, allMessages, usage, SentinelError.success());
+    public static <T> AgentOutput<T> error(List<AgentMessage> newMessages, List<AgentMessage> allMessages,
+            ModelUsageStats stats, SentinelError error) {
+        return new AgentOutput<>(null, newMessages, allMessages, stats, error);
     }
 
     public static <T> AgentOutput<T> error(List<AgentMessage> allMessages, ModelUsageStats stats, SentinelError error) {
         return new AgentOutput<>(null, List.of(), allMessages, stats, error);
     }
 
-    public static <T> AgentOutput<T> error(List<AgentMessage> newMessages, List<AgentMessage> allMessages, ModelUsageStats stats, SentinelError error) {
-        return new AgentOutput<>(null, newMessages, allMessages, stats, error);
+    public static <T> AgentOutput<T> success(T data, List<AgentMessage> newMessages, List<AgentMessage> allMessages,
+            ModelUsageStats usage) {
+        return new AgentOutput<>(data, newMessages, allMessages, usage, SentinelError.success());
     }
 }

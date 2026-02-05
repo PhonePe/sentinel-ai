@@ -24,6 +24,6 @@ import java.util.List;
  *
  */
 @FunctionalInterface
-public interface MessageSelector  {
+public interface MessageSelector {
     List<AgentMessage> select(String sessionId, List<AgentMessage> messages);
 }

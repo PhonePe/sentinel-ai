@@ -16,12 +16,19 @@
 
 package com.phonepe.sentinelai.session.history.selectors;
 
-import com.phonepe.sentinelai.core.agentmessages.*;
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageVisitor;
+import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
+import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
+import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
+import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,11 +58,18 @@ public class UnpairedToolCallsRemover implements MessageSelector {
         for (var message : messages) {
             message.accept(new AgentMessageVisitor<Void>() {
                 @Override
+                public Void visit(AgentGenericMessage genericMessage) {
+                    return null;
+                }
+
+                @Override
                 public Void visit(AgentRequest request) {
                     return request.accept(new AgentRequestVisitor<>() {
 
                         @Override
-                        public Void visit(com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt systemPrompt) {
+                        public Void visit(ToolCallResponse toolCallResponse) {
+                            toolCallDataMap.computeIfAbsent(toolCallResponse.getToolCallId(), k -> new ToolCallData(
+                                    toolCallResponse.getMessageId())).setHasResponse(true); //Tool Call executed and Response sent to model
                             return null;
                         }
 
@@ -65,10 +79,8 @@ public class UnpairedToolCallsRemover implements MessageSelector {
                         }
 
                         @Override
-                        public Void visit(ToolCallResponse toolCallResponse) {
-                            toolCallDataMap.computeIfAbsent(toolCallResponse.getToolCallId(),
-                                                            k -> new ToolCallData(toolCallResponse.getMessageId()))
-                                    .setHasResponse(true); //Tool Call executed and Response sent to model
+                        public Void visit(
+                                com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt systemPrompt) {
                             return null;
                         }
                     });
@@ -80,28 +92,22 @@ public class UnpairedToolCallsRemover implements MessageSelector {
                         ;
 
                         @Override
-                        public Void visit(Text text) {
-                            return null;
-                        }
-
-                        @Override
                         public Void visit(StructuredOutput structuredOutput) {
                             return null;
                         }
 
                         @Override
+                        public Void visit(Text text) {
+                            return null;
+                        }
+
+                        @Override
                         public Void visit(ToolCall toolCall) {
-                            toolCallDataMap.computeIfAbsent(toolCall.getToolCallId(),
-                                                            k -> new ToolCallData(toolCall.getMessageId()))
-                                    .setHasRequest(true); //Tool call execution request received from model
+                            toolCallDataMap.computeIfAbsent(toolCall.getToolCallId(), k -> new ToolCallData(toolCall
+                                    .getMessageId())).setHasRequest(true); //Tool call execution request received from model
                             return null;
                         }
                     });
-                }
-
-                @Override
-                public Void visit(AgentGenericMessage genericMessage) {
-                    return null;
                 }
             });
         }
@@ -114,8 +120,8 @@ public class UnpairedToolCallsRemover implements MessageSelector {
         log.debug("Found unpaired tool call message IDs: {}", nonPairedCalls);
         final var allowedMessages = new ArrayList<>(messages);
         allowedMessages.removeIf(message -> nonPairedCalls.contains(message.getMessageId()));
-        log.debug("Returning {} messages for session {} after removing unpaired tool calls",
-                  allowedMessages.size(), sessionId);
+        log.debug("Returning {} messages for session {} after removing unpaired tool calls", allowedMessages.size(),
+                sessionId);
         return allowedMessages;
 
     }

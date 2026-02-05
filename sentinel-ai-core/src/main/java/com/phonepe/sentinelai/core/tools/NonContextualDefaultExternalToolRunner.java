@@ -17,12 +17,15 @@
 package com.phonepe.sentinelai.core.tools;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.apache.commons.lang3.NotImplementedException;
+
 import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+
 import lombok.SneakyThrows;
-import org.apache.commons.lang3.NotImplementedException;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -37,10 +40,7 @@ public class NonContextualDefaultExternalToolRunner implements ToolRunner {
     private final String runId;
     private final ObjectMapper mapper;
 
-    public NonContextualDefaultExternalToolRunner(
-            String sessionId,
-            String runId,
-            ObjectMapper mapper) {
+    public NonContextualDefaultExternalToolRunner(String sessionId, String runId, ObjectMapper mapper) {
         this.sessionId = sessionId;
         this.runId = runId;
         this.mapper = mapper;
@@ -53,19 +53,10 @@ public class NonContextualDefaultExternalToolRunner implements ToolRunner {
             @Override
             @SneakyThrows
             public ToolCallResponse visit(ExternalTool externalTool) {
-                final var response =
-                        externalTool.getCallable()
-                                .apply(null,
-                                       toolCall.getToolCallId(),
-                                       toolCall.getArguments());
-                return new ToolCallResponse(
-                        sessionId,
-                        runId,
-                        toolCall.getToolCallId(),
-                        toolCall.getToolName(),
-                        ErrorType.SUCCESS,
-                        mapper.writeValueAsString(response.response()),
-                        LocalDateTime.now());
+                final var response = externalTool.getCallable()
+                        .apply(null, toolCall.getToolCallId(), toolCall.getArguments());
+                return new ToolCallResponse(sessionId, runId, toolCall.getToolCallId(), toolCall.getToolName(),
+                        ErrorType.SUCCESS, mapper.writeValueAsString(response.response()), LocalDateTime.now());
             }
 
             @Override

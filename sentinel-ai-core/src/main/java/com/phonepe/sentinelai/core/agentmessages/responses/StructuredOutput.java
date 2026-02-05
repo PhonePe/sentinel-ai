@@ -19,7 +19,12 @@ package com.phonepe.sentinelai.core.agentmessages.responses;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
-import lombok.*;
+
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 /**
@@ -34,25 +39,13 @@ public class StructuredOutput extends AgentResponse {
      */
     String content;
 
-    public StructuredOutput(
-            String sessionId,
-            String runId,
-            @NonNull String content) {
-        this(sessionId,
-             runId,
-             null,
-             null,
-             content);
+    public StructuredOutput(String sessionId, String runId, @NonNull String content) {
+        this(sessionId, runId, null, null, content);
     }
 
     @Builder
     @Jacksonized
-    public StructuredOutput(
-            String sessionId,
-            String runId,
-            String messageId,
-            Long timestamp,
-            @NonNull String content) {
+    public StructuredOutput(String sessionId, String runId, String messageId, Long timestamp, @NonNull String content) {
         super(AgentMessageType.STRUCTURED_OUTPUT_RESPONSE_MESSAGE, sessionId, runId, messageId, timestamp);
         this.content = content;
     }

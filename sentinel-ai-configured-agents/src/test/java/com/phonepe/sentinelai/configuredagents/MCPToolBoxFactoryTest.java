@@ -16,13 +16,16 @@
 
 package com.phonepe.sentinelai.configuredagents;
 
-import com.phonepe.sentinelai.core.utils.JsonUtils;
 import io.modelcontextprotocol.client.McpSyncClient;
+
 import org.junit.jupiter.api.Test;
+
+import com.phonepe.sentinelai.core.utils.JsonUtils;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -32,7 +35,7 @@ class MCPToolBoxFactoryTest {
 
     @Test
     void test() {
-        try(final var mcpClient = mock(McpSyncClient.class)) {
+        try (final var mcpClient = mock(McpSyncClient.class)) {
             final var factory = MCPToolBoxFactory.builder()
                     .objectMapper(JsonUtils.createMapper())
                     .clientProvider(upstream -> {

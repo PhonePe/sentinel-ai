@@ -94,6 +94,7 @@
         <jackson.version>2.18.3</jackson.version>
         <mockito.version>5.20.0</mockito.version>
         <testcontainers.version>1.21.4</testcontainers.version>
+        <spotless.version>3.2.1</spotless.version>
         <sentinelai.useRealEndpoints>false</sentinelai.useRealEndpoints>
         <dotenv.file>${sentinelai.root}/sentinel-ai-core/src/test/resources/test.env</dotenv.file>
         <console.disable>true</console.disable>
@@ -310,7 +311,57 @@
                     </execution>
                 </executions>
             </plugin>
-
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <java>
+                        <licenseHeader>
+                            <file>${maven.multiModuleProjectDirectory}/license.header</file>
+                        </licenseHeader>
+                        <eclipse>
+                            <file>${maven.multiModuleProjectDirectory}/java-format.xml</file>
+                            <sortMembersEnabled>true</sortMembersEnabled>
+                            <!-- Sort order
+                            - Static Fields
+                            - Type Definitions
+                            - Initializers
+                            - Field Definitions
+                            - Field Initializers
+                            - Constructor
+                            - Static functions
+                            - Methods
+                            -->
+                            <sortMembersOrder>SF,T,SI,F,I,C,SM,M</sortMembersOrder>
+                            <sortMembersVisibilityOrderEnabled>true</sortMembersVisibilityOrderEnabled>
+                            <!--
+                            - Public
+                            - Protected
+                            - Package
+                            - Private
+                            -->
+                            <sortMembersVisibilityOrder>B,R,D,V</sortMembersVisibilityOrder>
+                        </eclipse>
+                        <removeUnusedImports/>
+                        <importOrder>
+                        <order>com,io,org,com.phonepe,,java,javax,\#</order>
+                        <semanticSort>true</semanticSort>
+                        </importOrder>
+                        <trimTrailingWhitespace/>
+                        <forbidWildcardImports/>
+                        <endWithNewline/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>compile</phase>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 

@@ -16,14 +16,27 @@
 
 package com.phonepe.sentinelai.models.utils;
 
-import com.phonepe.sentinelai.core.agentmessages.*;
-import com.phonepe.sentinelai.core.agentmessages.requests.*;
-import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
-import com.phonepe.sentinelai.core.agentmessages.responses.Text;
-import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import io.github.sashirestela.openai.common.function.FunctionCall;
 import io.github.sashirestela.openai.common.tool.ToolType;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
+
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessageVisitor;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageVisitor;
+import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
+import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
+import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
+import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
+import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
+import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
+import com.phonepe.sentinelai.core.agentmessages.responses.Text;
+import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+
 import lombok.experimental.UtilityClass;
 
 import java.util.List;
@@ -68,8 +81,8 @@ public class OpenAIMessageUtils {
 
                     @Override
                     public ChatMessage visit(ToolCallResponse toolCallResponse) {
-                        return ChatMessage.ToolMessage.of(toolCallResponse.getResponse(),
-                                toolCallResponse.getToolCallId());
+                        return ChatMessage.ToolMessage.of(toolCallResponse.getResponse(), toolCallResponse
+                                .getToolCallId());
                     }
                 });
             }
@@ -89,11 +102,10 @@ public class OpenAIMessageUtils {
 
                     @Override
                     public ChatMessage visit(ToolCall toolCall) {
-                        return ChatMessage.AssistantMessage.of(List.of(new io.github.sashirestela.openai.common.tool.ToolCall(
-                                0,
-                                toolCall.getToolCallId(),
-                                ToolType.FUNCTION,
-                                new FunctionCall(toolCall.getToolName(), toolCall.getArguments()))));
+                        return ChatMessage.AssistantMessage.of(List.of(
+                                new io.github.sashirestela.openai.common.tool.ToolCall(0, toolCall.getToolCallId(),
+                                        ToolType.FUNCTION, new FunctionCall(toolCall.getToolName(), toolCall
+                                                .getArguments()))));
                     }
                 });
             }

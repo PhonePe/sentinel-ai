@@ -16,7 +16,11 @@
 
 package com.phonepe.sentinelai.core.events;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.ToString;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 /**
@@ -31,13 +35,8 @@ public class ToolCallApprovalDeniedAgentEvent extends AgentEvent {
 
     @Builder
     @Jacksonized
-    public ToolCallApprovalDeniedAgentEvent(
-            @NonNull String agentName,
-            @NonNull String runId,
-            String sessionId,
-            String userId,
-            @NonNull String toolCallId,
-            @NonNull String toolCallName) {
+    public ToolCallApprovalDeniedAgentEvent(@NonNull String agentName, @NonNull String runId, String sessionId,
+            String userId, @NonNull String toolCallId, @NonNull String toolCallName) {
         super(EventType.TOOL_CALL_APPROVAL_DENIED, agentName, runId, sessionId, userId);
         this.toolCallId = toolCallId;
         this.toolCallName = toolCallName;

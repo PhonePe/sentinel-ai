@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpTool;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolMetadata;
+
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
@@ -39,9 +40,8 @@ public class TemplatizedHttpTool extends HttpTool {
 
     @Builder
     @Jacksonized
-    public TemplatizedHttpTool(@NonNull HttpToolMetadata metadata,
-                               @NonNull HttpCallTemplate template,
-                               ResponseTransformerConfig responseTransformations) {
+    public TemplatizedHttpTool(@NonNull HttpToolMetadata metadata, @NonNull HttpCallTemplate template,
+            ResponseTransformerConfig responseTransformations) {
         super(metadata);
         this.template = template;
         this.responseTransformations = responseTransformations;

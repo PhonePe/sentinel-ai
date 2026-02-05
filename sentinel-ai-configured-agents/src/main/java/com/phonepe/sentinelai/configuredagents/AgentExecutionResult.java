@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.configuredagents;
 
 import com.fasterxml.jackson.databind.JsonNode;
+
 import lombok.Builder;
 import lombok.Value;
 
@@ -33,17 +34,11 @@ public class AgentExecutionResult {
     JsonNode error;
     JsonNode agentOutput;
 
-    public static AgentExecutionResult success(JsonNode agentOutput) {
-        return AgentExecutionResult.builder()
-                .successful(true)
-                .agentOutput(agentOutput)
-                .build();
+    public static AgentExecutionResult fail(JsonNode error) {
+        return AgentExecutionResult.builder().successful(false).error(error).build();
     }
 
-    public static AgentExecutionResult fail(JsonNode error) {
-        return AgentExecutionResult.builder()
-                .successful(false)
-                .error(error)
-                .build();
+    public static AgentExecutionResult success(JsonNode agentOutput) {
+        return AgentExecutionResult.builder().successful(true).agentOutput(agentOutput).build();
     }
 }

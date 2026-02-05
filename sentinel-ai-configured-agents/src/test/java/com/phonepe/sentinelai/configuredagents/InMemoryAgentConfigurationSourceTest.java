@@ -16,12 +16,16 @@
 
 package com.phonepe.sentinelai.configuredagents;
 
-import com.phonepe.sentinelai.core.utils.AgentUtils;
 import org.junit.jupiter.api.Test;
+
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test class for {@link InMemoryAgentConfigurationSource}.
@@ -31,14 +35,8 @@ class InMemoryAgentConfigurationSourceTest {
     @Test
     void testSaveAndRead() {
         final var source = new InMemoryAgentConfigurationSource();
-        final var config = new AgentConfiguration(
-                "Test Agent",
-                "Agent for testing",
-                "You are a test agent.",
-                null,
-                null,
-                List.of(),
-                null);
+        final var config = new AgentConfiguration("Test Agent", "Agent for testing", "You are a test agent.", null,
+                null, List.of(), null);
         String agentId = AgentUtils.id(config.getAgentName());
 
         // Save the agent configuration

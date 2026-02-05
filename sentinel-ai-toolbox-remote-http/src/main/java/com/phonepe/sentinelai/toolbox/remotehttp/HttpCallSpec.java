@@ -32,6 +32,10 @@ import java.util.function.UnaryOperator;
 @Builder
 @With
 public class HttpCallSpec {
+    public enum HttpMethod {
+        GET, PUT, POST, HEAD, DELETE
+    }
+
     @NonNull
     HttpCallSpec.HttpMethod method;
     @NonNull
@@ -39,13 +43,6 @@ public class HttpCallSpec {
     Map<String, List<String>> headers;
     String body;
     String contentType;
-    UnaryOperator<String> responseTransformer;
 
-    public enum HttpMethod {
-        GET,
-        PUT,
-        POST,
-        HEAD,
-        DELETE
-    }
+    UnaryOperator<String> responseTransformer;
 }

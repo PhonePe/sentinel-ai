@@ -33,4 +33,3 @@ public class MCPConfiguration {
     @NonNull
     Map<String, MCPServerConfig> mcpServers;
 }
-

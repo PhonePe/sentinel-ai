@@ -27,13 +27,13 @@ import com.phonepe.sentinelai.configuredagents.capabilities.impl.ParentToolInher
  * To handle capability specific behavior in a type-safe manner,
  */
 public interface AgentCapabilityVisitor<T> {
-    T visit(AgentRemoteHttpCallCapability remoteHttpCallCapability);
+    T visit(AgentCustomToolCapability customToolCapability);
 
     T visit(AgentMCPCapability mcpCapability);
 
-    T visit(AgentCustomToolCapability customToolCapability);
-
     T visit(AgentMemoryCapability memoryCapability);
+
+    T visit(AgentRemoteHttpCallCapability remoteHttpCallCapability);
 
     T visit(AgentSessionManagementCapability sessionManagementCapability);
 

@@ -16,10 +16,11 @@
 
 package com.phonepe.sentinelai.models;
 
-import java.util.List;
-
 import com.knuddels.jtokkit.api.EncodingType;
+
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+
+import java.util.List;
 
 /**
  * Interface for counting tokens in messages.
@@ -35,10 +36,7 @@ public interface TokenCounter {
      * @param encodingType Encoding type to use for token counting
      * @return Number of tokens in the messages
      */
-    int estimateTokenCount(
-            final List<AgentMessage> messages,
-            final TokenCountingConfig config,
-            final EncodingType encodingType
-    );
+    int estimateTokenCount(final List<AgentMessage> messages, final TokenCountingConfig config,
+            final EncodingType encodingType);
 
 }

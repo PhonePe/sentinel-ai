@@ -22,6 +22,7 @@ import com.phonepe.sentinelai.core.agent.RetrySetup;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
+
 import lombok.experimental.UtilityClass;
 
 import java.time.Instant;
@@ -37,44 +38,25 @@ import java.util.function.Supplier;
  */
 @UtilityClass
 public class AgentUtils {
-    public static <R> String userId(AgentRunContext<R> context) {
-        return context.getRequestMetadata() != null
-               ? context.getRequestMetadata().getUserId()
-               : null;
+    public static long epochMicro() {
+        final var now = Instant.now();
+        return now.getEpochSecond() * 1_000_000 + now.getNano() / 1_000;
     }
 
-    public static <R> String sessionId(AgentRunContext<R> context) {
-        return context.getRequestMetadata() != null
-               ? context.getRequestMetadata().getSessionId()
-               : null;
-    }
-
-    public static Throwable rootCause(final Throwable leaf) {
-        Throwable cause = leaf;
-        while (cause.getCause() != null) {
-            cause = cause.getCause();
-        }
-        return cause;
-    }
-
-    public static <T> T safeGet(Supplier<T> supplier, T defaultValue) {
-        return Objects.requireNonNullElse(supplier.get(), defaultValue);
-    }
-
-    public static int safeGetInt(Supplier<Integer> supplier, int defaultValue) {
-        return safeGet(supplier, defaultValue);
-    }
-
-    public static int safeGetInt(Supplier<Integer> supplier) {
-        return safeGetInt(supplier, 0);
+    public static <T, R> R getIfNotNull(T value, Function<T, R> mapper, R defaultValue) {
+        return value != null ? mapper.apply(value) : defaultValue;
     }
 
     public static String id(String... args) {
-        return String.join("_",
-                           Arrays.stream(args)
-                                   .map(AgentUtils::lowerCamel)
-                                   .toList())
-                .replaceAll("[\\s\\p{Punct}]", "_").toLowerCase();
+        return String.join("_", Arrays.stream(args).map(AgentUtils::lowerCamel).toList())
+                .replaceAll("[\\s\\p{Punct}]", "_")
+                .toLowerCase();
+    }
+
+    public static <T> List<T> lastN(List<T> list, int count) {
+        final var fromIndex = Math.max(0, list.size() - count);
+        final var toIndex = fromIndex + Math.min(count, list.size());
+        return list.subList(fromIndex, toIndex);
     }
 
     public static String lowerCamel(String input) {
@@ -106,14 +88,42 @@ public class AgentUtils {
                 .modelSettings(value(lhs, rhs, AgentSetup::getModelSettings))
                 .mapper(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getMapper), JsonUtils::createMapper))
                 .executorService(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getExecutorService),
-                                                               Executors::newCachedThreadPool))
+                        Executors::newCachedThreadPool))
                 .eventBus(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getEventBus), EventBus::new))
                 .outputGenerationMode(Objects.requireNonNullElse(value(lhs, rhs, AgentSetup::getOutputGenerationMode),
-                                                                    OutputGenerationMode.TOOL_BASED))
-                .outputGenerationTool(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getOutputGenerationTool),
-                                                                    IdentityOutputGenerator::new))
+                        OutputGenerationMode.TOOL_BASED))
+                .outputGenerationTool(Objects.requireNonNullElseGet(value(lhs, rhs,
+                        AgentSetup::getOutputGenerationTool), IdentityOutputGenerator::new))
                 .retrySetup(Objects.requireNonNullElse(value(lhs, rhs, AgentSetup::getRetrySetup), RetrySetup.DEFAULT))
                 .build();
+    }
+
+    public static Throwable rootCause(final Throwable leaf) {
+        Throwable cause = leaf;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        return cause;
+    }
+
+    public static <T> T safeGet(Supplier<T> supplier, T defaultValue) {
+        return Objects.requireNonNullElse(supplier.get(), defaultValue);
+    }
+
+    public static int safeGetInt(Supplier<Integer> supplier) {
+        return safeGetInt(supplier, 0);
+    }
+
+    public static int safeGetInt(Supplier<Integer> supplier, int defaultValue) {
+        return safeGet(supplier, defaultValue);
+    }
+
+    public static <R> String sessionId(AgentRunContext<R> context) {
+        return context.getRequestMetadata() != null ? context.getRequestMetadata().getSessionId() : null;
+    }
+
+    public static <R> String userId(AgentRunContext<R> context) {
+        return context.getRequestMetadata() != null ? context.getRequestMetadata().getUserId() : null;
     }
 
     public static <T, R> R value(final T lhs, final T rhs, Function<T, R> mapper) {
@@ -122,20 +132,5 @@ public class AgentUtils {
             return mapper.apply(obj);
         }
         return null;
-    }
-
-    public static long epochMicro() {
-        final var now = Instant.now();
-        return now.getEpochSecond() * 1_000_000 + now.getNano() / 1_000;
-    }
-
-    public static <T> List<T> lastN(List<T> list, int count) {
-        final var fromIndex = Math.max(0, list.size() - count);
-        final var toIndex = fromIndex + Math.min(count, list.size());
-        return list.subList(fromIndex, toIndex);
-    }
-
-    public static <T, R> R getIfNotNull(T value, Function<T, R> mapper, R defaultValue) {
-        return value != null ? mapper.apply(value) : defaultValue;
     }
 }

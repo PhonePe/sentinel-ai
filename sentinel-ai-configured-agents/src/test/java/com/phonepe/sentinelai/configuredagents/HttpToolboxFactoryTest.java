@@ -16,17 +16,21 @@
 
 package com.phonepe.sentinelai.configuredagents;
 
+import org.junit.jupiter.api.Test;
+
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolSource;
 import com.phonepe.sentinelai.toolbox.remotehttp.UpstreamResolver;
+
 import okhttp3.OkHttpClient;
-import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.function.Function;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -35,6 +39,19 @@ import static org.mockito.Mockito.when;
  */
 @SuppressWarnings({"unchecked"})
 class HttpToolboxFactoryTest {
+
+    private static HttpCallSpec createSpec() {
+        return HttpCallSpec.builder().method(HttpCallSpec.HttpMethod.GET).path("/").build();
+    }
+
+    private static void ensureResolution(HttpToolSource<?, ?> toolSource, HttpCallSpec callSpec,
+            HttpToolboxFactory factory) {
+        final var upstream = "test-upstream";
+        when(toolSource.upstreams()).thenReturn(List.of(upstream));
+        when(toolSource.resolve(upstream, "testFunc", "")).thenReturn(callSpec);
+        assertTrue(factory.create(upstream).isPresent());
+        assertFalse(factory.create("non-existent-upstream").isPresent());
+    }
 
     @Test
     void testHttpToolboxFactory() {
@@ -79,10 +96,8 @@ class HttpToolboxFactoryTest {
                 .build();
         final var upstream = "test-upstream";
         when(toolSource.upstreams()).thenReturn(List.of(upstream));
-        when(toolSource.resolve(upstream, "testFunc", ""))
-                .thenReturn(callSpec);
-        assertThrows(NullPointerException.class,
-                     () -> factory.create(upstream).orElseThrow());
+        when(toolSource.resolve(upstream, "testFunc", "")).thenReturn(callSpec);
+        assertThrows(NullPointerException.class, () -> factory.create(upstream).orElseThrow());
     }
 
     @Test
@@ -93,67 +108,43 @@ class HttpToolboxFactoryTest {
         Function<String, UpstreamResolver> upstreamResolver = UpstreamResolver::direct;
 
         // okHttpClient null
-        assertThrows(NullPointerException.class,
-                     () -> HttpToolboxFactory.builder()
-                             .okHttpClient(null)
-                             .objectMapper(objectMapper)
-                             .toolConfigSource(toolSource)
-                             .upstreamResolver(upstreamResolver)
-                             .build());
+        assertThrows(NullPointerException.class, () -> HttpToolboxFactory.builder()
+                .okHttpClient(null)
+                .objectMapper(objectMapper)
+                .toolConfigSource(toolSource)
+                .upstreamResolver(upstreamResolver)
+                .build());
 
         // objectMapper null
-        assertThrows(NullPointerException.class,
-                     () -> HttpToolboxFactory.builder()
-                             .okHttpClient(okHttpClient)
-                             .objectMapper(null)
-                             .toolConfigSource(toolSource)
-                             .upstreamResolver(upstreamResolver)
-                             .build());
+        assertThrows(NullPointerException.class, () -> HttpToolboxFactory.builder()
+                .okHttpClient(okHttpClient)
+                .objectMapper(null)
+                .toolConfigSource(toolSource)
+                .upstreamResolver(upstreamResolver)
+                .build());
 
         // toolConfigSource null
-        assertThrows(NullPointerException.class,
-                     () -> HttpToolboxFactory.builder()
-                             .okHttpClient(okHttpClient)
-                             .objectMapper(objectMapper)
-                             .toolConfigSource(null)
-                             .upstreamResolver(upstreamResolver)
-                             .build());
+        assertThrows(NullPointerException.class, () -> HttpToolboxFactory.builder()
+                .okHttpClient(okHttpClient)
+                .objectMapper(objectMapper)
+                .toolConfigSource(null)
+                .upstreamResolver(upstreamResolver)
+                .build());
 
         // upstreamResolver null
-        assertThrows(NullPointerException.class,
-                     () -> HttpToolboxFactory.builder()
-                             .okHttpClient(okHttpClient)
-                             .objectMapper(objectMapper)
-                             .toolConfigSource(toolSource)
-                             .upstreamResolver(null)
-                             .build());
+        assertThrows(NullPointerException.class, () -> HttpToolboxFactory.builder()
+                .okHttpClient(okHttpClient)
+                .objectMapper(objectMapper)
+                .toolConfigSource(toolSource)
+                .upstreamResolver(null)
+                .build());
 
-        assertThrows(NullPointerException.class,
-                     () -> HttpToolboxFactory.httpClientProvidingBuilder()
-                             .okHttpClientProvider(null)
-                             .objectMapper(objectMapper)
-                             .toolConfigSource(toolSource)
-                             .upstreamResolver(upstreamResolver)
-                             .build());
-    }
-
-    private static HttpCallSpec createSpec() {
-        return HttpCallSpec.builder()
-                .method(HttpCallSpec.HttpMethod.GET)
-                .path("/")
-                .build();
-    }
-
-    private static void ensureResolution(
-            HttpToolSource<?, ?> toolSource,
-            HttpCallSpec callSpec,
-            HttpToolboxFactory factory) {
-        final var upstream = "test-upstream";
-        when(toolSource.upstreams()).thenReturn(List.of(upstream));
-        when(toolSource.resolve(upstream, "testFunc", ""))
-                .thenReturn(callSpec);
-        assertTrue(factory.create(upstream).isPresent());
-        assertFalse(factory.create("non-existent-upstream").isPresent());
+        assertThrows(NullPointerException.class, () -> HttpToolboxFactory.httpClientProvidingBuilder()
+                .okHttpClientProvider(null)
+                .objectMapper(objectMapper)
+                .toolConfigSource(toolSource)
+                .upstreamResolver(upstreamResolver)
+                .build());
     }
 
 }

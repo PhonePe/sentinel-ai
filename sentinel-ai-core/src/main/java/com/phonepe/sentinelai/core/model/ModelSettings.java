@@ -17,9 +17,9 @@
 package com.phonepe.sentinelai.core.model;
 
 import lombok.Builder;
+import lombok.Builder.Default;
 import lombok.Value;
 import lombok.With;
-import lombok.Builder.Default;
 
 import java.util.Map;
 
@@ -94,6 +94,7 @@ public class ModelSettings {
     /**
      * Method to merge two model settings objects where the provided values in the rhs param are set if not null
      * else the lhs values are retained.
+     *
      * @param lhs Left hand side model settings
      * @param rhs Right hand side model settings
      * @return Merged model settings
@@ -105,19 +106,17 @@ public class ModelSettings {
         if (rhs == null) {
             return lhs;
         }
-        return new ModelSettings(
-                rhs.getMaxTokens() != null ? rhs.getMaxTokens() : lhs.getMaxTokens(),
-                rhs.getTemperature() != null ? rhs.getTemperature() : lhs.getTemperature(),
-                rhs.getTopP() != null ? rhs.getTopP() : lhs.getTopP(),
-                rhs.getTimeout() != null ? rhs.getTimeout() : lhs.getTimeout(),
-                rhs.getParallelToolCalls() != null ? rhs.getParallelToolCalls() : lhs.getParallelToolCalls(),
-                rhs.getSeed() != null ? rhs.getSeed() : lhs.getSeed(),
-                rhs.getPresencePenalty() != null ? rhs.getPresencePenalty() : lhs.getPresencePenalty(),
-                rhs.getFrequencyPenalty() != null ? rhs.getFrequencyPenalty() : lhs.getFrequencyPenalty(),
-                rhs.getLogitBias() != null ? rhs.getLogitBias() : lhs.getLogitBias(),
-                rhs.getReasoning() != null ? rhs.getReasoning() : lhs.getReasoning(),
-                rhs.getModelAttributes() != ModelAttributes.DEFAULT_MODEL_ATTRIBUTES ? rhs.getModelAttributes() : lhs.getModelAttributes()
-        );
+        return new ModelSettings(rhs.getMaxTokens() != null ? rhs.getMaxTokens() : lhs.getMaxTokens(), rhs
+                .getTemperature() != null ? rhs.getTemperature() : lhs.getTemperature(), rhs.getTopP() != null ? rhs
+                        .getTopP() : lhs.getTopP(), rhs.getTimeout() != null ? rhs.getTimeout() : lhs.getTimeout(), rhs
+                                .getParallelToolCalls() != null ? rhs.getParallelToolCalls() : lhs
+                                        .getParallelToolCalls(), rhs.getSeed() != null ? rhs.getSeed() : lhs.getSeed(),
+                rhs.getPresencePenalty() != null ? rhs.getPresencePenalty() : lhs.getPresencePenalty(), rhs
+                        .getFrequencyPenalty() != null ? rhs.getFrequencyPenalty() : lhs.getFrequencyPenalty(), rhs
+                                .getLogitBias() != null ? rhs.getLogitBias() : lhs.getLogitBias(), rhs
+                                        .getReasoning() != null ? rhs.getReasoning() : lhs.getReasoning(), rhs
+                                                .getModelAttributes() != ModelAttributes.DEFAULT_MODEL_ATTRIBUTES ? rhs
+                                                        .getModelAttributes() : lhs.getModelAttributes());
     }
 
 }

@@ -16,16 +16,11 @@
 
 package com.phonepe.sentinelai.models;
 
-import java.util.List;
-import java.util.Objects;
-
 import com.google.common.base.Strings;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.EncodingType;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import com.phonepe.sentinelai.models.utils.OpenAIMessageUtils;
 
 import io.github.sashirestela.openai.domain.chat.ChatMessage.AssistantMessage;
 import io.github.sashirestela.openai.domain.chat.ChatMessage.DeveloperMessage;
@@ -33,7 +28,12 @@ import io.github.sashirestela.openai.domain.chat.ChatMessage.ResponseMessage;
 import io.github.sashirestela.openai.domain.chat.ChatMessage.SystemMessage;
 import io.github.sashirestela.openai.domain.chat.ChatMessage.ToolMessage;
 import io.github.sashirestela.openai.domain.chat.ChatMessage.UserMessage;
-import lombok.AccessLevel;
+
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.models.utils.OpenAIMessageUtils;
+
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Token counter for OpenAI completions models
@@ -43,6 +43,13 @@ import lombok.AccessLevel;
 public class OpenAICompletionsTokenCounter implements TokenCounter {
 
     private final EncodingRegistry encodingRegistry = Encodings.newDefaultEncodingRegistry();
+
+    /**
+     * Count tokens in a Strings
+     */
+    private static int countString(final Encoding encoder, final String content) {
+        return Strings.isNullOrEmpty(content) ? 0 : encoder.encodeOrdinary(content).size();
+    }
 
     /**
      * Estimate token counts in the given messages
@@ -58,9 +65,7 @@ public class OpenAICompletionsTokenCounter implements TokenCounter {
      * - Finally, add a fixed overhead for assistant priming defined in the config
      */
     @Override
-    public int estimateTokenCount(
-            final List<AgentMessage> messages,
-            final TokenCountingConfig tokenCountingConfig,
+    public int estimateTokenCount(final List<AgentMessage> messages, final TokenCountingConfig tokenCountingConfig,
             final EncodingType encodingType) {
         final var currentEncodingType = Objects.requireNonNullElse(encodingType, EncodingType.CL100K_BASE);
         final var encoder = encodingRegistry.getEncoding(currentEncodingType);
@@ -107,7 +112,7 @@ public class OpenAICompletionsTokenCounter implements TokenCounter {
                 }
                 totalTokens += countString(encoder, assistantMessage.getRefusal());
                 final var toolCalls = Objects.requireNonNullElseGet(assistantMessage.getToolCalls(),
-                                                                    List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
+                        List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
 
                 for (final var toolCall : toolCalls) {
                     totalTokens += countString(encoder, toolCall.getId());
@@ -135,14 +140,5 @@ public class OpenAICompletionsTokenCounter implements TokenCounter {
         // Other message overheads
         totalTokens += tokenCountingConfig.getAssistantPrimingOverhead();
         return totalTokens;
-    }
-
-    /**
-     * Count tokens in a Strings
-     */
-    private static int countString(final Encoding encoder, final String content) {
-        return Strings.isNullOrEmpty(content)
-            ? 0
-            : encoder.encodeOrdinary(content).size();
     }
 }

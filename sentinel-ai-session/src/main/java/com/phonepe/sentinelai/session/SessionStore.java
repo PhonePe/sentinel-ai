@@ -25,15 +25,7 @@ import java.util.Optional;
  * A storage system for agent session
  */
 public interface SessionStore {
-    Optional<SessionSummary> session(String sessionId);
-
-    BiScrollable<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection);
-
     boolean deleteSession(String sessionId);
-
-    Optional<SessionSummary> saveSession(SessionSummary sessionSummary);
-
-    void saveMessages(String sessionId, String runId, List<AgentMessage> messages);
 
     /**
      * Reads messages for a specific session with pagination support.
@@ -50,13 +42,17 @@ public interface SessionStore {
      *                         pointer,
      *                         or {@link QueryDirection#NEWER} to fetch messages after the pointer.
      * @return A {@link BiScrollable} containing the list of messages (sorted chronologically) and pointers for
-     * further scrolling.
+     *         further scrolling.
      */
-    BiScrollable<AgentMessage> readMessages(
-            String sessionId,
-            int count,
-            boolean skipSystemPrompt,
-            BiScrollable.DataPointer pointer,
-            QueryDirection queryDirection);
+    BiScrollable<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
+            BiScrollable.DataPointer pointer, QueryDirection queryDirection);
+
+    void saveMessages(String sessionId, String runId, List<AgentMessage> messages);
+
+    Optional<SessionSummary> saveSession(SessionSummary sessionSummary);
+
+    Optional<SessionSummary> session(String sessionId);
+
+    BiScrollable<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection);
 
 }

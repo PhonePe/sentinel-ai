@@ -16,7 +16,10 @@
 
 package com.phonepe.sentinelai.toolbox.remotehttp;
 
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NonNull;
 
 /**
  * A tool abstraction that makes an HTTP call to remote server

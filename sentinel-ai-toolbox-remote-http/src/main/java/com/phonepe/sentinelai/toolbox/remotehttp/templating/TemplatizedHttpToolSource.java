@@ -19,9 +19,11 @@ package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 import com.bazaarvoice.jolt.Chainr;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolSource;
+
 import lombok.SneakyThrows;
 
 import java.util.List;
@@ -42,10 +44,10 @@ public abstract class TemplatizedHttpToolSource<S extends HttpToolSource<Templat
 
     @SneakyThrows
     protected HttpCallSpec expandTemplate(String arguments, TemplatizedHttpTool tool) {
-        final var spec = expander.convert(tool.getTemplate(),
-                                          mapper.readValue(arguments, new TypeReference<>() {}));
+        final var spec = expander.convert(tool.getTemplate(), mapper.readValue(arguments, new TypeReference<>() {
+        }));
         final var transformation = tool.getResponseTransformations();
-        if(transformation != null) {
+        if (transformation != null) {
             return switch (transformation.getType()) {
                 case JOLT -> spec.withResponseTransformer(new JoltTransformer(transformation.getConfig(), mapper));
             };
@@ -60,7 +62,8 @@ public abstract class TemplatizedHttpToolSource<S extends HttpToolSource<Templat
         @SneakyThrows
         @SuppressWarnings("rawtypes")
         public JoltTransformer(String config, ObjectMapper mapper) {
-            this.chainr = Chainr.fromSpec(mapper.readValue(config, new TypeReference<List>() {}));
+            this.chainr = Chainr.fromSpec(mapper.readValue(config, new TypeReference<List>() {
+            }));
             this.mapper = mapper;
         }
 

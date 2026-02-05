@@ -16,13 +16,14 @@
 
 package com.phonepe.sentinelai.session;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.session.history.selectors.MessageSelector;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -42,42 +43,14 @@ class MessageReadingUtilsTest {
         private final Map<String, List<AgentMessage>> messageData = new ConcurrentHashMap<>();
 
         @Override
-        public Optional<SessionSummary> session(final String sessionId) {
-            return Optional.empty();
-        }
-
-        @Override
-        public BiScrollable<SessionSummary> sessions(
-                final int count,
-                final String pointer,
-                final QueryDirection queryDirection
-        ) {
-            return null;
-        }
-
-        @Override
         public boolean deleteSession(final String sessionId) {
             return false;
         }
 
         @Override
-        public Optional<SessionSummary> saveSession(final SessionSummary sessionSummary) {
-            return Optional.empty();
-        }
-
-        @Override
-        public void saveMessages(final String sessionId, final String runId, final List<AgentMessage> messages) {
-            messageData.computeIfAbsent(sessionId, k -> new ArrayList<>()).addAll(messages);
-        }
-
-        @Override
-        public BiScrollable<AgentMessage> readMessages(
-                final String sessionId,
-                final int count,
-                final boolean skipSystemPrompt,
-                final BiScrollable.DataPointer pointer,
-                final QueryDirection queryDirection
-        ) {
+        public BiScrollable<AgentMessage> readMessages(final String sessionId, final int count,
+                final boolean skipSystemPrompt, final BiScrollable.DataPointer pointer,
+                final QueryDirection queryDirection) {
             // Get all messages for the session and sort them chronologically (oldest to newest)
             final var allMessages = messageData.getOrDefault(sessionId, List.of())
                     .stream()
@@ -91,15 +64,11 @@ class MessageReadingUtilsTest {
             else {
                 if (queryDirection == QueryDirection.OLDER && pointer.getOlder() != null) {
                     final var olderTimestamp = Long.parseLong(pointer.getOlder());
-                    filtered = allMessages.stream()
-                            .filter(m -> m.getTimestamp() < olderTimestamp)
-                            .toList();
+                    filtered = allMessages.stream().filter(m -> m.getTimestamp() < olderTimestamp).toList();
                 }
                 else if (queryDirection == QueryDirection.NEWER && pointer.getNewer() != null) {
                     final var newerTimestamp = Long.parseLong(pointer.getNewer());
-                    filtered = allMessages.stream()
-                            .filter(m -> m.getTimestamp() > newerTimestamp)
-                            .toList();
+                    filtered = allMessages.stream().filter(m -> m.getTimestamp() > newerTimestamp).toList();
                 }
                 else {
                     filtered = allMessages;
@@ -126,6 +95,27 @@ class MessageReadingUtilsTest {
             }
 
             return new BiScrollable<>(result, new BiScrollable.DataPointer(older, newer));
+        }
+
+        @Override
+        public void saveMessages(final String sessionId, final String runId, final List<AgentMessage> messages) {
+            messageData.computeIfAbsent(sessionId, k -> new ArrayList<>()).addAll(messages);
+        }
+
+        @Override
+        public Optional<SessionSummary> saveSession(final SessionSummary sessionSummary) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<SessionSummary> session(final String sessionId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public BiScrollable<SessionSummary> sessions(final int count, final String pointer,
+                final QueryDirection queryDirection) {
+            return null;
         }
     }
 
@@ -158,32 +148,21 @@ class MessageReadingUtilsTest {
         sessionStore.saveMessages(sessionId, "run-1", messages);
 
         // Read all since beginning
-        final var resultAll = MessageReadingUtils.readMessagesSinceId(
-                                                                      sessionStore,
-                                                                      setup,
-                                                                      sessionId,
-                                                                      null,
-                                                                      false,
-                                                                      List.of());
+        final var resultAll = MessageReadingUtils.readMessagesSinceId(sessionStore, setup, sessionId, null, false, List
+                .of());
 
         assertEquals(totalMessages, resultAll.getItems().size());
 
         // Verify strict chronological order
         IntStream.range(0, totalMessages).forEach(i -> {
             final var expectedId = "msg-" + (i + 1);
-            assertEquals(expectedId,
-                         resultAll.getItems().get(i).getMessageId(),
-                         "Message at index " + i + " should be " + expectedId);
+            assertEquals(expectedId, resultAll.getItems().get(i).getMessageId(),
+                    "Message at index " + i + " should be " + expectedId);
         });
 
         // Read since msg-5 (should return msg-6 to msg-10)
-        final var resultSince = MessageReadingUtils.readMessagesSinceId(
-                                                                        sessionStore,
-                                                                        setup,
-                                                                        sessionId,
-                                                                        "msg-5",
-                                                                        false,
-                                                                        List.of());
+        final var resultSince = MessageReadingUtils.readMessagesSinceId(sessionStore, setup, sessionId, "msg-5", false,
+                List.of());
         assertEquals(5, resultSince.getItems().size());
         IntStream.range(0, 5).forEach(i -> {
             final var expectedId = "msg-" + (i + 6);
@@ -209,13 +188,8 @@ class MessageReadingUtilsTest {
                 .filter(m -> !m.getMessageId().equals("msg-2"))
                 .toList();
 
-        final var result = MessageReadingUtils.readMessagesSinceId(
-                                                                   sessionStore,
-                                                                   setup,
-                                                                   sessionId,
-                                                                   null,
-                                                                   false,
-                                                                   List.of(selector));
+        final var result = MessageReadingUtils.readMessagesSinceId(sessionStore, setup, sessionId, null, false, List.of(
+                selector));
 
         assertEquals(2, result.getItems().size());
         assertEquals("msg-1", result.getItems().get(0).getMessageId());
@@ -284,6 +258,22 @@ class MessageReadingUtilsTest {
     }
 
     @Test
+    void testRearrangeMessagesWithEmptyToolCallId() {
+        final var userPrompt = UserPrompt.builder()
+                .sessionId(sessionId)
+                .runId("r1")
+                .messageId("u1")
+                .timestamp(1L)
+                .content("hi")
+                .build();
+        final List<AgentMessage> messages = List.of(userPrompt);
+
+        final var rearranged = MessageReadingUtils.rearrangeMessages(messages);
+        assertEquals(1, rearranged.size());
+        assertEquals("u1", rearranged.get(0).getMessageId());
+    }
+
+    @Test
     void testRearrangeMessagesWithMissingResponse() {
         final var tc1 = ToolCall.builder()
                 .sessionId(sessionId)
@@ -299,21 +289,5 @@ class MessageReadingUtilsTest {
         final var rearranged = MessageReadingUtils.rearrangeMessages(messages);
 
         assertTrue(rearranged.isEmpty());
-    }
-
-    @Test
-    void testRearrangeMessagesWithEmptyToolCallId() {
-        final var userPrompt = UserPrompt.builder()
-                .sessionId(sessionId)
-                .runId("r1")
-                .messageId("u1")
-                .timestamp(1L)
-                .content("hi")
-                .build();
-        final List<AgentMessage> messages = List.of(userPrompt);
-
-        final var rearranged = MessageReadingUtils.rearrangeMessages(messages);
-        assertEquals(1, rearranged.size());
-        assertEquals("u1", rearranged.get(0).getMessageId());
     }
 }

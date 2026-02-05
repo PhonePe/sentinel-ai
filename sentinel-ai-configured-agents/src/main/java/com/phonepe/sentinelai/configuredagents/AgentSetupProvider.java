@@ -24,6 +24,5 @@ import com.phonepe.sentinelai.core.agent.AgentSetup;
  */
 @FunctionalInterface
 public interface AgentSetupProvider {
-    AgentSetup from(final AgentSetup source,
-                    final AgentConfiguration agentConfiguration, ModelFactory modelFactory);
+    AgentSetup from(final AgentSetup source, final AgentConfiguration agentConfiguration, ModelFactory modelFactory);
 }

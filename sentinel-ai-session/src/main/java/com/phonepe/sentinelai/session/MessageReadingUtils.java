@@ -16,15 +16,8 @@
 
 package com.phonepe.sentinelai.session;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
 import com.google.common.base.Strings;
+
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
@@ -44,6 +37,14 @@ import com.phonepe.sentinelai.session.history.selectors.MessageSelector;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
 /**
  * Reads messages from the session store.
  * This class exists for the sole purpose making the process of reading messages in correct manner testable.
@@ -54,29 +55,24 @@ public class MessageReadingUtils {
 
     /**
      * Reads messages since the given message id.
+     *
      * @param sessionId               Session Id
      * @param lastSummarizedMessageId Last summarized message id
      * @param skipSystemPrompt        Whether to skip system prompt messages
      * @return BiScrollable of AgentMessages
      */
-    public static BiScrollable<AgentMessage> readMessagesSinceId(
-            final SessionStore sessionStore,
-            final AgentSessionExtensionSetup setup,
-            final String sessionId,
-            final String lastSummarizedMessageId,
-            final boolean skipSystemPrompt,
-            final List<MessageSelector> messageSelectors) {
+    public static BiScrollable<AgentMessage> readMessagesSinceId(final SessionStore sessionStore,
+            final AgentSessionExtensionSetup setup, final String sessionId, final String lastSummarizedMessageId,
+            final boolean skipSystemPrompt, final List<MessageSelector> messageSelectors) {
         var pointer = "";
         var messagesInThisBatch = List.<AgentMessage>of();
         var newPointer = "";
         BiScrollable<AgentMessage> response = null;
-        final var fetchCount = Math.min(AgentSessionExtensionSetup.MAX_HISTORICAL_MESSAGES_FETCH_COUNT,
-                                        Math.max(1, setup.getHistoricalMessageFetchSize()));
+        final var fetchCount = Math.min(AgentSessionExtensionSetup.MAX_HISTORICAL_MESSAGES_FETCH_COUNT, Math.max(1,
+                setup.getHistoricalMessageFetchSize()));
 
-        log.debug("Reading messages since id {} for session {}, {} messages per page",
-                  lastSummarizedMessageId,
-                  sessionId,
-                  fetchCount);
+        log.debug("Reading messages since id {} for session {}, {} messages per page", lastSummarizedMessageId,
+                sessionId, fetchCount);
 
         final var messagesFromLastSummary = new ArrayList<AgentMessage>();
 
@@ -85,11 +81,8 @@ public class MessageReadingUtils {
         // Apply filters after accumulating all messages since last Summary
         // This ensures that filters that need holistic view of history can work correctly
         do {
-            response = sessionStore.readMessages(sessionId,
-                                                 fetchCount,
-                                                 skipSystemPrompt,
-                                                 AgentUtils.getIfNotNull(response, BiScrollable::getPointer, null),
-                                                 QueryDirection.OLDER);
+            response = sessionStore.readMessages(sessionId, fetchCount, skipSystemPrompt, AgentUtils.getIfNotNull(
+                    response, BiScrollable::getPointer, null), QueryDirection.OLDER);
             newPointer = Strings.isNullOrEmpty(newPointer) ? response.getPointer().getNewer() : newPointer;
             final var batch = response.getItems();
             pointer = response.getPointer().getOlder();
@@ -121,15 +114,13 @@ public class MessageReadingUtils {
 
         // Sort all accumulated messages chronologically from oldest to newest
         List<AgentMessage> chronological = messagesFromLastSummary.stream()
-                .sorted(Comparator.comparing(AgentMessage::getTimestamp)
-                        .thenComparing(AgentMessage::getMessageId))
+                .sorted(Comparator.comparing(AgentMessage::getTimestamp).thenComparing(AgentMessage::getMessageId))
                 .toList();
         for (final var filter : messageSelectors) {
             chronological = filter.select(sessionId, chronological);
         }
 
-        return new BiScrollable<>(List.copyOf(chronological),
-                new BiScrollable.DataPointer(pointer, newPointer));
+        return new BiScrollable<>(List.copyOf(chronological), new BiScrollable.DataPointer(pointer, newPointer));
     }
 
     /**
@@ -149,9 +140,8 @@ public class MessageReadingUtils {
                     if (!processedToolCallIds.contains(key) && toolCallIds.containsKey(key)) {
                         final var msgs = toolCallIds.get(key);
                         if (msgs.size() != 2) {
-                            log.warn("Tool call id {} does not have both request and response. Messages: {}",
-                                     key,
-                                     msgs);
+                            log.warn("Tool call id {} does not have both request and response. Messages: {}", key,
+                                    msgs);
                         }
                         else {
                             rearrangedMessages.add(msgs.get(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE));
@@ -206,12 +196,17 @@ public class MessageReadingUtils {
     private static String toolCallId(final AgentMessage message) {
         return message.accept(new AgentMessageVisitor<>() {
             @Override
+            public String visit(AgentGenericMessage genericMessage) {
+                return "";
+            }
+
+            @Override
             public String visit(AgentRequest request) {
                 return request.accept(new AgentRequestVisitor<>() {
 
                     @Override
-                    public String visit(com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt systemPrompt) {
-                        return "";
+                    public String visit(ToolCallResponse toolCallResponse) {
+                        return toolCallResponse.getToolCallId();
                     }
 
                     @Override
@@ -220,8 +215,8 @@ public class MessageReadingUtils {
                     }
 
                     @Override
-                    public String visit(ToolCallResponse toolCallResponse) {
-                        return toolCallResponse.getToolCallId();
+                    public String visit(com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt systemPrompt) {
+                        return "";
                     }
                 });
             }
@@ -230,12 +225,12 @@ public class MessageReadingUtils {
             public String visit(AgentResponse response) {
                 return response.accept(new AgentResponseVisitor<String>() {
                     @Override
-                    public String visit(Text text) {
+                    public String visit(StructuredOutput structuredOutput) {
                         return "";
                     }
 
                     @Override
-                    public String visit(StructuredOutput structuredOutput) {
+                    public String visit(Text text) {
                         return "";
                     }
 
@@ -245,13 +240,8 @@ public class MessageReadingUtils {
                     }
                 });
             }
-
-            @Override
-            public String visit(AgentGenericMessage genericMessage) {
-                return "";
-            }
         });
     }
 
-    
+
 }

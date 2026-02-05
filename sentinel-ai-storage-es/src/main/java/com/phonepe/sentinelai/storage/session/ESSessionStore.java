@@ -16,18 +16,9 @@
 
 package com.phonepe.sentinelai.storage.session;
 
-import co.elastic.clients.elasticsearch._types.FieldValue;
-import co.elastic.clients.elasticsearch._types.SortOrder;
-import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
-import co.elastic.clients.elasticsearch.core.BulkRequest;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.core.search.Hit;
-import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
-import co.elastic.clients.elasticsearch.ingest.Processor;
-import co.elastic.clients.elasticsearch.ingest.SetProcessor;
-import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
@@ -39,6 +30,17 @@ import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.storage.ESClient;
 import com.phonepe.sentinelai.storage.IndexSettings;
 import com.phonepe.sentinelai.storage.memory.ESAgentMemoryDocument;
+
+import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import co.elastic.clients.elasticsearch.ingest.Processor;
+import co.elastic.clients.elasticsearch.ingest.SetProcessor;
+import co.elastic.clients.json.JsonData;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -46,7 +48,12 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.UnaryOperator;
 
@@ -80,12 +87,8 @@ public class ESSessionStore implements SessionStore {
     private final ObjectMapper mapper;
 
     @Builder
-    public ESSessionStore(
-            @NonNull ESClient client,
-            String indexPrefix,
-            IndexSettings sessionIndexSettings,
-            IndexSettings messageIndexSettings,
-            ObjectMapper mapper) {
+    public ESSessionStore(@NonNull ESClient client, String indexPrefix, IndexSettings sessionIndexSettings,
+            IndexSettings messageIndexSettings, ObjectMapper mapper) {
         this.client = client;
         this.indexPrefix = indexPrefix;
         this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
@@ -97,12 +100,10 @@ public class ESSessionStore implements SessionStore {
     @SneakyThrows
     public Optional<SessionSummary> session(String sessionId) {
         final var indexName = sessionIndexName();
-        final var doc = client.getElasticsearchClient().get(g -> g.index(indexName)
-                .id(sessionId)
-                .refresh(true), ESSessionDocument.class);
+        final var doc = client.getElasticsearchClient()
+                .get(g -> g.index(indexName).id(sessionId).refresh(true), ESSessionDocument.class);
         if (doc.found() && doc.source() != null) {
-            return Optional.of(doc.source())
-                    .map(this::toWireSession);
+            return Optional.of(doc.source()).map(this::toWireSession);
         }
         return Optional.empty();
     }
@@ -110,27 +111,18 @@ public class ESSessionStore implements SessionStore {
 
     @Override
     @SneakyThrows
-    public BiScrollable<SessionSummary> sessions(
-            int count,
-            String nextPointer,
-            QueryDirection queryDirection) {
+    public BiScrollable<SessionSummary> sessions(int count, String nextPointer, QueryDirection queryDirection) {
         final var indexName = sessionIndexName();
         final var searchResult = client.getElasticsearchClient()
-                .search(s -> sessionQuery(count, indexName, s, nextPointer, queryDirection),
-                        ESSessionDocument.class);
+                .search(s -> sessionQuery(count, indexName, s, nextPointer, queryDirection), ESSessionDocument.class);
         final var hits = searchResult.hits().hits();
-        final var summaries = hits.stream()
-                .map(Hit::source)
-                .filter(Objects::nonNull)
-                .map(this::toWireSession)
-                .toList();
+        final var summaries = hits.stream().map(Hit::source).filter(Objects::nonNull).map(this::toWireSession).toList();
 
-        final var nextResultPointer = hits.isEmpty()
-                                      ? null
-                                      : mapper.writeValueAsString(new SessionScrollPointer(
-                                              hits.get(hits.size() - 1).sort().get(0).longValue(),
-                                              hits.get(hits.size() - 1).sort().get(1).stringValue()
-                                      ));
+        final var nextResultPointer = hits.isEmpty() ? null : mapper.writeValueAsString(new SessionScrollPointer(hits
+                .get(hits.size() - 1)
+                .sort()
+                .get(0)
+                .longValue(), hits.get(hits.size() - 1).sort().get(1).stringValue()));
 
         final var older = queryDirection == QueryDirection.OLDER ? nextResultPointer : null;
         final var newer = queryDirection == QueryDirection.NEWER ? nextResultPointer : null;
@@ -141,9 +133,7 @@ public class ESSessionStore implements SessionStore {
     @SneakyThrows
     public boolean deleteSession(String sessionId) {
         final var result = client.getElasticsearchClient()
-                .delete(d -> d.index(sessionIndexName())
-                        .id(sessionId)
-                        .refresh(True));
+                .delete(d -> d.index(sessionIndexName()).id(sessionId).refresh(True));
         log.info("Result of deleting session {}: {}", sessionId, result.result());
         return true;
     }
@@ -160,18 +150,13 @@ public class ESSessionStore implements SessionStore {
         return sortOptions;
     }
 
-    private SearchRequest.Builder sessionQuery(
-            final int count,
-            final String indexName,
-            final SearchRequest.Builder searchBuilder,
-            final String nextPagePointer,
+    private SearchRequest.Builder sessionQuery(final int count, final String indexName,
+            final SearchRequest.Builder searchBuilder, final String nextPagePointer,
             final QueryDirection queryDirection) {
         final var sortOrder = queryDirection == QueryDirection.NEWER ? SortOrder.Asc : SortOrder.Desc;
         searchBuilder.index(indexName)
-                .sort(so -> so.field(f -> f.field(ESSessionDocument.Fields.updatedAtMicro)
-                        .order(sortOrder)))
-                .sort(so -> so.field(f -> f.field(ESSessionDocument.Fields.sessionId)
-                        .order(sortOrder)))
+                .sort(so -> so.field(f -> f.field(ESSessionDocument.Fields.updatedAtMicro).order(sortOrder)))
+                .sort(so -> so.field(f -> f.field(ESSessionDocument.Fields.sessionId).order(sortOrder)))
                 .size(count);
         if (!Strings.isNullOrEmpty(nextPagePointer)) {
             searchBuilder.searchAfter(sortOptions(nextPagePointer));
@@ -185,13 +170,8 @@ public class ESSessionStore implements SessionStore {
         final var stored = toStoredSession(sessionSummary);
         final var indexName = sessionIndexName();
         final var result = client.getElasticsearchClient()
-                .update(u -> u.index(indexName)
-                                .id(stored.getSessionId())
-                                .doc(stored)
-                                .docAsUpsert(true)
-                                .refresh(True),
-                        ESSessionDocument.class
-                       )
+                .update(u -> u.index(indexName).id(stored.getSessionId()).doc(stored).docAsUpsert(true).refresh(True),
+                        ESSessionDocument.class)
                 .result();
 
         log.debug("Result of indexing: {}", result);
@@ -208,37 +188,27 @@ public class ESSessionStore implements SessionStore {
                 .toString();
         messages.forEach(message -> {
             final var storedMessage = toStoredMessage(sessionId, runId, message);
-            bulkOpBuilder.operations(op -> op.update(
-                    idx -> idx.index(indexName)
-                            .id("%s-%04d".formatted(idPrefix, currIndex.getAndIncrement()))
-                            .action(u -> u.doc(storedMessage)
-                                    .docAsUpsert(true))));
+            bulkOpBuilder.operations(op -> op.update(idx -> idx.index(indexName)
+                    .id("%s-%04d".formatted(idPrefix, currIndex.getAndIncrement()))
+                    .action(u -> u.doc(storedMessage).docAsUpsert(true))));
         });
         bulkOpBuilder.refresh(True);
-        final var response = client.getElasticsearchClient()
-                .bulk(bulkOpBuilder.build());
+        final var response = client.getElasticsearchClient().bulk(bulkOpBuilder.build());
         log.debug("Bulk message indexing response: {}", response);
     }
 
     @Override
     @SneakyThrows
-    public BiScrollable<AgentMessage> readMessages(
-            String sessionId,
-            int count,
-            boolean skipSystemPrompt,
-            BiScrollable.DataPointer inPointer,
-            QueryDirection queryDirection) {
-        final var nextPointer = queryDirection == QueryDirection.OLDER
-                                ? AgentUtils.getIfNotNull(inPointer, BiScrollable.DataPointer::getOlder, "")
-                                : AgentUtils.getIfNotNull(inPointer, BiScrollable.DataPointer::getNewer, "");
-        final var pointer = Strings.isNullOrEmpty(nextPointer)
-                            ? null
-                            : mapper.readValue(nextPointer, MessageScrollPointer.class);
-        final var queryBuilder = new SearchRequest.Builder()
-                .index(messagesIndexName());
+    public BiScrollable<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
+            BiScrollable.DataPointer inPointer, QueryDirection queryDirection) {
+        final var nextPointer = queryDirection == QueryDirection.OLDER ? AgentUtils.getIfNotNull(inPointer,
+                BiScrollable.DataPointer::getOlder, "") : AgentUtils.getIfNotNull(inPointer,
+                        BiScrollable.DataPointer::getNewer, "");
+        final var pointer = Strings.isNullOrEmpty(nextPointer) ? null : mapper.readValue(nextPointer,
+                MessageScrollPointer.class);
+        final var queryBuilder = new SearchRequest.Builder().index(messagesIndexName());
         final var boolBuilder = new BoolQuery.Builder();
-        boolBuilder.filter(f -> f.term(t ->
-                                               t.field(ESMessageDocument.Fields.sessionId).value(sessionId)));
+        boolBuilder.filter(f -> f.term(t -> t.field(ESMessageDocument.Fields.sessionId).value(sessionId)));
         if (skipSystemPrompt) {
             boolBuilder.mustNot(f -> f.term(t -> t.field(ESMessageDocument.Fields.messageType)
                     .value(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE.name())));
@@ -252,40 +222,31 @@ public class ESSessionStore implements SessionStore {
         if (null != pointer) {
             queryBuilder.searchAfter(List.of(FieldValue.of(pointer.timestamp()), FieldValue.of(pointer.id())));
         }
-        final var searchResult = client.getElasticsearchClient()
-                .search(queryBuilder.build(), ESMessageDocument.class);
+        final var searchResult = client.getElasticsearchClient().search(queryBuilder.build(), ESMessageDocument.class);
         final var hits = searchResult.hits().hits();
 
         final var documents = new ArrayList<>(hits.stream()
-                                                      .map(Hit::source)
-                                                      .filter(Objects::nonNull)
-                                                      .limit(count)
-                                                      .toList());
-        final var nextResultSPointer = hits.isEmpty()
-                                       ? null
-                                       : mapper.writeValueAsString(new MessageScrollPointer(
-                                               hits.get(hits.size() - 1).sort().get(0).longValue(),
-                                               hits.get(hits.size() - 1).sort().get(1).stringValue()
-                                       ));
+                .map(Hit::source)
+                .filter(Objects::nonNull)
+                .limit(count)
+                .toList());
+        final var nextResultSPointer = hits.isEmpty() ? null : mapper.writeValueAsString(new MessageScrollPointer(hits
+                .get(hits.size() - 1)
+                .sort()
+                .get(0)
+                .longValue(), hits.get(hits.size() - 1).sort().get(1).stringValue()));
         final var convertedMessages = documents.stream()
                 .limit(count)
                 .map(this::toWireMessage)
-                .sorted(Comparator.comparingLong(AgentMessage::getTimestamp)
-                                .thenComparing(AgentMessage::getMessageId))
+                .sorted(Comparator.comparingLong(AgentMessage::getTimestamp).thenComparing(AgentMessage::getMessageId))
                 .toList();
 
         final var messages = List.copyOf(convertedMessages);
         return switch (queryDirection) {
-            case NEWER -> new BiScrollable<>(
-                    messages,
-                    new BiScrollable.DataPointer(
-                            AgentUtils.getIfNotNull(inPointer, BiScrollable.DataPointer::getOlder, ""),
-                            nextResultSPointer));
-            case OLDER -> new BiScrollable<>(
-                    messages,
-                    new BiScrollable.DataPointer(
-                            nextResultSPointer,
-                            AgentUtils.getIfNotNull(inPointer, BiScrollable.DataPointer::getNewer, "")));
+            case NEWER -> new BiScrollable<>(messages, new BiScrollable.DataPointer(AgentUtils.getIfNotNull(inPointer,
+                    BiScrollable.DataPointer::getOlder, ""), nextResultSPointer));
+            case OLDER -> new BiScrollable<>(messages, new BiScrollable.DataPointer(nextResultSPointer, AgentUtils
+                    .getIfNotNull(inPointer, BiScrollable.DataPointer::getNewer, "")));
         };
     }
 
@@ -328,62 +289,35 @@ public class ESSessionStore implements SessionStore {
 
     @SneakyThrows
     private void ensureSessionIndex(IndexSettings indexSettings) {
-        ensureIndex(indexSettings, sessionIndexName(), SESSION_AUTO_UPDATE_PIPELINE,
-                    builder -> builder.mappings(
-                            mapping -> mapping
-                                    .properties(ESSessionDocument.Fields.sessionId,
-                                                p -> p.keyword(t -> t))
-                                    .properties(ESSessionDocument.Fields.summary,
-                                                p -> p.text(t -> t))
-                                    .properties(ESSessionDocument.Fields.topics,
-                                                p -> p.keyword(t -> t))
-                                    .properties(ESSessionDocument.Fields.lastSummarizedMessageId,
-                                                p -> p.text(t -> t.store(false).index(false)))
-                                    .properties(ESSessionDocument.Fields.updatedAtMicro,
-                                                p -> p.long_(t -> t))
-                                    .properties(ESSessionDocument.Fields.createdAt,
-                                                p -> p.date(t -> t))
-                                    .properties(ESSessionDocument.Fields.updatedAt,
-                                                p -> p.date(t -> t))
-                                               ),
-                    ESSessionDocument.Fields.createdAt,
-                    ESSessionDocument.Fields.updatedAt);
+        ensureIndex(indexSettings, sessionIndexName(), SESSION_AUTO_UPDATE_PIPELINE, builder -> builder.mappings(
+                mapping -> mapping.properties(ESSessionDocument.Fields.sessionId, p -> p.keyword(t -> t))
+                        .properties(ESSessionDocument.Fields.summary, p -> p.text(t -> t))
+                        .properties(ESSessionDocument.Fields.topics, p -> p.keyword(t -> t))
+                        .properties(ESSessionDocument.Fields.lastSummarizedMessageId, p -> p.text(t -> t.store(false)
+                                .index(false)))
+                        .properties(ESSessionDocument.Fields.updatedAtMicro, p -> p.long_(t -> t))
+                        .properties(ESSessionDocument.Fields.createdAt, p -> p.date(t -> t))
+                        .properties(ESSessionDocument.Fields.updatedAt, p -> p.date(t -> t))),
+                ESSessionDocument.Fields.createdAt, ESSessionDocument.Fields.updatedAt);
     }
 
     @SneakyThrows
     private void ensureMessageIndex(IndexSettings indexSettings) {
-        ensureIndex(indexSettings,
-                    messagesIndexName(),
-                    MESSAGE_AUTO_UPDATE_PIPELINE,
-                    builder -> builder.mappings(
-                            mapping -> mapping
-                                    .properties(ESMessageDocument.Fields.sessionId,
-                                                p -> p.keyword(t -> t))
-                                    .properties(ESMessageDocument.Fields.runId,
-                                                p -> p.keyword(t -> t))
-                                    .properties(ESMessageDocument.Fields.messageId,
-                                                p -> p.keyword(t -> t))
-                                    .properties(ESMessageDocument.Fields.messageType,
-                                                p -> p.keyword(t -> t))
-                                    .properties(ESMessageDocument.Fields.timestamp,
-                                                p -> p.long_(t -> t))
-                                    .properties(ESMessageDocument.Fields.content,
-                                                p -> p.text(t -> t.store(false).index(false)))
-                                    .properties(ESAgentMemoryDocument.Fields.topics,
-                                                p -> p.keyword(t -> t))
-                                    .properties(ESAgentMemoryDocument.Fields.createdAt,
-                                                p -> p.date(t -> t))
-                                    .properties(ESAgentMemoryDocument.Fields.updatedAt,
-                                                p -> p.date(t -> t))),
-                    ESMessageDocument.Fields.createdAt,
-                    ESMessageDocument.Fields.updatedAt);
+        ensureIndex(indexSettings, messagesIndexName(), MESSAGE_AUTO_UPDATE_PIPELINE, builder -> builder.mappings(
+                mapping -> mapping.properties(ESMessageDocument.Fields.sessionId, p -> p.keyword(t -> t))
+                        .properties(ESMessageDocument.Fields.runId, p -> p.keyword(t -> t))
+                        .properties(ESMessageDocument.Fields.messageId, p -> p.keyword(t -> t))
+                        .properties(ESMessageDocument.Fields.messageType, p -> p.keyword(t -> t))
+                        .properties(ESMessageDocument.Fields.timestamp, p -> p.long_(t -> t))
+                        .properties(ESMessageDocument.Fields.content, p -> p.text(t -> t.store(false).index(false)))
+                        .properties(ESAgentMemoryDocument.Fields.topics, p -> p.keyword(t -> t))
+                        .properties(ESAgentMemoryDocument.Fields.createdAt, p -> p.date(t -> t))
+                        .properties(ESAgentMemoryDocument.Fields.updatedAt, p -> p.date(t -> t))),
+                ESMessageDocument.Fields.createdAt, ESMessageDocument.Fields.updatedAt);
     }
 
-    private void ensureIndex(
-            IndexSettings indexSettings, String indexName,
-            String pipelineName,
-            UnaryOperator<CreateIndexRequest.Builder> mapper,
-            String createdAtField,
+    private void ensureIndex(IndexSettings indexSettings, String indexName, String pipelineName,
+            UnaryOperator<CreateIndexRequest.Builder> mapper, String createdAtField,
             String updatedAtField) throws IOException {
         final var elasticsearchClient = client.getElasticsearchClient();
         if (elasticsearchClient.indices().exists(ex -> ex.index(indexName)).value()) {
@@ -398,27 +332,20 @@ public class ESSessionStore implements SessionStore {
                                     .defaultPipeline(pipelineName)))
                     .acknowledged();
             log.info("Index creation status for index {}: {}", indexName, creationStatus);
-            if (elasticsearchClient
-                    .ingest()
-                    .getPipeline(p -> p.id(pipelineName))
-                    .result()
-                    .isEmpty()) {
+            if (elasticsearchClient.ingest().getPipeline(p -> p.id(pipelineName)).result().isEmpty()) {
                 log.info("Creating pipeline {} for timestamp update in memory document", pipelineName);
-                final var pipelineCreated = elasticsearchClient
-                        .ingest()
+                final var pipelineCreated = elasticsearchClient.ingest()
                         .putPipeline(p -> p.id(pipelineName)
                                 .description("Update created and updated fields for sessions")
-                                .processors(List.of(new Processor(new SetProcessor.Builder()
-                                                                          .if_("ctx?.createdAt == null")
-                                                                          .field(createdAtField)
-                                                                          .override(false)
-                                                                          .value(JsonData.of("{{_ingest.timestamp}}"))
-                                                                          .build()),
-                                                    new Processor(new SetProcessor.Builder()
-                                                                          .field(updatedAtField)
-                                                                          .override(true)
-                                                                          .value(JsonData.of("{{_ingest.timestamp}}"))
-                                                                          .build()))))
+                                .processors(List.of(new Processor(new SetProcessor.Builder().if_(
+                                        "ctx?.createdAt == null")
+                                        .field(createdAtField)
+                                        .override(false)
+                                        .value(JsonData.of("{{_ingest.timestamp}}"))
+                                        .build()), new Processor(new SetProcessor.Builder().field(updatedAtField)
+                                                .override(true)
+                                                .value(JsonData.of("{{_ingest.timestamp}}"))
+                                                .build()))))
                         .acknowledged();
                 log.info("Pipeline {} creation status: {}", pipelineName, pipelineCreated);
             }
