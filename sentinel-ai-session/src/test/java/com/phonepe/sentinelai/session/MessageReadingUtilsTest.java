@@ -150,13 +150,13 @@ class MessageReadingUtilsTest {
                                                                       false,
                                                                       List.of());
 
-        assertEquals(totalMessages, resultAll.getItems().size());
+        assertEquals(totalMessages, resultAll.size());
 
         // Verify strict chronological order
         IntStream.range(0, totalMessages).forEach(i -> {
             final var expectedId = "msg-" + (i + 1);
             assertEquals(expectedId,
-                         resultAll.getItems().get(i).getMessageId(),
+                         resultAll.get(i).getMessageId(),
                          "Message at index " + i + " should be " + expectedId);
         });
 
@@ -168,10 +168,10 @@ class MessageReadingUtilsTest {
                                                                         "msg-5",
                                                                         false,
                                                                         List.of());
-        assertEquals(5, resultSince.getItems().size());
+        assertEquals(5, resultSince.size());
         IntStream.range(0, 5).forEach(i -> {
             final var expectedId = "msg-" + (i + 6);
-            assertEquals(expectedId, resultSince.getItems().get(i).getMessageId());
+            assertEquals(expectedId, resultSince.get(i).getMessageId());
         });
     }
 
@@ -201,9 +201,9 @@ class MessageReadingUtilsTest {
                                                                    false,
                                                                    List.of(selector));
 
-        assertEquals(2, result.getItems().size());
-        assertEquals("msg-1", result.getItems().get(0).getMessageId());
-        assertEquals("msg-3", result.getItems().get(1).getMessageId());
+        assertEquals(2, result.size());
+        assertEquals("msg-1", result.get(0).getMessageId());
+        assertEquals("msg-3", result.get(1).getMessageId());
     }
 
     @Test

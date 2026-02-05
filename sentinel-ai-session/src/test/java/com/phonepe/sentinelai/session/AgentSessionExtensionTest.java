@@ -131,7 +131,7 @@ class AgentSessionExtensionTest {
         TestUtils.setupMocks(6, "se", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = new SimpleOpenAIModel(
+        final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
                         .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
@@ -219,7 +219,7 @@ class AgentSessionExtensionTest {
                                             .mapper(objectMapper)
                                             .sessionStore(sessionStore)
                                             .setup(AgentSessionExtensionSetup.builder()
-                                                           .autoSummarizationThreshold(0)
+                                                           .autoSummarizationThresholdPercentage(0)
                                                            .build())
                                             .build()))
                 .build()

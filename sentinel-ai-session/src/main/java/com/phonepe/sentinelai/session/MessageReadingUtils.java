@@ -43,7 +43,7 @@ public class MessageReadingUtils {
      * @param skipSystemPrompt        Whether to skip system prompt messages
      * @return BiScrollable of AgentMessages
      */
-    public static BiScrollable<AgentMessage> readMessagesSinceId(
+    public static List<AgentMessage> readMessagesSinceId(
             final SessionStore sessionStore,
             final AgentSessionExtensionSetup setup,
             final String sessionId,
@@ -112,8 +112,7 @@ public class MessageReadingUtils {
             chronological = filter.select(sessionId, chronological);
         }
 
-        return new BiScrollable<>(List.copyOf(chronological),
-                new BiScrollable.DataPointer(pointer, newPointer));
+        return List.copyOf(chronological);
     }
 
     /**

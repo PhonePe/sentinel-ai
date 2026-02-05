@@ -140,7 +140,7 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                                .build(),
                                        AgentSessionExtension.<UserInput, OutputObject, SimpleAgent>builder()
                                                .sessionStore(sessionStorage)
-                                               .setup(AgentSessionExtensionSetup.DEFAULT.withAutoSummarizationThreshold(1))
+                                               .setup(AgentSessionExtensionSetup.DEFAULT.withAutoSummarizationThresholdPercentage(1))
                                                .build());
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
