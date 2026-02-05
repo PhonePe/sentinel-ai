@@ -194,20 +194,20 @@ class AgentSessionExtensionTest {
         TestUtils.setupMocks(6, "se", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = new SimpleOpenAIModel("gpt-4o",
-                                                SimpleOpenAIAzure.builder()
-                                                        .baseUrl(TestUtils
-                                                                .getTestProperty("AZURE_ENDPOINT",
-                                                                                 wiremock.getHttpBaseUrl()))
-                                                        .apiKey(TestUtils
-                                                                .getTestProperty("AZURE_API_KEY",
-                                                                                 "BLAH"))
-                                                        .apiVersion("2024-10-21")
-                                                        .objectMapper(objectMapper)
-                                                        .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
-                                                                .build()))
-                                                        .build(),
-                                                objectMapper);
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
+                                                                  .build()))
+                                                          .build(),
+                                                  objectMapper);
 
 
         final var agent = SimpleAgent.builder()
@@ -288,7 +288,7 @@ class AgentSessionExtensionTest {
                         .mapper(objectMapper)
                         .sessionStore(sessionStore)
                         .setup(AgentSessionExtensionSetup.builder()
-                                .autoSummarizationThreshold(0)
+                                .autoSummarizationThresholdPercentage(0)
                                 .build())
                         .build()))
                 .build()

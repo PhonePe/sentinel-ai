@@ -179,8 +179,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                       sessionId,
                                                       lastSummarizedMessageId,
                                                       true,
-                                                      messageSelectors)
-                .getItems();
+                                                      messageSelectors);
         if (agentMessages.isEmpty()) {
             log.info("No messages found for session {}", sessionId);
             return List.of();
@@ -195,11 +194,11 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return "agent-session";
     }
 
+
     @Override
     public void onExtensionRegistrationCompleted(A agent) {
         agent.onRequestCompleted().connect(this::extractAndStoreHistory);
     }
-
 
     @Override
     public Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode) {
@@ -210,12 +209,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     public AgentSessionExtension<R, T, A> resetMessagePersistencePreFilters() {
         this.historyModifiers.clear();
         log.warn("All message persistence pre-filters have been cleared.");
-        return this;
-    }
-
-    public AgentSessionExtension<R, T, A> resetMessageSelectors() {
-        this.messageSelectors.clear();
-        log.warn("All message selectors have been cleared.");
         return this;
     }
 
@@ -233,7 +226,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     protected UserPrompt buildSummarizationUserPrompt(final AgentRunContext<R> context,
                                                       final String sessionId,
                                                       final String currentSummary,
-                                                      final BiScrollable<AgentMessage> sessionMessages) throws JsonProcessingException {
+                                                      final List<AgentMessage> sessionMessages) throws JsonProcessingException {
         return new UserPrompt(sessionId,
                               context.getRunId(),
                               """
@@ -283,7 +276,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         final var contextWindowSize = agentSetup.getModelSettings()
                 .getModelAttributes()
                 .getContextWindowSize();
-        final var threshold = setup.getAutoSummarizationThreshold();
+        final var threshold = setup.getAutoSummarizationThresholdPercentage();
         if (threshold == 0) {
             log.debug("Compaction needed as threshold is set to 0 (Every Run).");
             return true;
@@ -450,8 +443,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         else {
             // For new sessions, we do summarize, but we do not want to store the last message id
             final var newestMessageId = existingSession == null ? null
-                    : sessionMessages.getItems()
-                            .stream()
+                    : sessionMessages.stream()
                             .sorted(Comparator.comparing(
                                                          AgentMessage::getTimestamp)
                                     .thenComparing(AgentMessage::getMessageId))

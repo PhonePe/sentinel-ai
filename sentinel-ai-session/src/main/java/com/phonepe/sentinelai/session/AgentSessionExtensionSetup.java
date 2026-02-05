@@ -59,5 +59,5 @@ public class AgentSessionExtensionSetup {
      * Threshold of percentage of tokens used in the session beyond which automatic summarization is triggered.
      */
     @Builder.Default
-    int autoSummarizationThreshold = DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD;
+    int autoSummarizationThresholdPercentage = DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD;
 }
