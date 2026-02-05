@@ -1,11 +1,29 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.configuredagents;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolSource;
 import com.phonepe.sentinelai.toolbox.remotehttp.UpstreamResolver;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.TemplatizedHttpTool;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.TemplatizedHttpToolSource;
+
 import lombok.Builder;
 import lombok.NonNull;
 import okhttp3.OkHttpClient;
@@ -32,40 +50,38 @@ public class HttpToolboxFactory {
     @NonNull
     private final Function<String, UpstreamResolver> upstreamResolver;
 
-    @Builder(builderClassName = "DefaultHttpToolboxFactoryBuilder")
-    public HttpToolboxFactory(
-            @NonNull OkHttpClient okHttpClient,
-            @NonNull ObjectMapper objectMapper,
-            @NonNull HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource,
-            @NonNull Function<String, UpstreamResolver> upstreamResolver) {
-        this(name -> okHttpClient,
-             objectMapper,
-             toolConfigSource,
-             upstreamResolver);
-    }
-
     @Builder(builderClassName = "ProvidingHttpToolboxFactoryBuilder", builderMethodName = "httpClientProvidingBuilder")
-    public HttpToolboxFactory(
-            @NonNull Function<String, OkHttpClient> okHttpClientProvider,
-            @NonNull ObjectMapper objectMapper,
-            @NonNull HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource,
-            @NonNull Function<String, UpstreamResolver> upstreamResolver) {
+    public HttpToolboxFactory(@NonNull Function<String, OkHttpClient> okHttpClientProvider,
+                              @NonNull ObjectMapper objectMapper,
+                              @NonNull HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource,
+                              @NonNull Function<String, UpstreamResolver> upstreamResolver) {
         this.okHttpClientProvider = okHttpClientProvider;
         this.objectMapper = objectMapper;
         this.toolConfigSource = toolConfigSource;
         this.upstreamResolver = upstreamResolver;
     }
 
+    @Builder(builderClassName = "DefaultHttpToolboxFactoryBuilder")
+    public HttpToolboxFactory(@NonNull OkHttpClient okHttpClient,
+                              @NonNull ObjectMapper objectMapper,
+                              @NonNull HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource,
+                              @NonNull Function<String, UpstreamResolver> upstreamResolver) {
+        this(name -> okHttpClient,
+             objectMapper,
+             toolConfigSource,
+             upstreamResolver);
+    }
+
     public Optional<HttpToolBox> create(@NonNull final String upstream) {
         if (!toolConfigSource.upstreams().contains(upstream)) {
             return Optional.empty();
         }
-        return Optional.of(new HttpToolBox(
-                upstream,
-                Objects.requireNonNull(okHttpClientProvider.apply(upstream),
-                                       "Could not resolve http client for upstream: " + upstream),
-                toolConfigSource,
-                objectMapper,
-                upstreamResolver.apply(upstream)));
+        return Optional.of(new HttpToolBox(upstream,
+                                           Objects.requireNonNull(okHttpClientProvider
+                                                   .apply(upstream),
+                                                                  "Could not resolve http client for upstream: " + upstream),
+                                           toolConfigSource,
+                                           objectMapper,
+                                           upstreamResolver.apply(upstream)));
     }
 }

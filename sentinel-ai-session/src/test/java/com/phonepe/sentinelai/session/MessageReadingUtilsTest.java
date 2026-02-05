@@ -1,12 +1,29 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.session;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.session.history.selectors.MessageSelector;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -26,46 +43,22 @@ class MessageReadingUtilsTest {
         private final Map<String, List<AgentMessage>> messageData = new ConcurrentHashMap<>();
 
         @Override
-        public Optional<SessionSummary> session(final String sessionId) {
-            return Optional.empty();
-        }
-
-        @Override
-        public BiScrollable<SessionSummary> sessions(
-                final int count,
-                final String pointer,
-                final QueryDirection queryDirection
-        ) {
-            return null;
-        }
-
-        @Override
         public boolean deleteSession(final String sessionId) {
             return false;
         }
 
         @Override
-        public Optional<SessionSummary> saveSession(final SessionSummary sessionSummary) {
-            return Optional.empty();
-        }
-
-        @Override
-        public void saveMessages(final String sessionId, final String runId, final List<AgentMessage> messages) {
-            messageData.computeIfAbsent(sessionId, k -> new ArrayList<>()).addAll(messages);
-        }
-
-        @Override
-        public BiScrollable<AgentMessage> readMessages(
-                final String sessionId,
-                final int count,
-                final boolean skipSystemPrompt,
-                final BiScrollable.DataPointer pointer,
-                final QueryDirection queryDirection
-        ) {
+        public BiScrollable<AgentMessage> readMessages(final String sessionId,
+                                                       final int count,
+                                                       final boolean skipSystemPrompt,
+                                                       final BiScrollable.DataPointer pointer,
+                                                       final QueryDirection queryDirection) {
             // Get all messages for the session and sort them chronologically (oldest to newest)
-            final var allMessages = messageData.getOrDefault(sessionId, List.of())
+            final var allMessages = messageData.getOrDefault(sessionId,
+                                                             List.of())
                     .stream()
-                    .sorted((m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()))
+                    .sorted((m1, m2) -> Long.compare(m1.getTimestamp(),
+                                                     m2.getTimestamp()))
                     .toList();
 
             List<AgentMessage> filtered;
@@ -73,14 +66,18 @@ class MessageReadingUtilsTest {
                 filtered = allMessages;
             }
             else {
-                if (queryDirection == QueryDirection.OLDER && pointer.getOlder() != null) {
-                    final var olderTimestamp = Long.parseLong(pointer.getOlder());
+                if (queryDirection == QueryDirection.OLDER && pointer
+                        .getOlder() != null) {
+                    final var olderTimestamp = Long.parseLong(pointer
+                            .getOlder());
                     filtered = allMessages.stream()
                             .filter(m -> m.getTimestamp() < olderTimestamp)
                             .toList();
                 }
-                else if (queryDirection == QueryDirection.NEWER && pointer.getNewer() != null) {
-                    final var newerTimestamp = Long.parseLong(pointer.getNewer());
+                else if (queryDirection == QueryDirection.NEWER && pointer
+                        .getNewer() != null) {
+                    final var newerTimestamp = Long.parseLong(pointer
+                            .getNewer());
                     filtered = allMessages.stream()
                             .filter(m -> m.getTimestamp() > newerTimestamp)
                             .toList();
@@ -94,7 +91,8 @@ class MessageReadingUtilsTest {
             if (queryDirection == QueryDirection.OLDER) {
                 // Return LAST 'count' messages in chronological order
                 final var start = Math.max(0, filtered.size() - count);
-                result = new ArrayList<>(filtered.subList(start, filtered.size()));
+                result = new ArrayList<>(filtered.subList(start,
+                                                          filtered.size()));
             }
             else {
                 // Return FIRST 'count' messages in chronological order
@@ -106,10 +104,38 @@ class MessageReadingUtilsTest {
             if (!result.isEmpty()) {
                 // result is always oldest to newest
                 older = String.valueOf(result.get(0).getTimestamp());
-                newer = String.valueOf(result.get(result.size() - 1).getTimestamp());
+                newer = String.valueOf(result.get(result.size() - 1)
+                        .getTimestamp());
             }
 
-            return new BiScrollable<>(result, new BiScrollable.DataPointer(older, newer));
+            return new BiScrollable<>(result,
+                                      new BiScrollable.DataPointer(older,
+                                                                   newer));
+        }
+
+        @Override
+        public void saveMessages(final String sessionId,
+                                 final String runId,
+                                 final List<AgentMessage> messages) {
+            messageData.computeIfAbsent(sessionId, k -> new ArrayList<>())
+                    .addAll(messages);
+        }
+
+        @Override
+        public Optional<SessionSummary> saveSession(final SessionSummary sessionSummary) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<SessionSummary> session(final String sessionId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public BiScrollable<SessionSummary> sessions(final int count,
+                                                     final String pointer,
+                                                     final QueryDirection queryDirection) {
+            return null;
         }
     }
 
@@ -126,7 +152,8 @@ class MessageReadingUtilsTest {
     @Test
     void testReadMessagesSinceIdWithPagination() {
         final var totalMessages = 10;
-        final var messages = new ArrayList<>(IntStream.rangeClosed(1, totalMessages)
+        final var messages = new ArrayList<>(IntStream.rangeClosed(1,
+                                                                   totalMessages)
                 .mapToObj(i -> (AgentMessage) UserPrompt.builder()
                         .sessionId(sessionId)
                         .runId("run-1")
@@ -193,8 +220,7 @@ class MessageReadingUtilsTest {
                 .filter(m -> !m.getMessageId().equals("msg-2"))
                 .toList();
 
-        final var result = MessageReadingUtils.readMessagesSinceId(
-                                                                   sessionStore,
+        final var result = MessageReadingUtils.readMessagesSinceId(sessionStore,
                                                                    setup,
                                                                    sessionId,
                                                                    null,
@@ -255,7 +281,11 @@ class MessageReadingUtilsTest {
                 .build();
 
         // Mixed order: u1, tc1, tc2, tcr1, tcr2
-        final List<AgentMessage> messages = List.of(userPrompt, tc1, tc2, tcr1, tcr2);
+        final List<AgentMessage> messages = List.of(userPrompt,
+                                                    tc1,
+                                                    tc2,
+                                                    tcr1,
+                                                    tcr2);
 
         final var rearranged = MessageReadingUtils.rearrangeMessages(messages);
 
@@ -265,6 +295,22 @@ class MessageReadingUtilsTest {
         assertEquals("tcr1", rearranged.get(2).getMessageId());
         assertEquals("tc2", rearranged.get(3).getMessageId());
         assertEquals("tcr2", rearranged.get(4).getMessageId());
+    }
+
+    @Test
+    void testRearrangeMessagesWithEmptyToolCallId() {
+        final var userPrompt = UserPrompt.builder()
+                .sessionId(sessionId)
+                .runId("r1")
+                .messageId("u1")
+                .timestamp(1L)
+                .content("hi")
+                .build();
+        final List<AgentMessage> messages = List.of(userPrompt);
+
+        final var rearranged = MessageReadingUtils.rearrangeMessages(messages);
+        assertEquals(1, rearranged.size());
+        assertEquals("u1", rearranged.get(0).getMessageId());
     }
 
     @Test
@@ -283,21 +329,5 @@ class MessageReadingUtilsTest {
         final var rearranged = MessageReadingUtils.rearrangeMessages(messages);
 
         assertTrue(rearranged.isEmpty());
-    }
-
-    @Test
-    void testRearrangeMessagesWithEmptyToolCallId() {
-        final var userPrompt = UserPrompt.builder()
-                .sessionId(sessionId)
-                .runId("r1")
-                .messageId("u1")
-                .timestamp(1L)
-                .content("hi")
-                .build();
-        final List<AgentMessage> messages = List.of(userPrompt);
-
-        final var rearranged = MessageReadingUtils.rearrangeMessages(messages);
-        assertEquals(1, rearranged.size());
-        assertEquals("u1", rearranged.get(0).getMessageId());
     }
 }

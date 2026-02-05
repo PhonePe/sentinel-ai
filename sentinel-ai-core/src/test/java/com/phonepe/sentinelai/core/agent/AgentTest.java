@@ -1,7 +1,26 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.core.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import org.junit.jupiter.api.Test;
+
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
@@ -20,9 +39,9 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolRunApprovalSeeker;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,7 +50,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Basic tests for {@link Agent}
@@ -41,26 +63,18 @@ class AgentTest {
 
     private static final ObjectMapper MAPPER = JsonUtils.createMapper();
 
-    private record Input(String data) {
-    }
-
-    private record Output(String output) {
-    }
-
     private static final class TestAgent extends Agent<String, String, TestAgent> {
 
-        public TestAgent(
-                @NonNull AgentSetup setup,
-                List<AgentExtension<String, String, TestAgent>> extensions,
-                Map<String, ExecutableTool> knownTools) {
+        public TestAgent(@NonNull AgentSetup setup,
+                         List<AgentExtension<String, String, TestAgent>> extensions,
+                         Map<String, ExecutableTool> knownTools) {
             this(setup, extensions, knownTools, new ApproveAllToolRuns<>());
         }
 
-        public TestAgent(
-                @NonNull AgentSetup setup,
-                List<AgentExtension<String, String, TestAgent>> extensions,
-                Map<String, ExecutableTool> knownTools,
-                ToolRunApprovalSeeker<String, String, TestAgent> toolRunApprovalSeeker) {
+        public TestAgent(@NonNull AgentSetup setup,
+                         List<AgentExtension<String, String, TestAgent>> extensions,
+                         Map<String, ExecutableTool> knownTools,
+                         ToolRunApprovalSeeker<String, String, TestAgent> toolRunApprovalSeeker) {
             super(String.class,
                   "This is irrelevant",
                   setup,
@@ -72,14 +86,28 @@ class AgentTest {
                   new NeverTerminateEarlyStrategy());
         }
 
+        @Tool("Return name of user")
+        public String getName() {
+            return "Santanu";
+        }
+
         @Override
         public String name() {
             return "test-agent";
         }
 
-        @Tool("Return name of user")
-        public String getName() {
-            return "Santanu";
+        @Tool("Returns sessions summary")
+        public String sessionSummary(AgentRunContext<String> context,
+                                     String input) {
+            if (context.getRequestMetadata().getSessionId().equals("s1")) {
+                return "Session summary: " + input;
+            }
+            throw new IllegalArgumentException("Invalid session id");
+        }
+
+        @Tool("Tool that takes structured input and returns structured output")
+        public Output structuredTool(final Input input) {
+            return new Output("Hello " + input.data);
         }
 
         @Tool("Tool that throws exception")
@@ -87,485 +115,435 @@ class AgentTest {
             throw new RuntimeException("Test exception");
         }
 
-        @Tool("Returns sessions summary")
-        public String sessionSummary(AgentRunContext<String> context, String input) {
-            if (context.getRequestMetadata().getSessionId().equals("s1")) {
-                return "Session summary: " + input;
-            }
-            throw new IllegalArgumentException("Invalid session id");
-        }
-
         @Tool("Tool that doesn't return anything")
         public void voidTool() {
             // Do nothing
         }
-
-        @Tool("Tool that takes structured input and returns structured output")
-        public Output structuredTool(final Input input) {
-            return new Output("Hello " + input.data);
-        }
     }
 
-    @Test
-    void testToolCall() {
-
-        final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
-
-                                                        @Override
-                                                        public CompletableFuture<ModelOutput> compute(
-                                                                ModelRunContext context,
-                                                                Collection<ModelOutputDefinition> outputDefinitions,
-                                                                List<AgentMessage> oldMessages,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy,
-                                                                List<AgentMessagesPreProcessor> preProcessors) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("test_agent_get_name"));
-                                                                final var response = toolRunner.runTool(
-                                                                        tools,
-                                                                        new ToolCall("s1",
-                                                                                     "r1",
-                                                                                     "TC1",
-                                                                                     "test_agent_get_name",
-                                                                                     "{}"));
-                                                                assertTrue(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(oldMessages);
-                                                                final var message =
-                                                                        new ToolCallResponse("s1",
-                                                                                             "r1",
-                                                                                             response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.success(
-                                                                        createTextOutput("Hello " + response.getResponse()),
-                                                                        List.of(message),
-                                                                        messages,
-                                                                        context.getModelUsageStats());
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(MAPPER)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
-        );
-        final var response = textAgent.execute(
-                AgentInput.<String>builder()
-                        .request("Hi")
-                        .requestMetadata(
-                                AgentRequestMetadata.builder()
-                                        .sessionId("s1")
-                                        .userId("ss").build())
-                        .build());
-        assertTrue(response.getData().contains("Santanu"));
-    }
-
-    @Test
-    void testToolCallNoApproval() {
-
-        final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
-
-                                                        @Override
-                                                        public CompletableFuture<ModelOutput> compute(
-                                                                ModelRunContext context,
-                                                                Collection<ModelOutputDefinition> outputDefinitions,
-                                                                List<AgentMessage> oldMessages,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy,
-                                                                List<AgentMessagesPreProcessor> preProcessors) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("test_agent_get_name"));
-                                                                final var response = toolRunner.runTool(
-                                                                        tools,
-                                                                        new ToolCall("s1",
-                                                                                     "r1",
-                                                                                     "TC1",
-                                                                                     "test_agent_get_name",
-                                                                                     "{}"));
-                                                                assertFalse(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(oldMessages);
-                                                                final var message =
-                                                                        new ToolCallResponse("s1",
-                                                                                             "r1",
-                                                                                             response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.success(
-                                                                        createTextOutput("Tool call not approved"),
-                                                                        List.of(message),
-                                                                        messages,
-                                                                        context.getModelUsageStats());
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(MAPPER)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of(),
-                                            (agent, runContext, toolCall) -> {
-                                                return !"test_agent_get_name".equals(toolCall.getToolName());
-                                            }
-        );
-        final var response = textAgent.execute(
-                AgentInput.<String>builder()
-                        .request("Hi")
-                        .requestMetadata(
-                                AgentRequestMetadata.builder()
-                                        .sessionId("s1")
-                                        .userId("ss").build())
-                        .build());
-        assertTrue(response.getData().equals("Tool call not approved"));
+    private static ObjectNode createTextOutput(String message) {
+        return MAPPER.createObjectNode()
+                .put(Agent.OUTPUT_VARIABLE_NAME, message);
     }
 
     @Test
     void testContextAwareToolCall() {
 
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
+                .model(new Model() {
 
-                                                        @Override
-                                                        public CompletableFuture<ModelOutput> compute(
-                                                                ModelRunContext context,
-                                                                Collection<ModelOutputDefinition> outputDefinitions,
-                                                                List<AgentMessage> oldMessages,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy,
-                                                                List<AgentMessagesPreProcessor> preProcessors) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey(
-                                                                        "test_agent_session_summary"));
-                                                                final var response = toolRunner.runTool(
-                                                                        tools,
-                                                                        new ToolCall("s1",
-                                                                                     "r1",
-                                                                                     "TC1",
-                                                                                     "test_agent_session_summary",
-                                                                                     """
-                                                                                             { "input": "Test Data" }
-                                                                                             """));
-                                                                assertTrue(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(oldMessages);
-                                                                final var message =
-                                                                        new ToolCallResponse("s1",
-                                                                                             "r1",
-                                                                                             response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.success(
-                                                                        createTextOutput("Hello " + response.getResponse()),
-                                                                        List.of(message),
-                                                                        messages,
-                                                                        context.getModelUsageStats());
-                                                            });
-                                                        }
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_session_summary"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_session_summary",
+                                                                                 """
+                                                                                         { "input": "Test Data" }
+                                                                                         """));
+                            assertTrue(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime
+                                                                             .now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput(
+                                                                        "Hello " + response
+                                                                                .getResponse()),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
 
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(MAPPER)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
-        );
-        final var response = textAgent.execute(
-                AgentInput.<String>builder()
-                        .request("Hi")
-                        .requestMetadata(
-                                AgentRequestMetadata.builder()
-                                        .sessionId("s1")
-                                        .userId("ss").build())
-                        .build());
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
         assertTrue(response.getData().contains("Session summary: Test Data"));
-    }
-
-    @Test
-    void testVoidToolCall() {
-
-        final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
-
-                                                        @Override
-                                                        public CompletableFuture<ModelOutput> compute(
-                                                                ModelRunContext context,
-                                                                Collection<ModelOutputDefinition> outputDefinitions,
-                                                                List<AgentMessage> oldMessages,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy,
-                                                                List<AgentMessagesPreProcessor> preProcessors) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("test_agent_void_tool"));
-                                                                final var response = toolRunner.runTool(
-                                                                        tools,
-                                                                        new ToolCall("s1",
-                                                                                     "r1",
-                                                                                     "TC1",
-                                                                                     "test_agent_void_tool",
-                                                                                     "{}"));
-                                                                assertTrue(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(oldMessages);
-                                                                final var message =
-                                                                        new ToolCallResponse("s1",
-                                                                                             "r1",
-                                                                                             response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.success(
-                                                                        createTextOutput("Hello " + response.getResponse()),
-                                                                        List.of(message),
-                                                                        messages,
-                                                                        context.getModelUsageStats());
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(MAPPER)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
-        );
-        final var response = textAgent.execute(
-                AgentInput.<String>builder()
-                        .request("Hi")
-                        .requestMetadata(
-                                AgentRequestMetadata.builder()
-                                        .sessionId("s1")
-                                        .userId("ss").build())
-                        .build());
-        assertTrue(response.getData().contains("Hello success"));
     }
 
     @Test
     void testStructuredToolCall() {
 
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
-                                                        @Override
-                                                        public CompletableFuture<ModelOutput> compute(
-                                                                ModelRunContext context,
-                                                                Collection<ModelOutputDefinition> outputDefinitions,
-                                                                List<AgentMessage> oldMessages,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy,
-                                                                List<AgentMessagesPreProcessor> preProcessors) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey(
-                                                                        "test_agent_structured_tool"));
-                                                                final var response = toolRunner.runTool(
-                                                                        tools,
-                                                                        new ToolCall("s1",
-                                                                                     "r1",
-                                                                                     "TC1",
-                                                                                     "test_agent_structured_tool",
-                                                                                     """
-                                                                                             {
-                                                                                                "input": {
-                                                                                                    "data" : "Test Data"
-                                                                                                }
-                                                                                             }
-                                                                                             """));
-                                                                assertTrue(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(oldMessages);
-                                                                final var message =
-                                                                        new ToolCallResponse("s1",
-                                                                                             "r1",
-                                                                                             response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.success(
-                                                                        createTextOutput("Hello " + response.getResponse()),
-                                                                        List.of(message),
-                                                                        messages,
-                                                                        context.getModelUsageStats());
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(MAPPER)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
-        );
-        final var response = textAgent.execute(
-                AgentInput.<String>builder()
-                        .request("Hi")
-                        .requestMetadata(
-                                AgentRequestMetadata.builder()
-                                        .sessionId("s1")
-                                        .userId("ss").build())
-                        .build());
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_structured_tool"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_structured_tool",
+                                                                                 """
+                                                                                         {
+                                                                                            "input": {
+                                                                                                "data" : "Test Data"
+                                                                                            }
+                                                                                         }
+                                                                                         """));
+                            assertTrue(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime
+                                                                             .now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput(
+                                                                        "Hello " + response
+                                                                                .getResponse()),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
         log.debug("Tool response: {}", response.getData());
         assertTrue(response.getData().contains("Hello Test Data"));
+    }
+
+    @Test
+    void testToolCall() {
+
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_get_name"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_get_name",
+                                                                                 "{}"));
+                            assertTrue(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime
+                                                                             .now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput(
+                                                                        "Hello " + response
+                                                                                .getResponse()),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Santanu"));
     }
 
     @Test
     void testToolCallFailure() {
 
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
+                .model(new Model() {
 
-                                                        @Override
-                                                        public CompletableFuture<ModelOutput> compute(
-                                                                ModelRunContext context,
-                                                                Collection<ModelOutputDefinition> outputDefinitions,
-                                                                List<AgentMessage> oldMessages,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy,
-                                                                List<AgentMessagesPreProcessor> preProcessors) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                assertTrue(tools.containsKey("test_agent_throw_tool"));
-                                                                final var response = toolRunner.runTool(
-                                                                        tools,
-                                                                        new ToolCall("s1",
-                                                                                     "r1",
-                                                                                     "TC1",
-                                                                                     "test_agent_throw_tool",
-                                                                                     "{}"));
-                                                                assertFalse(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(oldMessages);
-                                                                final var message =
-                                                                        new ToolCallResponse("s1",
-                                                                                             "r1",
-                                                                                             response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.error(messages,
-                                                                                         context.getModelUsageStats(),
-                                                                                         SentinelError.error(
-                                                                                                 ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                                                                                 response.getResponse()));
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(MAPPER)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
-        );
-        final var response = textAgent.execute(
-                AgentInput.<String>builder()
-                        .request("Hi")
-                        .requestMetadata(
-                                AgentRequestMetadata.builder()
-                                        .sessionId("s1")
-                                        .userId("ss").build())
-                        .build());
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_throw_tool"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_throw_tool",
+                                                                                 "{}"));
+                            assertFalse(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime
+                                                                             .now());
+                            messages.add(message);
+                            return ModelOutput.error(messages,
+                                                     context.getModelUsageStats(),
+                                                     SentinelError.error(
+                                                                         ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                                                         response.getResponse()));
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
         assertNull(response.getData());
         final var data = response.getError();
         assertTrue(data.getMessage().contains("Test exception"));
     }
 
     @Test
+    void testToolCallNoApproval() {
+
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_get_name"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_get_name",
+                                                                                 "{}"));
+                            assertFalse(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime
+                                                                             .now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput(
+                                                                        "Tool call not approved"),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(),
+                                            List.of(),
+                                            Map.of(),
+                                            (agent, runContext, toolCall) -> {
+                                                return !"test_agent_get_name"
+                                                        .equals(toolCall
+                                                                .getToolName());
+                                            });
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().equals("Tool call not approved"));
+    }
+
+    @Test
     void testToolCallWrongName() {
 
         final var textAgent = new TestAgent(AgentSetup.builder()
-                                                    .model(new Model() {
-                                                        @Override
-                                                        public CompletableFuture<ModelOutput> compute(
-                                                                ModelRunContext context,
-                                                                Collection<ModelOutputDefinition> outputDefinitions,
-                                                                List<AgentMessage> oldMessages,
-                                                                Map<String, ExecutableTool> tools,
-                                                                ToolRunner toolRunner,
-                                                                EarlyTerminationStrategy earlyTerminationStrategy,
-                                                                List<AgentMessagesPreProcessor> preProcessors) {
-                                                            return CompletableFuture.supplyAsync(() -> {
-                                                                final var response = toolRunner.runTool(
-                                                                        tools,
-                                                                        new ToolCall("s1",
-                                                                                     "r1",
-                                                                                     "TC1",
-                                                                                     "getUnknown",
-                                                                                     "{}"));
-                                                                assertFalse(response.isSuccess());
-                                                                assertEquals("TC1", response.getToolCallId());
-                                                                final var messages =
-                                                                        new ArrayList<>(oldMessages);
-                                                                final var message =
-                                                                        new ToolCallResponse("s1",
-                                                                                             "r1",
-                                                                                             response.getToolCallId(),
-                                                                                             response.getToolName(),
-                                                                                             response.getErrorType(),
-                                                                                             response.getResponse(),
-                                                                                             LocalDateTime.now());
-                                                                messages.add(message);
-                                                                return ModelOutput.error(messages,
-                                                                                         context.getModelUsageStats(),
-                                                                                         SentinelError.error(
-                                                                                                 ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                                                                                 response.getResponse()));
-                                                            });
-                                                        }
-                                                    })
-                                                    .modelSettings(ModelSettings.builder()
-                                                                           .build())
-                                                    .mapper(MAPPER)
-                                                    .build(),
-                                            List.of(),
-                                            Map.of()
-        );
-        final var response = textAgent.execute(
-                AgentInput.<String>builder()
-                        .request("Hi")
-                        .requestMetadata(
-                                AgentRequestMetadata.builder()
-                                        .sessionId("s1")
-                                        .userId("ss").build())
-                        .build());
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "getUnknown",
+                                                                                 "{}"));
+                            assertFalse(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime
+                                                                             .now());
+                            messages.add(message);
+                            return ModelOutput.error(messages,
+                                                     context.getModelUsageStats(),
+                                                     SentinelError.error(
+                                                                         ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                                                         response.getResponse()));
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
         assertNull(response.getData());
         final var data = response.getError();
-        assertTrue(data.getMessage().contains("There is no tool with name: getUnknown"));
+        assertTrue(data.getMessage()
+                .contains("There is no tool with name: getUnknown"));
     }
 
-    private static ObjectNode createTextOutput(String message) {
-        return MAPPER.createObjectNode()
-                .put(Agent.OUTPUT_VARIABLE_NAME, message);
+    @Test
+    void testVoidToolCall() {
+
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_void_tool"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_void_tool",
+                                                                                 "{}"));
+                            assertTrue(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime
+                                                                             .now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput(
+                                                                        "Hello " + response
+                                                                                .getResponse()),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Hello success"));
+    }
+
+    private record Input(String data) {
+    }
+
+    private record Output(String output) {
     }
 
 }

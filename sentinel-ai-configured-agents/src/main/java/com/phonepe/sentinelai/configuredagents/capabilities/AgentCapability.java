@@ -1,11 +1,29 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.configuredagents.capabilities;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentCustomToolCapability;
 import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentMCPCapability;
 import com.phonepe.sentinelai.configuredagents.capabilities.impl.AgentRemoteHttpCallCapability;
 import com.phonepe.sentinelai.configuredagents.capabilities.impl.ParentToolInheritanceCapability;
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
@@ -18,21 +36,13 @@ import lombok.ToString;
 @ToString
 @Getter
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type")
-@JsonSubTypes({
-        @JsonSubTypes.Type(name = "REMOTE_HTTP_CALLS", value = AgentRemoteHttpCallCapability.class),
-        @JsonSubTypes.Type(name = "MCP", value = AgentMCPCapability.class),
-        @JsonSubTypes.Type(name = "CUSTOM_TOOLS", value = AgentCustomToolCapability.class),
-        @JsonSubTypes.Type(name = "TOOL_INHERITANCE", value = ParentToolInheritanceCapability.class),
-})
+@JsonSubTypes({@JsonSubTypes.Type(name = "REMOTE_HTTP_CALLS", value = AgentRemoteHttpCallCapability.class), @JsonSubTypes.Type(name = "MCP", value = AgentMCPCapability.class), @JsonSubTypes.Type(name = "CUSTOM_TOOLS", value = AgentCustomToolCapability.class), @JsonSubTypes.Type(name = "TOOL_INHERITANCE", value = ParentToolInheritanceCapability.class),})
 public abstract class AgentCapability {
     public enum Type {
-        REMOTE_HTTP_CALLS,
-        MCP,
-        CUSTOM_TOOLS,
-        TOOL_INHERITANCE,
-        AGENT_MEMORY,
+        REMOTE_HTTP_CALLS, MCP, CUSTOM_TOOLS, TOOL_INHERITANCE, AGENT_MEMORY,
         SESSION_MANAGEMENT,
     }
+
     private final Type type;
 
     protected AgentCapability(@NonNull Type type) {

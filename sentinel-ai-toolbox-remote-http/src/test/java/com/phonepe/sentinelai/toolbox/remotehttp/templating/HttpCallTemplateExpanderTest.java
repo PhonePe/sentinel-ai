@@ -1,7 +1,26 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+
+import org.junit.jupiter.api.Test;
+
 import com.phonepe.sentinelai.core.tools.ExecutableToolVisitor;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
@@ -12,9 +31,9 @@ import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolMetadata;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.handlebar.HandlebarUtil;
+
 import lombok.SneakyThrows;
 import okhttp3.OkHttpClient;
-import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -39,66 +58,67 @@ class HttpCallTemplateExpanderTest {
     @Test
     void test(WireMockRuntimeInfo wiremock) {
         final var mapper = JsonUtils.createMapper();
-        stubFor(post(urlEqualTo("/api/v1/location"))
-                .withRequestBody(containing("santanu"))
+        stubFor(post(urlEqualTo("/api/v1/location")).withRequestBody(containing(
+                                                                                "santanu"))
                 .willReturn(jsonResponse("""
                         {
                         "location" : "Bangalore"
                         }
                         """, 200)));
 
-        final var upstream = TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl());
+        final var upstream = TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT",
+                                                       wiremock.getHttpBaseUrl());
         final var toolSource = InMemoryHttpToolSource.builder()
                 .mapper(mapper)
                 .build()
                 .register(upstream,
-                        TemplatizedHttpTool.builder()
-                                .metadata(HttpToolMetadata.builder()
-                                        .name("getLocation")
-                                        .description("Get location of the user")
-                                        .parameters(
-                                                Map.of("name",
-                                                        new HttpToolMetadata.HttpToolParameterMeta(
-                                                                "Name of the user", STRING)))
-                                        .build())
-                                .template(HttpCallTemplate.builder()
-                                        .path(text("/api/v1/location"))
-                                        .method(HttpCallSpec.HttpMethod.POST)
-                                        .body(textSubstitutor("{ \"name\" : \"${name}\" }"))
-                                        .build())
-                                .responseTransformations(ResponseTransformerConfig.builder()
-                                        .type(ResponseTransformerConfig.Type.JOLT)
-                                        .config("""
-                                                [
-                                                  {
-                                                     "operation": "shift",
-                                                     "spec": {
-                                                        "location": "userLocation"
-                                                     }
-                                                  }
-                                                ]
-                                                """)
-                                        .build())
-                                .build());
+                          TemplatizedHttpTool.builder()
+                                  .metadata(HttpToolMetadata.builder()
+                                          .name("getLocation")
+                                          .description("Get location of the user")
+                                          .parameters(Map.of("name",
+                                                             new HttpToolMetadata.HttpToolParameterMeta("Name of the user",
+                                                                                                        STRING)))
+                                          .build())
+                                  .template(HttpCallTemplate.builder()
+                                          .path(text("/api/v1/location"))
+                                          .method(HttpCallSpec.HttpMethod.POST)
+                                          .body(textSubstitutor("{ \"name\" : \"${name}\" }"))
+                                          .build())
+                                  .responseTransformations(ResponseTransformerConfig
+                                          .builder()
+                                          .type(ResponseTransformerConfig.Type.JOLT)
+                                          .config("""
+                                                  [
+                                                    {
+                                                       "operation": "shift",
+                                                       "spec": {
+                                                          "location": "userLocation"
+                                                       }
+                                                    }
+                                                  ]
+                                                  """)
+                                          .build())
+                                  .build());
 
         final var toolBox = new HttpToolBox(upstream,
-                new OkHttpClient.Builder()
-                        .build(),
-                toolSource,
-                JsonUtils.createMapper(),
-                url -> upstream);
+                                            new OkHttpClient.Builder().build(),
+                                            toolSource,
+                                            JsonUtils.createMapper(),
+                                            url -> upstream);
         final var tools = toolBox.tools();
         final var toolId = AgentUtils.id(upstream, "getLocation");
         final var response = tools.get(toolId)
                 .accept(new ExecutableToolVisitor<String>() {
                     @Override
                     public String visit(ExternalTool externalTool) {
-                        return (String) externalTool.getCallable().apply(null,
-                                toolId, """
+                        return (String) externalTool.getCallable()
+                                .apply(null, toolId, """
                                         {
                                             "name" : "santanu"
                                         }
-                                        """).response();
+                                        """)
+                                .response();
                     }
 
                     @Override
@@ -113,35 +133,41 @@ class HttpCallTemplateExpanderTest {
     @SneakyThrows
     void testHandlebar(WireMockRuntimeInfo wiremock) {
         final var mapper = JsonUtils.createMapper();
-        stubFor(post(urlEqualTo("/api/v1/location"))
-                .withRequestBody(containing("santanu"))
+        stubFor(post(urlEqualTo("/api/v1/location")).withRequestBody(containing(
+                                                                                "santanu"))
                 .willReturn(jsonResponse("""
                         {
                         "location" : "Bangalore"
                         }
                         """, 200)));
-        stubFor(post(urlEqualTo("/api/v1/device"))
-                .withRequestBody(containing("santanu"))
+        stubFor(post(urlEqualTo("/api/v1/device")).withRequestBody(containing(
+                                                                              "santanu"))
                 .willReturn(jsonResponse("""
                         {
                         "device" : "android"
                         }
                         """, 200)));
-        stubFor(post(urlEqualTo("/api/v1/device"))
-                .withRequestBody(containing("santanu.sinha"))
+        stubFor(post(urlEqualTo("/api/v1/device")).withRequestBody(containing(
+                                                                              "santanu.sinha"))
                 .willReturn(jsonResponse("""
                         {
                         "device" : "ios"
                         }
                         """, 200)));
 
-        final var upstream = TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl());
+        final var upstream = TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT",
+                                                       wiremock.getHttpBaseUrl());
 
         // reading handlebar template from file
-        final var handlebarFileContent = Files.readString(Paths.get(getClass().getClassLoader().getResource("templates/test.hbs").toURI()));
+        final var handlebarFileContent = Files.readString(Paths.get(getClass()
+                .getClassLoader()
+                .getResource("templates/test.hbs")
+                .toURI()));
 
         // reading through helper
-        HandlebarUtil.registerHelper("getName", (context, options) -> getName(context.toString()));
+        HandlebarUtil.registerHelper("getName",
+                                     (context, options) -> getName(context
+                                             .toString()));
         final var templateString = """
                 {{{getName name}}}
                 """;
@@ -150,95 +176,99 @@ class HttpCallTemplateExpanderTest {
                 .mapper(mapper)
                 .build()
                 .register(upstream,
-                        TemplatizedHttpTool.builder()
-                                .metadata(HttpToolMetadata.builder()
-                                        .name("getLocation")
-                                        .description("Get location of the user")
-                                        .parameters(
-                                                Map.of("name",
-                                                        new HttpToolMetadata.HttpToolParameterMeta(
-                                                                "Name of the user", STRING)))
-                                        .build())
-                                .template(HttpCallTemplate.builder()
-                                        .path(text("/api/v1/location"))
-                                        .body(HttpCallTemplate.Template.handlebars(handlebarFileContent))
-                                        .method(HttpCallSpec.HttpMethod.POST)
-                                        .build())
-                                .responseTransformations(ResponseTransformerConfig.builder()
-                                        .type(ResponseTransformerConfig.Type.JOLT)
-                                        .config("""
-                                                [
-                                                  {
-                                                     "operation": "shift",
-                                                     "spec": {
-                                                        "location": "userLocation"
-                                                     }
-                                                  }
-                                                ]
-                                                """)
-                                        .build())
-                                .build(),
-                        TemplatizedHttpTool.builder()
-                                .metadata(HttpToolMetadata.builder()
-                                        .name("getDevice")
-                                        .description("Get device of the user")
-                                        .parameters(
-                                                Map.of("name",
-                                                        new HttpToolMetadata.HttpToolParameterMeta(
-                                                                "Device of the user", STRING)))
-                                        .build())
-                                .template(HttpCallTemplate.builder()
-                                        .path(text("/api/v1/device"))
-                                        .body(HttpCallTemplate.Template.handlebars(handlebarFileContent))
-                                        .method(HttpCallSpec.HttpMethod.POST)
-                                        .build())
-                                .responseTransformations(ResponseTransformerConfig.builder()
-                                        .type(ResponseTransformerConfig.Type.JOLT)
-                                        .config("""
-                                                [
-                                                  {
-                                                     "operation": "shift",
-                                                     "spec": {
-                                                        "device": "userDevice"
-                                                     }
-                                                  }
-                                                ]
-                                                """)
-                                        .build()).build(),
-                        TemplatizedHttpTool.builder()
-                                .metadata(HttpToolMetadata.builder()
-                                        .name("getDevice2")
-                                        .description("Get device of the user")
-                                        .parameters(
-                                                Map.of("name",
-                                                        new HttpToolMetadata.HttpToolParameterMeta(
-                                                                "Device of the user", STRING)))
-                                        .build())
-                                .template(HttpCallTemplate.builder()
-                                        .path(text("/api/v1/device"))
-                                        .body(HttpCallTemplate.Template.handlebars(templateString))
-                                        .method(HttpCallSpec.HttpMethod.POST)
-                                        .build())
-                                .responseTransformations(ResponseTransformerConfig.builder()
-                                        .type(ResponseTransformerConfig.Type.JOLT)
-                                        .config("""
-                                                [
-                                                  {
-                                                     "operation": "shift",
-                                                     "spec": {
-                                                        "device": "userDevice"
-                                                     }
-                                                  }
-                                                ]
-                                                """)
-                                        .build()).build());
+                          TemplatizedHttpTool.builder()
+                                  .metadata(HttpToolMetadata.builder()
+                                          .name("getLocation")
+                                          .description("Get location of the user")
+                                          .parameters(Map.of("name",
+                                                             new HttpToolMetadata.HttpToolParameterMeta("Name of the user",
+                                                                                                        STRING)))
+                                          .build())
+                                  .template(HttpCallTemplate.builder()
+                                          .path(text("/api/v1/location"))
+                                          .body(HttpCallTemplate.Template
+                                                  .handlebars(handlebarFileContent))
+                                          .method(HttpCallSpec.HttpMethod.POST)
+                                          .build())
+                                  .responseTransformations(ResponseTransformerConfig
+                                          .builder()
+                                          .type(ResponseTransformerConfig.Type.JOLT)
+                                          .config("""
+                                                  [
+                                                    {
+                                                       "operation": "shift",
+                                                       "spec": {
+                                                          "location": "userLocation"
+                                                       }
+                                                    }
+                                                  ]
+                                                  """)
+                                          .build())
+                                  .build(),
+                          TemplatizedHttpTool.builder()
+                                  .metadata(HttpToolMetadata.builder()
+                                          .name("getDevice")
+                                          .description("Get device of the user")
+                                          .parameters(Map.of("name",
+                                                             new HttpToolMetadata.HttpToolParameterMeta("Device of the user",
+                                                                                                        STRING)))
+                                          .build())
+                                  .template(HttpCallTemplate.builder()
+                                          .path(text("/api/v1/device"))
+                                          .body(HttpCallTemplate.Template
+                                                  .handlebars(handlebarFileContent))
+                                          .method(HttpCallSpec.HttpMethod.POST)
+                                          .build())
+                                  .responseTransformations(ResponseTransformerConfig
+                                          .builder()
+                                          .type(ResponseTransformerConfig.Type.JOLT)
+                                          .config("""
+                                                  [
+                                                    {
+                                                       "operation": "shift",
+                                                       "spec": {
+                                                          "device": "userDevice"
+                                                       }
+                                                    }
+                                                  ]
+                                                  """)
+                                          .build())
+                                  .build(),
+                          TemplatizedHttpTool.builder()
+                                  .metadata(HttpToolMetadata.builder()
+                                          .name("getDevice2")
+                                          .description("Get device of the user")
+                                          .parameters(Map.of("name",
+                                                             new HttpToolMetadata.HttpToolParameterMeta("Device of the user",
+                                                                                                        STRING)))
+                                          .build())
+                                  .template(HttpCallTemplate.builder()
+                                          .path(text("/api/v1/device"))
+                                          .body(HttpCallTemplate.Template
+                                                  .handlebars(templateString))
+                                          .method(HttpCallSpec.HttpMethod.POST)
+                                          .build())
+                                  .responseTransformations(ResponseTransformerConfig
+                                          .builder()
+                                          .type(ResponseTransformerConfig.Type.JOLT)
+                                          .config("""
+                                                  [
+                                                    {
+                                                       "operation": "shift",
+                                                       "spec": {
+                                                          "device": "userDevice"
+                                                       }
+                                                    }
+                                                  ]
+                                                  """)
+                                          .build())
+                                  .build());
 
         final var toolBox = new HttpToolBox(upstream,
-                new OkHttpClient.Builder()
-                        .build(),
-                toolSource,
-                JsonUtils.createMapper(),
-                url -> upstream);
+                                            new OkHttpClient.Builder().build(),
+                                            toolSource,
+                                            JsonUtils.createMapper(),
+                                            url -> upstream);
         final var tools = toolBox.tools();
         final var locationToolId = AgentUtils.id(upstream, "getLocation");
         final var deviceToolId = AgentUtils.id(upstream, "getDevice");
@@ -248,12 +278,13 @@ class HttpCallTemplateExpanderTest {
                 .accept(new ExecutableToolVisitor<String>() {
                     @Override
                     public String visit(ExternalTool externalTool) {
-                        return (String) externalTool.getCallable().apply(null,
-                                locationToolId, """
+                        return (String) externalTool.getCallable()
+                                .apply(null, locationToolId, """
                                         {
                                             "name" : "santanu"
                                         }
-                                        """).response();
+                                        """)
+                                .response();
                     }
 
                     @Override
@@ -265,12 +296,13 @@ class HttpCallTemplateExpanderTest {
                 .accept(new ExecutableToolVisitor<String>() {
                     @Override
                     public String visit(ExternalTool externalTool) {
-                        return (String) externalTool.getCallable().apply(null,
-                                deviceToolId, """
+                        return (String) externalTool.getCallable()
+                                .apply(null, deviceToolId, """
                                         {
                                             "name" : "santanu"
                                         }
-                                        """).response();
+                                        """)
+                                .response();
                     }
 
                     @Override
@@ -282,12 +314,13 @@ class HttpCallTemplateExpanderTest {
                 .accept(new ExecutableToolVisitor<String>() {
                     @Override
                     public String visit(ExternalTool externalTool) {
-                        return (String) externalTool.getCallable().apply(null,
-                                device2ToolId, """
+                        return (String) externalTool.getCallable()
+                                .apply(null, device2ToolId, """
                                         {
                                             "name" : "santanu"
                                         }
-                                        """).response();
+                                        """)
+                                .response();
                     }
 
                     @Override
@@ -301,8 +334,6 @@ class HttpCallTemplateExpanderTest {
     }
 
     private String getName(final String context) {
-        return "{" +
-                "\"name\": \"" + context + ".sinha\""+
-                "}";
+        return "{" + "\"name\": \"" + context + ".sinha\"" + "}";
     }
 }

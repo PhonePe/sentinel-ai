@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.embedding;
 
 import ai.djl.huggingface.tokenizers.Encoding;
@@ -20,19 +36,24 @@ public class HuggingFaceTokenizerModel implements TokenizerModel, AutoCloseable 
     private final boolean padding;
 
     @Builder
-    public HuggingFaceTokenizerModel(
-            String modelName,
-            int maxLength,
-            boolean addSpecialTokens,
-            boolean padding) {
+    public HuggingFaceTokenizerModel(String modelName,
+                                     int maxLength,
+                                     boolean addSpecialTokens,
+                                     boolean padding) {
         System.setProperty("OPT_OUT_TRACKING", "true"); //DJL DIALS HOME ...
         this.modelName = Objects.requireNonNullElse(modelName,
                                                     "sentence-transformers/all-MiniLM-L6-v2");
 
         this.maxLength = Math.max(maxLength, MAX_LENGTH);
-        this.tokenizer = HuggingFaceTokenizer.newInstance(this.modelName, getDJLConfig());
+        this.tokenizer = HuggingFaceTokenizer.newInstance(this.modelName,
+                                                          getDJLConfig());
         this.addSpecialTokens = addSpecialTokens;
         this.padding = padding;
+    }
+
+    @Override
+    public void close() {
+        tokenizer.close();
     }
 
     @Override
@@ -51,10 +72,5 @@ public class HuggingFaceTokenizerModel implements TokenizerModel, AutoCloseable 
         options.put("modelMaxLength", maxLengthStr);
         options.put("maxLength", maxLengthStr);
         return options;
-    }
-
-    @Override
-    public void close() {
-        tokenizer.close();
     }
 }

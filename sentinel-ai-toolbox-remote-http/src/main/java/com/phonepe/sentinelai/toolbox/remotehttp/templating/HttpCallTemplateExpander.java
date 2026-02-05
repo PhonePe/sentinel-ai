@@ -1,9 +1,26 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.toolbox.remotehttp.templating;
 
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
-import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.handlebar.HandlebarHttpCallTemplatingEngine;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.TextHttpCallTemplatingEngine;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.TextSubstitutorHttpCallTemplatingEngine;
+import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.handlebar.HandlebarHttpCallTemplatingEngine;
+
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,10 +39,12 @@ public class HttpCallTemplateExpander {
     private final Map<HttpCallTemplate.TemplateType, HttpCallTemplatingEngine> templatingEngines;
 
     public HttpCallTemplateExpander() {
-        this(Map.of(
-                HttpCallTemplate.TemplateType.TEXT, new TextHttpCallTemplatingEngine(),
-                HttpCallTemplate.TemplateType.TEXT_SUBSTITUTOR, new TextSubstitutorHttpCallTemplatingEngine(),
-                HttpCallTemplate.TemplateType.HANDLEBARS, new HandlebarHttpCallTemplatingEngine()));
+        this(Map.of(HttpCallTemplate.TemplateType.TEXT,
+                    new TextHttpCallTemplatingEngine(),
+                    HttpCallTemplate.TemplateType.TEXT_SUBSTITUTOR,
+                    new TextSubstitutorHttpCallTemplatingEngine(),
+                    HttpCallTemplate.TemplateType.HANDLEBARS,
+                    new HandlebarHttpCallTemplatingEngine()));
     }
 
     /**
@@ -35,24 +54,27 @@ public class HttpCallTemplateExpander {
      * @param context  the context to use for conversion
      * @return the converted {@link HttpCallSpec}
      */
-    public HttpCallSpec convert(final HttpCallTemplate template, Map<String, Object> context) {
+    public HttpCallSpec convert(final HttpCallTemplate template,
+                                Map<String, Object> context) {
 
         final var path = convert(template.getPath(), context);
         final var method = template.getMethod();
-        final var headers =
-                Objects.requireNonNullElseGet(template.getHeaders(),
-                                              Map::<String, List<HttpCallTemplate.Template>>of)
-                        .entrySet()
-                        .stream()
-                        .collect(toMap(Map.Entry::getKey,
-                                       entry -> entry.getValue()
-                                               .stream()
-                                               .map(t -> convert(t, context))
-                                               .toList()));
+        final var headers = Objects.requireNonNullElseGet(template.getHeaders(),
+                                                          Map::<String, List<HttpCallTemplate.Template>>of)
+                .entrySet()
+                .stream()
+                .collect(toMap(Map.Entry::getKey,
+                               entry -> entry.getValue()
+                                       .stream()
+                                       .map(t -> convert(t, context))
+                                       .toList()));
         final var body = convert(template.getBody(), context);
         final var contentType = template.getContentType();
         log.debug("Expanding spec: path: {}, method: {}, headers: {}, body: {}",
-                  path, method, headers, body);
+                  path,
+                  method,
+                  headers,
+                  body);
         return HttpCallSpec.builder()
                 .method(method)
                 .path(path)
@@ -63,12 +85,14 @@ public class HttpCallTemplateExpander {
                 .build();
     }
 
-    private String convert(final HttpCallTemplate.Template template, Map<String, Object> context) {
-        if(null == template) {
+    private String convert(final HttpCallTemplate.Template template,
+                           Map<String, Object> context) {
+        if (null == template) {
             return null;
         }
         return Objects.requireNonNull(templatingEngines.get(template.getType()),
-                                      "No templating engine found for type: " + template.getType())
+                                      "No templating engine found for type: " + template
+                                              .getType())
                 .convert(template, context);
     }
 }

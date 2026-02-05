@@ -1,13 +1,42 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.models.utils;
 
-import com.phonepe.sentinelai.core.agentmessages.*;
-import com.phonepe.sentinelai.core.agentmessages.requests.*;
-import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
-import com.phonepe.sentinelai.core.agentmessages.responses.Text;
-import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import io.github.sashirestela.openai.common.function.FunctionCall;
 import io.github.sashirestela.openai.common.tool.ToolType;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
+
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessageVisitor;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageVisitor;
+import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
+import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
+import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
+import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
+import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
+import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
+import com.phonepe.sentinelai.core.agentmessages.responses.Text;
+import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+
 import lombok.experimental.UtilityClass;
 
 import java.util.List;
@@ -22,7 +51,8 @@ public class OpenAIMessageUtils {
      * @return List of OpenAI messages
      */
     public static List<ChatMessage> convertToOpenAIMessages(List<AgentMessage> agentMessages) {
-        return Objects.requireNonNullElseGet(agentMessages, List::<AgentMessage>of)
+        return Objects.requireNonNullElseGet(agentMessages,
+                                             List::<AgentMessage>of)
                 .stream()
                 .map(OpenAIMessageUtils::convertIndividualMessageToOpenAIFormat)
                 .toList();
@@ -42,18 +72,22 @@ public class OpenAIMessageUtils {
                 return request.accept(new AgentRequestVisitor<>() {
                     @Override
                     public ChatMessage visit(SystemPrompt systemPrompt) {
-                        return ChatMessage.SystemMessage.of(systemPrompt.getContent());
+                        return ChatMessage.SystemMessage.of(systemPrompt
+                                .getContent());
                     }
 
                     @Override
                     public ChatMessage visit(UserPrompt userPrompt) {
-                        return ChatMessage.UserMessage.of(userPrompt.getContent());
+                        return ChatMessage.UserMessage.of(userPrompt
+                                .getContent());
                     }
 
                     @Override
                     public ChatMessage visit(ToolCallResponse toolCallResponse) {
-                        return ChatMessage.ToolMessage.of(toolCallResponse.getResponse(),
-                                toolCallResponse.getToolCallId());
+                        return ChatMessage.ToolMessage.of(toolCallResponse
+                                .getResponse(),
+                                                          toolCallResponse
+                                                                  .getToolCallId());
                     }
                 });
             }
@@ -63,50 +97,75 @@ public class OpenAIMessageUtils {
                 return response.accept(new AgentResponseVisitor<>() {
                     @Override
                     public ChatMessage visit(Text text) {
-                        return ChatMessage.AssistantMessage.of(text.getContent());
+                        return ChatMessage.AssistantMessage.of(text
+                                .getContent());
                     }
 
                     @Override
                     public ChatMessage visit(StructuredOutput structuredOutput) {
-                        return ChatMessage.AssistantMessage.of(structuredOutput.getContent());
+                        return ChatMessage.AssistantMessage.of(structuredOutput
+                                .getContent());
                     }
 
                     @Override
                     public ChatMessage visit(ToolCall toolCall) {
-                        return ChatMessage.AssistantMessage.of(List.of(new io.github.sashirestela.openai.common.tool.ToolCall(
-                                0,
-                                toolCall.getToolCallId(),
-                                ToolType.FUNCTION,
-                                new FunctionCall(toolCall.getToolName(), toolCall.getArguments()))));
+                        return ChatMessage.AssistantMessage.of(List.of(
+                                                                       new io.github.sashirestela.openai.common.tool.ToolCall(0,
+                                                                                                                              toolCall.getToolCallId(),
+                                                                                                                              ToolType.FUNCTION,
+                                                                                                                              new FunctionCall(toolCall
+                                                                                                                                      .getToolName(),
+                                                                                                                                               toolCall.getArguments()))));
                     }
                 });
             }
 
             @Override
             public ChatMessage visit(AgentGenericMessage genericMessage) {
-                return genericMessage.accept(new AgentGenericMessageVisitor<>() {
-                    @Override
-                    public ChatMessage visit(GenericText genericText) {
-                        return switch (genericText.getRole()) {
-                            case SYSTEM -> ChatMessage.SystemMessage.of(genericText.getText());
-                            case USER -> ChatMessage.UserMessage.of(genericText.getText());
-                            case ASSISTANT -> ChatMessage.AssistantMessage.of(genericText.getText());
-                            case TOOL_CALL -> throw new UnsupportedOperationException(
-                                    "Tool calls are unsupported in this context");
-                        };
-                    }
+                return genericMessage.accept(
+                                             new AgentGenericMessageVisitor<>() {
+                                                 @Override
+                                                 public ChatMessage visit(GenericText genericText) {
+                                                     return switch (genericText
+                                                             .getRole()) {
+                                                         case SYSTEM ->
+                                                             ChatMessage.SystemMessage
+                                                                     .of(genericText
+                                                                             .getText());
+                                                         case USER ->
+                                                             ChatMessage.UserMessage
+                                                                     .of(genericText
+                                                                             .getText());
+                                                         case ASSISTANT ->
+                                                             ChatMessage.AssistantMessage
+                                                                     .of(genericText
+                                                                             .getText());
+                                                         case TOOL_CALL ->
+                                                             throw new UnsupportedOperationException("Tool calls are unsupported in this context");
+                                                     };
+                                                 }
 
-                    @Override
-                    public ChatMessage visit(GenericResource genericResource) {
-                        return switch (genericResource.getRole()) {
-                            case SYSTEM -> ChatMessage.SystemMessage.of(genericResource.getSerializedJson());
-                            case USER -> ChatMessage.UserMessage.of(genericResource.getSerializedJson());
-                            case ASSISTANT -> ChatMessage.AssistantMessage.of(genericResource.getSerializedJson());
-                            case TOOL_CALL -> throw new UnsupportedOperationException(
-                                    "Tool calls are unsupported in this context");
-                        };
-                    }
-                });
+                                                 @Override
+                                                 public ChatMessage visit(GenericResource genericResource) {
+                                                     return switch (genericResource
+                                                             .getRole()) {
+                                                         case SYSTEM ->
+                                                             ChatMessage.SystemMessage
+                                                                     .of(genericResource
+                                                                             .getSerializedJson());
+                                                         case USER ->
+                                                             ChatMessage.UserMessage
+                                                                     .of(genericResource
+                                                                             .getSerializedJson());
+                                                         case ASSISTANT ->
+                                                             ChatMessage.AssistantMessage
+                                                                     .of(genericResource
+                                                                             .getSerializedJson());
+                                                         case TOOL_CALL ->
+                                                             throw new UnsupportedOperationException("Tool calls are unsupported in this context");
+                                                     };
+                                                 }
+                                             });
             }
         });
     }

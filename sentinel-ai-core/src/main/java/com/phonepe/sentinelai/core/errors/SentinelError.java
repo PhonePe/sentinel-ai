@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.core.errors;
 
 import lombok.Value;
@@ -10,15 +26,13 @@ public class SentinelError {
     ErrorType errorType;
     String message;
 
-    public static SentinelError success() {
-        return new SentinelError(ErrorType.SUCCESS, ErrorType.SUCCESS.getMessage());
+    public static SentinelError error(ErrorType errorType, Object... args) {
+        return new SentinelError(errorType,
+                                 String.format(errorType.getMessage(), args));
     }
 
-    public static SentinelError error(ErrorType errorType, Object ... args) {
-        return new SentinelError(errorType, String.format(errorType.getMessage(), args));
-    }
-
-    public static SentinelError error(ErrorType errorType, Throwable throwable) {
+    public static SentinelError error(ErrorType errorType,
+                                      Throwable throwable) {
         var cause = throwable.getCause();
         var message = throwable.getMessage();
         do {
@@ -28,6 +42,11 @@ public class SentinelError {
             }
         } while (cause != null);
         return SentinelError.error(errorType, message);
+    }
+
+    public static SentinelError success() {
+        return new SentinelError(ErrorType.SUCCESS,
+                                 ErrorType.SUCCESS.getMessage());
     }
 
 }

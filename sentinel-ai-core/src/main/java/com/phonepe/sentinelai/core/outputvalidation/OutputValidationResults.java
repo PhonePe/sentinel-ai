@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.core.outputvalidation;
 
 import lombok.Value;
@@ -15,8 +31,7 @@ import java.util.Objects;
 public class OutputValidationResults {
 
     public enum FailureType {
-        RETRYABLE,
-        PERMANENT
+        RETRYABLE, PERMANENT
     }
 
     @Value
@@ -35,14 +50,22 @@ public class OutputValidationResults {
         this.failures = new ArrayList<>(failures);
     }
 
-    public boolean isSuccessful() {
-        return failures.isEmpty();
+    public static OutputValidationResults failure(String... failure) {
+        return new OutputValidationResults(toFailureList(failure));
     }
 
-    public boolean isRetriable() {
-        return !isSuccessful()
-                && failures.stream()
-                .allMatch(result -> result.getType().equals(FailureType.RETRYABLE));
+    public static OutputValidationResults success() {
+        return new OutputValidationResults();
+    }
+
+    private static ValidationFailure toFailure(String f) {
+        return new ValidationFailure(FailureType.RETRYABLE, f);
+    }
+
+    private static List<ValidationFailure> toFailureList(String[] failure) {
+        return Arrays.stream(failure)
+                .map(OutputValidationResults::toFailure)
+                .toList();
     }
 
     public OutputValidationResults addFailure(String failure) {
@@ -51,28 +74,21 @@ public class OutputValidationResults {
     }
 
     public OutputValidationResults addFailures(Collection<String> failures) {
-        this.failures.addAll(Objects.requireNonNullElseGet(failures, List::<String>of)
-                                     .stream()
-                                     .map(OutputValidationResults::toFailure)
-                                     .toList());
+        this.failures.addAll(Objects.requireNonNullElseGet(failures,
+                                                           List::<String>of)
+                .stream()
+                .map(OutputValidationResults::toFailure)
+                .toList());
         return this;
     }
 
-    private static ValidationFailure toFailure(String f) {
-        return new ValidationFailure(FailureType.RETRYABLE, f);
+    public boolean isRetriable() {
+        return !isSuccessful() && failures.stream()
+                .allMatch(result -> result.getType()
+                        .equals(FailureType.RETRYABLE));
     }
 
-    public static OutputValidationResults success() {
-        return new OutputValidationResults();
-    }
-
-    public static OutputValidationResults failure(String... failure) {
-        return new OutputValidationResults(toFailureList(failure));
-    }
-
-    private static List<ValidationFailure> toFailureList(String[] failure) {
-        return Arrays.stream(failure)
-                .map(OutputValidationResults::toFailure)
-                .toList();
+    public boolean isSuccessful() {
+        return failures.isEmpty();
     }
 }

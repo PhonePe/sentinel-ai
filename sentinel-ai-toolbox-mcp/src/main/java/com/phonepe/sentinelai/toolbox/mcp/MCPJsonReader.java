@@ -1,8 +1,26 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.toolbox.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPConfiguration;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPServerConfig;
+
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 
@@ -26,22 +44,13 @@ public class MCPJsonReader {
      * @param objectMapper ObjectMapper to use for serialization/deserialization
      */
     @SneakyThrows
-    public static void loadFile(
-            final String filePath,
-            final ComposingMCPToolBox toolBox,
-            final ObjectMapper objectMapper) {
-        final var config = objectMapper.readValue(Files.readAllBytes(Path.of(filePath)), MCPConfiguration.class);
+    public static void loadFile(final String filePath,
+                                final ComposingMCPToolBox toolBox,
+                                final ObjectMapper objectMapper) {
+        final var config = objectMapper.readValue(Files.readAllBytes(Path.of(
+                                                                             filePath)),
+                                                  MCPConfiguration.class);
         loadServers(config, toolBox);
-    }
-
-    /**
-     * Load MCP servers from the provided configuration into the toolbox.
-     *
-     * @param config  MCP configuration containing server definitions
-     * @param toolBox Toolbox to register the MCP clients
-     */
-    public static void loadServers(MCPConfiguration config, ComposingMCPToolBox toolBox) {
-        loadServers(config, toolBox::registerMCP);
     }
 
     /**
@@ -50,8 +59,22 @@ public class MCPJsonReader {
      * @param config  MCP configuration containing server definitions
      * @param handler BiConsumer to handle each loaded MCP server data
      */
-    public static void loadServers(MCPConfiguration config, BiConsumer<String, MCPServerConfig> handler) {
-        Objects.requireNonNullElseGet(config.getMcpServers(), Map::<String, MCPServerConfig>of).forEach(handler);
+    public static void loadServers(MCPConfiguration config,
+                                   BiConsumer<String, MCPServerConfig> handler) {
+        Objects.requireNonNullElseGet(config.getMcpServers(),
+                                      Map::<String, MCPServerConfig>of)
+                .forEach(handler);
+    }
+
+    /**
+     * Load MCP servers from the provided configuration into the toolbox.
+     *
+     * @param config  MCP configuration containing server definitions
+     * @param toolBox Toolbox to register the MCP clients
+     */
+    public static void loadServers(MCPConfiguration config,
+                                   ComposingMCPToolBox toolBox) {
+        loadServers(config, toolBox::registerMCP);
     }
 
 }

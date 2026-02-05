@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.session;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
@@ -9,15 +25,7 @@ import java.util.Optional;
  * A storage system for agent session
  */
 public interface SessionStore {
-    Optional<SessionSummary> session(String sessionId);
-
-    BiScrollable<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection);
-
     boolean deleteSession(String sessionId);
-
-    Optional<SessionSummary> saveSession(SessionSummary sessionSummary);
-
-    void saveMessages(String sessionId, String runId, List<AgentMessage> messages);
 
     /**
      * Reads messages for a specific session with pagination support.
@@ -34,13 +42,24 @@ public interface SessionStore {
      *                         pointer,
      *                         or {@link QueryDirection#NEWER} to fetch messages after the pointer.
      * @return A {@link BiScrollable} containing the list of messages (sorted chronologically) and pointers for
-     * further scrolling.
+     *         further scrolling.
      */
-    BiScrollable<AgentMessage> readMessages(
-            String sessionId,
-            int count,
-            boolean skipSystemPrompt,
-            BiScrollable.DataPointer pointer,
-            QueryDirection queryDirection);
+    BiScrollable<AgentMessage> readMessages(String sessionId,
+                                            int count,
+                                            boolean skipSystemPrompt,
+                                            BiScrollable.DataPointer pointer,
+                                            QueryDirection queryDirection);
+
+    void saveMessages(String sessionId,
+                      String runId,
+                      List<AgentMessage> messages);
+
+    Optional<SessionSummary> saveSession(SessionSummary sessionSummary);
+
+    Optional<SessionSummary> session(String sessionId);
+
+    BiScrollable<SessionSummary> sessions(int count,
+                                          String pointer,
+                                          QueryDirection queryDirection);
 
 }

@@ -1,7 +1,24 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.phonepe.sentinelai.configuredagents;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
@@ -15,6 +32,7 @@ import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ToolRunApprovalSeeker;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+
 import lombok.NonNull;
 
 import java.util.List;
@@ -23,18 +41,18 @@ import java.util.Objects;
 
 /**
  * An agent that can be registered in the {@link AgentRegistry}.
+ *
  * @param <T> The type of the agent extending this class.
  */
 @SuppressWarnings("java:S107")
-public abstract class RegisterableAgent<T  extends RegisterableAgent<T>> extends Agent<String, String, T> {
+public abstract class RegisterableAgent<T extends RegisterableAgent<T>> extends Agent<String, String, T> {
 
     private final AgentConfiguration agentConfiguration;
 
-    protected RegisterableAgent(
-            AgentConfiguration agentConfiguration,
-            @NonNull AgentSetup setup,
-            List<AgentExtension<String, String, T>> agentExtensions,
-            Map<String, ExecutableTool> knownTools) {
+    protected RegisterableAgent(AgentConfiguration agentConfiguration,
+                                @NonNull AgentSetup setup,
+                                List<AgentExtension<String, String, T>> agentExtensions,
+                                Map<String, ExecutableTool> knownTools) {
         this(agentConfiguration,
              setup,
              agentExtensions,
@@ -45,15 +63,14 @@ public abstract class RegisterableAgent<T  extends RegisterableAgent<T>> extends
              new NeverTerminateEarlyStrategy());
     }
 
-    protected RegisterableAgent(
-            AgentConfiguration agentConfiguration,
-            @NonNull AgentSetup setup,
-            List<AgentExtension<String, String, T>> agentExtensions,
-            Map<String, ExecutableTool> knownTools,
-            ToolRunApprovalSeeker<String, String, T> toolRunApprovalSeeker,
-            OutputValidator<String, String> outputValidator,
-            ErrorResponseHandler<String> errorHandler,
-            EarlyTerminationStrategy earlyTerminationStrategy) {
+    protected RegisterableAgent(AgentConfiguration agentConfiguration,
+                                @NonNull AgentSetup setup,
+                                List<AgentExtension<String, String, T>> agentExtensions,
+                                Map<String, ExecutableTool> knownTools,
+                                ToolRunApprovalSeeker<String, String, T> toolRunApprovalSeeker,
+                                OutputValidator<String, String> outputValidator,
+                                ErrorResponseHandler<String> errorHandler,
+                                EarlyTerminationStrategy earlyTerminationStrategy) {
         super(String.class,
               agentConfiguration.getPrompt(),
               setup,
@@ -64,7 +81,10 @@ public abstract class RegisterableAgent<T  extends RegisterableAgent<T>> extends
               errorHandler,
               earlyTerminationStrategy);
         this.agentConfiguration = AgentConfiguration.fixConfiguration(
-                agentConfiguration, Objects.requireNonNullElseGet(setup.getMapper(), JsonUtils::createMapper));
+                                                                      agentConfiguration,
+                                                                      Objects.requireNonNullElseGet(setup
+                                                                              .getMapper(),
+                                                                                                    JsonUtils::createMapper));
     }
 
     public final AgentConfiguration agentConfiguration() {
@@ -73,17 +93,9 @@ public abstract class RegisterableAgent<T  extends RegisterableAgent<T>> extends
 
 
     /**
-     * You cannot override this here. Set the correct schema in the agent configuration.
-     * @return The output schema for this agent
-     */
-    @Override
-    protected final JsonNode outputSchema() {
-        return agentConfiguration.getOutputSchema();
-    }
-
-    /**
      * The name of the agent as specified in the configuration. Feel free to override if needed for more exotic
      * implementations
+     *
      * @return The name of the agent
      */
     @Override
@@ -92,17 +104,29 @@ public abstract class RegisterableAgent<T  extends RegisterableAgent<T>> extends
     }
 
     /**
+     * You cannot override this here. Set the correct schema in the agent configuration.
+     *
+     * @return The output schema for this agent
+     */
+    @Override
+    protected final JsonNode outputSchema() {
+        return agentConfiguration.getOutputSchema();
+    }
+
+    /**
      * We don't do much here. Basically if the model sends out put in the required format, we just pass it through.
      * You can override this if something more exotic needs to be done
+     *
      * @param output     The model output
      * @param agentSetup The agent setup
-     * @return A String serialized version of the output. It is a little wasteful to serialize and deserialize again, but
+     * @return A String serialized version of the output. It is a little wasteful to serialize and deserialize again,
+     *         but
      *         this keeps things simple.
      * @throws JsonProcessingException If serialization fails
      */
     @Override
-    protected String translateData(JsonNode output, AgentSetup agentSetup) throws JsonProcessingException {
-        return agentSetup.getMapper()
-                .writeValueAsString(output);
+    protected String translateData(JsonNode output,
+                                   AgentSetup agentSetup) throws JsonProcessingException {
+        return agentSetup.getMapper().writeValueAsString(output);
     }
 }
