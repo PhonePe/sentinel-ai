@@ -49,8 +49,9 @@ import static java.util.stream.Collectors.toMap;
 @UtilityClass
 public class ToolUtils {
     @SneakyThrows
-    public static List<Object> convertToRealParams(ToolMethodInfo methodInfo, String params,
-            ObjectMapper objectMapper) {
+    public static List<Object> convertToRealParams(ToolMethodInfo methodInfo,
+                                                   String params,
+                                                   ObjectMapper objectMapper) {
         final var paramNodes = objectMapper.readTree(params);
         return methodInfo.parameters().stream().map(param -> {
             final var paramName = param.getName();
@@ -68,19 +69,24 @@ public class ToolUtils {
             tools.putAll(Arrays.stream(type.getDeclaredMethods())
                     .filter(method -> method.isAnnotationPresent(Tool.class))
                     .map(method -> {
-                        final var callableTool = createCallableToolFromLocalMethod(instance, method);
-                        log.info("Created tool: {} from {}::{}", callableTool.getToolDefinition().getId(), className,
-                                method.getName());
+                        final var callableTool = createCallableToolFromLocalMethod(instance,
+                                                                                   method);
+                        log.info("Created tool: {} from {}::{}",
+                                 callableTool.getToolDefinition().getId(),
+                                 className,
+                                 method.getName());
                         return callableTool;
                     })
-                    .collect(toMap(tool -> tool.getToolDefinition().getId(), Function.identity())));
+                    .collect(toMap(tool -> tool.getToolDefinition().getId(),
+                                   Function.identity())));
             type = type.getSuperclass();
         }
         return tools;
     }
 
 
-    public static Pair<ToolDefinition, ToolMethodInfo> toolMetadata(String prefix, Method method) {
+    public static Pair<ToolDefinition, ToolMethodInfo> toolMetadata(String prefix,
+                                                                    Method method) {
         final var toolDef = method.getAnnotation(Tool.class);
         final var params = new ArrayList<ToolParameter>();
         final var paramTypes = method.getParameterTypes();
@@ -94,12 +100,17 @@ public class ToolUtils {
                 continue;
             }
 
-            final var paramAnnotation = param.getAnnotation(JsonPropertyDescription.class);
-            final var description = (null != paramAnnotation) ? paramAnnotation.value() : "";
-            params.add(new ToolParameter(param.getName(), description, TypeFactory.defaultInstance()
-                    .constructType(paramType)));
+            final var paramAnnotation = param.getAnnotation(
+                                                            JsonPropertyDescription.class);
+            final var description = (null != paramAnnotation) ? paramAnnotation
+                    .value() : "";
+            params.add(new ToolParameter(param.getName(),
+                                         description,
+                                         TypeFactory.defaultInstance()
+                                                 .constructType(paramType)));
         }
-        final var toolName = toolDef.name().isBlank() ? method.getName() : toolDef.name();
+        final var toolName = toolDef.name().isBlank() ? method.getName()
+                : toolDef.name();
         return Pair.of(ToolDefinition.builder()
                 .id(AgentUtils.id(prefix, toolName))
                 .name(toolName)
@@ -107,11 +118,18 @@ public class ToolUtils {
                 .contextAware(hasContext)
                 .strictSchema(true)
                 .terminal(false)
-                .build(), new ToolMethodInfo(params, method, method.getReturnType()));
+                .build(),
+                       new ToolMethodInfo(params,
+                                          method,
+                                          method.getReturnType()));
     }
 
-    private static InternalTool createCallableToolFromLocalMethod(Object instance, Method method) {
-        final var toolMetadata = toolMetadata(instance.getClass().getSimpleName(), method);
-        return new InternalTool(toolMetadata.getFirst(), toolMetadata.getSecond(), instance);
+    private static InternalTool createCallableToolFromLocalMethod(Object instance,
+                                                                  Method method) {
+        final var toolMetadata = toolMetadata(instance.getClass()
+                .getSimpleName(), method);
+        return new InternalTool(toolMetadata.getFirst(),
+                                toolMetadata.getSecond(),
+                                instance);
     }
 }

@@ -51,17 +51,27 @@ public class AgentOutput<T> {
      */
     SentinelError error;
 
-    public static <T> AgentOutput<T> error(List<AgentMessage> newMessages, List<AgentMessage> allMessages,
-            ModelUsageStats stats, SentinelError error) {
+    public static <T> AgentOutput<T> error(List<AgentMessage> newMessages,
+                                           List<AgentMessage> allMessages,
+                                           ModelUsageStats stats,
+                                           SentinelError error) {
         return new AgentOutput<>(null, newMessages, allMessages, stats, error);
     }
 
-    public static <T> AgentOutput<T> error(List<AgentMessage> allMessages, ModelUsageStats stats, SentinelError error) {
+    public static <T> AgentOutput<T> error(List<AgentMessage> allMessages,
+                                           ModelUsageStats stats,
+                                           SentinelError error) {
         return new AgentOutput<>(null, List.of(), allMessages, stats, error);
     }
 
-    public static <T> AgentOutput<T> success(T data, List<AgentMessage> newMessages, List<AgentMessage> allMessages,
-            ModelUsageStats usage) {
-        return new AgentOutput<>(data, newMessages, allMessages, usage, SentinelError.success());
+    public static <T> AgentOutput<T> success(T data,
+                                             List<AgentMessage> newMessages,
+                                             List<AgentMessage> allMessages,
+                                             ModelUsageStats usage) {
+        return new AgentOutput<>(data,
+                                 newMessages,
+                                 allMessages,
+                                 usage,
+                                 SentinelError.success());
     }
 }

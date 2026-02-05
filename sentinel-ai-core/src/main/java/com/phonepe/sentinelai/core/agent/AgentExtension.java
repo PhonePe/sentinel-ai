@@ -40,8 +40,10 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
         List<Object> hints;
     }
 
-    ExtensionPromptSchema additionalSystemPrompts(R request, AgentRunContext<R> metadata, A agent,
-            ProcessingMode processingMode);
+    ExtensionPromptSchema additionalSystemPrompts(R request,
+                                                  AgentRunContext<R> metadata,
+                                                  A agent,
+                                                  ProcessingMode processingMode);
 
     /**
      * Simplified model output consumption method
@@ -62,7 +64,9 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
      * @param agent    Reference to the agent
      */
     @SuppressWarnings("unused")
-    default void consumeAsync(final List<AgentMessage> messages, final JsonNode output, A agent) {
+    default void consumeAsync(final List<AgentMessage> messages,
+                              final JsonNode output,
+                              A agent) {
         consume(output, agent);
     }
 
@@ -75,8 +79,10 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
      * @param agent    Reference to the agent
      */
     @SuppressWarnings("unused")
-    default void consumeSync(final AgentRunContext<R> context, final List<AgentMessage> messages, final JsonNode output,
-            A agent) {
+    default void consumeSync(final AgentRunContext<R> context,
+                             final List<AgentMessage> messages,
+                             final JsonNode output,
+                             A agent) {
         consumeAsync(messages, output, agent);
     }
 
@@ -93,7 +99,9 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
 
     List<FactList> facts(R request, AgentRunContext<R> context, A agent);
 
-    default List<AgentMessage> messages(AgentRunContext<R> context, A agent, R request) {
+    default List<AgentMessage> messages(AgentRunContext<R> context,
+                                        A agent,
+                                        R request) {
         return List.of();
     }
 

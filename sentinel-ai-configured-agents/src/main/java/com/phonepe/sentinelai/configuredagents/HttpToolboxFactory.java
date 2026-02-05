@@ -52,8 +52,9 @@ public class HttpToolboxFactory {
 
     @Builder(builderClassName = "ProvidingHttpToolboxFactoryBuilder", builderMethodName = "httpClientProvidingBuilder")
     public HttpToolboxFactory(@NonNull Function<String, OkHttpClient> okHttpClientProvider,
-            @NonNull ObjectMapper objectMapper, @NonNull HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource,
-            @NonNull Function<String, UpstreamResolver> upstreamResolver) {
+                              @NonNull ObjectMapper objectMapper,
+                              @NonNull HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource,
+                              @NonNull Function<String, UpstreamResolver> upstreamResolver) {
         this.okHttpClientProvider = okHttpClientProvider;
         this.objectMapper = objectMapper;
         this.toolConfigSource = toolConfigSource;
@@ -61,18 +62,26 @@ public class HttpToolboxFactory {
     }
 
     @Builder(builderClassName = "DefaultHttpToolboxFactoryBuilder")
-    public HttpToolboxFactory(@NonNull OkHttpClient okHttpClient, @NonNull ObjectMapper objectMapper,
-            @NonNull HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource,
-            @NonNull Function<String, UpstreamResolver> upstreamResolver) {
-        this(name -> okHttpClient, objectMapper, toolConfigSource, upstreamResolver);
+    public HttpToolboxFactory(@NonNull OkHttpClient okHttpClient,
+                              @NonNull ObjectMapper objectMapper,
+                              @NonNull HttpToolSource<TemplatizedHttpTool, ?> toolConfigSource,
+                              @NonNull Function<String, UpstreamResolver> upstreamResolver) {
+        this(name -> okHttpClient,
+             objectMapper,
+             toolConfigSource,
+             upstreamResolver);
     }
 
     public Optional<HttpToolBox> create(@NonNull final String upstream) {
         if (!toolConfigSource.upstreams().contains(upstream)) {
             return Optional.empty();
         }
-        return Optional.of(new HttpToolBox(upstream, Objects.requireNonNull(okHttpClientProvider.apply(upstream),
-                "Could not resolve http client for upstream: " + upstream), toolConfigSource, objectMapper,
-                upstreamResolver.apply(upstream)));
+        return Optional.of(new HttpToolBox(upstream,
+                                           Objects.requireNonNull(okHttpClientProvider
+                                                   .apply(upstream),
+                                                                  "Could not resolve http client for upstream: " + upstream),
+                                           toolConfigSource,
+                                           objectMapper,
+                                           upstreamResolver.apply(upstream)));
     }
 }

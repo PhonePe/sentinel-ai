@@ -38,7 +38,9 @@ class ComposingMCPToolBoxStdioTest {
         final var composingMCPToolBox = ComposingMCPToolBox.buildFromFile()
                 .name("Test Composing MCP")
                 .objectMapper(objectMapper)
-                .mcpJsonFilePath(Objects.requireNonNull(getClass().getResource("/mcp.json")).getPath())
+                .mcpJsonFilePath(Objects.requireNonNull(getClass().getResource(
+                                                                               "/mcp.json"))
+                        .getPath())
                 .build();
         assertNotNull(composingMCPToolBox);
 

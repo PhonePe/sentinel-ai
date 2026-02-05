@@ -49,21 +49,42 @@ public abstract class RegisterableAgent<T extends RegisterableAgent<T>> extends 
 
     private final AgentConfiguration agentConfiguration;
 
-    protected RegisterableAgent(AgentConfiguration agentConfiguration, @NonNull AgentSetup setup,
-            List<AgentExtension<String, String, T>> agentExtensions, Map<String, ExecutableTool> knownTools) {
-        this(agentConfiguration, setup, agentExtensions, knownTools, new ApproveAllToolRuns<>(),
-                new DefaultOutputValidator<>(), new DefaultErrorHandler<>(), new NeverTerminateEarlyStrategy());
+    protected RegisterableAgent(AgentConfiguration agentConfiguration,
+                                @NonNull AgentSetup setup,
+                                List<AgentExtension<String, String, T>> agentExtensions,
+                                Map<String, ExecutableTool> knownTools) {
+        this(agentConfiguration,
+             setup,
+             agentExtensions,
+             knownTools,
+             new ApproveAllToolRuns<>(),
+             new DefaultOutputValidator<>(),
+             new DefaultErrorHandler<>(),
+             new NeverTerminateEarlyStrategy());
     }
 
-    protected RegisterableAgent(AgentConfiguration agentConfiguration, @NonNull AgentSetup setup,
-            List<AgentExtension<String, String, T>> agentExtensions, Map<String, ExecutableTool> knownTools,
-            ToolRunApprovalSeeker<String, String, T> toolRunApprovalSeeker,
-            OutputValidator<String, String> outputValidator, ErrorResponseHandler<String> errorHandler,
-            EarlyTerminationStrategy earlyTerminationStrategy) {
-        super(String.class, agentConfiguration.getPrompt(), setup, agentExtensions, knownTools, toolRunApprovalSeeker,
-                outputValidator, errorHandler, earlyTerminationStrategy);
-        this.agentConfiguration = AgentConfiguration.fixConfiguration(agentConfiguration, Objects.requireNonNullElseGet(
-                setup.getMapper(), JsonUtils::createMapper));
+    protected RegisterableAgent(AgentConfiguration agentConfiguration,
+                                @NonNull AgentSetup setup,
+                                List<AgentExtension<String, String, T>> agentExtensions,
+                                Map<String, ExecutableTool> knownTools,
+                                ToolRunApprovalSeeker<String, String, T> toolRunApprovalSeeker,
+                                OutputValidator<String, String> outputValidator,
+                                ErrorResponseHandler<String> errorHandler,
+                                EarlyTerminationStrategy earlyTerminationStrategy) {
+        super(String.class,
+              agentConfiguration.getPrompt(),
+              setup,
+              agentExtensions,
+              knownTools,
+              toolRunApprovalSeeker,
+              outputValidator,
+              errorHandler,
+              earlyTerminationStrategy);
+        this.agentConfiguration = AgentConfiguration.fixConfiguration(
+                                                                      agentConfiguration,
+                                                                      Objects.requireNonNullElseGet(setup
+                                                                              .getMapper(),
+                                                                                                    JsonUtils::createMapper));
     }
 
     public final AgentConfiguration agentConfiguration() {
@@ -104,7 +125,8 @@ public abstract class RegisterableAgent<T extends RegisterableAgent<T>> extends 
      * @throws JsonProcessingException If serialization fails
      */
     @Override
-    protected String translateData(JsonNode output, AgentSetup agentSetup) throws JsonProcessingException {
+    protected String translateData(JsonNode output,
+                                   AgentSetup agentSetup) throws JsonProcessingException {
         return agentSetup.getMapper().writeValueAsString(output);
     }
 }

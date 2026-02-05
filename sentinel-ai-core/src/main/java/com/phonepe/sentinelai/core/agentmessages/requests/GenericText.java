@@ -42,8 +42,18 @@ public class GenericText extends AgentGenericMessage {
 
     @Builder
     @Jacksonized
-    public GenericText(String sessionId, String runId, String messageId, Long timestamp, Role role, String text) {
-        super(sessionId, runId, messageId, timestamp, AgentMessageType.GENERIC_TEXT_MESSAGE, role);
+    public GenericText(String sessionId,
+                       String runId,
+                       String messageId,
+                       Long timestamp,
+                       Role role,
+                       String text) {
+        super(sessionId,
+              runId,
+              messageId,
+              timestamp,
+              AgentMessageType.GENERIC_TEXT_MESSAGE,
+              role);
         this.text = text;
     }
 

@@ -28,9 +28,11 @@ import java.util.List;
 public class SystemPromptRemovalPreFilter<R> implements MessagePersistencePreFilter<R> {
 
     @Override
-    public List<AgentMessage> filter(AgentRunContext<R> context, List<AgentMessage> agentMessages) {
+    public List<AgentMessage> filter(AgentRunContext<R> context,
+                                     List<AgentMessage> agentMessages) {
         return agentMessages.stream()
-                .filter(message -> !AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE.equals(message.getMessageType()))
+                .filter(message -> !AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE
+                        .equals(message.getMessageType()))
                 .toList();
     }
 }

@@ -27,10 +27,12 @@ public class SentinelError {
     String message;
 
     public static SentinelError error(ErrorType errorType, Object... args) {
-        return new SentinelError(errorType, String.format(errorType.getMessage(), args));
+        return new SentinelError(errorType,
+                                 String.format(errorType.getMessage(), args));
     }
 
-    public static SentinelError error(ErrorType errorType, Throwable throwable) {
+    public static SentinelError error(ErrorType errorType,
+                                      Throwable throwable) {
         var cause = throwable.getCause();
         var message = throwable.getMessage();
         do {
@@ -43,7 +45,8 @@ public class SentinelError {
     }
 
     public static SentinelError success() {
-        return new SentinelError(ErrorType.SUCCESS, ErrorType.SUCCESS.getMessage());
+        return new SentinelError(ErrorType.SUCCESS,
+                                 ErrorType.SUCCESS.getMessage());
     }
 
 }

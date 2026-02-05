@@ -37,16 +37,21 @@ public class ComposingToolBox implements ToolBox {
     private final Set<String> allowedMethods;
     private final String name;
 
-    public ComposingToolBox(@NonNull Collection<? extends ToolBox> upstreams, @NonNull Set<String> allowedMethods) {
+    public ComposingToolBox(@NonNull Collection<? extends ToolBox> upstreams,
+                            @NonNull Set<String> allowedMethods) {
         this(upstreams, allowedMethods, null);
     }
 
-    public ComposingToolBox(@NonNull Collection<? extends ToolBox> upstreams, @NonNull Set<String> allowedMethods,
-            String name) {
+    public ComposingToolBox(@NonNull Collection<? extends ToolBox> upstreams,
+                            @NonNull Set<String> allowedMethods,
+                            String name) {
         this.upstreams = upstreams;
         this.allowedMethods = allowedMethods;
-        this.name = Objects.requireNonNullElseGet(name, () -> "composing-toolbox-%s".formatted(UUID.randomUUID()
-                .toString()));
+        this.name = Objects.requireNonNullElseGet(name,
+                                                  () -> "composing-toolbox-%s"
+                                                          .formatted(UUID
+                                                                  .randomUUID()
+                                                                  .toString()));
     }
 
     @Override
@@ -56,18 +61,23 @@ public class ComposingToolBox implements ToolBox {
 
     @Override
     public <R, T, A extends Agent<R, T, A>> void onToolBoxRegistrationCompleted(A agent) {
-        upstreams.forEach(toolBox -> toolBox.onToolBoxRegistrationCompleted(agent));
+        upstreams.forEach(toolBox -> toolBox.onToolBoxRegistrationCompleted(
+                                                                            agent));
     }
 
     @Override
     public Map<String, ExecutableTool> tools() {
         final var discoveredTools = upstreams.stream()
                 .flatMap(toolBox -> toolBox.tools().entrySet().stream())
-                .filter(entry -> allowedMethods.isEmpty() || allowedMethods.contains(entry.getValue()
-                        .getToolDefinition()
-                        .getName()))
-                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
-        log.debug("Tools exposed from composing tool box {}: {}", name, discoveredTools.keySet());
+                .filter(entry -> allowedMethods.isEmpty() || allowedMethods
+                        .contains(entry.getValue()
+                                .getToolDefinition()
+                                .getName()))
+                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey,
+                                                      Map.Entry::getValue));
+        log.debug("Tools exposed from composing tool box {}: {}",
+                  name,
+                  discoveredTools.keySet());
         return discoveredTools;
     }
 }

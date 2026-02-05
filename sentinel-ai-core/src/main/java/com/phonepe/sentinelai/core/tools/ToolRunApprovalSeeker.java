@@ -25,5 +25,7 @@ import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
  */
 @FunctionalInterface
 public interface ToolRunApprovalSeeker<R, T, A extends Agent<R, T, A>> {
-    boolean seekApproval(A agent, AgentRunContext<R> runContext, ToolCall toolCall);
+    boolean seekApproval(A agent,
+                         AgentRunContext<R> runContext,
+                         ToolCall toolCall);
 }

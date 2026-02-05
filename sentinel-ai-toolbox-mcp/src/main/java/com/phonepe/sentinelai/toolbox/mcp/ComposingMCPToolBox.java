@@ -62,8 +62,9 @@ public class ComposingMCPToolBox implements ToolBox {
      * @param name          Name of the toolbox. If not provided, a random UUID will be used as the name.
      */
     @Builder(builderMethodName = "buildFromConfig", builderClassName = "BuilderFromConfig")
-    public ComposingMCPToolBox(@NonNull ObjectMapper objectMapper, @NonNull MCPConfiguration configuration,
-            String name) {
+    public ComposingMCPToolBox(@NonNull ObjectMapper objectMapper,
+                               @NonNull MCPConfiguration configuration,
+                               String name) {
         this.objectMapper = objectMapper;
         this.name = toolBoxName(name);
         MCPJsonReader.loadServers(configuration, this);
@@ -80,7 +81,8 @@ public class ComposingMCPToolBox implements ToolBox {
      * @param name         Name of the toolbox. If not provided, a random UUID will be used as the name.
      */
     @Builder(builderMethodName = "buildEmpty", builderClassName = "EmptyBuilder")
-    public ComposingMCPToolBox(@NonNull ObjectMapper objectMapper, String name) {
+    public ComposingMCPToolBox(@NonNull ObjectMapper objectMapper,
+                               String name) {
         this.objectMapper = objectMapper;
         this.name = toolBoxName(name);
     }
@@ -94,7 +96,9 @@ public class ComposingMCPToolBox implements ToolBox {
      * @param name            Name of the toolbox. If not provided, a random UUID will be used as the name.
      */
     @Builder(builderMethodName = "buildFromFile", builderClassName = "BuilderFromFile")
-    public ComposingMCPToolBox(@NonNull ObjectMapper objectMapper, @NonNull String mcpJsonFilePath, String name) {
+    public ComposingMCPToolBox(@NonNull ObjectMapper objectMapper,
+                               @NonNull String mcpJsonFilePath,
+                               String name) {
         this.objectMapper = objectMapper;
         this.name = toolBoxName(name);
         if (!Strings.isNullOrEmpty(mcpJsonFilePath)) {
@@ -103,8 +107,11 @@ public class ComposingMCPToolBox implements ToolBox {
     }
 
     private static String toolBoxName(String name) {
-        return Objects.requireNonNullElseGet(name, () -> "composing-mcp-toolbox-%s".formatted(UUID.randomUUID()
-                .toString()));
+        return Objects.requireNonNullElseGet(name,
+                                             () -> "composing-mcp-toolbox-%s"
+                                                     .formatted(UUID
+                                                             .randomUUID()
+                                                             .toString()));
     }
 
     /**
@@ -128,7 +135,8 @@ public class ComposingMCPToolBox implements ToolBox {
      * @param tools Tools to be exposed
      * @return this
      */
-    public ComposingMCPToolBox exposeTools(@NonNull String name, @NonNull Collection<String> tools) {
+    public ComposingMCPToolBox exposeTools(@NonNull String name,
+                                           @NonNull Collection<String> tools) {
         final var client = mcpClients.get(name);
         if (null != client) {
             client.exposeTools(tools);
@@ -143,7 +151,8 @@ public class ComposingMCPToolBox implements ToolBox {
      * @param tools Tools to be exposed
      * @return this
      */
-    public ComposingMCPToolBox exposeTools(@NonNull String name, String... tools) {
+    public ComposingMCPToolBox exposeTools(@NonNull String name,
+                                           String... tools) {
         return this.exposeTools(name, Arrays.asList(tools));
     }
 
@@ -160,9 +169,14 @@ public class ComposingMCPToolBox implements ToolBox {
      * @param exposedTools Tools exposed from the MCP server. Send an empty set to expose all tools.
      * @return itself
      */
-    public ComposingMCPToolBox registerExistingMCP(@NonNull String name, @NonNull McpSyncClient client,
-            @NonNull Collection<String> exposedTools) {
-        mcpClients.put(name, new SentinelMCPClient(name, client, objectMapper, Set.copyOf(exposedTools)));
+    public ComposingMCPToolBox registerExistingMCP(@NonNull String name,
+                                                   @NonNull McpSyncClient client,
+                                                   @NonNull Collection<String> exposedTools) {
+        mcpClients.put(name,
+                       new SentinelMCPClient(name,
+                                             client,
+                                             objectMapper,
+                                             Set.copyOf(exposedTools)));
         return this;
     }
 
@@ -177,9 +191,12 @@ public class ComposingMCPToolBox implements ToolBox {
      * @param exposedTool Tools exposed from the MCP server
      * @return itself
      */
-    public ComposingMCPToolBox registerExistingMCP(@NonNull String name, @NonNull McpSyncClient client,
-            String... exposedTool) {
-        return this.registerExistingMCP(name, client, Arrays.asList(exposedTool));
+    public ComposingMCPToolBox registerExistingMCP(@NonNull String name,
+                                                   @NonNull McpSyncClient client,
+                                                   String... exposedTool) {
+        return this.registerExistingMCP(name,
+                                        client,
+                                        Arrays.asList(exposedTool));
     }
 
     /**
@@ -189,8 +206,13 @@ public class ComposingMCPToolBox implements ToolBox {
      * @param serverConfig Configuration for the MCP server
      * @return itself
      */
-    public ComposingMCPToolBox registerMCP(@NonNull String name, @NonNull MCPServerConfig serverConfig) {
-        mcpClients.put(name, new SentinelMCPClient(name, serverConfig, objectMapper, serverConfig.getExposedTools()));
+    public ComposingMCPToolBox registerMCP(@NonNull String name,
+                                           @NonNull MCPServerConfig serverConfig) {
+        mcpClients.put(name,
+                       new SentinelMCPClient(name,
+                                             serverConfig,
+                                             objectMapper,
+                                             serverConfig.getExposedTools()));
         return this;
     }
 
@@ -200,8 +222,12 @@ public class ComposingMCPToolBox implements ToolBox {
         final var relevantTools = Map.copyOf(mcpClients.values()
                 .stream()
                 .flatMap(client -> client.tools().entrySet().stream())
-                .collect(toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue)));
-        log.debug("Found {} tools in ComposingMCPToolBox [{}]: {}", relevantTools.size(), name, relevantTools.keySet());
+                .collect(toUnmodifiableMap(Map.Entry::getKey,
+                                           Map.Entry::getValue)));
+        log.debug("Found {} tools in ComposingMCPToolBox [{}]: {}",
+                  relevantTools.size(),
+                  name,
+                  relevantTools.keySet());
         return relevantTools;
     }
 }

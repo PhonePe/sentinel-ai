@@ -30,16 +30,22 @@ class EnvLoaderTest {
     @Test
     void testReadEnvDotenvMock() {
         // Test the package-private method with a mock Dotenv for full branch coverage
-        var mockDotenv = org.mockito.Mockito.mock(io.github.cdimascio.dotenv.Dotenv.class);
+        var mockDotenv = org.mockito.Mockito.mock(
+                                                  io.github.cdimascio.dotenv.Dotenv.class);
 
         // Case 1: value found in dotenv
-        org.mockito.Mockito.when(mockDotenv.get("MOCK_VAR")).thenReturn("mock_value");
-        assertEquals("mock_value", EnvLoader.readEnv(mockDotenv, "MOCK_VAR", "default"));
+        org.mockito.Mockito.when(mockDotenv.get("MOCK_VAR"))
+                .thenReturn("mock_value");
+        assertEquals("mock_value",
+                     EnvLoader.readEnv(mockDotenv, "MOCK_VAR", "default"));
 
         // Case 2: value NOT found in dotenv, NOT found in system, use default
-        org.mockito.Mockito.when(mockDotenv.get("NON_EXISTENT")).thenReturn(null);
-        final var variable = "REALLY_NON_EXISTENT_" + System.currentTimeMillis();
-        assertEquals("default", EnvLoader.readEnv(mockDotenv, variable, "default"));
+        org.mockito.Mockito.when(mockDotenv.get("NON_EXISTENT"))
+                .thenReturn(null);
+        final var variable = "REALLY_NON_EXISTENT_" + System
+                .currentTimeMillis();
+        assertEquals("default",
+                     EnvLoader.readEnv(mockDotenv, variable, "default"));
     }
 
     @Test

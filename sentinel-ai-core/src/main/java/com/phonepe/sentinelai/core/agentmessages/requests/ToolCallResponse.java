@@ -66,10 +66,20 @@ public class ToolCallResponse extends AgentRequest {
 
     @Builder
     @Jacksonized
-    public ToolCallResponse(String sessionId, String runId, String messageId, Long timestamp,
-            @NonNull String toolCallId, @NonNull String toolName, ErrorType errorType, @NonNull String response,
-            LocalDateTime sentAt) {
-        super(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE, sessionId, runId, messageId, timestamp);
+    public ToolCallResponse(String sessionId,
+                            String runId,
+                            String messageId,
+                            Long timestamp,
+                            @NonNull String toolCallId,
+                            @NonNull String toolName,
+                            ErrorType errorType,
+                            @NonNull String response,
+                            LocalDateTime sentAt) {
+        super(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE,
+              sessionId,
+              runId,
+              messageId,
+              timestamp);
         this.toolCallId = toolCallId;
         this.toolName = toolName;
         this.errorType = errorType;
@@ -77,9 +87,22 @@ public class ToolCallResponse extends AgentRequest {
         this.sentAt = Objects.requireNonNullElse(sentAt, LocalDateTime.now());
     }
 
-    public ToolCallResponse(String sessionId, String runId, @NonNull String toolCallId, @NonNull String toolName,
-            ErrorType errorType, @NonNull String response, LocalDateTime sentAt) {
-        this(sessionId, runId, null, null, toolCallId, toolName, errorType, response, sentAt);
+    public ToolCallResponse(String sessionId,
+                            String runId,
+                            @NonNull String toolCallId,
+                            @NonNull String toolName,
+                            ErrorType errorType,
+                            @NonNull String response,
+                            LocalDateTime sentAt) {
+        this(sessionId,
+             runId,
+             null,
+             null,
+             toolCallId,
+             toolName,
+             errorType,
+             response,
+             sentAt);
     }
 
     @Override

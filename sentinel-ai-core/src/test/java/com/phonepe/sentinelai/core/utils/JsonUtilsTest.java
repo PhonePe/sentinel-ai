@@ -32,7 +32,8 @@ class JsonUtilsTest {
         var mapper = JsonUtils.createMapper();
         assertNotNull(mapper);
         // Should not fail on unknown properties
-        assertTrue(mapper.isEnabled(com.fasterxml.jackson.databind.MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS));
+        assertTrue(mapper.isEnabled(
+                                    com.fasterxml.jackson.databind.MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS));
     }
 
     @Test

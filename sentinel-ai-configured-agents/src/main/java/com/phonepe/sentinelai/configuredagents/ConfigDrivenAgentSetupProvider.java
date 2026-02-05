@@ -29,19 +29,25 @@ import java.util.Objects;
 public class ConfigDrivenAgentSetupProvider implements AgentSetupProvider {
 
     @Override
-    public AgentSetup from(AgentSetup source, AgentConfiguration agentConfiguration, ModelFactory modelFactory) {
+    public AgentSetup from(AgentSetup source,
+                           AgentConfiguration agentConfiguration,
+                           ModelFactory modelFactory) {
         final var providedConfig = agentConfiguration.getModelConfiguration();
         if (providedConfig == null) {
             return source;
         }
 
         // Use the model settings from the provided config, else fall back to source
-        final var modelSettings = Objects.requireNonNullElseGet(providedConfig.getSettings(), source::getModelSettings);
-        final var outputGenerationMode = null != providedConfig.getOutputGenerationMode() ? providedConfig
-                .getOutputGenerationMode() : source.getOutputGenerationMode();
+        final var modelSettings = Objects.requireNonNullElseGet(providedConfig
+                .getSettings(), source::getModelSettings);
+        final var outputGenerationMode = null != providedConfig
+                .getOutputGenerationMode() ? providedConfig
+                        .getOutputGenerationMode() : source
+                                .getOutputGenerationMode();
         return AgentSetup.builder()
                 .mapper(source.getMapper())
-                .model(modelFactory.build(agentConfiguration, source.getModel()))
+                .model(modelFactory.build(agentConfiguration,
+                                          source.getModel()))
                 .modelSettings(modelSettings)
                 .executorService(source.getExecutorService())
                 .eventBus(source.getEventBus())

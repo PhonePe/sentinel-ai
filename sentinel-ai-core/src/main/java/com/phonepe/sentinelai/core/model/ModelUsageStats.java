@@ -193,13 +193,20 @@ public class ModelUsageStats {
                 .incrementResponseTokens(other.getResponseTokens())
                 .incrementTotalTokens(other.getTotalTokens())
                 .addDetails(other.getDetails())
-                .incrementRequestCachedTokens(other.getRequestTokenDetails().getCachedTokens())
-                .incrementRequestAudioTokens(other.getRequestTokenDetails().getAudioTokens())
-                .incrementResponseReasoningTokens(other.getResponseTokenDetails().getReasoningTokens())
-                .incrementResponseAcceptedPredictionTokens(other.getResponseTokenDetails()
+                .incrementRequestCachedTokens(other.getRequestTokenDetails()
+                        .getCachedTokens())
+                .incrementRequestAudioTokens(other.getRequestTokenDetails()
+                        .getAudioTokens())
+                .incrementResponseReasoningTokens(other
+                        .getResponseTokenDetails()
+                        .getReasoningTokens())
+                .incrementResponseAcceptedPredictionTokens(other
+                        .getResponseTokenDetails()
                         .getAcceptedPredictionTokens())
-                .incrementResponseRejectedPredictionTokens(other.getResponseTokenDetails()
+                .incrementResponseRejectedPredictionTokens(other
+                        .getResponseTokenDetails()
                         .getRejectedPredictionTokens())
-                .incrementResponseAudioTokens(other.getResponseTokenDetails().getAudioTokens());
+                .incrementResponseAudioTokens(other.getResponseTokenDetails()
+                        .getAudioTokens());
     }
 }

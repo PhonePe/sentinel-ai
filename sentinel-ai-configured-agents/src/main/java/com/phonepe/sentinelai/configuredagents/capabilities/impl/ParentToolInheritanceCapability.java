@@ -44,8 +44,9 @@ public class ParentToolInheritanceCapability extends AgentCapability {
     @Jacksonized
     public ParentToolInheritanceCapability(Set<String> selectedTools) {
         super(Type.TOOL_INHERITANCE);
-        Preconditions.checkArgument(null != selectedTools && !selectedTools.isEmpty(),
-                "Specific tools must be provided for tool inheritance capability");
+        Preconditions.checkArgument(null != selectedTools && !selectedTools
+                .isEmpty(),
+                                    "Specific tools must be provided for tool inheritance capability");
         this.selectedTools = selectedTools;
     }
 

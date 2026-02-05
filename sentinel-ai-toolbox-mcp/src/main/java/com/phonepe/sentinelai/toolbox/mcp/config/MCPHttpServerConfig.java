@@ -39,8 +39,10 @@ public class MCPHttpServerConfig extends MCPServerConfig {
 
     @Builder
     @Jacksonized
-    public MCPHttpServerConfig(Set<String> exposedTools, @NonNull String url, Map<String, String> headers,
-            Integer timeout) {
+    public MCPHttpServerConfig(Set<String> exposedTools,
+                               @NonNull String url,
+                               Map<String, String> headers,
+                               Integer timeout) {
         super(MCPServerType.HTTP, exposedTools);
         this.url = url;
         this.headers = headers;

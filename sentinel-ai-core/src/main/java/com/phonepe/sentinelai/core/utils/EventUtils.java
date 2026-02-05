@@ -40,59 +40,112 @@ import java.util.concurrent.TimeUnit;
 @UtilityClass
 public class EventUtils {
 
-    public static <R, T, A extends Agent<R, T, A>> void raiseMessageReceivedEvent(AgentRunContext<R> context, A agent,
-            AgentResponse newMessage, Stopwatch stopwatch) {
-        raiseMessageReceivedEvent(agent.name(), context.getRunId(), AgentUtils.sessionId(context), AgentUtils.userId(
-                context), context.getAgentSetup(), newMessage, stopwatch);
+    public static <R, T, A extends Agent<R, T, A>> void raiseMessageReceivedEvent(AgentRunContext<R> context,
+                                                                                  A agent,
+                                                                                  AgentResponse newMessage,
+                                                                                  Stopwatch stopwatch) {
+        raiseMessageReceivedEvent(agent.name(),
+                                  context.getRunId(),
+                                  AgentUtils.sessionId(context),
+                                  AgentUtils.userId(context),
+                                  context.getAgentSetup(),
+                                  newMessage,
+                                  stopwatch);
     }
 
-    public static void raiseMessageReceivedEvent(ModelRunContext modelRunContext, AgentResponse newMessage,
-            Stopwatch stopwatch) {
-        raiseMessageReceivedEvent(modelRunContext.getAgentName(), modelRunContext.getRunId(), modelRunContext
-                .getSessionId(), modelRunContext.getUserId(), modelRunContext.getAgentSetup(), newMessage, stopwatch);
+    public static void raiseMessageReceivedEvent(ModelRunContext modelRunContext,
+                                                 AgentResponse newMessage,
+                                                 Stopwatch stopwatch) {
+        raiseMessageReceivedEvent(modelRunContext.getAgentName(),
+                                  modelRunContext.getRunId(),
+                                  modelRunContext.getSessionId(),
+                                  modelRunContext.getUserId(),
+                                  modelRunContext.getAgentSetup(),
+                                  newMessage,
+                                  stopwatch);
     }
 
-    public static void raiseMessageReceivedEvent(String agentName, String runId, String sessionId, String userId,
-            AgentSetup agentSetup, AgentResponse newMessage, Stopwatch stopwatch) {
+    public static void raiseMessageReceivedEvent(String agentName,
+                                                 String runId,
+                                                 String sessionId,
+                                                 String userId,
+                                                 AgentSetup agentSetup,
+                                                 AgentResponse newMessage,
+                                                 Stopwatch stopwatch) {
         agentSetup.getEventBus()
-                .notify(new MessageReceivedAgentEvent(agentName, runId, sessionId, userId, newMessage, Duration
-                        .ofMillis(stopwatch.elapsed(TimeUnit.MILLISECONDS))));
+                .notify(new MessageReceivedAgentEvent(agentName,
+                                                      runId,
+                                                      sessionId,
+                                                      userId,
+                                                      newMessage,
+                                                      Duration.ofMillis(stopwatch
+                                                              .elapsed(TimeUnit.MILLISECONDS))));
     }
 
 
-    public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(AgentRunContext<R> context, A agent,
-            List<AgentMessage> oldMessages) {
-        raiseMessageSentEvent(agent.name(), context.getRunId(), AgentUtils.sessionId(context), AgentUtils.userId(
-                context), context.getAgentSetup(), oldMessages);
+    public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(AgentRunContext<R> context,
+                                                                              A agent,
+                                                                              List<AgentMessage> oldMessages) {
+        raiseMessageSentEvent(agent.name(),
+                              context.getRunId(),
+                              AgentUtils.sessionId(context),
+                              AgentUtils.userId(context),
+                              context.getAgentSetup(),
+                              oldMessages);
     }
 
     public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(ModelRunContext modelRunContext,
-            List<AgentMessage> oldMessages) {
-        raiseMessageSentEvent(modelRunContext.getAgentName(), modelRunContext.getRunId(), modelRunContext
-                .getSessionId(), modelRunContext.getUserId(), modelRunContext.getAgentSetup(), oldMessages);
+                                                                              List<AgentMessage> oldMessages) {
+        raiseMessageSentEvent(modelRunContext.getAgentName(),
+                              modelRunContext.getRunId(),
+                              modelRunContext.getSessionId(),
+                              modelRunContext.getUserId(),
+                              modelRunContext.getAgentSetup(),
+                              oldMessages);
     }
 
-    public static void raiseMessageSentEvent(String agentName, String runId, String sessionId, String userId,
-            AgentSetup agentSetup, List<AgentMessage> oldMessages) {
+    public static void raiseMessageSentEvent(String agentName,
+                                             String runId,
+                                             String sessionId,
+                                             String userId,
+                                             AgentSetup agentSetup,
+                                             List<AgentMessage> oldMessages) {
         agentSetup.getEventBus()
-                .notify(new MessageSentAgentEvent(agentName, runId, sessionId, userId, List.copyOf(oldMessages)));
+                .notify(new MessageSentAgentEvent(agentName,
+                                                  runId,
+                                                  sessionId,
+                                                  userId,
+                                                  List.copyOf(oldMessages)));
     }
 
-    public static <R, T, A extends Agent<R, T, A>> void raiseOutputGeneratedEvent(AgentRunContext<R> context, A agent,
-            String content, Stopwatch stopwatch) {
+    public static <R, T, A extends Agent<R, T, A>> void raiseOutputGeneratedEvent(AgentRunContext<R> context,
+                                                                                  A agent,
+                                                                                  String content,
+                                                                                  Stopwatch stopwatch) {
         context.getAgentSetup()
                 .getEventBus()
-                .notify(new OutputGeneratedAgentEvent(agent.name(), context.getRunId(), AgentUtils.sessionId(context),
-                        AgentUtils.userId(context), content, Duration.ofMillis(stopwatch.elapsed(
-                                TimeUnit.MILLISECONDS))));
+                .notify(new OutputGeneratedAgentEvent(agent.name(),
+                                                      context.getRunId(),
+                                                      AgentUtils.sessionId(
+                                                                           context),
+                                                      AgentUtils.userId(
+                                                                        context),
+                                                      content,
+                                                      Duration.ofMillis(stopwatch
+                                                              .elapsed(TimeUnit.MILLISECONDS))));
     }
 
     public static <R, T, A extends Agent<R, T, A>> void raiseOutputGeneratedEvent(ModelRunContext context,
-            String content, Stopwatch stopwatch) {
+                                                                                  String content,
+                                                                                  Stopwatch stopwatch) {
         context.getAgentSetup()
                 .getEventBus()
-                .notify(new OutputGeneratedAgentEvent(context.getAgentName(), context.getRunId(), context
-                        .getSessionId(), context.getUserId(), content, Duration.ofMillis(stopwatch.elapsed(
-                                TimeUnit.MILLISECONDS))));
+                .notify(new OutputGeneratedAgentEvent(context.getAgentName(),
+                                                      context.getRunId(),
+                                                      context.getSessionId(),
+                                                      context.getUserId(),
+                                                      content,
+                                                      Duration.ofMillis(stopwatch
+                                                              .elapsed(TimeUnit.MILLISECONDS))));
     }
 }

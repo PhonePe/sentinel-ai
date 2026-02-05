@@ -35,8 +35,9 @@ public class AgentSessionExtensionSetup {
     public static final boolean DEFAULT_DISABLE_SUMMARIZATION = false;
     private static final int DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD = 60;
 
-    public static final AgentSessionExtensionSetup DEFAULT = new AgentSessionExtensionSetup(
-            MAX_HISTORICAL_MESSAGES_FETCH_COUNT, DEFAULT_MAX_SUMMARY_LENGTH, DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD);
+    public static final AgentSessionExtensionSetup DEFAULT = new AgentSessionExtensionSetup(MAX_HISTORICAL_MESSAGES_FETCH_COUNT,
+                                                                                            DEFAULT_MAX_SUMMARY_LENGTH,
+                                                                                            DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD);
 
     /**
      * Number of historical messages to fetch from session store in one go.

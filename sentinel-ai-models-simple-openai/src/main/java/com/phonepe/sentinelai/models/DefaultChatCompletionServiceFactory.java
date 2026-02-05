@@ -56,12 +56,13 @@ public class DefaultChatCompletionServiceFactory implements ChatCompletionServic
      */
     @Override
     public ChatCompletionServices get(String modelName) {
-        return Objects.requireNonNull(providers.getOrDefault(modelName, defaultProvider.get()),
-                "No ChatCompletionServices provider found for model name: " + modelName);
+        return Objects.requireNonNull(providers.getOrDefault(modelName,
+                                                             defaultProvider
+                                                                     .get()),
+                                      "No ChatCompletionServices provider found for model name: " + modelName);
     }
 
-    public DefaultChatCompletionServiceFactory registerDefaultProvider(
-            @NonNull final ChatCompletionServices defaultProvider) {
+    public DefaultChatCompletionServiceFactory registerDefaultProvider(@NonNull final ChatCompletionServices defaultProvider) {
         this.defaultProvider.set(defaultProvider);
         return this;
     }
@@ -75,7 +76,7 @@ public class DefaultChatCompletionServiceFactory implements ChatCompletionServic
      * @return the current DefaultChatCompletionServiceFactory instance for method chaining
      */
     public DefaultChatCompletionServiceFactory registerProvider(@NonNull final String name,
-            @NonNull final ChatCompletionServices provider) {
+                                                                @NonNull final ChatCompletionServices provider) {
         this.providers.put(name, provider);
         return this;
     }

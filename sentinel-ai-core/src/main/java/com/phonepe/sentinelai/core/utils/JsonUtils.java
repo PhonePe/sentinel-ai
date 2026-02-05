@@ -45,9 +45,13 @@ public class JsonUtils {
         public void applyToConfigBuilder(SchemaGeneratorConfigBuilder builder) {
             super.applyToConfigBuilder(builder);
 
-            builder.forTypesInGeneral().withDescriptionResolver(super::resolveDescriptionForType);
-            builder.forFields().withDescriptionResolver(super::resolveDescription).withRequiredCheck(x -> true); //Mark all fields/parameters as required
-            builder.forMethods().withDescriptionResolver(super::resolveDescription);
+            builder.forTypesInGeneral()
+                    .withDescriptionResolver(super::resolveDescriptionForType);
+            builder.forFields()
+                    .withDescriptionResolver(super::resolveDescription)
+                    .withRequiredCheck(x -> true); //Mark all fields/parameters as required
+            builder.forMethods()
+                    .withDescriptionResolver(super::resolveDescription);
         }
 
         @Override
@@ -79,14 +83,16 @@ public class JsonUtils {
     }
 
     public static boolean empty(final JsonNode node) {
-        return node == null || node.isNull() || node.isMissingNode() || (node.isObject() && node.isEmpty()) || (node
-                .isArray() && node.isEmpty());
+        return node == null || node.isNull() || node.isMissingNode() || (node
+                .isObject() && node.isEmpty()) || (node.isArray() && node
+                        .isEmpty());
     }
 
     public static JsonNode schema(final Class<?> clazz) {
         final var configBuilder = new SchemaGeneratorConfigBuilder(SchemaVersion.DRAFT_2020_12,
-                OptionPreset.PLAIN_JSON);
-        final var config = configBuilder.without(Option.EXTRA_OPEN_API_FORMAT_VALUES)
+                                                                   OptionPreset.PLAIN_JSON);
+        final var config = configBuilder.without(
+                                                 Option.EXTRA_OPEN_API_FORMAT_VALUES)
                 .without(Option.FLATTENED_ENUMS_FROM_TOSTRING)
                 .without(Option.SCHEMA_VERSION_INDICATOR)
                 .with(Option.FORBIDDEN_ADDITIONAL_PROPERTIES_BY_DEFAULT)
@@ -98,7 +104,9 @@ public class JsonUtils {
         return generator.generateSchema(clazz);
     }
 
-    public static JsonNode schemaForPrimitive(final Class<?> clazz, String fieldName, ObjectMapper mapper) {
+    public static JsonNode schemaForPrimitive(final Class<?> clazz,
+                                              String fieldName,
+                                              ObjectMapper mapper) {
         final var schema = mapper.createObjectNode();
         schema.put("type", "object");
         schema.put("additionalProperties", false);

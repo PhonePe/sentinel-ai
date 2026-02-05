@@ -35,6 +35,7 @@ public interface EarlyTerminationStrategy {
      * @param output          Current Model Output
      * @return EarlyTerminationStrategyResponse indicating whether to terminate early along with error type and reason
      */
-    EarlyTerminationStrategyResponse evaluate(final ModelSettings modelSettings, final ModelRunContext modelRunContext,
-            final ModelOutput output);
+    EarlyTerminationStrategyResponse evaluate(final ModelSettings modelSettings,
+                                              final ModelRunContext modelRunContext,
+                                              final ModelOutput output);
 }

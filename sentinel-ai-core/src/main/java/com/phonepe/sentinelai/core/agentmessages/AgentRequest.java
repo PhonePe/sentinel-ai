@@ -28,8 +28,11 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public abstract class AgentRequest extends AgentMessage {
 
-    protected AgentRequest(AgentMessageType requestType, String sessionId, String runId, String messageId,
-            Long timestamp) {
+    protected AgentRequest(AgentMessageType requestType,
+                           String sessionId,
+                           String runId,
+                           String messageId,
+                           Long timestamp) {
         super(requestType, sessionId, runId, messageId, timestamp);
     }
 

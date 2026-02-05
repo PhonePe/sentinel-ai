@@ -27,7 +27,8 @@ import lombok.With;
 @With
 public class ModelAttributes {
 
-    public static final ModelAttributes DEFAULT_MODEL_ATTRIBUTES = ModelAttributes.builder()
+    public static final ModelAttributes DEFAULT_MODEL_ATTRIBUTES = ModelAttributes
+            .builder()
             .contextWindowSize(128_000)
             .encodingType(EncodingType.CL100K_BASE)
             .build();

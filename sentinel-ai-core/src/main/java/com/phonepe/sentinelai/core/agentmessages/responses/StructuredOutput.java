@@ -39,14 +39,24 @@ public class StructuredOutput extends AgentResponse {
      */
     String content;
 
-    public StructuredOutput(String sessionId, String runId, @NonNull String content) {
+    public StructuredOutput(String sessionId,
+                            String runId,
+                            @NonNull String content) {
         this(sessionId, runId, null, null, content);
     }
 
     @Builder
     @Jacksonized
-    public StructuredOutput(String sessionId, String runId, String messageId, Long timestamp, @NonNull String content) {
-        super(AgentMessageType.STRUCTURED_OUTPUT_RESPONSE_MESSAGE, sessionId, runId, messageId, timestamp);
+    public StructuredOutput(String sessionId,
+                            String runId,
+                            String messageId,
+                            Long timestamp,
+                            @NonNull String content) {
+        super(AgentMessageType.STRUCTURED_OUTPUT_RESPONSE_MESSAGE,
+              sessionId,
+              runId,
+              messageId,
+              timestamp);
         this.content = content;
     }
 

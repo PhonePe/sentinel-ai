@@ -28,6 +28,7 @@ import java.util.List;
  */
 @FunctionalInterface
 public interface AgentMessagesPreProcessor {
-    AgentMessagesPreProcessResult process(AgentMessagesPreProcessContext ctx, List<AgentMessage> allMessages,
-            List<AgentMessage> newMessages);
+    AgentMessagesPreProcessResult process(AgentMessagesPreProcessContext ctx,
+                                          List<AgentMessage> allMessages,
+                                          List<AgentMessage> newMessages);
 }

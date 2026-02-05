@@ -86,12 +86,22 @@ public class AgentConfiguration {
      * @return Fixed configuration with all fields filled up
      */
     public static AgentConfiguration fixConfiguration(@NonNull AgentConfiguration configuration,
-            final ObjectMapper mapper) {
-        return new AgentConfiguration(configuration.getAgentName(), configuration.getDescription(), configuration
-                .getPrompt(), Objects.requireNonNullElseGet(configuration.getInputSchema(), () -> JsonUtils
-                        .schemaForPrimitive(String.class, "data", mapper)), Objects.requireNonNullElseGet(configuration
-                                .getOutputSchema(), () -> JsonUtils.schema(String.class)), Objects
-                                        .requireNonNullElseGet(configuration.getCapabilities(), List::of), configuration
-                                                .getModelConfiguration());
+                                                      final ObjectMapper mapper) {
+        return new AgentConfiguration(configuration.getAgentName(),
+                                      configuration.getDescription(),
+                                      configuration.getPrompt(),
+                                      Objects.requireNonNullElseGet(configuration
+                                              .getInputSchema(),
+                                                                    () -> JsonUtils
+                                                                            .schemaForPrimitive(String.class,
+                                                                                                "data",
+                                                                                                mapper)),
+                                      Objects.requireNonNullElseGet(configuration
+                                              .getOutputSchema(),
+                                                                    () -> JsonUtils
+                                                                            .schema(String.class)),
+                                      Objects.requireNonNullElseGet(configuration
+                                              .getCapabilities(), List::of),
+                                      configuration.getModelConfiguration());
     }
 }

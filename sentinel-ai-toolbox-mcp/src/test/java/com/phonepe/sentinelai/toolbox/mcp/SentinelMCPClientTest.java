@@ -39,17 +39,27 @@ class SentinelMCPClientTest {
     void test() {
         final var objectMapper = JsonUtils.createMapper();
         final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything@2025.12.18")
+                .args("-y",
+                      "@modelcontextprotocol/server-everything@2025.12.18")
                 .build();
-        final var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(objectMapper));
+        final var transport = new StdioClientTransport(params,
+                                                       new JacksonMcpJsonMapper(objectMapper));
 
         final var mcpClient = McpClient.sync(transport).build();
         mcpClient.initialize();
-        final var mcpToolBox = new MCPToolBox("Test MCP", mcpClient, objectMapper, Set.of());
+        final var mcpToolBox = new MCPToolBox("Test MCP",
+                                              mcpClient,
+                                              objectMapper,
+                                              Set.of());
 
-        final var allTools = Set.of("test_mcp_annotated_message", "test_mcp_add", "test_mcp_get_resource_reference",
-                "test_mcp_long_running_operation", "test_mcp_get_tiny_image", "test_mcp_echo", "test_mcp_print_env",
-                "test_mcp_sample_llm");
+        final var allTools = Set.of("test_mcp_annotated_message",
+                                    "test_mcp_add",
+                                    "test_mcp_get_resource_reference",
+                                    "test_mcp_long_running_operation",
+                                    "test_mcp_get_tiny_image",
+                                    "test_mcp_echo",
+                                    "test_mcp_print_env",
+                                    "test_mcp_sample_llm");
         final var allToolsSize = mcpToolBox.tools().size();
         assertTrue(mcpToolBox.tools().keySet().containsAll(allTools));
 
@@ -57,7 +67,8 @@ class SentinelMCPClientTest {
         mcpToolBox.exposeTools("add", "echo");
         final var filteredTools = mcpToolBox.tools();
         assertEquals(2, filteredTools.size());
-        assertEquals(Set.of("test_mcp_add", "test_mcp_echo"), filteredTools.keySet());
+        assertEquals(Set.of("test_mcp_add", "test_mcp_echo"),
+                     filteredTools.keySet());
 
         mcpToolBox.exposeAllTools();
         assertEquals(allToolsSize, mcpToolBox.tools().size());

@@ -35,8 +35,13 @@ class InMemoryAgentConfigurationSourceTest {
     @Test
     void testSaveAndRead() {
         final var source = new InMemoryAgentConfigurationSource();
-        final var config = new AgentConfiguration("Test Agent", "Agent for testing", "You are a test agent.", null,
-                null, List.of(), null);
+        final var config = new AgentConfiguration("Test Agent",
+                                                  "Agent for testing",
+                                                  "You are a test agent.",
+                                                  null,
+                                                  null,
+                                                  List.of(),
+                                                  null);
         String agentId = AgentUtils.id(config.getAgentName());
 
         // Save the agent configuration
@@ -57,6 +62,7 @@ class InMemoryAgentConfigurationSourceTest {
         assertFalse(source.remove("invalid-id"));
 
         //Assert that find does not work
-        assertThrows(UnsupportedOperationException.class, () -> source.find("Test"));
+        assertThrows(UnsupportedOperationException.class,
+                     () -> source.find("Test"));
     }
 }

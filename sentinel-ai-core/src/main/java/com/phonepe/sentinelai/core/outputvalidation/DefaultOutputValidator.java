@@ -23,7 +23,8 @@ import com.phonepe.sentinelai.core.agent.AgentRunContext;
  */
 public class DefaultOutputValidator<R, T> implements OutputValidator<R, T> {
     @Override
-    public OutputValidationResults validate(AgentRunContext<R> context, T agentOutput) {
+    public OutputValidationResults validate(AgentRunContext<R> context,
+                                            T agentOutput) {
         return OutputValidationResults.success();
     }
 

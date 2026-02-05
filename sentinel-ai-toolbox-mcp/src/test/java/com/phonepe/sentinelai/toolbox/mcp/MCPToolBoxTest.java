@@ -54,10 +54,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MCPToolBoxTest {
     private static class MCPTestAgent extends Agent<String, String, MCPTestAgent> {
 
-        public MCPTestAgent(@NonNull AgentSetup setup, Map<String, ExecutableTool> knownTools) {
-            super(String.class, """
-                    Respond to user's queries. Use the provided tools to get the correct information.
-                    """, setup, List.of(), knownTools);
+        public MCPTestAgent(@NonNull AgentSetup setup,
+                            Map<String, ExecutableTool> knownTools) {
+            super(String.class,
+                  """
+                          Respond to user's queries. Use the provided tools to get the correct information.
+                          """,
+                  setup,
+                  List.of(),
+                  knownTools);
         }
 
         @Override
@@ -72,28 +77,42 @@ class MCPToolBoxTest {
         TestUtils.setupMocks(2, "tc", getClass());
         final var httpClient = new OkHttpClient.Builder().build();
         final var objectMapper = JsonUtils.createMapper();
-        final var model = new SimpleOpenAIModel<>("gpt-4o", SimpleOpenAIAzure.builder()
-                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                .apiVersion("2024-10-21")
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(httpClient))
-                .build(), objectMapper);
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
+                                                          .build(),
+                                                  objectMapper);
 
         final var agent = new MCPTestAgent(AgentSetup.builder()
                 .mapper(objectMapper)
                 .model(model)
-                .modelSettings(ModelSettings.builder().temperature(0.1f).seed(42).build())
+                .modelSettings(ModelSettings.builder()
+                        .temperature(0.1f)
+                        .seed(42)
+                        .build())
                 .build(), Map.of() // No tools for now
         );
         final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything@2025.12.18")
+                .args("-y",
+                      "@modelcontextprotocol/server-everything@2025.12.18")
                 .build();
-        final var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(objectMapper));
+        final var transport = new StdioClientTransport(params,
+                                                       new JacksonMcpJsonMapper(objectMapper));
 
         final var mcpClient = McpClient.sync(transport).build();
         mcpClient.initialize();
-        final var mcpToolBox = new MCPToolBox("Test MCP", mcpClient, objectMapper, Set.of());
+        final var mcpToolBox = new MCPToolBox("Test MCP",
+                                              mcpClient,
+                                              objectMapper,
+                                              Set.of());
         agent.registerToolbox(mcpToolBox);
         final var response = agent.execute(AgentInput.<String>builder()
                 .request("Use tool to add the number 3 and -9")
@@ -109,23 +128,35 @@ class MCPToolBoxTest {
         TestUtils.setupMocks(3, "st", getClass());
         final var httpClient = new OkHttpClient.Builder().build();
         final var objectMapper = JsonUtils.createMapper();
-        final var model = new SimpleOpenAIModel<>("gpt-4o", SimpleOpenAIAzure.builder()
-                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                .apiVersion("2024-10-21")
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(httpClient))
-                .build(), objectMapper);
-        final var toolBox = new MCPToolBox("test_mcp", objectMapper, MCPStdioServerConfig.builder()
-                .command("npx")
-                .args(List.of("-y", "@modelcontextprotocol/server-everything@2025.12.18"))
-                .exposedTools(Set.of())
-                .build());
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
+                                                          .build(),
+                                                  objectMapper);
+        final var toolBox = new MCPToolBox("test_mcp",
+                                           objectMapper,
+                                           MCPStdioServerConfig.builder()
+                                                   .command("npx")
+                                                   .args(List.of("-y",
+                                                                 "@modelcontextprotocol/server-everything@2025.12.18"))
+                                                   .exposedTools(Set.of())
+                                                   .build());
 
         final var agent = new MCPTestAgent(AgentSetup.builder()
                 .mapper(objectMapper)
                 .model(model)
-                .modelSettings(ModelSettings.builder().temperature(0.1f).seed(42).build())
+                .modelSettings(ModelSettings.builder()
+                        .temperature(0.1f)
+                        .seed(42)
+                        .build())
                 .build(), Map.of() // No tools for now
         );
         agent.registerToolbox(toolBox);

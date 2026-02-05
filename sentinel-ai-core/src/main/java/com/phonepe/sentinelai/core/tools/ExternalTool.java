@@ -38,8 +38,9 @@ public class ExternalTool extends ExecutableTool {
 
     TriFunction<AgentRunContext<?>, String, String, ExternalToolResponse> callable;
 
-    public ExternalTool(ToolDefinition toolDefinition, JsonNode parameterSchema,
-            TriFunction<AgentRunContext<?>, String, String, ExternalToolResponse> callable) {
+    public ExternalTool(ToolDefinition toolDefinition,
+                        JsonNode parameterSchema,
+                        TriFunction<AgentRunContext<?>, String, String, ExternalToolResponse> callable) {
         super(toolDefinition);
         this.parameterSchema = parameterSchema;
         this.callable = callable;

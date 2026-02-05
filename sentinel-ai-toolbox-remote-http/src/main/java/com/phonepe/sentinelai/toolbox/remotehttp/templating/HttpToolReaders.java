@@ -38,24 +38,32 @@ import java.util.Map;
 public class HttpToolReaders {
     @SneakyThrows
     public static <S extends HttpToolSource<TemplatizedHttpTool, S>> void loadToolsFromYAML(Path path,
-            final HttpToolSource<TemplatizedHttpTool, S> toolSource) {
+                                                                                            final HttpToolSource<TemplatizedHttpTool, S> toolSource) {
         loadToolsFromYAMLContent(Files.readAllBytes(path), toolSource);
     }
 
     @SneakyThrows
     public static <S extends HttpToolSource<TemplatizedHttpTool, S>> void loadToolsFromYAMLContent(byte[] content,
-            final HttpToolSource<TemplatizedHttpTool, S> toolSource) {
+                                                                                                   final HttpToolSource<TemplatizedHttpTool, S> toolSource) {
         final var yamlMapper = new YAMLMapper();
-        yamlMapper.readValue(content, new TypeReference<Map<String, ConfiguredUpstream>>() {
-        })
-                .forEach(((upstream, configuredUpstream) -> toolSource.register(upstream, configuredUpstream.tools()
-                        .stream()
-                        .map(tool -> new TemplatizedHttpTool(tool.metadata(), tool.definition(), tool.transformer()))
-                        .toList())));
+        yamlMapper.readValue(content,
+                             new TypeReference<Map<String, ConfiguredUpstream>>() {
+                             })
+                .forEach(((upstream, configuredUpstream) -> toolSource.register(
+                                                                                upstream,
+                                                                                configuredUpstream
+                                                                                        .tools()
+                                                                                        .stream()
+                                                                                        .map(tool -> new TemplatizedHttpTool(tool
+                                                                                                .metadata(),
+                                                                                                                             tool.definition(),
+                                                                                                                             tool.transformer()))
+                                                                                        .toList())));
     }
 
 
-    public record ConfiguredHttpTool(HttpToolMetadata metadata, HttpCallTemplate definition,
+    public record ConfiguredHttpTool(HttpToolMetadata metadata,
+            HttpCallTemplate definition,
             ResponseTransformerConfig transformer) {
     }
 

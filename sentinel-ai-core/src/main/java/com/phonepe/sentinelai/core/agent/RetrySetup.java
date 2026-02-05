@@ -36,7 +36,8 @@ import java.util.stream.Collectors;
 public class RetrySetup {
     public static final int DEFAULT_TOTAL_ATTEMPTS = 3;
     public static final Duration DEFAULT_RETRY_INTERVAL = Duration.ofSeconds(1);
-    public static final Set<ErrorType> DEFAULT_RETRYABLE_ERROR_TYPES = Arrays.stream(ErrorType.values())
+    public static final Set<ErrorType> DEFAULT_RETRYABLE_ERROR_TYPES = Arrays
+            .stream(ErrorType.values())
             .filter(ErrorType::isRetryable)
             .collect(Collectors.toUnmodifiableSet());
     public static final RetrySetup DEFAULT = RetrySetup.builder().build();
@@ -59,9 +60,16 @@ public class RetrySetup {
 
 
     @Builder
-    public RetrySetup(int totalAttempts, Duration delayAfterFailedAttempt, Set<ErrorType> retriableErrorTypes) {
-        this.totalAttempts = totalAttempts <= 0 ? DEFAULT_TOTAL_ATTEMPTS : totalAttempts;
-        this.delayAfterFailedAttempt = Objects.requireNonNullElse(delayAfterFailedAttempt, DEFAULT_RETRY_INTERVAL);
-        this.retriableErrorTypes = Objects.requireNonNullElse(retriableErrorTypes, DEFAULT_RETRYABLE_ERROR_TYPES);
+    public RetrySetup(int totalAttempts,
+                      Duration delayAfterFailedAttempt,
+                      Set<ErrorType> retriableErrorTypes) {
+        this.totalAttempts = totalAttempts <= 0 ? DEFAULT_TOTAL_ATTEMPTS
+                : totalAttempts;
+        this.delayAfterFailedAttempt = Objects.requireNonNullElse(
+                                                                  delayAfterFailedAttempt,
+                                                                  DEFAULT_RETRY_INTERVAL);
+        this.retriableErrorTypes = Objects.requireNonNullElse(
+                                                              retriableErrorTypes,
+                                                              DEFAULT_RETRYABLE_ERROR_TYPES);
     }
 }

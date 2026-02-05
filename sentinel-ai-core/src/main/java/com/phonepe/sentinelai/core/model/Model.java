@@ -56,10 +56,13 @@ public interface Model {
      * @param earlyTerminationStrategy A strategy to terminate the model run earlier than expected. *
      * @return A CompletableFuture that will complete with the generated Model
      */
-    CompletableFuture<ModelOutput> compute(ModelRunContext context, Collection<ModelOutputDefinition> outputDefinitions,
-            List<AgentMessage> oldMessages, Map<String, ExecutableTool> tools, ToolRunner toolRunner,
-            EarlyTerminationStrategy earlyTerminationStrategy,
-            List<AgentMessagesPreProcessor> agentMessagesPreProcessors);
+    CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                           Collection<ModelOutputDefinition> outputDefinitions,
+                                           List<AgentMessage> oldMessages,
+                                           Map<String, ExecutableTool> tools,
+                                           ToolRunner toolRunner,
+                                           EarlyTerminationStrategy earlyTerminationStrategy,
+                                           List<AgentMessagesPreProcessor> agentMessagesPreProcessors);
 
     /**
      * Estimates the token count for the given messages.
@@ -68,7 +71,8 @@ public interface Model {
      * @param agentSetup The setup for the agent, which includes the encoding type.
      * @return The estimated token count, or TOKEN_COUNT_UNKNOWN if not implemented.
      */
-    default int estimateTokenCount(List<AgentMessage> messages, AgentSetup agentSetup) {
+    default int estimateTokenCount(List<AgentMessage> messages,
+                                   AgentSetup agentSetup) {
         return TOKEN_COUNT_UNKNOWN;
     }
 
@@ -93,9 +97,13 @@ public interface Model {
      * @return A CompletableFuture that will complete with the generated ModelOutput when the streaming is done.
      */
     default CompletableFuture<ModelOutput> stream(ModelRunContext context,
-            Collection<ModelOutputDefinition> outputDefinitions, List<AgentMessage> oldMessages,
-            Map<String, ExecutableTool> tools, ToolRunner toolRunner, EarlyTerminationStrategy earlyTerminationStrategy,
-            Consumer<byte[]> streamHandler, List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
+                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                  List<AgentMessage> oldMessages,
+                                                  Map<String, ExecutableTool> tools,
+                                                  ToolRunner toolRunner,
+                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                  Consumer<byte[]> streamHandler,
+                                                  List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
         throw new NotImplementedException();
     }
 
@@ -118,9 +126,13 @@ public interface Model {
      * @param agentMessagesPreProcessors
      * @return A CompletableFuture that will complete with the generated ModelOutput when the streaming is done.
      */
-    default CompletableFuture<ModelOutput> streamText(ModelRunContext context, List<AgentMessage> oldMessages,
-            Map<String, ExecutableTool> tools, ToolRunner toolRunner, EarlyTerminationStrategy earlyTerminationStrategy,
-            Consumer<byte[]> streamHandler, List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
+    default CompletableFuture<ModelOutput> streamText(ModelRunContext context,
+                                                      List<AgentMessage> oldMessages,
+                                                      Map<String, ExecutableTool> tools,
+                                                      ToolRunner toolRunner,
+                                                      EarlyTerminationStrategy earlyTerminationStrategy,
+                                                      Consumer<byte[]> streamHandler,
+                                                      List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
         throw new NotImplementedException();
     }
 }

@@ -30,7 +30,10 @@ class HuggingFaceTokenizerModelTest {
         try (final var model = HuggingFaceTokenizerModel.builder().build()) {
             String[] tokens = model.tokenize("Hello, how are you?");
             assertNotNull(tokens);
-            assertEquals(6, tokens.length, "Token count mismatch. Tokens: %s".formatted(String.join(", ", tokens)));
+            assertEquals(6,
+                         tokens.length,
+                         "Token count mismatch. Tokens: %s".formatted(String
+                                 .join(", ", tokens)));
         }
     }
 

@@ -36,11 +36,12 @@ public class ParameterMapper implements ExecutableToolVisitor<JsonNode> {
     private final ObjectMapper objectMapper;
 
     public static ObjectNode parametersFromMethodInfo(final ObjectMapper objectMapper,
-            final ToolMethodInfo methodInfo) {
+                                                      final ToolMethodInfo methodInfo) {
         final var paramNodes = methodInfo.parameters().stream().map(param -> {
             final var rawType = param.getType().getRawClass();
             final var paramSchema = (ObjectNode) schema(rawType);
-            if (rawType.isAssignableFrom(String.class) || Primitives.isWrapperType(rawType)) {
+            if (rawType.isAssignableFrom(String.class) || Primitives
+                    .isWrapperType(rawType)) {
                 paramSchema.put("description", param.getDescription());
             }
             return Pair.of(param.getName(), paramSchema);

@@ -25,7 +25,8 @@ import lombok.With;
 @With
 public class TokenCountingConfig {
 
-    public static final TokenCountingConfig DEFAULT = TokenCountingConfig.builder()
+    public static final TokenCountingConfig DEFAULT = TokenCountingConfig
+            .builder()
             .messageOverHead(3)
             .nameOverhead(1)
             .assistantPrimingOverhead(3)

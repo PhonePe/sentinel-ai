@@ -70,21 +70,33 @@ class SimpleOpenAIModelTextIOTest {
         final var objectMapper = JsonUtils.createMapper();
 
         final var httpClient = new OkHttpClient.Builder().build();
-        final var model = new SimpleOpenAIModel<>("gpt-4o", SimpleOpenAIAzure.builder()
-                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                .apiVersion("2024-10-21")
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(httpClient))
-                .build(), objectMapper);
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
+                                                          .build(),
+                                                  objectMapper);
         final var agent = new TestAgent(AgentSetup.builder()
                 .model(model)
                 .mapper(objectMapper)
-                .modelSettings(ModelSettings.builder().temperature(0.1f).seed(1).build())
+                .modelSettings(ModelSettings.builder()
+                        .temperature(0.1f)
+                        .seed(1)
+                        .build())
                 .build());
         final var response = agent.execute(AgentInput.<String>builder()
                 .request("Hi")
-                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").build())
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
                 .build());
         assertTrue(response.getData().contains("Santanu"));
         assertTrue(response.getUsage().getTotalTokens() > 1);

@@ -60,9 +60,11 @@ public class TestUtils {
                 .map(ToolCallResponse.class::cast)
                 .filter(Predicate.not(ToolCallResponse::isSuccess))
                 .toList();
-        assertTrue(failedCall.isEmpty(), "Expected no failed tool calls, but found: " + failedCall.stream()
-                .map(ToolCallResponse::getToolName)
-                .collect(java.util.stream.Collectors.joining(", ")));
+        assertTrue(failedCall.isEmpty(),
+                   "Expected no failed tool calls, but found: " + failedCall
+                           .stream()
+                           .map(ToolCallResponse::getToolName)
+                           .collect(java.util.stream.Collectors.joining(", ")));
     }
 
     public static <T> void ensureOutputGenerated(final AgentOutput<T> response) {
@@ -72,11 +74,12 @@ public class TestUtils {
                         .equals(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE) && message instanceof ToolCall toolCall && toolCall
                                 .getToolName()
                                 .equals(Agent.OUTPUT_GENERATOR_ID)),
-                "Expected at least one output function call, but found none.");
+                   "Expected at least one output function call, but found none.");
     }
 
     public static String getTestProperty(String variable, String mockValue) {
-        if ("true".equalsIgnoreCase(System.getProperty("sentinelai.useRealEndpoints"))) {
+        if ("true".equalsIgnoreCase(System.getProperty(
+                                                       "sentinelai.useRealEndpoints"))) {
             String value = EnvLoader.readEnv(variable, mockValue);
             log.info("Using real endpoint for {}: {}", variable, value);
             return value;
@@ -87,26 +90,38 @@ public class TestUtils {
 
     @SneakyThrows
     public static String readStubFile(int i, String prefix, Class<?> clazz) {
-        return Files.readString(Path.of(Objects.requireNonNull(clazz.getResource("/wiremock/%s.%d.json".formatted(
-                prefix, i))).toURI()));
+        return Files.readString(Path.of(Objects.requireNonNull(clazz
+                .getResource("/wiremock/%s.%d.json".formatted(prefix, i)))
+                .toURI()));
     }
 
-    public static void setupMocks(int numStates, String prefix, Class<?> clazz) {
+    public static void setupMocks(int numStates,
+                                  String prefix,
+                                  Class<?> clazz) {
         IntStream.rangeClosed(1, numStates).forEach(i -> {
-            stubFor(post("/chat/completions?api-version=2024-10-21").inScenario("model-test")
+            stubFor(post("/chat/completions?api-version=2024-10-21").inScenario(
+                                                                                "model-test")
                     .whenScenarioStateIs(i == 1 ? STARTED : Objects.toString(i))
-                    .willReturn(okForContentType("application/json", readStubFile(i, prefix, clazz)))
+                    .willReturn(okForContentType("application/json",
+                                                 readStubFile(i,
+                                                              prefix,
+                                                              clazz)))
                     .willSetStateTo(Objects.toString(i + 1)));
 
         });
     }
 
     public static void setupMocksWithFault(Fault fault) {
-        stubFor(post("/chat/completions?api-version=2024-10-21").willReturn(aResponse().withFault(fault)));
+        stubFor(post("/chat/completions?api-version=2024-10-21").willReturn(
+                                                                            aResponse()
+                                                                                    .withFault(fault)));
     }
 
     public static void setupMocksWithTimeout(Duration duration) {
-        stubFor(post("/chat/completions?api-version=2024-10-21").willReturn(aResponse().withStatus(200)
-                .withFixedDelay((int) duration.toMillis())));
+        stubFor(post("/chat/completions?api-version=2024-10-21").willReturn(
+                                                                            aResponse()
+                                                                                    .withStatus(200)
+                                                                                    .withFixedDelay((int) duration
+                                                                                            .toMillis())));
     }
 }

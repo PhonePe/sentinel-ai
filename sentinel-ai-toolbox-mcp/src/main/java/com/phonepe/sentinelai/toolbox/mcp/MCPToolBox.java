@@ -42,15 +42,25 @@ public class MCPToolBox implements ToolBox {
     private final SentinelMCPClient mcpClient;
 
     @Builder(builderMethodName = "builder")
-    public MCPToolBox(@NonNull String name, @NonNull McpSyncClient mcpClient, @NonNull ObjectMapper mapper,
-            Set<String> exposedTools) {
-        this.mcpClient = new SentinelMCPClient(name, mcpClient, mapper, exposedTools);
+    public MCPToolBox(@NonNull String name,
+                      @NonNull McpSyncClient mcpClient,
+                      @NonNull ObjectMapper mapper,
+                      Set<String> exposedTools) {
+        this.mcpClient = new SentinelMCPClient(name,
+                                               mcpClient,
+                                               mapper,
+                                               exposedTools);
     }
 
     @Builder(builderMethodName = "buildFromConfig")
-    public MCPToolBox(@NonNull final String name, @NonNull final ObjectMapper mapper,
-            @NonNull final MCPServerConfig mcpServerConfig) {
-        this.mcpClient = new SentinelMCPClient(name, mcpServerConfig, mapper, mcpServerConfig.getExposedTools());
+    public MCPToolBox(@NonNull final String name,
+                      @NonNull final ObjectMapper mapper,
+                      @NonNull final MCPServerConfig mcpServerConfig) {
+        this.mcpClient = new SentinelMCPClient(name,
+                                               mcpServerConfig,
+                                               mapper,
+                                               mcpServerConfig
+                                                       .getExposedTools());
     }
 
     public MCPToolBox exposeAllTools() {
@@ -75,7 +85,9 @@ public class MCPToolBox implements ToolBox {
     @Override
     public <R, T, A extends Agent<R, T, A>> void onToolBoxRegistrationCompleted(A agent) {
         this.mcpClient.onRegistrationCompleted(agent);
-        log.info("MCP ToolBox {} registered for agent: {}", name(), agent.name());
+        log.info("MCP ToolBox {} registered for agent: {}",
+                 name(),
+                 agent.name());
     }
 
     @Override

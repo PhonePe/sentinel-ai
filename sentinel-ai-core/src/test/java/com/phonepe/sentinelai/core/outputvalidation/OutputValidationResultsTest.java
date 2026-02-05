@@ -32,20 +32,24 @@ class OutputValidationResultsTest {
         final var results = new OutputValidationResults();
         results.addFailure("error");
         assertEquals(1, results.getFailures().size());
-        assertEquals(OutputValidationResults.FailureType.RETRYABLE, results.getFailures().get(0).getType());
+        assertEquals(OutputValidationResults.FailureType.RETRYABLE,
+                     results.getFailures().get(0).getType());
         assertEquals("error", results.getFailures().get(0).getMessage());
     }
 
     @Test
     void testAddFailures() {
-        final var results = new OutputValidationResults().addFailures(List.of("fail1", "fail2")).addFailure("fail3");
+        final var results = new OutputValidationResults().addFailures(List.of(
+                                                                              "fail1",
+                                                                              "fail2"))
+                .addFailure("fail3");
         assertEquals(3, results.getFailures().size());
     }
 
     @Test
     void testConstructorWithFailures() {
         final var failure = new OutputValidationResults.ValidationFailure(OutputValidationResults.FailureType.RETRYABLE,
-                "msg");
+                                                                          "msg");
         final var results = new OutputValidationResults(List.of(failure));
         assertEquals(1, results.getFailures().size());
         assertEquals(failure, results.getFailures().get(0));
@@ -69,7 +73,7 @@ class OutputValidationResultsTest {
         final var emptyResults = new OutputValidationResults();
         assertTrue(emptyResults.isSuccessful());
         final var failure = new OutputValidationResults.ValidationFailure(OutputValidationResults.FailureType.PERMANENT,
-                "fail");
+                                                                          "fail");
         final var results = new OutputValidationResults(List.of(failure));
         assertFalse(results.isSuccessful());
         assertFalse(results.isRetriable());

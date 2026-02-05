@@ -63,7 +63,8 @@ public class FailedToolCallRemovalPreFilter<R> implements MessagePersistencePreF
 
                 @Override
                 public String visit(ToolCallResponse toolCallResponse) {
-                    return toolCallResponse.isSuccess() ? "" : toolCallResponse.getToolCallId();
+                    return toolCallResponse.isSuccess() ? "" : toolCallResponse
+                            .getToolCallId();
                 }
 
                 @Override
@@ -98,7 +99,8 @@ public class FailedToolCallRemovalPreFilter<R> implements MessagePersistencePreF
 
                 @Override
                 public Boolean visit(ToolCallResponse toolCallResponse) {
-                    return !failedCallIds.contains(toolCallResponse.getToolCallId());
+                    return !failedCallIds.contains(toolCallResponse
+                            .getToolCallId());
                 }
 
                 @Override
@@ -130,7 +132,8 @@ public class FailedToolCallRemovalPreFilter<R> implements MessagePersistencePreF
     }
 
     @Override
-    public List<AgentMessage> filter(AgentRunContext<R> context, List<AgentMessage> agentMessages) {
+    public List<AgentMessage> filter(AgentRunContext<R> context,
+                                     List<AgentMessage> agentMessages) {
         // Find all failed tool calls and then remove all the call requests and responses
         final var failedCallIds = agentMessages.stream()
                 .map(message -> message.accept(FAILED_TOOL_CALL_FINDER))
@@ -138,7 +141,8 @@ public class FailedToolCallRemovalPreFilter<R> implements MessagePersistencePreF
                 .collect(Collectors.toUnmodifiableSet());
         log.debug("Found failed tool call ids: {}", failedCallIds);
         return agentMessages.stream()
-                .filter(agentMessage -> agentMessage.accept(new FailedToolCallFilter(failedCallIds)))
+                .filter(agentMessage -> agentMessage.accept(
+                                                            new FailedToolCallFilter(failedCallIds)))
                 .toList();
     }
 }

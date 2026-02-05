@@ -52,7 +52,8 @@ class HttpToolBoxTest {
                 "name" : "Santanu"
                 }
                 """, 200)));
-        final var upstream = TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl());
+        final var upstream = TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT",
+                                                       wiremock.getHttpBaseUrl());
 
         final var toolSource = new HttpToolSource() {
             @Override
@@ -70,8 +71,13 @@ class HttpToolBoxTest {
             }
 
             @Override
-            public HttpCallSpec resolve(String upstream, String toolName, String arguments) {
-                return HttpCallSpec.builder().method(HttpCallSpec.HttpMethod.GET).path("/api/v1/name").build();
+            public HttpCallSpec resolve(String upstream,
+                                        String toolName,
+                                        String arguments) {
+                return HttpCallSpec.builder()
+                        .method(HttpCallSpec.HttpMethod.GET)
+                        .path("/api/v1/name")
+                        .build();
             }
 
             @Override
@@ -79,21 +85,27 @@ class HttpToolBoxTest {
                 return List.of("test");
             }
         };
-        final var toolBox = new HttpToolBox(upstream, new OkHttpClient.Builder().build(), toolSource, JsonUtils
-                .createMapper(), url -> url);
+        final var toolBox = new HttpToolBox(upstream,
+                                            new OkHttpClient.Builder().build(),
+                                            toolSource,
+                                            JsonUtils.createMapper(),
+                                            url -> url);
         final var tools = toolBox.tools();
         final var toolId = AgentUtils.id(upstream, "getName");
-        final var response = tools.get(toolId).accept(new ExecutableToolVisitor<String>() {
-            @Override
-            public String visit(ExternalTool externalTool) {
-                return (String) externalTool.getCallable().apply(null, toolId, "").response();
-            }
+        final var response = tools.get(toolId)
+                .accept(new ExecutableToolVisitor<String>() {
+                    @Override
+                    public String visit(ExternalTool externalTool) {
+                        return (String) externalTool.getCallable()
+                                .apply(null, toolId, "")
+                                .response();
+                    }
 
-            @Override
-            public String visit(InternalTool internalTool) {
-                return "";
-            }
-        });
+                    @Override
+                    public String visit(InternalTool internalTool) {
+                        return "";
+                    }
+                });
         assertEquals("{ \"name\" : \"Santanu\" }", response);
     }
 }

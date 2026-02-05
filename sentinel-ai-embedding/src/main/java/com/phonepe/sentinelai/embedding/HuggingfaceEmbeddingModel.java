@@ -54,7 +54,8 @@ public class HuggingfaceEmbeddingModel implements EmbeddingModel, AutoCloseable 
         }
 
         @Override
-        public void destroyObject(PooledObject<Predictor<String, float[]>> predictor, DestroyMode destroyMode) {
+        public void destroyObject(PooledObject<Predictor<String, float[]>> predictor,
+                                  DestroyMode destroyMode) {
             log.info("Closing predictor");
             predictor.getObject().close();
         }
@@ -80,7 +81,7 @@ public class HuggingfaceEmbeddingModel implements EmbeddingModel, AutoCloseable 
     @SneakyThrows
     public HuggingfaceEmbeddingModel(String modelUrl, int maxLength) {
         this.modelUrl = Objects.requireNonNullElse(modelUrl,
-                "djl://ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
+                                                   "djl://ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
 
         this.maxLength = Math.max(maxLength, MAX_LENGTH);
         System.setProperty("OPT_OUT_TRACKING", "true"); //DJL DIALS HOME ...

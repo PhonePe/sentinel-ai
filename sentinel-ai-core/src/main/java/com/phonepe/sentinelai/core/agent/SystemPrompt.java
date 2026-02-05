@@ -74,10 +74,13 @@ public class SystemPrompt {
     private List<FactList> facts;
     @JacksonXmlElementWrapper(localName = "hints")
     private List<Object> hint;
-    private String currentTime = LocalDateTime.now().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME);
+    private String currentTime = LocalDateTime.now()
+            .atOffset(ZoneOffset.UTC)
+            .format(DateTimeFormatter.ISO_DATE_TIME);
 
     @SneakyThrows
     public static String convert(SystemPrompt prompt, ObjectMapper xmlMapper) {
-        return xmlMapper.writerWithDefaultPrettyPrinter().writeValueAsString(prompt);
+        return xmlMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(prompt);
     }
 }

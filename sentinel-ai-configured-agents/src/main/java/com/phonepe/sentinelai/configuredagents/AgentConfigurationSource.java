@@ -70,5 +70,6 @@ public interface AgentConfigurationSource {
      * @param agentConfiguration the configuration of the agent to be saved
      * @return an {@link Optional} containing the saved {@link AgentMetadata} if successful, or empty if not
      */
-    Optional<AgentMetadata> save(final String agentId, final AgentConfiguration agentConfiguration);
+    Optional<AgentMetadata> save(final String agentId,
+                                 final AgentConfiguration agentConfiguration);
 }

@@ -43,12 +43,17 @@ public class AgentUtils {
         return now.getEpochSecond() * 1_000_000 + now.getNano() / 1_000;
     }
 
-    public static <T, R> R getIfNotNull(T value, Function<T, R> mapper, R defaultValue) {
+    public static <T, R> R getIfNotNull(T value,
+                                        Function<T, R> mapper,
+                                        R defaultValue) {
         return value != null ? mapper.apply(value) : defaultValue;
     }
 
     public static String id(String... args) {
-        return String.join("_", Arrays.stream(args).map(AgentUtils::lowerCamel).toList())
+        return String.join("_",
+                           Arrays.stream(args)
+                                   .map(AgentUtils::lowerCamel)
+                                   .toList())
                 .replaceAll("[\\s\\p{Punct}]", "_")
                 .toLowerCase();
     }
@@ -82,19 +87,38 @@ public class AgentUtils {
         return temp.replaceAll("_+", "_");
     }
 
-    public static AgentSetup mergeAgentSetup(final AgentSetup lhs, final AgentSetup rhs) {
+    public static AgentSetup mergeAgentSetup(final AgentSetup lhs,
+                                             final AgentSetup rhs) {
         return AgentSetup.builder()
-                .model(Objects.requireNonNull(value(lhs, rhs, AgentSetup::getModel), "Model is required"))
+                .model(Objects.requireNonNull(value(lhs,
+                                                    rhs,
+                                                    AgentSetup::getModel),
+                                              "Model is required"))
                 .modelSettings(value(lhs, rhs, AgentSetup::getModelSettings))
-                .mapper(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getMapper), JsonUtils::createMapper))
-                .executorService(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getExecutorService),
-                        Executors::newCachedThreadPool))
-                .eventBus(Objects.requireNonNullElseGet(value(lhs, rhs, AgentSetup::getEventBus), EventBus::new))
-                .outputGenerationMode(Objects.requireNonNullElse(value(lhs, rhs, AgentSetup::getOutputGenerationMode),
-                        OutputGenerationMode.TOOL_BASED))
-                .outputGenerationTool(Objects.requireNonNullElseGet(value(lhs, rhs,
-                        AgentSetup::getOutputGenerationTool), IdentityOutputGenerator::new))
-                .retrySetup(Objects.requireNonNullElse(value(lhs, rhs, AgentSetup::getRetrySetup), RetrySetup.DEFAULT))
+                .mapper(Objects.requireNonNullElseGet(value(lhs,
+                                                            rhs,
+                                                            AgentSetup::getMapper),
+                                                      JsonUtils::createMapper))
+                .executorService(Objects.requireNonNullElseGet(value(lhs,
+                                                                     rhs,
+                                                                     AgentSetup::getExecutorService),
+                                                               Executors::newCachedThreadPool))
+                .eventBus(Objects.requireNonNullElseGet(value(lhs,
+                                                              rhs,
+                                                              AgentSetup::getEventBus),
+                                                        EventBus::new))
+                .outputGenerationMode(Objects.requireNonNullElse(value(lhs,
+                                                                       rhs,
+                                                                       AgentSetup::getOutputGenerationMode),
+                                                                 OutputGenerationMode.TOOL_BASED))
+                .outputGenerationTool(Objects.requireNonNullElseGet(value(lhs,
+                                                                          rhs,
+                                                                          AgentSetup::getOutputGenerationTool),
+                                                                    IdentityOutputGenerator::new))
+                .retrySetup(Objects.requireNonNullElse(value(lhs,
+                                                             rhs,
+                                                             AgentSetup::getRetrySetup),
+                                                       RetrySetup.DEFAULT))
                 .build();
     }
 
@@ -119,14 +143,20 @@ public class AgentUtils {
     }
 
     public static <R> String sessionId(AgentRunContext<R> context) {
-        return context.getRequestMetadata() != null ? context.getRequestMetadata().getSessionId() : null;
+        return context.getRequestMetadata() != null ? context
+                .getRequestMetadata()
+                .getSessionId() : null;
     }
 
     public static <R> String userId(AgentRunContext<R> context) {
-        return context.getRequestMetadata() != null ? context.getRequestMetadata().getUserId() : null;
+        return context.getRequestMetadata() != null ? context
+                .getRequestMetadata()
+                .getUserId() : null;
     }
 
-    public static <T, R> R value(final T lhs, final T rhs, Function<T, R> mapper) {
+    public static <T, R> R value(final T lhs,
+                                 final T rhs,
+                                 Function<T, R> mapper) {
         final var obj = lhs == null ? rhs : lhs;
         if (null != obj) {
             return mapper.apply(obj);

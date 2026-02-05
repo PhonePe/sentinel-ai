@@ -48,8 +48,15 @@ class RemoveAllToolCallsSelectorTest {
         var selector = new RemoveAllToolCallsSelector();
         final var sessionId = "s-3";
         final var runId = "r-3";
-        final var messages = List.of(new UserPrompt(sessionId, runId, "u3", LocalDateTime.now()), new Text(sessionId,
-                runId, "t3"), new GenericText(sessionId, runId, Role.USER, "g3"));
+        final var messages = List.of(new UserPrompt(sessionId,
+                                                    runId,
+                                                    "u3",
+                                                    LocalDateTime.now()),
+                                     new Text(sessionId, runId, "t3"),
+                                     new GenericText(sessionId,
+                                                     runId,
+                                                     Role.USER,
+                                                     "g3"));
         final var modifiable = new ArrayList<AgentMessage>(messages);
         final var result = selector.select(sessionId, modifiable);
         assertEquals(3, result.size());
@@ -61,14 +68,26 @@ class RemoveAllToolCallsSelectorTest {
         final var sessionId = "s-1";
         final var runId = "r-1";
         final var messages = new ArrayList<AgentMessage>();
-        messages.add(new UserPrompt(sessionId, runId, "u1", LocalDateTime.now()));
+        messages.add(new UserPrompt(sessionId,
+                                    runId,
+                                    "u1",
+                                    LocalDateTime.now()));
         messages.add(new Text(sessionId, runId, "t1"));
         messages.add(new ToolCall(sessionId, runId, "tc-1", "tool", "{}"));
-        messages.add(new ToolCallResponse(sessionId, runId, "tc-1", "tool", null, "resp", LocalDateTime.now()));
+        messages.add(new ToolCallResponse(sessionId,
+                                          runId,
+                                          "tc-1",
+                                          "tool",
+                                          null,
+                                          "resp",
+                                          LocalDateTime.now()));
         messages.add(new GenericText(sessionId, runId, Role.USER, "g1"));
         final var result = selector.select(sessionId, messages);
         assertEquals(3, result.size());
-        assertTrue(result.stream().noneMatch(m -> m.getMessageType().name().contains("TOOL_CALL")));
+        assertTrue(result.stream()
+                .noneMatch(m -> m.getMessageType()
+                        .name()
+                        .contains("TOOL_CALL")));
     }
 
     @Test
@@ -76,8 +95,18 @@ class RemoveAllToolCallsSelectorTest {
         var selector = new RemoveAllToolCallsSelector();
         final var sessionId = "s-2";
         final var runId = "r-2";
-        final var messages = List.of(new ToolCall(sessionId, runId, "tc-2", "tool", "{}"), new ToolCallResponse(
-                sessionId, runId, "tc-2", "tool", null, "resp", LocalDateTime.now()));
+        final var messages = List.of(new ToolCall(sessionId,
+                                                  runId,
+                                                  "tc-2",
+                                                  "tool",
+                                                  "{}"),
+                                     new ToolCallResponse(sessionId,
+                                                          runId,
+                                                          "tc-2",
+                                                          "tool",
+                                                          null,
+                                                          "resp",
+                                                          LocalDateTime.now()));
         final var modifiable = new ArrayList<AgentMessage>(messages);
         final var result = selector.select(sessionId, modifiable);
         assertTrue(result.isEmpty());

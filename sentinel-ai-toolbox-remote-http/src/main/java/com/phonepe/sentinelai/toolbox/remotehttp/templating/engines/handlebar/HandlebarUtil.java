@@ -37,9 +37,12 @@ public class HandlebarUtil {
     /**
      * For use by Handlebars.java internally.
      */
-    private static final Cache<TemplateSource, Template> templateCache = CacheBuilder.newBuilder().build();
+    private static final Cache<TemplateSource, Template> templateCache = CacheBuilder
+            .newBuilder()
+            .build();
 
-    private static final LoadingCache<String, Template> compilationCache = CacheBuilder.newBuilder()
+    private static final LoadingCache<String, Template> compilationCache = CacheBuilder
+            .newBuilder()
             .build(new CacheLoader<>() {
                 @Override
                 public Template load(String input) throws Exception {
@@ -47,10 +50,11 @@ public class HandlebarUtil {
                 }
             });
 
-    private static final Handlebars handlebars = new Handlebars().with(new GuavaTemplateCache(templateCache));
+    private static final Handlebars handlebars = new Handlebars().with(
+                                                                       new GuavaTemplateCache(templateCache));
 
     public String convert(final String content,
-            final Map<String, Object> context) throws ExecutionException, IOException {
+                          final Map<String, Object> context) throws ExecutionException, IOException {
         return compilationCache.get(content).apply(context);
     }
 

@@ -109,7 +109,11 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                             .sentAt(null)
                             .build();
                 }
-                return Text.builder().sessionId(sessionId).runId(runId).content("text-" + i).build();
+                return Text.builder()
+                        .sessionId(sessionId)
+                        .runId(runId)
+                        .content("text-" + i)
+                        .build();
             }).toList();
 
             final var expectedIds = messages.stream()
@@ -125,49 +129,75 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             var iter = 0;
             BiScrollable<AgentMessage> response = null;
             while (iter++ < maxIterations) {
-                response = sessionStore.readMessages(sessionId, 10, false, AgentUtils.getIfNotNull(response,
-                        BiScrollable::getPointer, null), QueryDirection.OLDER);
+                response = sessionStore.readMessages(sessionId,
+                                                     10,
+                                                     false,
+                                                     AgentUtils.getIfNotNull(
+                                                                             response,
+                                                                             BiScrollable::getPointer,
+                                                                             null),
+                                                     QueryDirection.OLDER);
                 assertNotNull(response.getItems());
-                response.getItems().forEach(m -> retrieved.add(m.getMessageId()));
+                response.getItems()
+                        .forEach(m -> retrieved.add(m.getMessageId()));
                 if (retrieved.containsAll(expectedIds)) {
                     break;
                 }
                 prevPointer = nextPointer;
                 assertNotNull(response.getPointer());
                 nextPointer = response.getPointer().getOlder();
-                if (Strings.isNullOrEmpty(nextPointer) || nextPointer.equals(prevPointer)) {
+                if (Strings.isNullOrEmpty(nextPointer) || nextPointer.equals(
+                                                                             prevPointer)) {
                     break;
                 }
             }
 
             assertEquals(expectedIds.size(), retrieved.size());
             assertTrue(retrieved.containsAll(expectedIds),
-                    () -> "Retrieved messages do not contain all saved messages. Missing: " + String.join(",", Sets
-                            .difference(expectedIds, retrieved)));
+                       () -> "Retrieved messages do not contain all saved messages. Missing: " + String
+                               .join(",",
+                                     Sets.difference(expectedIds, retrieved)));
 
-            final var responseSkipSystem = sessionStore.readMessages(sessionId, 100, true, null, QueryDirection.OLDER);
+            final var responseSkipSystem = sessionStore.readMessages(sessionId,
+                                                                     100,
+                                                                     true,
+                                                                     null,
+                                                                     QueryDirection.OLDER);
             assertNotNull(responseSkipSystem.getItems());
             final var anySystem = responseSkipSystem.getItems()
                     .stream()
-                    .anyMatch(m -> m.getMessageType().equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
+                    .anyMatch(m -> m.getMessageType()
+                            .equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
             assertFalse(anySystem);
 
-            final var responseNewer = sessionStore.readMessages(sessionId, 10, true, null, QueryDirection.NEWER);
+            final var responseNewer = sessionStore.readMessages(sessionId,
+                                                                10,
+                                                                true,
+                                                                null,
+                                                                QueryDirection.NEWER);
             assertNotNull(responseNewer.getItems());
             assertFalse(responseNewer.getItems().isEmpty());
-            assertTrue(responseNewer.getItems().get(0).getTimestamp() <= responseNewer.getItems()
-                    .get(1)
-                    .getTimestamp());
+            assertTrue(responseNewer.getItems()
+                    .get(0)
+                    .getTimestamp() <= responseNewer.getItems()
+                            .get(1)
+                            .getTimestamp());
             assertNotNull(responseNewer.getPointer());
             assertNotNull(responseNewer.getPointer().getNewer());
 
-            final var secondBatchNewer = sessionStore.readMessages(sessionId, 10, true, responseNewer.getPointer(),
-                    QueryDirection.NEWER);
+            final var secondBatchNewer = sessionStore.readMessages(sessionId,
+                                                                   10,
+                                                                   true,
+                                                                   responseNewer
+                                                                           .getPointer(),
+                                                                   QueryDirection.NEWER);
             assertNotNull(secondBatchNewer.getItems());
             assertFalse(secondBatchNewer.getItems().isEmpty());
-            assertTrue(secondBatchNewer.getItems().get(0).getTimestamp() >= responseNewer.getItems()
-                    .get(responseNewer.getItems().size() - 1)
-                    .getTimestamp());
+            assertTrue(secondBatchNewer.getItems()
+                    .get(0)
+                    .getTimestamp() >= responseNewer.getItems()
+                            .get(responseNewer.getItems().size() - 1)
+                            .getTimestamp());
         }
     }
 
@@ -204,7 +234,9 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             assertTrue(retrievedSession.isPresent());
             assertEquals("Test Summary", retrievedSession.get().getSummary());
 
-            final var sessions = sessionStore.sessions(10, null, QueryDirection.OLDER);
+            final var sessions = sessionStore.sessions(10,
+                                                       null,
+                                                       QueryDirection.OLDER);
             assertFalse(sessions.getItems().isEmpty());
             assertEquals(1, sessions.getItems().size());
             assertEquals(sessionId, sessions.getItems().get(0).getSessionId());
@@ -215,41 +247,53 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     .keywords(List.of("topic1", "topic2"))
                     .updatedAt(AgentUtils.epochMicro())
                     .build();
-            final var updatedSession = sessionStore.saveSession(updatedSessionSummary);
+            final var updatedSession = sessionStore.saveSession(
+                                                                updatedSessionSummary);
             assertTrue(updatedSession.isPresent());
             assertEquals("Updated Summary", updatedSession.get().getSummary());
             assertTrue(sessionStore.deleteSession(sessionId));
             assertFalse(sessionStore.session(sessionId).isPresent());
 
             final var savedIds = IntStream.rangeClosed(1, 25)
-                    .mapToObj(i -> sessionStore.saveSession(SessionSummary.builder()
+                    .mapToObj(i -> sessionStore.saveSession(SessionSummary
+                            .builder()
                             .sessionId("S-" + i)
                             .summary("Summary " + i)
                             .keywords(List.of())
                             .updatedAt(AgentUtils.epochMicro())
-                            .build()).map(SessionSummary::getSessionId).orElse(null))
+                            .build())
+                            .map(SessionSummary::getSessionId)
+                            .orElse(null))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toUnmodifiableSet());
             var nextPointer = "";
             final var retrieved = new HashSet<String>();
             do {
-                final var response = sessionStore.sessions(10, nextPointer, QueryDirection.OLDER);
+                final var response = sessionStore.sessions(10,
+                                                           nextPointer,
+                                                           QueryDirection.OLDER);
                 assertNotNull(response.getItems());
-                response.getItems().forEach(s -> retrieved.add(s.getSessionId()));
+                response.getItems()
+                        .forEach(s -> retrieved.add(s.getSessionId()));
                 assertNotNull(response.getPointer());
                 nextPointer = response.getPointer().getOlder();
             } while (!retrieved.containsAll(savedIds));
             assertEquals(savedIds.size(), retrieved.size(), () -> {
                 final var savedSize = savedIds.size();
                 final var retrievedSize = retrieved.size();
-                final var diff = savedSize > retrievedSize ? Sets.difference(savedIds, retrieved) : Sets.difference(
-                        retrieved, savedIds);
-                return "Expected to retrieve %d sessions, but got %d. Extra: %s".formatted(savedSize, retrievedSize,
-                        String.join(",", diff));
+                final var diff = savedSize > retrievedSize ? Sets.difference(
+                                                                             savedIds,
+                                                                             retrieved)
+                        : Sets.difference(retrieved, savedIds);
+                return "Expected to retrieve %d sessions, but got %d. Extra: %s"
+                        .formatted(savedSize,
+                                   retrievedSize,
+                                   String.join(",", diff));
             });
             assertTrue(retrieved.containsAll(savedIds),
-                    () -> "Retrieved sessions do not contain all saved sessions. Missing: " + String.join(",", Sets
-                            .difference(savedIds, retrieved)));
+                       () -> "Retrieved sessions do not contain all saved sessions. Missing: " + String
+                               .join(",",
+                                     Sets.difference(savedIds, retrieved)));
         }
     }
 }

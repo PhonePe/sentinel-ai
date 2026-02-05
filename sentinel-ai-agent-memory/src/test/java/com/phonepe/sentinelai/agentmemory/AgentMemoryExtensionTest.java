@@ -70,12 +70,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AgentMemoryExtensionTest {
     public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions,
-                Map<String, ExecutableTool> tools) {
-            super(OutputObject.class, """
-                    greet the user and respond to queries being posted.
-                    IMPORTANT: you must extract memory about user for future use and to avoid tool calls.
-                    """, setup, extensions, tools);
+        public SimpleAgent(AgentSetup setup,
+                           List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions,
+                           Map<String, ExecutableTool> tools) {
+            super(OutputObject.class,
+                  """
+                          greet the user and respond to queries being posted.
+                          IMPORTANT: you must extract memory about user for future use and to avoid tool calls.
+                          """,
+                  setup,
+                  extensions,
+                  tools);
         }
 
         @Tool("Get name of user")
@@ -84,7 +89,8 @@ class AgentMemoryExtensionTest {
         }
 
         @Tool("Get salutation for user")
-        public Salutation getSalutation(AgentRunContext<SalutationParams> context, @NonNull SalutationParams params) {
+        public Salutation getSalutation(AgentRunContext<SalutationParams> context,
+                                        @NonNull SalutationParams params) {
             return new Salutation(List.of("Mr", "Dr", "Prof"));
         }
 
@@ -122,16 +128,23 @@ class AgentMemoryExtensionTest {
         private final Map<Key, List<AgentMemory>> memories = new ConcurrentHashMap<>();
 
         @Override
-        public List<AgentMemory> findMemories(String scopeId, MemoryScope scope, Set<MemoryType> memoryTypes,
-                List<String> topics, String query, int minReusabilityScore, int count) {
+        public List<AgentMemory> findMemories(String scopeId,
+                                              MemoryScope scope,
+                                              Set<MemoryType> memoryTypes,
+                                              List<String> topics,
+                                              String query,
+                                              int minReusabilityScore,
+                                              int count) {
             return memories.getOrDefault(new Key(scope, scopeId), List.of());
         }
 
         @Override
         public Optional<AgentMemory> save(AgentMemory agentMemory) {
             log.info("recevied memory: {}", agentMemory);
-            final var key = new Key(agentMemory.getScope(), agentMemory.getScopeId());
-            final var memsInScope = memories.computeIfAbsent(key, k -> new ArrayList<>());
+            final var key = new Key(agentMemory.getScope(),
+                                    agentMemory.getScopeId());
+            final var memsInScope = memories.computeIfAbsent(key,
+                                                             k -> new ArrayList<>());
             memsInScope.add(agentMemory);
             return Optional.of(agentMemory);
         }
@@ -148,7 +161,8 @@ class AgentMemoryExtensionTest {
     }
 
     @JsonClassDescription("Parameter to be passed to get salutation for a user")
-    public record SalutationParams(@JsonPropertyDescription("Name of the user") String name) {
+    public record SalutationParams(
+            @JsonPropertyDescription("Name of the user") String name) {
     }
 
     @JsonClassDescription("User input")
@@ -162,15 +176,24 @@ class AgentMemoryExtensionTest {
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var httpClient = new OkHttpClient.Builder().build();
-        final var model = new SimpleOpenAIModel<>("global:LLM_GLOBAL_GPT_4O_PRD", SimpleOpenAIAzure.builder()
-                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                .apiVersion("2024-10-21")
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(httpClient))
-                .build(), objectMapper);
+        final var model = new SimpleOpenAIModel<>("global:LLM_GLOBAL_GPT_4O_PRD",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
+                                                          .build(),
+                                                  objectMapper);
 
-        final var requestMetadata = AgentRequestMetadata.builder().sessionId("s1").userId("ss").build();
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
         final var memoryStore = new InMemoryMemStore();
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
@@ -182,7 +205,8 @@ class AgentMemoryExtensionTest {
                                 .parallelToolCalls(false)
                                 .build())
                         .build())
-                .extensions(List.of(AgentMemoryExtension.<UserInput, OutputObject, SimpleAgent>builder()
+                .extensions(List.of(AgentMemoryExtension
+                        .<UserInput, OutputObject, SimpleAgent>builder()
                         .objectMapper(objectMapper)
                         .memoryStore(memoryStore)
                         .memoryExtractionMode(MemoryExtractionMode.INLINE)
@@ -207,12 +231,17 @@ class AgentMemoryExtensionTest {
                     .build());
             log.info("Second call: {}", response2.getData());
             if (log.isTraceEnabled()) {
-                log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
-                        .writeValueAsString(response2.getAllMessages()));
+                log.trace("Messages: {}",
+                          objectMapper.writerWithDefaultPrettyPrinter()
+                                  .writeValueAsString(response2
+                                          .getAllMessages()));
             }
             assertTrue(response2.getData().message().contains("sunny"));
         }
-        assertFalse(memoryStore.memories.get(new InMemoryMemStore.Key(MemoryScope.ENTITY, "ss")).isEmpty());
+        assertFalse(memoryStore.memories.get(new InMemoryMemStore.Key(
+                                                                      MemoryScope.ENTITY,
+                                                                      "ss"))
+                .isEmpty());
     }
 
     @Test
@@ -222,15 +251,24 @@ class AgentMemoryExtensionTest {
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var httpClient = new OkHttpClient.Builder().build();
-        final var model = new SimpleOpenAIModel<>("global:LLM_GLOBAL_GPT_4O_PRD", SimpleOpenAIAzure.builder()
-                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                .apiVersion("2024-10-21")
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(httpClient))
-                .build(), objectMapper);
+        final var model = new SimpleOpenAIModel<>("global:LLM_GLOBAL_GPT_4O_PRD",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
+                                                          .build(),
+                                                  objectMapper);
 
-        final var requestMetadata = AgentRequestMetadata.builder().sessionId("s1").userId("ss").build();
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
         final var memoryStore = new InMemoryMemStore();
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
@@ -243,7 +281,8 @@ class AgentMemoryExtensionTest {
                                 .build())
                         .executorService(Executors.newFixedThreadPool(5))
                         .build())
-                .extensions(List.of(AgentMemoryExtension.<UserInput, OutputObject, SimpleAgent>builder()
+                .extensions(List.of(AgentMemoryExtension
+                        .<UserInput, OutputObject, SimpleAgent>builder()
                         .objectMapper(objectMapper)
                         .memoryStore(memoryStore)
                         .memoryExtractionMode(MemoryExtractionMode.OUT_OF_BAND)
@@ -274,13 +313,17 @@ class AgentMemoryExtensionTest {
                     .build());
             log.info("Second call: {}", response2.getData());
             if (log.isTraceEnabled()) {
-                log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
-                        .writeValueAsString(response2.getAllMessages()));
+                log.trace("Messages: {}",
+                          objectMapper.writerWithDefaultPrettyPrinter()
+                                  .writeValueAsString(response2
+                                          .getAllMessages()));
             }
             assertNotNull(response2.getData());
             assertTrue(response2.getData().message().contains("sunny"));
         }
-        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> memoryStore.memories.size() > currMemories);
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .until(() -> memoryStore.memories.size() > currMemories);
         assertFalse(memoryStore.memories.isEmpty());
     }
 }

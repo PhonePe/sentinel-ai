@@ -35,10 +35,16 @@ public class AgentExecutionResult {
     JsonNode agentOutput;
 
     public static AgentExecutionResult fail(JsonNode error) {
-        return AgentExecutionResult.builder().successful(false).error(error).build();
+        return AgentExecutionResult.builder()
+                .successful(false)
+                .error(error)
+                .build();
     }
 
     public static AgentExecutionResult success(JsonNode agentOutput) {
-        return AgentExecutionResult.builder().successful(true).agentOutput(agentOutput).build();
+        return AgentExecutionResult.builder()
+                .successful(true)
+                .agentOutput(agentOutput)
+                .build();
     }
 }

@@ -49,9 +49,11 @@ public class InMemoryAgentConfigurationSource implements AgentConfigurationSourc
     }
 
     @Override
-    public Optional<AgentMetadata> save(String agentId, AgentConfiguration agentConfiguration) {
-        return Optional.of(agentConfigurations.computeIfAbsent(agentId, id -> new AgentMetadata(agentId,
-                agentConfiguration)));
+    public Optional<AgentMetadata> save(String agentId,
+                                        AgentConfiguration agentConfiguration) {
+        return Optional.of(agentConfigurations.computeIfAbsent(agentId,
+                                                               id -> new AgentMetadata(agentId,
+                                                                                       agentConfiguration)));
     }
 
 

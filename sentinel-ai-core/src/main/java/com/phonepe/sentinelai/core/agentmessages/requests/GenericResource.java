@@ -45,16 +45,44 @@ public class GenericResource extends AgentGenericMessage {
     String serializedJson;
 
     @SuppressWarnings("java:S107")
-    public GenericResource(String sessionId, String runId, Role role, ResourceType resourceType, String uri,
-            String mimeType, String content, String serializedJson) {
-        this(sessionId, runId, null, null, role, resourceType, uri, mimeType, content, serializedJson);
+    public GenericResource(String sessionId,
+                           String runId,
+                           Role role,
+                           ResourceType resourceType,
+                           String uri,
+                           String mimeType,
+                           String content,
+                           String serializedJson) {
+        this(sessionId,
+             runId,
+             null,
+             null,
+             role,
+             resourceType,
+             uri,
+             mimeType,
+             content,
+             serializedJson);
     }
 
     @Builder
     @Jacksonized
-    public GenericResource(String sessionId, String runId, String messageId, Long timestamp, Role role,
-            ResourceType resourceType, String uri, String mimeType, String content, String serializedJson) {
-        super(sessionId, runId, messageId, timestamp, AgentMessageType.GENERIC_RESOURCE_MESSAGE, role);
+    public GenericResource(String sessionId,
+                           String runId,
+                           String messageId,
+                           Long timestamp,
+                           Role role,
+                           ResourceType resourceType,
+                           String uri,
+                           String mimeType,
+                           String content,
+                           String serializedJson) {
+        super(sessionId,
+              runId,
+              messageId,
+              timestamp,
+              AgentMessageType.GENERIC_RESOURCE_MESSAGE,
+              role);
         this.resourceType = resourceType;
         this.uri = uri;
         this.mimeType = mimeType;

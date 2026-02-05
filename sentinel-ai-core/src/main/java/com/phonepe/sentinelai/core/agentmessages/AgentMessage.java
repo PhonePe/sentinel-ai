@@ -54,15 +54,22 @@ public abstract class AgentMessage {
     private final String messageId;
     private final long timestamp;
 
-    protected AgentMessage(AgentMessageType messageType, String sessionId, String runId, String messageId,
-            Long timestamp) {
+    protected AgentMessage(AgentMessageType messageType,
+                           String sessionId,
+                           String runId,
+                           String messageId,
+                           Long timestamp) {
         this.messageType = messageType;
         this.sessionId = Objects.requireNonNullElse(sessionId, runId);
         this.runId = runId;
-        this.messageId = Objects.requireNonNullElseGet(messageId, () -> AgentUtils.id(messageType.name(), UUID
-                .randomUUID()
-                .toString()));
-        this.timestamp = Objects.requireNonNullElseGet(timestamp, AgentUtils::epochMicro);
+        this.messageId = Objects.requireNonNullElseGet(messageId,
+                                                       () -> AgentUtils.id(
+                                                                           messageType
+                                                                                   .name(),
+                                                                           UUID.randomUUID()
+                                                                                   .toString()));
+        this.timestamp = Objects.requireNonNullElseGet(timestamp,
+                                                       AgentUtils::epochMicro);
     }
 
     public abstract <T> T accept(AgentMessageVisitor<T> visitor);

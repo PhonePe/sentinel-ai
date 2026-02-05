@@ -26,7 +26,8 @@ import java.util.Map;
  */
 public class TextHttpCallTemplatingEngine implements HttpCallTemplatingEngine {
     @Override
-    public String convert(HttpCallTemplate.Template template, Map<String, Object> context) {
+    public String convert(HttpCallTemplate.Template template,
+                          Map<String, Object> context) {
         return template.getContent();
     }
 }

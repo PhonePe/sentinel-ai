@@ -44,15 +44,22 @@ public interface SessionStore {
      * @return A {@link BiScrollable} containing the list of messages (sorted chronologically) and pointers for
      *         further scrolling.
      */
-    BiScrollable<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
-            BiScrollable.DataPointer pointer, QueryDirection queryDirection);
+    BiScrollable<AgentMessage> readMessages(String sessionId,
+                                            int count,
+                                            boolean skipSystemPrompt,
+                                            BiScrollable.DataPointer pointer,
+                                            QueryDirection queryDirection);
 
-    void saveMessages(String sessionId, String runId, List<AgentMessage> messages);
+    void saveMessages(String sessionId,
+                      String runId,
+                      List<AgentMessage> messages);
 
     Optional<SessionSummary> saveSession(SessionSummary sessionSummary);
 
     Optional<SessionSummary> session(String sessionId);
 
-    BiScrollable<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection);
+    BiScrollable<SessionSummary> sessions(int count,
+                                          String pointer,
+                                          QueryDirection queryDirection);
 
 }

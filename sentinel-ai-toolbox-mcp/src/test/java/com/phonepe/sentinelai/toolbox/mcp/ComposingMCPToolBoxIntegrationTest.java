@@ -61,10 +61,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ComposingMCPToolBoxIntegrationTest {
     private static class CompositeMCPTestAgent extends Agent<String, String, CompositeMCPTestAgent> {
 
-        public CompositeMCPTestAgent(@NonNull AgentSetup setup, Map<String, ExecutableTool> knownTools) {
-            super(String.class, """
-                    Respond to user's queries. Use the provided tools to get the correct information.
-                    """, setup, List.of(), knownTools);
+        public CompositeMCPTestAgent(@NonNull AgentSetup setup,
+                                     Map<String, ExecutableTool> knownTools) {
+            super(String.class,
+                  """
+                          Respond to user's queries. Use the provided tools to get the correct information.
+                          """,
+                  setup,
+                  List.of(),
+                  knownTools);
         }
 
         @Override
@@ -91,22 +96,32 @@ class ComposingMCPToolBoxIntegrationTest {
         testToolBox(wiremock, this::buildToolBoxFromFileWithTools);
     }
 
-    void testToolBox(final WireMockRuntimeInfo wiremock, Function<JsonMapper, ComposingMCPToolBox> toolboxBuilder) {
+    void testToolBox(final WireMockRuntimeInfo wiremock,
+                     Function<JsonMapper, ComposingMCPToolBox> toolboxBuilder) {
         TestUtils.setupMocks(2, "tc", getClass());
         final var httpClient = new OkHttpClient.Builder().build();
         final var objectMapper = JsonUtils.createMapper();
-        final var model = new SimpleOpenAIModel<>("gpt-4o", SimpleOpenAIAzure.builder()
-                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                .apiVersion("2024-10-21")
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(httpClient))
-                .build(), objectMapper);
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
+                                                          .build(),
+                                                  objectMapper);
 
         final var agent = new CompositeMCPTestAgent(AgentSetup.builder()
                 .mapper(objectMapper)
                 .model(model)
-                .modelSettings(ModelSettings.builder().temperature(0.1f).seed(42).build())
+                .modelSettings(ModelSettings.builder()
+                        .temperature(0.1f)
+                        .seed(42)
+                        .build())
                 .build(), Map.of() // No tools for now
         );
         final var mcpToolBox = toolboxBuilder.apply(objectMapper);
@@ -121,9 +136,11 @@ class ComposingMCPToolBoxIntegrationTest {
 
     private ComposingMCPToolBox buildToolBox(JsonMapper objectMapper) {
         final var params = ServerParameters.builder("npx")
-                .args("-y", "@modelcontextprotocol/server-everything@2025.12.18")
+                .args("-y",
+                      "@modelcontextprotocol/server-everything@2025.12.18")
                 .build();
-        final var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(objectMapper));
+        final var transport = new StdioClientTransport(params,
+                                                       new JacksonMcpJsonMapper(objectMapper));
 
         final var mcpClient = McpClient.sync(transport).build();
         mcpClient.initialize();
@@ -136,17 +153,21 @@ class ComposingMCPToolBoxIntegrationTest {
     private ComposingMCPToolBox buildToolBoxFromFile(JsonMapper objectMapper) {
         return ComposingMCPToolBox.buildFromFile()
                 .objectMapper(objectMapper)
-                .mcpJsonFilePath(Objects.requireNonNull(getClass().getResource("/mcp.json")).getPath())
+                .mcpJsonFilePath(Objects.requireNonNull(getClass().getResource(
+                                                                               "/mcp.json"))
+                        .getPath())
                 .build();
     }
 
     @SneakyThrows
     private ComposingMCPToolBox buildToolBoxFromFileWithTools(JsonMapper objectMapper) {
-        final var fileContents = Files.readAllBytes(Paths.get(Objects.requireNonNull(getClass().getResource(
-                "/mcp-with-tools.json")).getPath()));
+        final var fileContents = Files.readAllBytes(Paths.get(Objects
+                .requireNonNull(getClass().getResource("/mcp-with-tools.json"))
+                .getPath()));
         return ComposingMCPToolBox.buildFromConfig()
                 .objectMapper(objectMapper)
-                .configuration(objectMapper.readValue(fileContents, MCPConfiguration.class))
+                .configuration(objectMapper.readValue(fileContents,
+                                                      MCPConfiguration.class))
                 .build();
     }
 

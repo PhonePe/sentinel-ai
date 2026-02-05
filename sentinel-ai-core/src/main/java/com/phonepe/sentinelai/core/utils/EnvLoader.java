@@ -41,7 +41,9 @@ public class EnvLoader {
      * @param defaultValue the default value
      * @return the value of the variable
      */
-    public static String readEnv(Dotenv dotenv, final String variable, final String defaultValue) {
+    public static String readEnv(Dotenv dotenv,
+                                 final String variable,
+                                 final String defaultValue) {
         // Implementer's note: Do not replace with Objects.requires.. methods, we decide to support null defaultValue
         var value = dotenv.get(variable);
         if (value == null) {
@@ -67,7 +69,8 @@ public class EnvLoader {
      * @param defaultValue the default value
      * @return the value of the variable
      */
-    public static String readEnv(final String variable, final String defaultValue) {
+    public static String readEnv(final String variable,
+                                 final String defaultValue) {
         return readEnv(DOTENV, variable, defaultValue);
     }
 
@@ -78,17 +81,23 @@ public class EnvLoader {
      */
     public Dotenv buildDotenv() {
         final var dotFilePath = System.getProperty("dotenv.file");
-        final var dotEnvConfig = Dotenv.configure().ignoreIfMalformed().ignoreIfMissing();
+        final var dotEnvConfig = Dotenv.configure()
+                .ignoreIfMalformed()
+                .ignoreIfMissing();
         if (!Strings.isNullOrEmpty(dotFilePath)) {
-            log.info("System property 'dotenv.file' is set to: {}", dotFilePath);
+            log.info("System property 'dotenv.file' is set to: {}",
+                     dotFilePath);
             //get directory from file dotFilePath
             if (dotFilePath.contains("/")) {
-                final var directory = dotFilePath.substring(0, dotFilePath.lastIndexOf("/"));
+                final var directory = dotFilePath.substring(0,
+                                                            dotFilePath
+                                                                    .lastIndexOf("/"));
                 dotEnvConfig.directory(directory);
                 log.info("Loading dotenv from directory: {}", directory);
             }
             if (!dotFilePath.endsWith("/")) {
-                final var filename = dotFilePath.substring(dotFilePath.lastIndexOf("/") + 1);
+                final var filename = dotFilePath.substring(dotFilePath
+                        .lastIndexOf("/") + 1);
                 dotEnvConfig.filename(filename);
                 log.info("Loading dotenv from file: {}", dotFilePath);
             }

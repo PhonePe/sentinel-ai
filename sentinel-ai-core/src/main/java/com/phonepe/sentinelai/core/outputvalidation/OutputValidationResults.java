@@ -63,7 +63,9 @@ public class OutputValidationResults {
     }
 
     private static List<ValidationFailure> toFailureList(String[] failure) {
-        return Arrays.stream(failure).map(OutputValidationResults::toFailure).toList();
+        return Arrays.stream(failure)
+                .map(OutputValidationResults::toFailure)
+                .toList();
     }
 
     public OutputValidationResults addFailure(String failure) {
@@ -72,7 +74,8 @@ public class OutputValidationResults {
     }
 
     public OutputValidationResults addFailures(Collection<String> failures) {
-        this.failures.addAll(Objects.requireNonNullElseGet(failures, List::<String>of)
+        this.failures.addAll(Objects.requireNonNullElseGet(failures,
+                                                           List::<String>of)
                 .stream()
                 .map(OutputValidationResults::toFailure)
                 .toList());
@@ -80,7 +83,9 @@ public class OutputValidationResults {
     }
 
     public boolean isRetriable() {
-        return !isSuccessful() && failures.stream().allMatch(result -> result.getType().equals(FailureType.RETRYABLE));
+        return !isSuccessful() && failures.stream()
+                .allMatch(result -> result.getType()
+                        .equals(FailureType.RETRYABLE));
     }
 
     public boolean isSuccessful() {

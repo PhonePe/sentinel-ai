@@ -27,7 +27,8 @@ public class HandlebarHttpCallTemplatingEngine implements HttpCallTemplatingEngi
 
     @Override
     @SneakyThrows
-    public String convert(HttpCallTemplate.Template template, Map<String, Object> context) {
+    public String convert(HttpCallTemplate.Template template,
+                          Map<String, Object> context) {
         return HandlebarUtil.convert(template.getContent(), context);
     }
 }

@@ -53,7 +53,8 @@ public class UnpairedToolCallsRemover implements MessageSelector {
     }
 
     @Override
-    public List<AgentMessage> select(String sessionId, List<AgentMessage> messages) {
+    public List<AgentMessage> select(String sessionId,
+                                     List<AgentMessage> messages) {
         final var toolCallDataMap = new HashMap<String, ToolCallData>();
         for (var message : messages) {
             message.accept(new AgentMessageVisitor<Void>() {
@@ -68,8 +69,11 @@ public class UnpairedToolCallsRemover implements MessageSelector {
 
                         @Override
                         public Void visit(ToolCallResponse toolCallResponse) {
-                            toolCallDataMap.computeIfAbsent(toolCallResponse.getToolCallId(), k -> new ToolCallData(
-                                    toolCallResponse.getMessageId())).setHasResponse(true); //Tool Call executed and Response sent to model
+                            toolCallDataMap.computeIfAbsent(toolCallResponse
+                                    .getToolCallId(),
+                                                            k -> new ToolCallData(toolCallResponse
+                                                                    .getMessageId()))
+                                    .setHasResponse(true); //Tool Call executed and Response sent to model
                             return null;
                         }
 
@@ -79,8 +83,7 @@ public class UnpairedToolCallsRemover implements MessageSelector {
                         }
 
                         @Override
-                        public Void visit(
-                                com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt systemPrompt) {
+                        public Void visit(com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt systemPrompt) {
                             return null;
                         }
                     });
@@ -103,8 +106,11 @@ public class UnpairedToolCallsRemover implements MessageSelector {
 
                         @Override
                         public Void visit(ToolCall toolCall) {
-                            toolCallDataMap.computeIfAbsent(toolCall.getToolCallId(), k -> new ToolCallData(toolCall
-                                    .getMessageId())).setHasRequest(true); //Tool call execution request received from model
+                            toolCallDataMap.computeIfAbsent(toolCall
+                                    .getToolCallId(),
+                                                            k -> new ToolCallData(toolCall
+                                                                    .getMessageId()))
+                                    .setHasRequest(true); //Tool call execution request received from model
                             return null;
                         }
                     });
@@ -114,14 +120,17 @@ public class UnpairedToolCallsRemover implements MessageSelector {
 
         final var nonPairedCalls = toolCallDataMap.values()
                 .stream()
-                .filter(toolCallData -> toolCallData.isHasRequest() != toolCallData.isHasResponse())
+                .filter(toolCallData -> toolCallData
+                        .isHasRequest() != toolCallData.isHasResponse())
                 .map(ToolCallData::getMessageId)
                 .collect(Collectors.toUnmodifiableSet());
         log.debug("Found unpaired tool call message IDs: {}", nonPairedCalls);
         final var allowedMessages = new ArrayList<>(messages);
-        allowedMessages.removeIf(message -> nonPairedCalls.contains(message.getMessageId()));
-        log.debug("Returning {} messages for session {} after removing unpaired tool calls", allowedMessages.size(),
-                sessionId);
+        allowedMessages.removeIf(message -> nonPairedCalls.contains(message
+                .getMessageId()));
+        log.debug("Returning {} messages for session {} after removing unpaired tool calls",
+                  allowedMessages.size(),
+                  sessionId);
         return allowedMessages;
 
     }

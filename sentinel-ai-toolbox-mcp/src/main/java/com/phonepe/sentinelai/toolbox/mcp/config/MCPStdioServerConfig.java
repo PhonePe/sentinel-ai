@@ -40,8 +40,10 @@ public class MCPStdioServerConfig extends MCPServerConfig {
 
     @Builder
     @Jacksonized
-    public MCPStdioServerConfig(Set<String> exposedTools, @NonNull String command, List<String> args,
-            Map<String, String> env) {
+    public MCPStdioServerConfig(Set<String> exposedTools,
+                                @NonNull String command,
+                                List<String> args,
+                                Map<String, String> env) {
         super(MCPServerType.STDIO, exposedTools);
         this.command = command;
         this.args = args;

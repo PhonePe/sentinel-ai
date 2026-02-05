@@ -43,31 +43,49 @@ public class CustomToolBox implements ToolBox {
     private final Map<String, ExecutableTool> tools = new ConcurrentHashMap<>();
 
     @Builder
-    public CustomToolBox(@NonNull String name, @Singular Collection<ExecutableTool> tools) {
+    public CustomToolBox(@NonNull String name,
+                         @Singular Collection<ExecutableTool> tools) {
         this.name = name;
         this.registerTools(tools);
     }
 
-    private CustomToolBox(final String name, Map<String, ExecutableTool> tools) {
+    private CustomToolBox(final String name,
+                          Map<String, ExecutableTool> tools) {
         this.name = name;
         this.tools.putAll(tools);
     }
 
-    public static CustomToolBox filter(@NonNull final String agentName, @NonNull final String sourceName,
-            @NonNull final Map<String, ExecutableTool> tools, @NonNull final Set<String> exposedTools) {
-        final var sourceTools = Objects.requireNonNullElseGet(tools, Map::<String, ExecutableTool>of);
+    public static CustomToolBox filter(@NonNull final String agentName,
+                                       @NonNull final String sourceName,
+                                       @NonNull final Map<String, ExecutableTool> tools,
+                                       @NonNull final Set<String> exposedTools) {
+        final var sourceTools = Objects.requireNonNullElseGet(tools,
+                                                              Map::<String, ExecutableTool>of);
         final var toolBoxName = "%s-%s".formatted(agentName, sourceName);
-        return new CustomToolBox(toolBoxName, sourceTools.entrySet()
-                .stream()
-                .filter(entry -> exposedTools.isEmpty() || exposedTools.contains(entry.getValue()
-                        .getToolDefinition()
-                        .getName()))
-                .collect(Collectors.toMap(entry -> entry.getValue().getToolDefinition().getId(), Map.Entry::getValue)));
+        return new CustomToolBox(toolBoxName,
+                                 sourceTools.entrySet()
+                                         .stream()
+                                         .filter(entry -> exposedTools
+                                                 .isEmpty() || exposedTools
+                                                         .contains(entry
+                                                                 .getValue()
+                                                                 .getToolDefinition()
+                                                                 .getName()))
+                                         .collect(Collectors.toMap(
+                                                                   entry -> entry
+                                                                           .getValue()
+                                                                           .getToolDefinition()
+                                                                           .getId(),
+                                                                   Map.Entry::getValue)));
     }
 
-    public static CustomToolBox filter(@NonNull final String agentName, @NonNull final ToolBox toolBox,
-            @NonNull final Set<String> exposedTools) {
-        return CustomToolBox.filter(agentName, toolBox.name(), toolBox.tools(), exposedTools);
+    public static CustomToolBox filter(@NonNull final String agentName,
+                                       @NonNull final ToolBox toolBox,
+                                       @NonNull final Set<String> exposedTools) {
+        return CustomToolBox.filter(agentName,
+                                    toolBox.name(),
+                                    toolBox.tools(),
+                                    exposedTools);
     }
 
     @Override
@@ -80,9 +98,12 @@ public class CustomToolBox implements ToolBox {
     }
 
     public CustomToolBox registerTools(Collection<ExecutableTool> tools) {
-        return this.registerTools(Objects.<Collection<ExecutableTool>>requireNonNullElseGet(tools, List::of)
+        return this.registerTools(Objects
+                .<Collection<ExecutableTool>>requireNonNullElseGet(tools,
+                                                                   List::of)
                 .stream()
-                .collect(Collectors.toMap(tool -> tool.getToolDefinition().getName(), Function.identity())));
+                .collect(Collectors.toMap(tool -> tool.getToolDefinition()
+                        .getName(), Function.identity())));
     }
 
     public CustomToolBox registerTools(ExecutableTool... tools) {

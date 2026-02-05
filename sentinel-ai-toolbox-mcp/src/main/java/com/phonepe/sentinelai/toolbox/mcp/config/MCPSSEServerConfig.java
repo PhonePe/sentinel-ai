@@ -36,7 +36,9 @@ public class MCPSSEServerConfig extends MCPServerConfig {
 
     @Builder
     @Jacksonized
-    public MCPSSEServerConfig(Set<String> exposedTools, String url, Integer timeout) {
+    public MCPSSEServerConfig(Set<String> exposedTools,
+                              String url,
+                              Integer timeout) {
         super(MCPServerType.SSE, exposedTools);
         this.url = url;
         this.timeout = timeout;

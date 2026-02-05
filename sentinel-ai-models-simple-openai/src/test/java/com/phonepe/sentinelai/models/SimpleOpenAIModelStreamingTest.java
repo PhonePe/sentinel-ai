@@ -76,7 +76,11 @@ class SimpleOpenAIModelStreamingTest {
     private static final class TestAgent extends Agent<String, String, TestAgent> {
 
         public TestAgent(@NonNull AgentSetup setup) {
-            super(String.class, "Greet the user by name and respond to queries", setup, List.of(), Map.of());
+            super(String.class,
+                  "Greet the user by name and respond to queries",
+                  setup,
+                  List.of(),
+                  Map.of());
         }
 
         @Tool("Get location of the user")
@@ -107,17 +111,27 @@ class SimpleOpenAIModelStreamingTest {
     }
 
     private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock,
-            final OkHttpClient client) throws FileNotFoundException {
+                                               final OkHttpClient client) throws FileNotFoundException {
         final var objectMapper = JsonUtils.createMapper();
 
         final var stats = new ModelUsageStats(); //We want to collect stats from the whole session
         final var executor = Executors.newCachedThreadPool();
         final var agent = setupAgent(wiremock, objectMapper, client, executor);
-        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"),
+                                                 true);
         return agent.executeAsyncStreaming(AgentInput.<String>builder()
                 .request("Hi")
-                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").usageStats(stats).build())
-                .build(), new TextStreamer(objectMapper, executor, data -> print(data, outputStream))).join();
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .usageStats(stats)
+                        .build())
+                .build(),
+                                           new TextStreamer(objectMapper,
+                                                            executor,
+                                                            data -> print(data,
+                                                                          outputStream)))
+                .join();
     }
 
     private static void print(byte[] data, PrintStream outputStream) {
@@ -131,21 +145,35 @@ class SimpleOpenAIModelStreamingTest {
         }
     }
 
-    private static TestAgent setupAgent(final WireMockRuntimeInfo wiremock, final JsonMapper objectMapper,
-            final OkHttpClient httpClient, final ExecutorService executor) {
-        final var model = new SimpleOpenAIModel<>("gpt-4o", SimpleOpenAIAzure.builder()
-                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                .apiVersion("2024-10-21")
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(httpClient))
-                .build(), objectMapper, SimpleOpenAIModelOptions.builder()
-                        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
-                        .build());
+    private static TestAgent setupAgent(final WireMockRuntimeInfo wiremock,
+                                        final JsonMapper objectMapper,
+                                        final OkHttpClient httpClient,
+                                        final ExecutorService executor) {
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
+                                                          .build(),
+                                                  objectMapper,
+                                                  SimpleOpenAIModelOptions
+                                                          .builder()
+                                                          .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
+                                                          .build());
         return new TestAgent(AgentSetup.builder()
                 .model(model)
                 .mapper(objectMapper)
-                .modelSettings(ModelSettings.builder().parallelToolCalls(false).temperature(0.1f).seed(1).build())
+                .modelSettings(ModelSettings.builder()
+                        .parallelToolCalls(false)
+                        .temperature(0.1f)
+                        .seed(1)
+                        .build())
                 .executorService(executor)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                 .build());
@@ -161,25 +189,51 @@ class SimpleOpenAIModelStreamingTest {
         final var stats = new ModelUsageStats(); //We want to collect stats from the whole session
         final var executor = Executors.newCachedThreadPool();
         final var httpClient = new OkHttpClient.Builder().build();
-        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
-        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
-        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+        final var agent = setupAgent(wiremock,
+                                     objectMapper,
+                                     httpClient,
+                                     executor);
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"),
+                                                 true);
+        final var response = agent.executeAsyncStreaming(AgentInput
+                .<String>builder()
                 .request("Hi")
-                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").usageStats(stats).build())
-                .build(), new TextStreamer(objectMapper, executor, data -> print(data, outputStream))).join();
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .usageStats(stats)
+                        .build())
+                .build(),
+                                                         new TextStreamer(objectMapper,
+                                                                          executor,
+                                                                          data -> print(data,
+                                                                                        outputStream)))
+                .join();
         var responseString = response.getData();
         log.info("Agent response: {}", responseString);
         assertNotNull(responseString);
         //The following needs to be done because the model is not deterministic and might call tools at different times
         // across runs
-        final var sunnyFound = new AtomicBoolean(responseString.contains("sunny"));
-        final var nameFound = new AtomicBoolean(responseString.contains("Santanu"));
+        final var sunnyFound = new AtomicBoolean(responseString.contains(
+                                                                         "sunny"));
+        final var nameFound = new AtomicBoolean(responseString.contains(
+                                                                        "Santanu"));
         assertTrue(response.getUsage().getTotalTokens() > 1); //This ensures that all chunks have been consumed
-        final var response2 = agent.executeAsyncTextStreaming(AgentInput.<String>builder()
+        final var response2 = agent.executeAsyncTextStreaming(AgentInput
+                .<String>builder()
                 .request("How is the weather?")
-                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").usageStats(stats).build())
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .usageStats(stats)
+                        .build())
                 .oldMessages(response.getAllMessages())
-                .build(), new TextStreamer(objectMapper, executor, data -> print(data, outputStream))).join();
+                .build(),
+                                                              new TextStreamer(objectMapper,
+                                                                               executor,
+                                                                               data -> print(data,
+                                                                                             outputStream)))
+                .join();
         responseString = response2.getData();
         log.info("Agent response: {}", responseString);
         sunnyFound.compareAndSet(false, responseString.contains("sunny"));
@@ -198,16 +252,29 @@ class SimpleOpenAIModelStreamingTest {
 
         final var executor = Executors.newCachedThreadPool();
         final var httpClient = new OkHttpClient.Builder().build();
-        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
+        final var agent = setupAgent(wiremock,
+                                     objectMapper,
+                                     httpClient,
+                                     executor);
         AtomicBoolean preProcessorCalled = new AtomicBoolean(false);
-        agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
+        agent.registerAgentMessagesPreProcessor((ctx,
+                                                 allMessages,
+                                                 newMessages) -> {
             preProcessorCalled.set(true);
             return new AgentMessagesPreProcessResult(null, null);
         });
 
-        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
-        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder().request("Hi").build(),
-                new TextStreamer(objectMapper, executor, data -> print(data, outputStream))).join();
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"),
+                                                 true);
+        final var response = agent.executeAsyncStreaming(AgentInput
+                .<String>builder()
+                .request("Hi")
+                .build(),
+                                                         new TextStreamer(objectMapper,
+                                                                          executor,
+                                                                          data -> print(data,
+                                                                                        outputStream)))
+                .join();
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertTrue(preProcessorCalled.get());
     }
@@ -220,15 +287,29 @@ class SimpleOpenAIModelStreamingTest {
 
         final var executor = Executors.newCachedThreadPool();
         final var httpClient = new OkHttpClient.Builder().build();
-        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
-        agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
+        final var agent = setupAgent(wiremock,
+                                     objectMapper,
+                                     httpClient,
+                                     executor);
+        agent.registerAgentMessagesPreProcessor((ctx,
+                                                 allMessages,
+                                                 newMessages) -> {
             throw new RuntimeException("Errored");
         });
 
-        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
-        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder().request("Hi").build(),
-                new TextStreamer(objectMapper, executor, data -> print(data, outputStream))).join();
-        assertEquals(ErrorType.PREPROCESSOR_RUN_FAILURE, response.getError().getErrorType());
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"),
+                                                 true);
+        final var response = agent.executeAsyncStreaming(AgentInput
+                .<String>builder()
+                .request("Hi")
+                .build(),
+                                                         new TextStreamer(objectMapper,
+                                                                          executor,
+                                                                          data -> print(data,
+                                                                                        outputStream)))
+                .join();
+        assertEquals(ErrorType.PREPROCESSOR_RUN_FAILURE,
+                     response.getError().getErrorType());
     }
 
     @Test
@@ -236,19 +317,27 @@ class SimpleOpenAIModelStreamingTest {
     void testTimeouts(final WireMockRuntimeInfo wiremock) {
         TestUtils.setupMocksWithTimeout(Duration.ofSeconds(1));
 
-        final var httpClient = new OkHttpClient.Builder().readTimeout(Duration.ofMillis(100)).build();
+        final var httpClient = new OkHttpClient.Builder().readTimeout(Duration
+                .ofMillis(100)).build();
 
         final var response = execute(wiremock, httpClient);
-        assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR, response.getError().getErrorType(),
-                "Expected TIMEOUT after retries, got: " + response.getError());
+        assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
+                   response.getError().getErrorType(),
+                   "Expected TIMEOUT after retries, got: " + response
+                           .getError());
     }
 
     private void setupSseStubs() {
         //Setup stub for SSE
         IntStream.rangeClosed(1, 5).forEach(i -> {
-            stubFor(post("/chat/completions?api-version=2024-10-21").inScenario("model-test")
-                    .whenScenarioStateIs(i == 1 ? Scenario.STARTED : Objects.toString(i))
-                    .willReturn(okForContentType("text/event-stream", readStubFile(i, "events", getClass())))
+            stubFor(post("/chat/completions?api-version=2024-10-21").inScenario(
+                                                                                "model-test")
+                    .whenScenarioStateIs(i == 1 ? Scenario.STARTED : Objects
+                            .toString(i))
+                    .willReturn(okForContentType("text/event-stream",
+                                                 readStubFile(i,
+                                                              "events",
+                                                              getClass())))
                     .willSetStateTo(Objects.toString(i + 1)));
 
         });

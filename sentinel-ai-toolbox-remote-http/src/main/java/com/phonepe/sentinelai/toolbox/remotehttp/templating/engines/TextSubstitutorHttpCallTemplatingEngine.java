@@ -30,7 +30,8 @@ import java.util.Map;
 public class TextSubstitutorHttpCallTemplatingEngine implements HttpCallTemplatingEngine {
 
     @Override
-    public String convert(HttpCallTemplate.Template template, Map<String, Object> context) {
+    public String convert(HttpCallTemplate.Template template,
+                          Map<String, Object> context) {
         return StringSubstitutor.replace(template.getContent(), context);
     }
 }

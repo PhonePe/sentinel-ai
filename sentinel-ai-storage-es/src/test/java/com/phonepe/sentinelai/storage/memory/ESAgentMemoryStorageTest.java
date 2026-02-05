@@ -51,7 +51,9 @@ class ESAgentMemoryStorageTest extends ESIntegrationTestBase {
                 .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
                 .build()) {
 
-            final var storage = new ESAgentMemoryStorage(client, new HuggingfaceEmbeddingModel(), indexPrefix(this));
+            final var storage = new ESAgentMemoryStorage(client,
+                                                         new HuggingfaceEmbeddingModel(),
+                                                         indexPrefix(this));
             {
                 final var saved = storage.save(AgentMemory.builder()
                         .scope(MemoryScope.ENTITY)
@@ -76,8 +78,13 @@ class ESAgentMemoryStorageTest extends ESIntegrationTestBase {
                         .build());
                 assertTrue(saved.isPresent());
             }
-            final var results = storage.findMemories("TestUser", MemoryScope.ENTITY, EnumSet.of(SEMANTIC), List.of(),
-                    "name", 0, 10);
+            final var results = storage.findMemories("TestUser",
+                                                     MemoryScope.ENTITY,
+                                                     EnumSet.of(SEMANTIC),
+                                                     List.of(),
+                                                     "name",
+                                                     0,
+                                                     10);
             log.debug("Results: {}", results);
             assertTrue(!results.isEmpty());
         }

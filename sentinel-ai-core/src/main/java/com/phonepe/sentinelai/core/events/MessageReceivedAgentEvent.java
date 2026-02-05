@@ -39,8 +39,12 @@ public class MessageReceivedAgentEvent extends AgentEvent {
 
     @Builder
     @Jacksonized
-    public MessageReceivedAgentEvent(@NonNull String agentName, @NonNull String runId, String sessionId, String userId,
-            @NonNull AgentMessage message, @NonNull Duration elapsedTime) {
+    public MessageReceivedAgentEvent(@NonNull String agentName,
+                                     @NonNull String runId,
+                                     String sessionId,
+                                     String userId,
+                                     @NonNull AgentMessage message,
+                                     @NonNull Duration elapsedTime) {
         super(EventType.MESSAGE_RECEIVED, agentName, runId, sessionId, userId);
         this.message = message;
         this.elapsedTime = elapsedTime;

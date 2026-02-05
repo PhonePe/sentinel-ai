@@ -35,8 +35,12 @@ public class ToolCalledAgentEvent extends AgentEvent {
 
     @Builder
     @Jacksonized
-    public ToolCalledAgentEvent(@NonNull String agentName, @NonNull String runId, String sessionId, String userId,
-            @NonNull String toolCallId, @NonNull String toolCallName) {
+    public ToolCalledAgentEvent(@NonNull String agentName,
+                                @NonNull String runId,
+                                String sessionId,
+                                String userId,
+                                @NonNull String toolCallId,
+                                @NonNull String toolCallName) {
         super(EventType.TOOL_CALLED, agentName, runId, sessionId, userId);
         this.toolCallId = toolCallId;
         this.toolCallName = toolCallName;

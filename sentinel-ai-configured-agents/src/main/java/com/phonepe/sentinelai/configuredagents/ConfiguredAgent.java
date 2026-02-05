@@ -48,10 +48,18 @@ public class ConfiguredAgent {
 
         private final AgentConfiguration agentConfiguration;
 
-        public RootAgent(final AgentConfiguration agentConfiguration, final AgentSetup agentSetup,
-                final List<AgentExtension<String, String, RootAgent>> agentExtensions, final ToolBox toolBox) {
-            super(agentConfiguration, agentSetup, agentExtensions, Map.of(), new ApproveAllToolRuns<>(),
-                    new DefaultOutputValidator<>(), new DefaultErrorHandler<>(), new NeverTerminateEarlyStrategy());
+        public RootAgent(final AgentConfiguration agentConfiguration,
+                         final AgentSetup agentSetup,
+                         final List<AgentExtension<String, String, RootAgent>> agentExtensions,
+                         final ToolBox toolBox) {
+            super(agentConfiguration,
+                  agentSetup,
+                  agentExtensions,
+                  Map.of(),
+                  new ApproveAllToolRuns<>(),
+                  new DefaultOutputValidator<>(),
+                  new DefaultErrorHandler<>(),
+                  new NeverTerminateEarlyStrategy());
             this.agentConfiguration = agentConfiguration;
             this.registerToolbox(toolBox);
         }
@@ -65,35 +73,52 @@ public class ConfiguredAgent {
     }
 
     public ConfiguredAgent(final AgentConfiguration agentConfiguration,
-            final List<AgentExtension<String, String, RootAgent>> rootAgentExtensions, final ToolBox availableTools,
-            final AgentSetup agentSetup) {
-        this.rootAgent = new RootAgent(agentConfiguration, agentSetup, rootAgentExtensions, availableTools);
+                           final List<AgentExtension<String, String, RootAgent>> rootAgentExtensions,
+                           final ToolBox availableTools,
+                           final AgentSetup agentSetup) {
+        this.rootAgent = new RootAgent(agentConfiguration,
+                                       agentSetup,
+                                       rootAgentExtensions,
+                                       availableTools);
     }
 
     @SneakyThrows
     public final CompletableFuture<AgentOutput<JsonNode>> executeAsync(AgentInput<JsonNode> input) {
         final var mapper = input.getAgentSetup().getMapper();
-        return rootAgent.executeAsync(new AgentInput<>(mapper.writeValueAsString(input.getRequest()), input.getFacts(),
-                input.getRequestMetadata(), input.getOldMessages(), null // We do not forward the setup here to use setup from rootAgent
+        return rootAgent.executeAsync(new AgentInput<>(mapper
+                .writeValueAsString(input.getRequest()),
+                                                       input.getFacts(),
+                                                       input.getRequestMetadata(),
+                                                       input.getOldMessages(),
+                                                       null // We do not forward the setup here to use setup from rootAgent
         )).thenApply(output -> {
             try {
                 final var error = output.getError();
-                if (error != null && !error.getErrorType().equals(ErrorType.SUCCESS)) {
-                    return new AgentOutput<>(null, output.getNewMessages(), output.getAllMessages(), output.getUsage(),
-                            error);
+                if (error != null && !error.getErrorType()
+                        .equals(ErrorType.SUCCESS)) {
+                    return new AgentOutput<>(null,
+                                             output.getNewMessages(),
+                                             output.getAllMessages(),
+                                             output.getUsage(),
+                                             error);
                 }
                 final var json = mapper.readTree(output.getData());
-                return new AgentOutput<>(json, output.getNewMessages(), output.getAllMessages(), output.getUsage(),
-                        output.getError());
+                return new AgentOutput<>(json,
+                                         output.getNewMessages(),
+                                         output.getAllMessages(),
+                                         output.getUsage(),
+                                         output.getError());
             }
             catch (Exception e) {
-                throw new RuntimeException("Failed to parse AgentOutput response to JsonNode", e);
+                throw new RuntimeException("Failed to parse AgentOutput response to JsonNode",
+                                           e);
             }
         });
     }
 
     public ConfiguredAgent registerAgentMessagesPreProcessors(List<AgentMessagesPreProcessor> preProcessors) {
-        rootAgent.registerAgentMessagesPreProcessors(Objects.requireNonNullElseGet(preProcessors, List::of));
+        rootAgent.registerAgentMessagesPreProcessors(Objects
+                .requireNonNullElseGet(preProcessors, List::of));
         return this;
     }
 }

@@ -31,7 +31,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Maintains pre-processors for agents that can be looked up at runtime.
  */
 public class AgentMessagesPreProcessors {
-    public static final AgentMessagesPreProcessors NONE = AgentMessagesPreProcessors.builder()
+    public static final AgentMessagesPreProcessors NONE = AgentMessagesPreProcessors
+            .builder()
             .messagesPreProcessors(Map.of())
             .build();
 
@@ -42,24 +43,27 @@ public class AgentMessagesPreProcessors {
     }
 
     @Builder
-    public AgentMessagesPreProcessors(
-            @NonNull final Map<String, List<AgentMessagesPreProcessor>> messagesPreProcessors) {
+    public AgentMessagesPreProcessors(@NonNull final Map<String, List<AgentMessagesPreProcessor>> messagesPreProcessors) {
         this.messagesPreProcessors = messagesPreProcessors;
     }
 
-    public static AgentMessagesPreProcessors of(String agentName, final List<AgentMessagesPreProcessor> preProcessors) {
+    public static AgentMessagesPreProcessors of(String agentName,
+                                                final List<AgentMessagesPreProcessor> preProcessors) {
         return new AgentMessagesPreProcessors().add(agentName, preProcessors);
     }
 
-    public AgentMessagesPreProcessors add(final String agentName, final AgentMessagesPreProcessor processor) {
-        final var existingProcessors = messagesPreProcessors.computeIfAbsent(agentName,
-                k -> new CopyOnWriteArrayList<>());
+    public AgentMessagesPreProcessors add(final String agentName,
+                                          final AgentMessagesPreProcessor processor) {
+        final var existingProcessors = messagesPreProcessors.computeIfAbsent(
+                                                                             agentName,
+                                                                             k -> new CopyOnWriteArrayList<>());
 
         existingProcessors.add(processor);
         return this;
     }
 
-    public AgentMessagesPreProcessors add(final String agentName, final List<AgentMessagesPreProcessor> preProcessors) {
+    public AgentMessagesPreProcessors add(final String agentName,
+                                          final List<AgentMessagesPreProcessor> preProcessors) {
         preProcessors.forEach(preProcessor -> add(agentName, preProcessor));
         return this;
     }

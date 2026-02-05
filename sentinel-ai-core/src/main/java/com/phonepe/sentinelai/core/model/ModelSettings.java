@@ -106,17 +106,33 @@ public class ModelSettings {
         if (rhs == null) {
             return lhs;
         }
-        return new ModelSettings(rhs.getMaxTokens() != null ? rhs.getMaxTokens() : lhs.getMaxTokens(), rhs
-                .getTemperature() != null ? rhs.getTemperature() : lhs.getTemperature(), rhs.getTopP() != null ? rhs
-                        .getTopP() : lhs.getTopP(), rhs.getTimeout() != null ? rhs.getTimeout() : lhs.getTimeout(), rhs
-                                .getParallelToolCalls() != null ? rhs.getParallelToolCalls() : lhs
-                                        .getParallelToolCalls(), rhs.getSeed() != null ? rhs.getSeed() : lhs.getSeed(),
-                rhs.getPresencePenalty() != null ? rhs.getPresencePenalty() : lhs.getPresencePenalty(), rhs
-                        .getFrequencyPenalty() != null ? rhs.getFrequencyPenalty() : lhs.getFrequencyPenalty(), rhs
-                                .getLogitBias() != null ? rhs.getLogitBias() : lhs.getLogitBias(), rhs
-                                        .getReasoning() != null ? rhs.getReasoning() : lhs.getReasoning(), rhs
-                                                .getModelAttributes() != ModelAttributes.DEFAULT_MODEL_ATTRIBUTES ? rhs
-                                                        .getModelAttributes() : lhs.getModelAttributes());
+        return new ModelSettings(rhs.getMaxTokens() != null ? rhs.getMaxTokens()
+                : lhs.getMaxTokens(),
+                                 rhs.getTemperature() != null ? rhs
+                                         .getTemperature() : lhs
+                                                 .getTemperature(),
+                                 rhs.getTopP() != null ? rhs.getTopP() : lhs
+                                         .getTopP(),
+                                 rhs.getTimeout() != null ? rhs.getTimeout()
+                                         : lhs.getTimeout(),
+                                 rhs.getParallelToolCalls() != null ? rhs
+                                         .getParallelToolCalls() : lhs
+                                                 .getParallelToolCalls(),
+                                 rhs.getSeed() != null ? rhs.getSeed() : lhs
+                                         .getSeed(),
+                                 rhs.getPresencePenalty() != null ? rhs
+                                         .getPresencePenalty() : lhs
+                                                 .getPresencePenalty(),
+                                 rhs.getFrequencyPenalty() != null ? rhs
+                                         .getFrequencyPenalty() : lhs
+                                                 .getFrequencyPenalty(),
+                                 rhs.getLogitBias() != null ? rhs.getLogitBias()
+                                         : lhs.getLogitBias(),
+                                 rhs.getReasoning() != null ? rhs.getReasoning()
+                                         : lhs.getReasoning(),
+                                 rhs.getModelAttributes() != ModelAttributes.DEFAULT_MODEL_ATTRIBUTES
+                                         ? rhs.getModelAttributes() : lhs
+                                                 .getModelAttributes());
     }
 
 }

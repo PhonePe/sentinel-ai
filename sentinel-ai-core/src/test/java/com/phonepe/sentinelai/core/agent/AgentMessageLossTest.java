@@ -62,30 +62,51 @@ class AgentMessageLossTest {
         final var model = mock(Model.class);
         final var callCount = new AtomicInteger(0);
         final var mapper = JsonUtils.createMapper();
-        final var output = mapper.createObjectNode().textNode("Success response");
+        final var output = mapper.createObjectNode()
+                .textNode("Success response");
 
-        when(model.compute(any(), anyCollection(), anyList(), anyMap(), any(ToolRunner.class), any(), anyList()))
-                .thenAnswer((Answer<CompletableFuture<ModelOutput>>) invocation -> {
-                    List<?> messages = invocation.getArgument(2);
-                    int currentCall = callCount.incrementAndGet();
+        when(model.compute(any(),
+                           anyCollection(),
+                           anyList(),
+                           anyMap(),
+                           any(ToolRunner.class),
+                           any(),
+                           anyList())).thenAnswer(
+                                                  (Answer<CompletableFuture<ModelOutput>>) invocation -> {
+                                                      List<?> messages = invocation
+                                                              .getArgument(2);
+                                                      int currentCall = callCount
+                                                              .incrementAndGet();
 
-                    // On every call, messages should NOT be empty.
-                    // It should contain at least SystemPrompt and UserPrompt.
-                    if (messages.isEmpty()) {
-                        throw new IllegalStateException("Messages list is empty on call " + currentCall);
-                    }
+                                                      // On every call, messages should NOT be empty.
+                                                      // It should contain at least SystemPrompt and UserPrompt.
+                                                      if (messages.isEmpty()) {
+                                                          throw new IllegalStateException("Messages list is empty on call " + currentCall);
+                                                      }
 
-                    if (currentCall == 1) {
-                        // Return error on first call to trigger retry
-                        return CompletableFuture.completedFuture(ModelOutput.error(invocation.getArgument(2), // Passing the same messages list
-                                new ModelUsageStats(), SentinelError.error(ErrorType.NO_RESPONSE,
-                                        "First attempt failed")));
-                    }
+                                                      if (currentCall == 1) {
+                                                          // Return error on first call to trigger retry
+                                                          return CompletableFuture
+                                                                  .completedFuture(ModelOutput
+                                                                          .error(invocation
+                                                                                  .getArgument(2), // Passing the same messages list
+                                                                                 new ModelUsageStats(),
+                                                                                 SentinelError
+                                                                                         .error(ErrorType.NO_RESPONSE,
+                                                                                                "First attempt failed")));
+                                                      }
 
-                    return CompletableFuture.completedFuture(ModelOutput.success(mapper.createObjectNode()
-                            .set(Agent.OUTPUT_VARIABLE_NAME, output), List.of(), invocation.getArgument(2),
-                            new ModelUsageStats()));
-                });
+                                                      return CompletableFuture
+                                                              .completedFuture(ModelOutput
+                                                                      .success(mapper
+                                                                              .createObjectNode()
+                                                                              .set(Agent.OUTPUT_VARIABLE_NAME,
+                                                                                   output),
+                                                                               List.of(),
+                                                                               invocation
+                                                                                       .getArgument(2),
+                                                                               new ModelUsageStats()));
+                                                  });
 
         final var agent = new TestAgent(AgentSetup.builder()
                 .mapper(mapper)
@@ -96,7 +117,9 @@ class AgentMessageLossTest {
                         .build())
                 .build());
 
-        final var response = agent.executeAsync(AgentInput.<String>builder().request("Hello").build()).get();
+        final var response = agent.executeAsync(AgentInput.<String>builder()
+                .request("Hello")
+                .build()).get();
 
         assertNotNull(response.getData());
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());

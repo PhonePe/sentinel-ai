@@ -47,16 +47,23 @@ import static org.mockito.Mockito.when;
 class ConfiguredAgentTest {
 
     private static Agent<String, String, ? extends RegisterableAgent<?>> createMockAgent() {
-        return (Agent<String, String, ? extends RegisterableAgent<?>>) Mockito.mock(Agent.class);
+        return (Agent<String, String, ? extends RegisterableAgent<?>>) Mockito
+                .mock(Agent.class);
     }
 
     @Test
     void testRootAgentError() throws Exception {
         final var mockAgent = createMockAgent();
         final var mapper = JsonUtils.createMapper();
-        final var error = SentinelError.error(ErrorType.NO_RESPONSE, new RuntimeException("boom"));
-        final var rootOutput = AgentOutput.error(List.of(), List.of(), null, error);
-        when(mockAgent.executeAsync(any(AgentInput.class))).thenReturn(CompletableFuture.completedFuture(rootOutput));
+        final var error = SentinelError.error(ErrorType.NO_RESPONSE,
+                                              new RuntimeException("boom"));
+        final var rootOutput = AgentOutput.error(List.of(),
+                                                 List.of(),
+                                                 null,
+                                                 error);
+        when(mockAgent.executeAsync(any(AgentInput.class))).thenReturn(
+                                                                       CompletableFuture
+                                                                               .completedFuture(rootOutput));
 
         final var configured = new ConfiguredAgent(mockAgent);
         final var input = AgentInput.<JsonNode>builder()
@@ -73,7 +80,8 @@ class ConfiguredAgentTest {
     @Test
     void testRootAgentException() {
         final var mockAgent = createMockAgent();
-        when(mockAgent.executeAsync(any(AgentInput.class))).thenThrow(new RuntimeException("boom"));
+        when(mockAgent.executeAsync(any(AgentInput.class))).thenThrow(
+                                                                      new RuntimeException("boom"));
         final var mapper = JsonUtils.createMapper();
         final var configured = new ConfiguredAgent(mockAgent);
         final var input = AgentInput.<JsonNode>builder()
@@ -81,16 +89,23 @@ class ConfiguredAgentTest {
                 .agentSetup(AgentSetup.builder().mapper(mapper).build())
                 .build();
 
-        assertThrows(RuntimeException.class, () -> configured.executeAsync(input));
+        assertThrows(RuntimeException.class,
+                     () -> configured.executeAsync(input));
     }
 
     @Test
     void testSuccessfulExecution() throws Exception {
         final var mockAgent = createMockAgent();
         final var mapper = JsonUtils.createMapper();
-        final var requestJson = mapper.writeValueAsString(Map.of("hello", "world"));
-        final var rootOutput = AgentOutput.success(requestJson, List.of(), List.of(), null);
-        when(mockAgent.executeAsync(any(AgentInput.class))).thenReturn(CompletableFuture.completedFuture(rootOutput));
+        final var requestJson = mapper.writeValueAsString(Map.of("hello",
+                                                                 "world"));
+        final var rootOutput = AgentOutput.success(requestJson,
+                                                   List.of(),
+                                                   List.of(),
+                                                   null);
+        when(mockAgent.executeAsync(any(AgentInput.class))).thenReturn(
+                                                                       CompletableFuture
+                                                                               .completedFuture(rootOutput));
 
         final var configured = new ConfiguredAgent(mockAgent);
         final var input = AgentInput.<JsonNode>builder()

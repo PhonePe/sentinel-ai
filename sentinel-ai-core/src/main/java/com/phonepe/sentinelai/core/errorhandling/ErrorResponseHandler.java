@@ -25,5 +25,6 @@ import com.phonepe.sentinelai.core.agent.AgentRunContext;
 @FunctionalInterface
 public interface ErrorResponseHandler<R> {
 
-    <U> AgentOutput<U> handle(AgentRunContext<R> context, AgentOutput<U> agentOutput);
+    <U> AgentOutput<U> handle(AgentRunContext<R> context,
+                              AgentOutput<U> agentOutput);
 }

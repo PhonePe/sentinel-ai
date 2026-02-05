@@ -50,7 +50,8 @@ public interface HttpToolSource<T extends HttpTool, S extends HttpToolSource<T, 
      * @return this
      */
     default S register(String upstream, T... tool) {
-        Objects.requireNonNull(tool, "At least one tool is needed to be passed as argument");
+        Objects.requireNonNull(tool,
+                               "At least one tool is needed to be passed as argument");
         return register(upstream, Arrays.asList(tool));
     }
 

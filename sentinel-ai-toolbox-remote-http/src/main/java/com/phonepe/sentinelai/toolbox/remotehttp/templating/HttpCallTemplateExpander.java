@@ -39,9 +39,12 @@ public class HttpCallTemplateExpander {
     private final Map<HttpCallTemplate.TemplateType, HttpCallTemplatingEngine> templatingEngines;
 
     public HttpCallTemplateExpander() {
-        this(Map.of(HttpCallTemplate.TemplateType.TEXT, new TextHttpCallTemplatingEngine(),
-                HttpCallTemplate.TemplateType.TEXT_SUBSTITUTOR, new TextSubstitutorHttpCallTemplatingEngine(),
-                HttpCallTemplate.TemplateType.HANDLEBARS, new HandlebarHttpCallTemplatingEngine()));
+        this(Map.of(HttpCallTemplate.TemplateType.TEXT,
+                    new TextHttpCallTemplatingEngine(),
+                    HttpCallTemplate.TemplateType.TEXT_SUBSTITUTOR,
+                    new TextSubstitutorHttpCallTemplatingEngine(),
+                    HttpCallTemplate.TemplateType.HANDLEBARS,
+                    new HandlebarHttpCallTemplatingEngine()));
     }
 
     /**
@@ -51,21 +54,27 @@ public class HttpCallTemplateExpander {
      * @param context  the context to use for conversion
      * @return the converted {@link HttpCallSpec}
      */
-    public HttpCallSpec convert(final HttpCallTemplate template, Map<String, Object> context) {
+    public HttpCallSpec convert(final HttpCallTemplate template,
+                                Map<String, Object> context) {
 
         final var path = convert(template.getPath(), context);
         final var method = template.getMethod();
         final var headers = Objects.requireNonNullElseGet(template.getHeaders(),
-                Map::<String, List<HttpCallTemplate.Template>>of)
+                                                          Map::<String, List<HttpCallTemplate.Template>>of)
                 .entrySet()
                 .stream()
-                .collect(toMap(Map.Entry::getKey, entry -> entry.getValue()
-                        .stream()
-                        .map(t -> convert(t, context))
-                        .toList()));
+                .collect(toMap(Map.Entry::getKey,
+                               entry -> entry.getValue()
+                                       .stream()
+                                       .map(t -> convert(t, context))
+                                       .toList()));
         final var body = convert(template.getBody(), context);
         final var contentType = template.getContentType();
-        log.debug("Expanding spec: path: {}, method: {}, headers: {}, body: {}", path, method, headers, body);
+        log.debug("Expanding spec: path: {}, method: {}, headers: {}, body: {}",
+                  path,
+                  method,
+                  headers,
+                  body);
         return HttpCallSpec.builder()
                 .method(method)
                 .path(path)
@@ -76,11 +85,14 @@ public class HttpCallTemplateExpander {
                 .build();
     }
 
-    private String convert(final HttpCallTemplate.Template template, Map<String, Object> context) {
+    private String convert(final HttpCallTemplate.Template template,
+                           Map<String, Object> context) {
         if (null == template) {
             return null;
         }
         return Objects.requireNonNull(templatingEngines.get(template.getType()),
-                "No templating engine found for type: " + template.getType()).convert(template, context);
+                                      "No templating engine found for type: " + template
+                                              .getType())
+                .convert(template, context);
     }
 }

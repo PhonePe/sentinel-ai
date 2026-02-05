@@ -31,18 +31,24 @@ import lombok.AllArgsConstructor;
 public class SimpleOpenAIModelFactory implements ModelFactory {
 
     @Override
-    public Model build(AgentConfiguration agentConfig, final Model defaultModel) {
+    public Model build(AgentConfiguration agentConfig,
+                       final Model defaultModel) {
         final var providedSetting = agentConfig.getModelConfiguration();
         if (providedSetting == null) {
             return defaultModel;
         }
         if (defaultModel instanceof SimpleOpenAIModel<?> simpleOpenAIModel) {
-            final var aiProviderFactory = simpleOpenAIModel.getOpenAIProviderFactory();
+            final var aiProviderFactory = simpleOpenAIModel
+                    .getOpenAIProviderFactory();
             final var modelName = providedSetting.getName();
             final var serviceProvider = aiProviderFactory.get(modelName);
-            return new SimpleOpenAIModel<>(modelName, serviceProvider, simpleOpenAIModel.getMapper(), simpleOpenAIModel
-                    .getModelOptions());
+            return new SimpleOpenAIModel<>(modelName,
+                                           serviceProvider,
+                                           simpleOpenAIModel.getMapper(),
+                                           simpleOpenAIModel.getModelOptions());
         }
-        throw new IllegalArgumentException("Unsupported model type: " + defaultModel.getClass().getSimpleName());
+        throw new IllegalArgumentException("Unsupported model type: " + defaultModel
+                .getClass()
+                .getSimpleName());
     }
 }

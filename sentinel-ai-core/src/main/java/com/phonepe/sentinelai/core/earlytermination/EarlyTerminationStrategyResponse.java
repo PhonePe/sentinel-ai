@@ -37,11 +37,16 @@ public class EarlyTerminationStrategyResponse {
     String reason;
 
     public static EarlyTerminationStrategyResponse doNotTerminate() {
-        return new EarlyTerminationStrategyResponse(ResponseType.CONTINUE, ErrorType.SUCCESS, ErrorType.SUCCESS
-                .getMessage());
+        return new EarlyTerminationStrategyResponse(ResponseType.CONTINUE,
+                                                    ErrorType.SUCCESS,
+                                                    ErrorType.SUCCESS
+                                                            .getMessage());
     }
 
-    public static EarlyTerminationStrategyResponse terminate(ErrorType errorType, String reason) {
-        return new EarlyTerminationStrategyResponse(ResponseType.TERMINATE, errorType, reason);
+    public static EarlyTerminationStrategyResponse terminate(ErrorType errorType,
+                                                             String reason) {
+        return new EarlyTerminationStrategyResponse(ResponseType.TERMINATE,
+                                                    errorType,
+                                                    reason);
     }
 }

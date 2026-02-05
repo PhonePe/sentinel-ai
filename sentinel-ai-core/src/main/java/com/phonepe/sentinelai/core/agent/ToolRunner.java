@@ -27,5 +27,6 @@ import java.util.Map;
  */
 @FunctionalInterface
 public interface ToolRunner {
-    ToolCallResponse runTool(Map<String, ExecutableTool> tools, ToolCall toolCall);
+    ToolCallResponse runTool(Map<String, ExecutableTool> tools,
+                             ToolCall toolCall);
 }

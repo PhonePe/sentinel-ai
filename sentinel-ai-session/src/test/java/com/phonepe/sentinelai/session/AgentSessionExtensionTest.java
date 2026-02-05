@@ -67,10 +67,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class AgentSessionExtensionTest {
     public static class SimpleAgent extends Agent<UserInput, String, SimpleAgent> {
         @Builder
-        public SimpleAgent(AgentSetup setup, List<AgentExtension<UserInput, String, SimpleAgent>> extensions,
-                Map<String, ExecutableTool> tools) {
-            super(String.class, "greet the user. do not call get salutation without knowing the username{ ", setup,
-                    extensions, tools);
+        public SimpleAgent(AgentSetup setup,
+                           List<AgentExtension<UserInput, String, SimpleAgent>> extensions,
+                           Map<String, ExecutableTool> tools) {
+            super(String.class,
+                  "greet the user. do not call get salutation without knowing the username{ ",
+                  setup,
+                  extensions,
+                  tools);
         }
 
         @Tool("Get name of user")
@@ -79,7 +83,8 @@ class AgentSessionExtensionTest {
         }
 
         @Tool("Get salutation for user")
-        public Salutation getSalutation(AgentRunContext<SalutationParams> context, @NonNull SalutationParams params) {
+        public Salutation getSalutation(AgentRunContext<SalutationParams> context,
+                                        @NonNull SalutationParams params) {
             return new Salutation(List.of("Mr", "Dr", "Prof"));
         }
 
@@ -123,19 +128,27 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public BiScrollable<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
-                BiScrollable.DataPointer pointer, QueryDirection queryDirection) {
+        public BiScrollable<AgentMessage> readMessages(String sessionId,
+                                                       int count,
+                                                       boolean skipSystemPrompt,
+                                                       BiScrollable.DataPointer pointer,
+                                                       QueryDirection queryDirection) {
             var messages = messageData.getOrDefault(sessionId, List.of());
             if (queryDirection == QueryDirection.OLDER) {
                 // Return newest first (reverse chronological) to match ESSessionStore
                 messages = com.google.common.collect.Lists.reverse(messages);
             }
-            return new BiScrollable<>(AgentUtils.lastN(messages, count), new BiScrollable.DataPointer(null, null));
+            return new BiScrollable<>(AgentUtils.lastN(messages, count),
+                                      new BiScrollable.DataPointer(null, null));
         }
 
         @Override
-        public void saveMessages(String sessionId, String runId, List<AgentMessage> messages) {
-            messageData.computeIfAbsent(sessionId, k -> new java.util.ArrayList<>()).addAll(messages);
+        public void saveMessages(String sessionId,
+                                 String runId,
+                                 List<AgentMessage> messages) {
+            messageData.computeIfAbsent(sessionId,
+                                        k -> new java.util.ArrayList<>())
+                    .addAll(messages);
         }
 
         @Override
@@ -150,8 +163,11 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public BiScrollable<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection) {
-            return new BiScrollable<>(List.copyOf(sessionData.values()), new BiScrollable.DataPointer(null, null));
+        public BiScrollable<SessionSummary> sessions(int count,
+                                                     String pointer,
+                                                     QueryDirection queryDirection) {
+            return new BiScrollable<>(List.copyOf(sessionData.values()),
+                                      new BiScrollable.DataPointer(null, null));
         }
 
     }
@@ -163,7 +179,8 @@ class AgentSessionExtensionTest {
     }
 
     @JsonClassDescription("Parameter to be passed to get salutation for a user")
-    public record SalutationParams(@JsonPropertyDescription("Name of the user") String name) {
+    public record SalutationParams(
+            @JsonPropertyDescription("Name of the user") String name) {
     }
 
     @JsonClassDescription("User input")
@@ -177,29 +194,43 @@ class AgentSessionExtensionTest {
         TestUtils.setupMocks(6, "se", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = new SimpleOpenAIModel("gpt-4o", SimpleOpenAIAzure.builder()
-                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                .apiVersion("2024-10-21")
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder().build()))
-                .build(), objectMapper);
+        final var model = new SimpleOpenAIModel("gpt-4o",
+                                                SimpleOpenAIAzure.builder()
+                                                        .baseUrl(TestUtils
+                                                                .getTestProperty("AZURE_ENDPOINT",
+                                                                                 wiremock.getHttpBaseUrl()))
+                                                        .apiKey(TestUtils
+                                                                .getTestProperty("AZURE_API_KEY",
+                                                                                 "BLAH"))
+                                                        .apiVersion("2024-10-21")
+                                                        .objectMapper(objectMapper)
+                                                        .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
+                                                                .build()))
+                                                        .build(),
+                                                objectMapper);
 
 
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
                         .mapper(objectMapper)
                         .model(model)
-                        .modelSettings(ModelSettings.builder().temperature(0.1f).seed(1).build())
+                        .modelSettings(ModelSettings.builder()
+                                .temperature(0.1f)
+                                .seed(1)
+                                .build())
                         .build())
-                .extensions(List.of(AgentSessionExtension.<UserInput, String, SimpleAgent>builder()
+                .extensions(List.of(AgentSessionExtension
+                        .<UserInput, String, SimpleAgent>builder()
                         .sessionStore(new InMemorySessionStore())
                         .mapper(objectMapper)
                         .build()))
                 .build()
                 .registerToolbox(toolbox);
 
-        final var requestMetadata = AgentRequestMetadata.builder().sessionId("s1").userId("ss").build();
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
         final var response = agent.execute(AgentInput.<UserInput>builder()
                 .request(new UserInput("Hi"))
                 .requestMetadata(requestMetadata)
@@ -214,8 +245,9 @@ class AgentSessionExtensionTest {
                 .build());
         log.info("Second call: {}", response2.getData());
         if (log.isTraceEnabled()) {
-            log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(response2.getAllMessages()));
+            log.trace("Messages: {}",
+                      objectMapper.writerWithDefaultPrettyPrinter()
+                              .writeValueAsString(response2.getAllMessages()));
         }
     }
 
@@ -225,13 +257,20 @@ class AgentSessionExtensionTest {
         TestUtils.setupMocks(8, "summarize", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = new SimpleOpenAIModel<>("gpt-4o", SimpleOpenAIAzure.builder()
-                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                .apiVersion("2024-10-21")
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder().build()))
-                .build(), objectMapper);
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
+                                                                  .build()))
+                                                          .build(),
+                                                  objectMapper);
 
 
         final var sessionStore = new InMemorySessionStore();
@@ -239,17 +278,26 @@ class AgentSessionExtensionTest {
                 .setup(AgentSetup.builder()
                         .mapper(objectMapper)
                         .model(model)
-                        .modelSettings(ModelSettings.builder().temperature(0.1f).seed(1).build())
+                        .modelSettings(ModelSettings.builder()
+                                .temperature(0.1f)
+                                .seed(1)
+                                .build())
                         .build())
-                .extensions(List.of(AgentSessionExtension.<UserInput, String, SimpleAgent>builder()
+                .extensions(List.of(AgentSessionExtension
+                        .<UserInput, String, SimpleAgent>builder()
                         .mapper(objectMapper)
                         .sessionStore(sessionStore)
-                        .setup(AgentSessionExtensionSetup.builder().autoSummarizationThreshold(0).build())
+                        .setup(AgentSessionExtensionSetup.builder()
+                                .autoSummarizationThreshold(0)
+                                .build())
                         .build()))
                 .build()
                 .registerToolbox(toolbox);
 
-        final var requestMetadata = AgentRequestMetadata.builder().sessionId("s1").userId("ss").build();
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
         final var response = agent.execute(AgentInput.<UserInput>builder()
                 .request(new UserInput("Hi"))
                 .requestMetadata(requestMetadata)
@@ -261,9 +309,14 @@ class AgentSessionExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> sessionStore.session("s1").isPresent());
         final var oldSession = sessionStore.session("s1").orElseThrow();
-        assertEquals(8, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null, QueryDirection.OLDER)
-                .getItems()
-                .size());
+        assertEquals(8,
+                     sessionStore.readMessages("s1",
+                                               Integer.MAX_VALUE,
+                                               false,
+                                               null,
+                                               QueryDirection.OLDER)
+                             .getItems()
+                             .size());
 
         final var response2 = agent.executeAsync(AgentInput.<UserInput>builder()
                 .request(new UserInput("How is the weather at user's location?"))
@@ -272,18 +325,25 @@ class AgentSessionExtensionTest {
                 .build()).get();
         log.info("Second call: {}", response2.getData());
         if (log.isTraceEnabled()) {
-            log.trace("Messages: {}", objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(response2.getAllMessages()));
+            log.trace("Messages: {}",
+                      objectMapper.writerWithDefaultPrettyPrinter()
+                              .writeValueAsString(response2.getAllMessages()));
         }
 
         Awaitility.await()
                 .pollDelay(Duration.ofSeconds(1))
                 .atMost(Duration.ofMinutes(1))
-                .until(() -> sessionStore.session("s1").map(SessionSummary::getUpdatedAt).orElse(-1L) > oldSession
-                        .getUpdatedAt());
+                .until(() -> sessionStore.session("s1")
+                        .map(SessionSummary::getUpdatedAt)
+                        .orElse(-1L) > oldSession.getUpdatedAt());
         assertNotNull(sessionStore.session("s1").orElse(null));
-        assertEquals(16, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null, QueryDirection.OLDER)
-                .getItems()
-                .size());
+        assertEquals(16,
+                     sessionStore.readMessages("s1",
+                                               Integer.MAX_VALUE,
+                                               false,
+                                               null,
+                                               QueryDirection.OLDER)
+                             .getItems()
+                             .size());
     }
 }

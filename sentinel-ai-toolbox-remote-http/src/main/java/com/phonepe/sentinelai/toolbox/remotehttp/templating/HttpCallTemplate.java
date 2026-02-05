@@ -49,7 +49,10 @@ public class HttpCallTemplate {
         String content;
 
         public static Template handlebars(String content) {
-            return Template.builder().type(TemplateType.HANDLEBARS).content(content).build();
+            return Template.builder()
+                    .type(TemplateType.HANDLEBARS)
+                    .content(content)
+                    .build();
         }
 
         /**
@@ -59,7 +62,10 @@ public class HttpCallTemplate {
          * @return a new Template instance
          */
         public static Template text(String content) {
-            return Template.builder().type(TemplateType.TEXT).content(content).build();
+            return Template.builder()
+                    .type(TemplateType.TEXT)
+                    .content(content)
+                    .build();
         }
 
         /**
@@ -69,7 +75,10 @@ public class HttpCallTemplate {
          * @return a new Template instance
          */
         public static Template textSubstitutor(String content) {
-            return Template.builder().type(TemplateType.TEXT_SUBSTITUTOR).content(content).build();
+            return Template.builder()
+                    .type(TemplateType.TEXT_SUBSTITUTOR)
+                    .content(content)
+                    .build();
         }
 
     }

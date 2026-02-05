@@ -47,24 +47,31 @@ public class InMemoryHttpToolSource extends TemplatizedHttpToolSource<InMemoryHt
     }
 
     @Builder
-    public InMemoryHttpToolSource(HttpCallTemplateExpander expander, ObjectMapper mapper) {
+    public InMemoryHttpToolSource(HttpCallTemplateExpander expander,
+                                  ObjectMapper mapper) {
         super(expander, mapper);
     }
 
     @Override
     public List<HttpToolMetadata> list(String upstream) {
-        return tools.getOrDefault(upstream, Map.of()).values().stream().map(HttpTool::getMetadata).toList();
+        return tools.getOrDefault(upstream, Map.of())
+                .values()
+                .stream()
+                .map(HttpTool::getMetadata)
+                .toList();
     }
 
     @Override
-    public InMemoryHttpToolSource register(String upstream, List<TemplatizedHttpTool> tool) {
+    public InMemoryHttpToolSource register(String upstream,
+                                           List<TemplatizedHttpTool> tool) {
         if (tool.isEmpty()) {
             log.warn("No tool provided for upstream {}", upstream);
             return this;
         }
         tools.compute(upstream, (u, existing) -> {
             final var toolMap = tool.stream()
-                    .collect(Collectors.toUnmodifiableMap(t -> t.getMetadata().getName(), Function.identity()));
+                    .collect(Collectors.toUnmodifiableMap(t -> t.getMetadata()
+                            .getName(), Function.identity()));
             if (existing == null) {
                 return new ConcurrentHashMap<>(toolMap);
             }
@@ -75,11 +82,14 @@ public class InMemoryHttpToolSource extends TemplatizedHttpToolSource<InMemoryHt
     }
 
     @Override
-    public HttpCallSpec resolve(String upstream, String toolName, String arguments) {
-        return Optional.ofNullable(tools.getOrDefault(upstream, Map.of()).get(toolName))
+    public HttpCallSpec resolve(String upstream,
+                                String toolName,
+                                String arguments) {
+        return Optional.ofNullable(tools.getOrDefault(upstream, Map.of())
+                .get(toolName))
                 .map(tool -> expandTemplate(arguments, tool))
-                .orElseThrow(() -> new IllegalArgumentException("No tool %s found for upstream %s".formatted(toolName,
-                        upstream)));
+                .orElseThrow(() -> new IllegalArgumentException("No tool %s found for upstream %s"
+                        .formatted(toolName, upstream)));
     }
 
     @Override

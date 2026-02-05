@@ -31,7 +31,9 @@ public class InternalTool extends ExecutableTool {
     ToolMethodInfo methodInfo;
     Object instance;
 
-    public InternalTool(ToolDefinition toolDefinition, ToolMethodInfo toolMethodInfo, Object instance) {
+    public InternalTool(ToolDefinition toolDefinition,
+                        ToolMethodInfo toolMethodInfo,
+                        Object instance) {
         super(toolDefinition);
         this.instance = instance;
         this.methodInfo = toolMethodInfo;

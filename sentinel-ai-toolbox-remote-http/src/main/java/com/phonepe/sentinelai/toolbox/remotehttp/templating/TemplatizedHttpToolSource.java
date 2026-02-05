@@ -37,19 +37,28 @@ public abstract class TemplatizedHttpToolSource<S extends HttpToolSource<Templat
     protected final HttpCallTemplateExpander expander;
     protected final ObjectMapper mapper;
 
-    protected TemplatizedHttpToolSource(HttpCallTemplateExpander expander, ObjectMapper mapper) {
-        this.expander = Objects.requireNonNullElseGet(expander, HttpCallTemplateExpander::new);
-        this.mapper = Objects.requireNonNullElseGet(mapper, JsonUtils::createMapper);
+    protected TemplatizedHttpToolSource(HttpCallTemplateExpander expander,
+                                        ObjectMapper mapper) {
+        this.expander = Objects.requireNonNullElseGet(expander,
+                                                      HttpCallTemplateExpander::new);
+        this.mapper = Objects.requireNonNullElseGet(mapper,
+                                                    JsonUtils::createMapper);
     }
 
     @SneakyThrows
-    protected HttpCallSpec expandTemplate(String arguments, TemplatizedHttpTool tool) {
-        final var spec = expander.convert(tool.getTemplate(), mapper.readValue(arguments, new TypeReference<>() {
-        }));
+    protected HttpCallSpec expandTemplate(String arguments,
+                                          TemplatizedHttpTool tool) {
+        final var spec = expander.convert(tool.getTemplate(),
+                                          mapper.readValue(arguments,
+                                                           new TypeReference<>() {
+                                                           }));
         final var transformation = tool.getResponseTransformations();
         if (transformation != null) {
             return switch (transformation.getType()) {
-                case JOLT -> spec.withResponseTransformer(new JoltTransformer(transformation.getConfig(), mapper));
+                case JOLT -> spec.withResponseTransformer(new JoltTransformer(
+                                                                              transformation
+                                                                                      .getConfig(),
+                                                                              mapper));
             };
         }
         return spec;
@@ -62,15 +71,18 @@ public abstract class TemplatizedHttpToolSource<S extends HttpToolSource<Templat
         @SneakyThrows
         @SuppressWarnings("rawtypes")
         public JoltTransformer(String config, ObjectMapper mapper) {
-            this.chainr = Chainr.fromSpec(mapper.readValue(config, new TypeReference<List>() {
-            }));
+            this.chainr = Chainr.fromSpec(mapper.readValue(config,
+                                                           new TypeReference<List>() {
+                                                           }));
             this.mapper = mapper;
         }
 
         @Override
         @SneakyThrows
         public String apply(String body) {
-            return mapper.writeValueAsString(chainr.transform(mapper.readValue(body, Object.class)));
+            return mapper.writeValueAsString(chainr.transform(mapper.readValue(
+                                                                               body,
+                                                                               Object.class)));
         }
     }
 

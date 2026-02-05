@@ -43,8 +43,12 @@ public class OutputGeneratedAgentEvent extends AgentEvent {
 
     @Builder
     @Jacksonized
-    public OutputGeneratedAgentEvent(@NonNull String agentName, @NonNull String runId, String sessionId, String userId,
-            @NonNull String content, @NonNull Duration elapsedTime) {
+    public OutputGeneratedAgentEvent(@NonNull String agentName,
+                                     @NonNull String runId,
+                                     String sessionId,
+                                     String userId,
+                                     @NonNull String content,
+                                     @NonNull Duration elapsedTime) {
         super(EventType.OUTPUT_GENERATED, agentName, runId, sessionId, userId);
         this.content = content;
         this.elapsedTime = elapsedTime;

@@ -36,12 +36,17 @@ public class HuggingFaceTokenizerModel implements TokenizerModel, AutoCloseable 
     private final boolean padding;
 
     @Builder
-    public HuggingFaceTokenizerModel(String modelName, int maxLength, boolean addSpecialTokens, boolean padding) {
+    public HuggingFaceTokenizerModel(String modelName,
+                                     int maxLength,
+                                     boolean addSpecialTokens,
+                                     boolean padding) {
         System.setProperty("OPT_OUT_TRACKING", "true"); //DJL DIALS HOME ...
-        this.modelName = Objects.requireNonNullElse(modelName, "sentence-transformers/all-MiniLM-L6-v2");
+        this.modelName = Objects.requireNonNullElse(modelName,
+                                                    "sentence-transformers/all-MiniLM-L6-v2");
 
         this.maxLength = Math.max(maxLength, MAX_LENGTH);
-        this.tokenizer = HuggingFaceTokenizer.newInstance(this.modelName, getDJLConfig());
+        this.tokenizer = HuggingFaceTokenizer.newInstance(this.modelName,
+                                                          getDJLConfig());
         this.addSpecialTokens = addSpecialTokens;
         this.padding = padding;
     }

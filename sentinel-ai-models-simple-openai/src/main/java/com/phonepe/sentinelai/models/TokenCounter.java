@@ -36,7 +36,8 @@ public interface TokenCounter {
      * @param encodingType Encoding type to use for token counting
      * @return Number of tokens in the messages
      */
-    int estimateTokenCount(final List<AgentMessage> messages, final TokenCountingConfig config,
-            final EncodingType encodingType);
+    int estimateTokenCount(final List<AgentMessage> messages,
+                           final TokenCountingConfig config,
+                           final EncodingType encodingType);
 
 }

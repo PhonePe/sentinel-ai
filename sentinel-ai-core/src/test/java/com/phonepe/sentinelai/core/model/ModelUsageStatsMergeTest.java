@@ -57,9 +57,12 @@ class ModelUsageStatsMergeTest {
         snap.totalTokens = s.getTotalTokens();
         snap.promptCachedTokens = s.getRequestTokenDetails().getCachedTokens();
         snap.promptAudioTokens = s.getRequestTokenDetails().getAudioTokens();
-        snap.responseReasoningTokens = s.getResponseTokenDetails().getReasoningTokens();
-        snap.responseAcceptedPredictionTokens = s.getResponseTokenDetails().getAcceptedPredictionTokens();
-        snap.responseRejectedPredictionTokens = s.getResponseTokenDetails().getRejectedPredictionTokens();
+        snap.responseReasoningTokens = s.getResponseTokenDetails()
+                .getReasoningTokens();
+        snap.responseAcceptedPredictionTokens = s.getResponseTokenDetails()
+                .getAcceptedPredictionTokens();
+        snap.responseRejectedPredictionTokens = s.getResponseTokenDetails()
+                .getRejectedPredictionTokens();
         snap.responseAudioTokens = s.getResponseTokenDetails().getAudioTokens();
         snap.details = s.getDetails();
         return snap;
@@ -97,17 +100,34 @@ class ModelUsageStatsMergeTest {
 
         base.merge(other);
 
-        assertAll(() -> assertEquals(11, base.getRequestsForRun()), () -> assertEquals(22, base.getToolCallsForRun()),
-                () -> assertEquals(33, base.getRequestTokens()), () -> assertEquals(44, base.getResponseTokens()),
-                () -> assertEquals(55, base.getTotalTokens()), () -> assertEquals(66, base.getRequestTokenDetails()
-                        .getCachedTokens()), () -> assertEquals(77, base.getRequestTokenDetails().getAudioTokens()),
-                () -> assertEquals(88, base.getResponseTokenDetails().getReasoningTokens()), () -> assertEquals(99, base
-                        .getResponseTokenDetails()
-                        .getAcceptedPredictionTokens()), () -> assertEquals(110, base.getResponseTokenDetails()
-                                .getRejectedPredictionTokens()), () -> assertEquals(121, base.getResponseTokenDetails()
-                                        .getAudioTokens()), () -> assertEquals(outputMap, base.getDetails()),
-                () -> assertEquals(3, base.getDetails().size()), () -> assertEquals(1, base.getDetails().get("a")),
-                () -> assertEquals(200, base.getDetails().get("b")), () -> assertEquals(3, base.getDetails().get("c")));
+        assertAll(() -> assertEquals(11, base.getRequestsForRun()),
+                  () -> assertEquals(22, base.getToolCallsForRun()),
+                  () -> assertEquals(33, base.getRequestTokens()),
+                  () -> assertEquals(44, base.getResponseTokens()),
+                  () -> assertEquals(55, base.getTotalTokens()),
+                  () -> assertEquals(66,
+                                     base.getRequestTokenDetails()
+                                             .getCachedTokens()),
+                  () -> assertEquals(77,
+                                     base.getRequestTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertEquals(88,
+                                     base.getResponseTokenDetails()
+                                             .getReasoningTokens()),
+                  () -> assertEquals(99,
+                                     base.getResponseTokenDetails()
+                                             .getAcceptedPredictionTokens()),
+                  () -> assertEquals(110,
+                                     base.getResponseTokenDetails()
+                                             .getRejectedPredictionTokens()),
+                  () -> assertEquals(121,
+                                     base.getResponseTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertEquals(outputMap, base.getDetails()),
+                  () -> assertEquals(3, base.getDetails().size()),
+                  () -> assertEquals(1, base.getDetails().get("a")),
+                  () -> assertEquals(200, base.getDetails().get("b")),
+                  () -> assertEquals(3, base.getDetails().get("c")));
     }
 
     @Test
@@ -130,26 +150,36 @@ class ModelUsageStatsMergeTest {
         var base = new ModelUsageStats();
         base.merge(other);
 
-        assertAll(() -> assertEquals(otherSnapshot.requestsForRun, other.getRequestsForRun()), () -> assertEquals(
-                otherSnapshot.toolCallsForRun, other.getToolCallsForRun()), () -> assertEquals(
-                        otherSnapshot.requestTokens, other.getRequestTokens()), () -> assertEquals(
-                                otherSnapshot.responseTokens, other.getResponseTokens()), () -> assertEquals(
-                                        otherSnapshot.totalTokens, other.getTotalTokens()), () -> assertEquals(
-                                                otherSnapshot.promptCachedTokens, other.getRequestTokenDetails()
-                                                        .getCachedTokens()), () -> assertEquals(
-                                                                otherSnapshot.promptAudioTokens, other
-                                                                        .getRequestTokenDetails()
-                                                                        .getAudioTokens()), () -> assertEquals(
-                                                                                otherSnapshot.responseReasoningTokens,
-                                                                                other.getResponseTokenDetails()
-                                                                                        .getReasoningTokens()),
-                () -> assertEquals(otherSnapshot.responseAcceptedPredictionTokens, other.getResponseTokenDetails()
-                        .getAcceptedPredictionTokens()), () -> assertEquals(
-                                otherSnapshot.responseRejectedPredictionTokens, other.getResponseTokenDetails()
-                                        .getRejectedPredictionTokens()), () -> assertEquals(
-                                                otherSnapshot.responseAudioTokens, other.getResponseTokenDetails()
-                                                        .getAudioTokens()), () -> assertEquals(otherSnapshot.details,
-                                                                other.getDetails()));
+        assertAll(() -> assertEquals(otherSnapshot.requestsForRun,
+                                     other.getRequestsForRun()),
+                  () -> assertEquals(otherSnapshot.toolCallsForRun,
+                                     other.getToolCallsForRun()),
+                  () -> assertEquals(otherSnapshot.requestTokens,
+                                     other.getRequestTokens()),
+                  () -> assertEquals(otherSnapshot.responseTokens,
+                                     other.getResponseTokens()),
+                  () -> assertEquals(otherSnapshot.totalTokens,
+                                     other.getTotalTokens()),
+                  () -> assertEquals(otherSnapshot.promptCachedTokens,
+                                     other.getRequestTokenDetails()
+                                             .getCachedTokens()),
+                  () -> assertEquals(otherSnapshot.promptAudioTokens,
+                                     other.getRequestTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertEquals(otherSnapshot.responseReasoningTokens,
+                                     other.getResponseTokenDetails()
+                                             .getReasoningTokens()),
+                  () -> assertEquals(otherSnapshot.responseAcceptedPredictionTokens,
+                                     other.getResponseTokenDetails()
+                                             .getAcceptedPredictionTokens()),
+                  () -> assertEquals(otherSnapshot.responseRejectedPredictionTokens,
+                                     other.getResponseTokenDetails()
+                                             .getRejectedPredictionTokens()),
+                  () -> assertEquals(otherSnapshot.responseAudioTokens,
+                                     other.getResponseTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertEquals(otherSnapshot.details,
+                                     other.getDetails()));
     }
 
     @Test
@@ -161,8 +191,9 @@ class ModelUsageStatsMergeTest {
         base.merge(other);
 
         assertFalse(base.getDetails().isEmpty());
-        assertAll(() -> assertEquals(2, base.getDetails().size()), () -> assertEquals(1, base.getDetails().get("x")),
-                () -> assertEquals(2, base.getDetails().get("y")));
+        assertAll(() -> assertEquals(2, base.getDetails().size()),
+                  () -> assertEquals(1, base.getDetails().get("x")),
+                  () -> assertEquals(2, base.getDetails().get("y")));
     }
 
     @Test
@@ -170,7 +201,9 @@ class ModelUsageStatsMergeTest {
         var base = new ModelUsageStats();
         int threads = 20;
 
-        final var pool = Executors.newFixedThreadPool(Math.min(threads, Runtime.getRuntime().availableProcessors()));
+        final var pool = Executors.newFixedThreadPool(Math.min(threads,
+                                                               Runtime.getRuntime()
+                                                                       .availableProcessors()));
         final var start = new CountDownLatch(1);
         final var done = new CountDownLatch(threads);
 
@@ -208,16 +241,31 @@ class ModelUsageStatsMergeTest {
         pool.shutdown();
         assertTrue(pool.awaitTermination(5, TimeUnit.SECONDS));
 
-        assertAll(() -> assertEquals(threads * 1, base.getRequestsForRun()), () -> assertEquals(threads * 2, base
-                .getToolCallsForRun()), () -> assertEquals(threads * 3, base.getRequestTokens()), () -> assertEquals(
-                        threads * 4, base.getResponseTokens()), () -> assertEquals(threads * 7, base.getTotalTokens()),
-                () -> assertEquals(threads * 5, base.getRequestTokenDetails().getCachedTokens()), () -> assertEquals(
-                        threads * 6, base.getRequestTokenDetails().getAudioTokens()), () -> assertEquals(threads * 8,
-                                base.getResponseTokenDetails().getReasoningTokens()), () -> assertEquals(threads * 9,
-                                        base.getResponseTokenDetails().getAcceptedPredictionTokens()),
-                () -> assertEquals(threads * 10, base.getResponseTokenDetails().getRejectedPredictionTokens()),
-                () -> assertEquals(threads * 11, base.getResponseTokenDetails().getAudioTokens()), () -> assertNotNull(
-                        base.getDetails()), () -> assertEquals(threads, base.getDetails().size()));
+        assertAll(() -> assertEquals(threads * 1, base.getRequestsForRun()),
+                  () -> assertEquals(threads * 2, base.getToolCallsForRun()),
+                  () -> assertEquals(threads * 3, base.getRequestTokens()),
+                  () -> assertEquals(threads * 4, base.getResponseTokens()),
+                  () -> assertEquals(threads * 7, base.getTotalTokens()),
+                  () -> assertEquals(threads * 5,
+                                     base.getRequestTokenDetails()
+                                             .getCachedTokens()),
+                  () -> assertEquals(threads * 6,
+                                     base.getRequestTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertEquals(threads * 8,
+                                     base.getResponseTokenDetails()
+                                             .getReasoningTokens()),
+                  () -> assertEquals(threads * 9,
+                                     base.getResponseTokenDetails()
+                                             .getAcceptedPredictionTokens()),
+                  () -> assertEquals(threads * 10,
+                                     base.getResponseTokenDetails()
+                                             .getRejectedPredictionTokens()),
+                  () -> assertEquals(threads * 11,
+                                     base.getResponseTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertNotNull(base.getDetails()),
+                  () -> assertEquals(threads, base.getDetails().size()));
 
         for (int i = 0; i < threads; i++) {
             assertEquals(i, base.getDetails().get("k" + i));
@@ -232,7 +280,8 @@ class ModelUsageStatsMergeTest {
 
         var ret = base.merge(a).merge(b);
 
-        assertAll(() -> assertSame(base, ret), () -> assertEquals(3, base.getRequestsForRun()));
+        assertAll(() -> assertSame(base, ret),
+                  () -> assertEquals(3, base.getRequestsForRun()));
     }
 
     @Test
@@ -264,15 +313,29 @@ class ModelUsageStatsMergeTest {
 
         base.merge(other);
 
-        assertAll(() -> assertEquals(7, base.getRequestsForRun()), () -> assertEquals(8, base.getToolCallsForRun()),
-                () -> assertEquals(90, base.getRequestTokens()), () -> assertEquals(80, base.getResponseTokens()),
-                () -> assertEquals(170, base.getTotalTokens()), () -> assertEquals(6, base.getRequestTokenDetails()
-                        .getCachedTokens()), () -> assertEquals(5, base.getRequestTokenDetails().getAudioTokens()),
-                () -> assertEquals(4, base.getResponseTokenDetails().getReasoningTokens()), () -> assertEquals(3, base
-                        .getResponseTokenDetails()
-                        .getAcceptedPredictionTokens()), () -> assertEquals(2, base.getResponseTokenDetails()
-                                .getRejectedPredictionTokens()), () -> assertEquals(1, base.getResponseTokenDetails()
-                                        .getAudioTokens()));
+        assertAll(() -> assertEquals(7, base.getRequestsForRun()),
+                  () -> assertEquals(8, base.getToolCallsForRun()),
+                  () -> assertEquals(90, base.getRequestTokens()),
+                  () -> assertEquals(80, base.getResponseTokens()),
+                  () -> assertEquals(170, base.getTotalTokens()),
+                  () -> assertEquals(6,
+                                     base.getRequestTokenDetails()
+                                             .getCachedTokens()),
+                  () -> assertEquals(5,
+                                     base.getRequestTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertEquals(4,
+                                     base.getResponseTokenDetails()
+                                             .getReasoningTokens()),
+                  () -> assertEquals(3,
+                                     base.getResponseTokenDetails()
+                                             .getAcceptedPredictionTokens()),
+                  () -> assertEquals(2,
+                                     base.getResponseTokenDetails()
+                                             .getRejectedPredictionTokens()),
+                  () -> assertEquals(1,
+                                     base.getResponseTokenDetails()
+                                             .getAudioTokens()));
     }
 
     @Test
@@ -295,21 +358,33 @@ class ModelUsageStatsMergeTest {
         var mapBefore = base.getDetails();
         var ret = base.merge(other);
 
-        assertAll(() -> assertSame(base, ret), () -> assertEquals(1, base.getRequestsForRun()), () -> assertEquals(1,
-                base.getToolCallsForRun()), () -> assertEquals(10, base.getRequestTokens()), () -> assertEquals(20, base
-                        .getResponseTokens()), () -> assertEquals(30, base.getTotalTokens()), () -> assertEquals(2, base
-                                .getRequestTokenDetails()
-                                .getCachedTokens()), () -> assertEquals(3, base.getRequestTokenDetails()
-                                        .getAudioTokens()), () -> assertEquals(4, base.getResponseTokenDetails()
-                                                .getReasoningTokens()), () -> assertEquals(5, base
-                                                        .getResponseTokenDetails()
-                                                        .getAcceptedPredictionTokens()), () -> assertEquals(6, base
-                                                                .getResponseTokenDetails()
-                                                                .getRejectedPredictionTokens()), () -> assertEquals(7,
-                                                                        base.getResponseTokenDetails()
-                                                                                .getAudioTokens()), () -> assertEquals(
-                                                                                        mapBefore, base.getDetails()),
-                () -> assertEquals(1, base.getDetails().size()), () -> assertEquals(100, base.getDetails().get("k")));
+        assertAll(() -> assertSame(base, ret),
+                  () -> assertEquals(1, base.getRequestsForRun()),
+                  () -> assertEquals(1, base.getToolCallsForRun()),
+                  () -> assertEquals(10, base.getRequestTokens()),
+                  () -> assertEquals(20, base.getResponseTokens()),
+                  () -> assertEquals(30, base.getTotalTokens()),
+                  () -> assertEquals(2,
+                                     base.getRequestTokenDetails()
+                                             .getCachedTokens()),
+                  () -> assertEquals(3,
+                                     base.getRequestTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertEquals(4,
+                                     base.getResponseTokenDetails()
+                                             .getReasoningTokens()),
+                  () -> assertEquals(5,
+                                     base.getResponseTokenDetails()
+                                             .getAcceptedPredictionTokens()),
+                  () -> assertEquals(6,
+                                     base.getResponseTokenDetails()
+                                             .getRejectedPredictionTokens()),
+                  () -> assertEquals(7,
+                                     base.getResponseTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertEquals(mapBefore, base.getDetails()),
+                  () -> assertEquals(1, base.getDetails().size()),
+                  () -> assertEquals(100, base.getDetails().get("k")));
     }
 
     @Test
@@ -330,21 +405,31 @@ class ModelUsageStatsMergeTest {
         var detailsBefore = new HashMap<>(base.getDetails());
         var ret = base.merge(null);
 
-        assertAll(() -> assertSame(base, ret), () -> assertEquals(5, base.getRequestsForRun()), () -> assertEquals(2,
-                base.getToolCallsForRun()), () -> assertEquals(30, base.getRequestTokens()), () -> assertEquals(40, base
-                        .getResponseTokens()), () -> assertEquals(70, base.getTotalTokens()), () -> assertEquals(7, base
-                                .getRequestTokenDetails()
-                                .getCachedTokens()), () -> assertEquals(3, base.getRequestTokenDetails()
-                                        .getAudioTokens()), () -> assertEquals(4, base.getResponseTokenDetails()
-                                                .getReasoningTokens()), () -> assertEquals(5, base
-                                                        .getResponseTokenDetails()
-                                                        .getAcceptedPredictionTokens()), () -> assertEquals(6, base
-                                                                .getResponseTokenDetails()
-                                                                .getRejectedPredictionTokens()), () -> assertEquals(2,
-                                                                        base.getResponseTokenDetails()
-                                                                                .getAudioTokens()), () -> assertEquals(
-                                                                                        detailsBefore, base
-                                                                                                .getDetails()));
+        assertAll(() -> assertSame(base, ret),
+                  () -> assertEquals(5, base.getRequestsForRun()),
+                  () -> assertEquals(2, base.getToolCallsForRun()),
+                  () -> assertEquals(30, base.getRequestTokens()),
+                  () -> assertEquals(40, base.getResponseTokens()),
+                  () -> assertEquals(70, base.getTotalTokens()),
+                  () -> assertEquals(7,
+                                     base.getRequestTokenDetails()
+                                             .getCachedTokens()),
+                  () -> assertEquals(3,
+                                     base.getRequestTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertEquals(4,
+                                     base.getResponseTokenDetails()
+                                             .getReasoningTokens()),
+                  () -> assertEquals(5,
+                                     base.getResponseTokenDetails()
+                                             .getAcceptedPredictionTokens()),
+                  () -> assertEquals(6,
+                                     base.getResponseTokenDetails()
+                                             .getRejectedPredictionTokens()),
+                  () -> assertEquals(2,
+                                     base.getResponseTokenDetails()
+                                             .getAudioTokens()),
+                  () -> assertEquals(detailsBefore, base.getDetails()));
     }
 
 

@@ -120,7 +120,10 @@ class ModelSettingsTest {
 
     @Test
     void mergeRhsNullReturnsLhsReference() {
-        final var lhs = ModelSettings.builder().maxTokens(20).temperature(1.0f).build();
+        final var lhs = ModelSettings.builder()
+                .maxTokens(20)
+                .temperature(1.0f)
+                .build();
 
         var merged = ModelSettings.merge(lhs, null);
         assertSame(lhs, merged);

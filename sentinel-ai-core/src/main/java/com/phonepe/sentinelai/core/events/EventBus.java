@@ -42,7 +42,9 @@ public class EventBus {
      * @param executorService The executor service to use for handling events
      */
     public EventBus(final ExecutorService executorService) {
-        this(ConsumingFireForgetSignal.<AgentEvent>builder().executorService(executorService).build());
+        this(ConsumingFireForgetSignal.<AgentEvent>builder()
+                .executorService(executorService)
+                .build());
     }
 
     @VisibleForTesting

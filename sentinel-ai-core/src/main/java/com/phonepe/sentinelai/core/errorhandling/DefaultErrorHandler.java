@@ -25,7 +25,8 @@ import com.phonepe.sentinelai.core.agent.AgentRunContext;
 public class DefaultErrorHandler<R> implements ErrorResponseHandler<R> {
 
     @Override
-    public <U> AgentOutput<U> handle(AgentRunContext<R> context, AgentOutput<U> agentOutput) {
+    public <U> AgentOutput<U> handle(AgentRunContext<R> context,
+                                     AgentOutput<U> agentOutput) {
         return agentOutput;
     }
 }

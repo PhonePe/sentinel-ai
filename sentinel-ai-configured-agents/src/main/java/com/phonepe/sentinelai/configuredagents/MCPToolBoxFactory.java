@@ -54,9 +54,11 @@ public class MCPToolBoxFactory {
 
     @Builder
     public MCPToolBoxFactory(@NonNull ObjectMapper objectMapper,
-            Function<String, Optional<McpSyncClient>> clientProvider) {
+                             Function<String, Optional<McpSyncClient>> clientProvider) {
         this.objectMapper = objectMapper;
-        this.clientProvider = Objects.requireNonNullElse(clientProvider, upstream -> Optional.empty());
+        this.clientProvider = Objects.requireNonNullElse(clientProvider,
+                                                         upstream -> Optional
+                                                                 .empty());
     }
 
     /**
@@ -68,26 +70,42 @@ public class MCPToolBoxFactory {
      * @return An Optional containing the MCPToolBox if the upstream is known, otherwise an empty Optional.
      */
     public Optional<MCPToolBox> create(String upstream) {
-        final var tbFromServerConfig = Optional.ofNullable(knownConfigs.get(upstream))
-                .map(mcpServerConfig -> new MCPToolBox(upstream, objectMapper, mcpServerConfig));
+        final var tbFromServerConfig = Optional.ofNullable(knownConfigs.get(
+                                                                            upstream))
+                .map(mcpServerConfig -> new MCPToolBox(upstream,
+                                                       objectMapper,
+                                                       mcpServerConfig));
         if (tbFromServerConfig.isPresent()) {
             log.debug("Found MCPServerConfig for upstream: {}", upstream);
             return tbFromServerConfig;
         }
-        final var tbFromKnownClient = Optional.ofNullable(knownClients.get(upstream)).map(client -> {
-            log.debug("Found known McpSyncClient for upstream: {}", upstream);
-            return new MCPToolBox(upstream, client, objectMapper, Set.of());
-        });
+        final var tbFromKnownClient = Optional.ofNullable(knownClients.get(
+                                                                           upstream))
+                .map(client -> {
+                    log.debug("Found known McpSyncClient for upstream: {}",
+                              upstream);
+                    return new MCPToolBox(upstream,
+                                          client,
+                                          objectMapper,
+                                          Set.of());
+                });
         if (tbFromKnownClient.isPresent()) {
             return tbFromKnownClient;
         }
-        log.debug("No MCPServerConfig or Client found for upstream: {}. Falling back to client provider.", upstream);
-        final var tbClientProvided = clientProvider.apply(upstream).map(client -> {
-            log.debug("Client provider provided a client for upstream: {}", upstream);
-            return new MCPToolBox(upstream, client, objectMapper, Set.of());
-        });
+        log.debug("No MCPServerConfig or Client found for upstream: {}. Falling back to client provider.",
+                  upstream);
+        final var tbClientProvided = clientProvider.apply(upstream)
+                .map(client -> {
+                    log.debug("Client provider provided a client for upstream: {}",
+                              upstream);
+                    return new MCPToolBox(upstream,
+                                          client,
+                                          objectMapper,
+                                          Set.of());
+                });
         if (tbClientProvided.isEmpty()) {
-            log.error("No toolbox could be constructed for mcp server name: {}. Returning empty.", upstream);
+            log.error("No toolbox could be constructed for mcp server name: {}. Returning empty.",
+                      upstream);
         }
         return tbClientProvided;
     }
@@ -100,7 +118,8 @@ public class MCPToolBoxFactory {
      */
     @SneakyThrows
     public MCPToolBoxFactory loadFromContent(byte[] contents) {
-        final var config = objectMapper.readValue(contents, MCPConfiguration.class);
+        final var config = objectMapper.readValue(contents,
+                                                  MCPConfiguration.class);
         MCPJsonReader.loadServers(config, this::registerMCPServerConfig);
         return this;
     }
@@ -125,7 +144,8 @@ public class MCPToolBoxFactory {
      * @param config   MCP server configuration
      * @return this factory with the added MCP server config
      */
-    public MCPToolBoxFactory registerMCPServerConfig(String upstream, MCPServerConfig config) {
+    public MCPToolBoxFactory registerMCPServerConfig(String upstream,
+                                                     MCPServerConfig config) {
         knownConfigs.putIfAbsent(upstream, config);
         return this;
     }
@@ -138,7 +158,8 @@ public class MCPToolBoxFactory {
      * @param client   MCP client
      * @return this factory with the added MCP client
      */
-    public MCPToolBoxFactory registerMcpClient(String upstream, McpSyncClient client) {
+    public MCPToolBoxFactory registerMcpClient(String upstream,
+                                               McpSyncClient client) {
         knownClients.putIfAbsent(upstream, client);
         return this;
     }

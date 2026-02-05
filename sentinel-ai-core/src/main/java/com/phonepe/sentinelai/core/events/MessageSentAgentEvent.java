@@ -38,8 +38,11 @@ public class MessageSentAgentEvent extends AgentEvent {
 
     @Builder
     @Jacksonized
-    public MessageSentAgentEvent(@NonNull String agentName, @NonNull String runId, String sessionId, String userId,
-            @NonNull List<AgentMessage> messages) {
+    public MessageSentAgentEvent(@NonNull String agentName,
+                                 @NonNull String runId,
+                                 String sessionId,
+                                 String userId,
+                                 @NonNull List<AgentMessage> messages) {
         super(EventType.MESSAGE_SENT, agentName, runId, sessionId, userId);
         this.messages = messages;
     }

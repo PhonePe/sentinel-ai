@@ -28,7 +28,8 @@ import java.util.Map;
  */
 public class MathAgent extends RegisterableAgent<MathAgent> {
 
-    public MathAgent(AgentConfiguration agentConfiguration, @NonNull AgentSetup setup) {
+    public MathAgent(AgentConfiguration agentConfiguration,
+                     @NonNull AgentSetup setup) {
         super(agentConfiguration, setup, List.of(), Map.of());
     }
 }

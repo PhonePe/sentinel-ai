@@ -44,9 +44,12 @@ public class MCPJsonReader {
      * @param objectMapper ObjectMapper to use for serialization/deserialization
      */
     @SneakyThrows
-    public static void loadFile(final String filePath, final ComposingMCPToolBox toolBox,
-            final ObjectMapper objectMapper) {
-        final var config = objectMapper.readValue(Files.readAllBytes(Path.of(filePath)), MCPConfiguration.class);
+    public static void loadFile(final String filePath,
+                                final ComposingMCPToolBox toolBox,
+                                final ObjectMapper objectMapper) {
+        final var config = objectMapper.readValue(Files.readAllBytes(Path.of(
+                                                                             filePath)),
+                                                  MCPConfiguration.class);
         loadServers(config, toolBox);
     }
 
@@ -56,8 +59,11 @@ public class MCPJsonReader {
      * @param config  MCP configuration containing server definitions
      * @param handler BiConsumer to handle each loaded MCP server data
      */
-    public static void loadServers(MCPConfiguration config, BiConsumer<String, MCPServerConfig> handler) {
-        Objects.requireNonNullElseGet(config.getMcpServers(), Map::<String, MCPServerConfig>of).forEach(handler);
+    public static void loadServers(MCPConfiguration config,
+                                   BiConsumer<String, MCPServerConfig> handler) {
+        Objects.requireNonNullElseGet(config.getMcpServers(),
+                                      Map::<String, MCPServerConfig>of)
+                .forEach(handler);
     }
 
     /**
@@ -66,7 +72,8 @@ public class MCPJsonReader {
      * @param config  MCP configuration containing server definitions
      * @param toolBox Toolbox to register the MCP clients
      */
-    public static void loadServers(MCPConfiguration config, ComposingMCPToolBox toolBox) {
+    public static void loadServers(MCPConfiguration config,
+                                   ComposingMCPToolBox toolBox) {
         loadServers(config, toolBox::registerMCP);
     }
 

@@ -46,7 +46,8 @@ public class CompositeOutputValidator<R, T> implements OutputValidator<R, T> {
     }
 
     @Override
-    public OutputValidationResults validate(AgentRunContext<R> context, T agentOutput) {
+    public OutputValidationResults validate(AgentRunContext<R> context,
+                                            T agentOutput) {
         return new OutputValidationResults(validators.stream()
                 .map(validator -> validator.validate(context, agentOutput))
                 .flatMap(output -> output.getFailures().stream())

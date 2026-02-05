@@ -31,8 +31,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class AgentMessagesPreProcessorsTest {
 
-    private static final AgentMessagesPreProcessor MOCK_PROCESSOR = (ctx, a, b) -> null;
-    private static final AgentMessagesPreProcessor ANOTHER_PROCESSOR = (ctx, a, b) -> null;
+    private static final AgentMessagesPreProcessor MOCK_PROCESSOR = (ctx,
+                                                                     a,
+                                                                     b) -> null;
+    private static final AgentMessagesPreProcessor ANOTHER_PROCESSOR = (ctx,
+                                                                        a,
+                                                                        b) -> null;
 
     @Test
     void testAddEmptyProcessorsList() {
@@ -47,7 +51,8 @@ class AgentMessagesPreProcessorsTest {
     @Test
     void testAddMultipleProcessorsForSameAgent() {
         final var agentName = "agent1";
-        final var preprocessors = AgentMessagesPreProcessors.of(agentName, List.of(MOCK_PROCESSOR))
+        final var preprocessors = AgentMessagesPreProcessors.of(agentName,
+                                                                List.of(MOCK_PROCESSOR))
                 .add(agentName, ANOTHER_PROCESSOR);
 
         assertTrue(preprocessors.processorsFor(agentName).isPresent());
@@ -77,7 +82,8 @@ class AgentMessagesPreProcessorsTest {
     void testAddSingleProcessor() {
 
         final var agentName = "agent1";
-        final var preprocessors = AgentMessagesPreProcessors.of(agentName, List.of(MOCK_PROCESSOR));
+        final var preprocessors = AgentMessagesPreProcessors.of(agentName,
+                                                                List.of(MOCK_PROCESSOR));
 
         assertTrue(preprocessors.processorsFor(agentName).isPresent());
         final var processors = preprocessors.processorsFor(agentName).get();
@@ -89,7 +95,8 @@ class AgentMessagesPreProcessorsTest {
     void testProcessorsForExistingAgent() {
 
         final var agentName = "agent1";
-        final var preprocessors = AgentMessagesPreProcessors.of(agentName, List.of(MOCK_PROCESSOR));
+        final var preprocessors = AgentMessagesPreProcessors.of(agentName,
+                                                                List.of(MOCK_PROCESSOR));
 
         final var result = preprocessors.processorsFor(agentName);
 
@@ -100,7 +107,8 @@ class AgentMessagesPreProcessorsTest {
 
     @Test
     void testProcessorsForMultipleDifferentAgents() {
-        final var preprocessors = AgentMessagesPreProcessors.of("agent1", List.of(MOCK_PROCESSOR))
+        final var preprocessors = AgentMessagesPreProcessors.of("agent1",
+                                                                List.of(MOCK_PROCESSOR))
                 .add("agent2", ANOTHER_PROCESSOR);
 
         final var agent1Processors = preprocessors.processorsFor("agent1");

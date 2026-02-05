@@ -49,9 +49,19 @@ class FullRunMessageSelectorTest {
         final var runB = "run-B";
         final var runC = "run-C";
         final var sessionId = "session-3";
-        final var messages = List.of(new UserPrompt(sessionId, runA, "u1", LocalDateTime.now()), new UserPrompt(
-                sessionId, runB, "u2", LocalDateTime.now()), new Text(sessionId, runA, "t1"), new StructuredOutput(
-                        sessionId, runB, "{}"), new Text(sessionId, runC, "t-only"));
+        final var messages = List.of(new UserPrompt(sessionId,
+                                                    runA,
+                                                    "u1",
+                                                    LocalDateTime.now()),
+                                     new UserPrompt(sessionId,
+                                                    runB,
+                                                    "u2",
+                                                    LocalDateTime.now()),
+                                     new Text(sessionId, runA, "t1"),
+                                     new StructuredOutput(sessionId,
+                                                          runB,
+                                                          "{}"),
+                                     new Text(sessionId, runC, "t-only"));
         final var modifiable = new ArrayList<AgentMessage>(messages);
         final var result = selector.select(sessionId, modifiable);
         assertEquals(4, result.size());
@@ -67,12 +77,16 @@ class FullRunMessageSelectorTest {
         final var runIncomplete = "run-so-incomplete";
         final var sessionId = "session-2";
         final var messages = new ArrayList<AgentMessage>();
-        messages.add(new UserPrompt(sessionId, runComplete, "ask", LocalDateTime.now()));
+        messages.add(new UserPrompt(sessionId,
+                                    runComplete,
+                                    "ask",
+                                    LocalDateTime.now()));
         messages.add(new StructuredOutput(sessionId, runComplete, "{}"));
         messages.add(new StructuredOutput(sessionId, runIncomplete, "{}"));
         final var result = selector.select(sessionId, messages);
         assertEquals(2, result.size());
-        assertTrue(result.stream().allMatch(m -> runComplete.equals(m.getRunId())));
+        assertTrue(result.stream()
+                .allMatch(m -> runComplete.equals(m.getRunId())));
     }
 
     @Test
@@ -82,11 +96,18 @@ class FullRunMessageSelectorTest {
         final var runIncomplete = "run-incomplete";
         final var sessionId = "session-1";
         final var messages = new ArrayList<AgentMessage>();
-        messages.add(new UserPrompt(sessionId, runComplete, "hello", LocalDateTime.now()));
+        messages.add(new UserPrompt(sessionId,
+                                    runComplete,
+                                    "hello",
+                                    LocalDateTime.now()));
         messages.add(new Text(sessionId, runComplete, "hi"));
-        messages.add(new UserPrompt(sessionId, runIncomplete, "only user", LocalDateTime.now()));
+        messages.add(new UserPrompt(sessionId,
+                                    runIncomplete,
+                                    "only user",
+                                    LocalDateTime.now()));
         final var result = selector.select(sessionId, messages);
         assertEquals(2, result.size());
-        assertTrue(result.stream().allMatch(m -> runComplete.equals(m.getRunId())));
+        assertTrue(result.stream()
+                .allMatch(m -> runComplete.equals(m.getRunId())));
     }
 }

@@ -42,16 +42,24 @@ class ModelTest {
         final var model = new Model() {
             @Override
             public CompletableFuture<ModelOutput> compute(ModelRunContext context,
-                    Collection<ModelOutputDefinition> outputDefinitions,
-                    List<com.phonepe.sentinelai.core.agentmessages.AgentMessage> oldMessages,
-                    Map<String, ExecutableTool> tools, ToolRunner toolRunner,
-                    EarlyTerminationStrategy earlyTerminationStrategy, List<AgentMessagesPreProcessor> preProcessors) {
+                                                          Collection<ModelOutputDefinition> outputDefinitions,
+                                                          List<com.phonepe.sentinelai.core.agentmessages.AgentMessage> oldMessages,
+                                                          Map<String, ExecutableTool> tools,
+                                                          ToolRunner toolRunner,
+                                                          EarlyTerminationStrategy earlyTerminationStrategy,
+                                                          List<AgentMessagesPreProcessor> preProcessors) {
                 return null;
             }
 
         };
-        assertThrows(NotImplementedException.class, () -> model.streamText(null, List.of(), Map.of(), null, null,
-                bytes -> {}, List.of()));
+        assertThrows(NotImplementedException.class,
+                     () -> model.streamText(null,
+                                            List.of(),
+                                            Map.of(),
+                                            null,
+                                            null,
+                                            bytes -> {},
+                                            List.of()));
     }
 
     @Test
@@ -59,15 +67,24 @@ class ModelTest {
         final var model = new Model() {
             @Override
             public CompletableFuture<ModelOutput> compute(ModelRunContext context,
-                    Collection<ModelOutputDefinition> outputDefinitions,
-                    List<com.phonepe.sentinelai.core.agentmessages.AgentMessage> oldMessages,
-                    Map<String, ExecutableTool> tools, ToolRunner toolRunner,
-                    EarlyTerminationStrategy earlyTerminationStrategy, List<AgentMessagesPreProcessor> preProcessors) {
+                                                          Collection<ModelOutputDefinition> outputDefinitions,
+                                                          List<com.phonepe.sentinelai.core.agentmessages.AgentMessage> oldMessages,
+                                                          Map<String, ExecutableTool> tools,
+                                                          ToolRunner toolRunner,
+                                                          EarlyTerminationStrategy earlyTerminationStrategy,
+                                                          List<AgentMessagesPreProcessor> preProcessors) {
                 return null;
             }
 
         };
-        assertThrows(NotImplementedException.class, () -> model.stream(null, List.of(), List.of(), Map.of(), null, null,
-                bytes -> {}, List.of()));
+        assertThrows(NotImplementedException.class,
+                     () -> model.stream(null,
+                                        List.of(),
+                                        List.of(),
+                                        Map.of(),
+                                        null,
+                                        null,
+                                        bytes -> {},
+                                        List.of()));
     }
 }

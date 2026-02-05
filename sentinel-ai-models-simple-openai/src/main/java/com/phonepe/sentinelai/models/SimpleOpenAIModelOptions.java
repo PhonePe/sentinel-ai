@@ -30,7 +30,7 @@ public class SimpleOpenAIModelOptions {
     public static final TokenCountingConfig DEFAULT_TOKEN_COUNTING_CONFIG = TokenCountingConfig.DEFAULT;
 
     public static final SimpleOpenAIModelOptions DEFAULT = new SimpleOpenAIModelOptions(DEFAULT_TOOL_CHOICE,
-            DEFAULT_TOKEN_COUNTING_CONFIG);
+                                                                                        DEFAULT_TOKEN_COUNTING_CONFIG);
 
     public enum ToolChoice {
         REQUIRED, // Model will always call a tool. This is the default behavior.
@@ -59,17 +59,24 @@ public class SimpleOpenAIModelOptions {
     TokenCountingConfig tokenCountingConfig;
 
     @Builder
-    public SimpleOpenAIModelOptions(ToolChoice toolChoice, TokenCountingConfig tokenCountingConfig) {
-        this.toolChoice = Objects.requireNonNullElse(toolChoice, ToolChoice.REQUIRED);
-        this.tokenCountingConfig = Objects.requireNonNullElse(tokenCountingConfig, TokenCountingConfig.DEFAULT);
+    public SimpleOpenAIModelOptions(ToolChoice toolChoice,
+                                    TokenCountingConfig tokenCountingConfig) {
+        this.toolChoice = Objects.requireNonNullElse(toolChoice,
+                                                     ToolChoice.REQUIRED);
+        this.tokenCountingConfig = Objects.requireNonNullElse(
+                                                              tokenCountingConfig,
+                                                              TokenCountingConfig.DEFAULT);
     }
 
     public SimpleOpenAIModelOptions merge(SimpleOpenAIModelOptions other) {
         if (other == null) {
             return this;
         }
-        return new SimpleOpenAIModelOptions(Objects.requireNonNullElse(other.getToolChoice(), this.toolChoice), Objects
-                .requireNonNullElse(other.getTokenCountingConfig(), this.tokenCountingConfig));
+        return new SimpleOpenAIModelOptions(Objects.requireNonNullElse(other
+                .getToolChoice(), this.toolChoice),
+                                            Objects.requireNonNullElse(other
+                                                    .getTokenCountingConfig(),
+                                                                       this.tokenCountingConfig));
     }
 
 }

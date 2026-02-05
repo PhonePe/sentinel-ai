@@ -42,7 +42,9 @@ public class TextStreamer implements Consumer<byte[]> {
     private final ExecutorService executorService;
     private final Consumer<byte[]> streamHandler;
 
-    public TextStreamer(ObjectMapper mapper, ExecutorService executorService, Consumer<byte[]> streamHandler) {
+    public TextStreamer(ObjectMapper mapper,
+                        ExecutorService executorService,
+                        Consumer<byte[]> streamHandler) {
         this.mapper = mapper;
         this.executorService = executorService;
         this.streamHandler = streamHandler;

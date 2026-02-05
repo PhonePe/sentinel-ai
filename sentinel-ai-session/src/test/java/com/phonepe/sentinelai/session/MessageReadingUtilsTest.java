@@ -48,13 +48,17 @@ class MessageReadingUtilsTest {
         }
 
         @Override
-        public BiScrollable<AgentMessage> readMessages(final String sessionId, final int count,
-                final boolean skipSystemPrompt, final BiScrollable.DataPointer pointer,
-                final QueryDirection queryDirection) {
+        public BiScrollable<AgentMessage> readMessages(final String sessionId,
+                                                       final int count,
+                                                       final boolean skipSystemPrompt,
+                                                       final BiScrollable.DataPointer pointer,
+                                                       final QueryDirection queryDirection) {
             // Get all messages for the session and sort them chronologically (oldest to newest)
-            final var allMessages = messageData.getOrDefault(sessionId, List.of())
+            final var allMessages = messageData.getOrDefault(sessionId,
+                                                             List.of())
                     .stream()
-                    .sorted((m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()))
+                    .sorted((m1, m2) -> Long.compare(m1.getTimestamp(),
+                                                     m2.getTimestamp()))
                     .toList();
 
             List<AgentMessage> filtered;
@@ -62,13 +66,21 @@ class MessageReadingUtilsTest {
                 filtered = allMessages;
             }
             else {
-                if (queryDirection == QueryDirection.OLDER && pointer.getOlder() != null) {
-                    final var olderTimestamp = Long.parseLong(pointer.getOlder());
-                    filtered = allMessages.stream().filter(m -> m.getTimestamp() < olderTimestamp).toList();
+                if (queryDirection == QueryDirection.OLDER && pointer
+                        .getOlder() != null) {
+                    final var olderTimestamp = Long.parseLong(pointer
+                            .getOlder());
+                    filtered = allMessages.stream()
+                            .filter(m -> m.getTimestamp() < olderTimestamp)
+                            .toList();
                 }
-                else if (queryDirection == QueryDirection.NEWER && pointer.getNewer() != null) {
-                    final var newerTimestamp = Long.parseLong(pointer.getNewer());
-                    filtered = allMessages.stream().filter(m -> m.getTimestamp() > newerTimestamp).toList();
+                else if (queryDirection == QueryDirection.NEWER && pointer
+                        .getNewer() != null) {
+                    final var newerTimestamp = Long.parseLong(pointer
+                            .getNewer());
+                    filtered = allMessages.stream()
+                            .filter(m -> m.getTimestamp() > newerTimestamp)
+                            .toList();
                 }
                 else {
                     filtered = allMessages;
@@ -79,7 +91,8 @@ class MessageReadingUtilsTest {
             if (queryDirection == QueryDirection.OLDER) {
                 // Return LAST 'count' messages in chronological order
                 final var start = Math.max(0, filtered.size() - count);
-                result = new ArrayList<>(filtered.subList(start, filtered.size()));
+                result = new ArrayList<>(filtered.subList(start,
+                                                          filtered.size()));
             }
             else {
                 // Return FIRST 'count' messages in chronological order
@@ -91,15 +104,21 @@ class MessageReadingUtilsTest {
             if (!result.isEmpty()) {
                 // result is always oldest to newest
                 older = String.valueOf(result.get(0).getTimestamp());
-                newer = String.valueOf(result.get(result.size() - 1).getTimestamp());
+                newer = String.valueOf(result.get(result.size() - 1)
+                        .getTimestamp());
             }
 
-            return new BiScrollable<>(result, new BiScrollable.DataPointer(older, newer));
+            return new BiScrollable<>(result,
+                                      new BiScrollable.DataPointer(older,
+                                                                   newer));
         }
 
         @Override
-        public void saveMessages(final String sessionId, final String runId, final List<AgentMessage> messages) {
-            messageData.computeIfAbsent(sessionId, k -> new ArrayList<>()).addAll(messages);
+        public void saveMessages(final String sessionId,
+                                 final String runId,
+                                 final List<AgentMessage> messages) {
+            messageData.computeIfAbsent(sessionId, k -> new ArrayList<>())
+                    .addAll(messages);
         }
 
         @Override
@@ -113,8 +132,9 @@ class MessageReadingUtilsTest {
         }
 
         @Override
-        public BiScrollable<SessionSummary> sessions(final int count, final String pointer,
-                final QueryDirection queryDirection) {
+        public BiScrollable<SessionSummary> sessions(final int count,
+                                                     final String pointer,
+                                                     final QueryDirection queryDirection) {
             return null;
         }
     }
@@ -132,7 +152,8 @@ class MessageReadingUtilsTest {
     @Test
     void testReadMessagesSinceIdWithPagination() {
         final var totalMessages = 10;
-        final var messages = new ArrayList<>(IntStream.rangeClosed(1, totalMessages)
+        final var messages = new ArrayList<>(IntStream.rangeClosed(1,
+                                                                   totalMessages)
                 .mapToObj(i -> (AgentMessage) UserPrompt.builder()
                         .sessionId(sessionId)
                         .runId("run-1")
@@ -148,25 +169,37 @@ class MessageReadingUtilsTest {
         sessionStore.saveMessages(sessionId, "run-1", messages);
 
         // Read all since beginning
-        final var resultAll = MessageReadingUtils.readMessagesSinceId(sessionStore, setup, sessionId, null, false, List
-                .of());
+        final var resultAll = MessageReadingUtils.readMessagesSinceId(
+                                                                      sessionStore,
+                                                                      setup,
+                                                                      sessionId,
+                                                                      null,
+                                                                      false,
+                                                                      List.of());
 
         assertEquals(totalMessages, resultAll.getItems().size());
 
         // Verify strict chronological order
         IntStream.range(0, totalMessages).forEach(i -> {
             final var expectedId = "msg-" + (i + 1);
-            assertEquals(expectedId, resultAll.getItems().get(i).getMessageId(),
-                    "Message at index " + i + " should be " + expectedId);
+            assertEquals(expectedId,
+                         resultAll.getItems().get(i).getMessageId(),
+                         "Message at index " + i + " should be " + expectedId);
         });
 
         // Read since msg-5 (should return msg-6 to msg-10)
-        final var resultSince = MessageReadingUtils.readMessagesSinceId(sessionStore, setup, sessionId, "msg-5", false,
-                List.of());
+        final var resultSince = MessageReadingUtils.readMessagesSinceId(
+                                                                        sessionStore,
+                                                                        setup,
+                                                                        sessionId,
+                                                                        "msg-5",
+                                                                        false,
+                                                                        List.of());
         assertEquals(5, resultSince.getItems().size());
         IntStream.range(0, 5).forEach(i -> {
             final var expectedId = "msg-" + (i + 6);
-            assertEquals(expectedId, resultSince.getItems().get(i).getMessageId());
+            assertEquals(expectedId,
+                         resultSince.getItems().get(i).getMessageId());
         });
     }
 
@@ -188,8 +221,12 @@ class MessageReadingUtilsTest {
                 .filter(m -> !m.getMessageId().equals("msg-2"))
                 .toList();
 
-        final var result = MessageReadingUtils.readMessagesSinceId(sessionStore, setup, sessionId, null, false, List.of(
-                selector));
+        final var result = MessageReadingUtils.readMessagesSinceId(sessionStore,
+                                                                   setup,
+                                                                   sessionId,
+                                                                   null,
+                                                                   false,
+                                                                   List.of(selector));
 
         assertEquals(2, result.getItems().size());
         assertEquals("msg-1", result.getItems().get(0).getMessageId());
@@ -245,7 +282,11 @@ class MessageReadingUtilsTest {
                 .build();
 
         // Mixed order: u1, tc1, tc2, tcr1, tcr2
-        final List<AgentMessage> messages = List.of(userPrompt, tc1, tc2, tcr1, tcr2);
+        final List<AgentMessage> messages = List.of(userPrompt,
+                                                    tc1,
+                                                    tc2,
+                                                    tcr1,
+                                                    tcr2);
 
         final var rearranged = MessageReadingUtils.rearrangeMessages(messages);
 

@@ -41,8 +41,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Testcontainers
 class SentinelMCPClientHttpTest {
     @Container
-    static GenericContainer<?> container = new GenericContainer<>("tzolov/mcp-everything-server:v2").withExposedPorts(
-            3001).withCommand("node", "dist/index.js");
+    static GenericContainer<?> container = new GenericContainer<>("tzolov/mcp-everything-server:v2")
+            .withExposedPorts(3001)
+            .withCommand("node", "dist/index.js");
 
     @Test
     @SneakyThrows
@@ -55,9 +56,13 @@ class SentinelMCPClientHttpTest {
         assertNotNull(composingMCPToolBox);
         assertEquals("Test Composing MCP", composingMCPToolBox.name());
         assertTrue(composingMCPToolBox.tools().isEmpty());
-        final var payload = Files.readString(Path.of(Objects.requireNonNull(getClass().getResource("/mcp-http.json"))
+        final var payload = Files.readString(Path.of(Objects.requireNonNull(
+                                                                            getClass()
+                                                                                    .getResource("/mcp-http.json"))
                 .getPath())).formatted(container.getMappedPort(3001));
-        MCPJsonReader.loadServers(objectMapper.readValue(payload, MCPConfiguration.class), composingMCPToolBox);
+        MCPJsonReader.loadServers(objectMapper.readValue(payload,
+                                                         MCPConfiguration.class),
+                                  composingMCPToolBox);
         assertFalse(composingMCPToolBox.tools().isEmpty());
         assertTrue(composingMCPToolBox.tools().size() > 1);
         composingMCPToolBox.exposeTools("test_mcp", "echo");

@@ -24,9 +24,12 @@ import lombok.experimental.UtilityClass;
  */
 @Getter
 public enum EventType {
-    MESSAGE_RECEIVED(Values.MESSAGE_RECEIVED), MESSAGE_SENT(Values.MESSAGE_SENT), TOOL_CALL_APPROVAL_DENIED(
-            Values.TOOL_CALL_APPROVAL_DENIED), TOOL_CALLED(Values.TOOL_CALLED), TOOL_CALL_COMPLETED(
-                    Values.TOOL_CALL_COMPLETED), OUTPUT_GENERATED(Values.OUTPUT_GENERATED),;
+    MESSAGE_RECEIVED(Values.MESSAGE_RECEIVED), MESSAGE_SENT(
+                                                            Values.MESSAGE_SENT),
+    TOOL_CALL_APPROVAL_DENIED(Values.TOOL_CALL_APPROVAL_DENIED), TOOL_CALLED(
+                                                                             Values.TOOL_CALLED),
+    TOOL_CALL_COMPLETED(Values.TOOL_CALL_COMPLETED), OUTPUT_GENERATED(
+                                                                      Values.OUTPUT_GENERATED),;
 
     @UtilityClass
     public static final class Values {

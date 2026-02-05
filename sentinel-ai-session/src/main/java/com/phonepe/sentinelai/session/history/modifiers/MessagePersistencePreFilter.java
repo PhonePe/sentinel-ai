@@ -27,5 +27,6 @@ import java.util.List;
  */
 @FunctionalInterface
 public interface MessagePersistencePreFilter<R> {
-    List<AgentMessage> filter(AgentRunContext<R> context, List<AgentMessage> agentMessages);
+    List<AgentMessage> filter(AgentRunContext<R> context,
+                              List<AgentMessage> agentMessages);
 }
