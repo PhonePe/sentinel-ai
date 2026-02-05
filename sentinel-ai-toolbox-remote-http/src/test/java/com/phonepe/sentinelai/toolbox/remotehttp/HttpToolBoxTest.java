@@ -7,6 +7,7 @@ import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.core.utils.TestUtils;
 import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +31,7 @@ class HttpToolBoxTest {
                                                          "name" : "Santanu"
                                                          }
                                                          """, 200)));
-        final var upstream = wiremock.getHttpBaseUrl();
+        final var upstream = TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl());
 
         final var toolSource = new HttpToolSource() {
             @Override

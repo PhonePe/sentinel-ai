@@ -65,8 +65,8 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public ListResponse<SessionSummary> sessions(int count, String nextPagePointer) {
-            return new ListResponse<>(List.copyOf(sessionData.values()), null);
+        public BiScrollable<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection) {
+            return new BiScrollable<>(List.copyOf(sessionData.values()), new BiScrollable.DataPointer(null, null));
         }
 
         @Override
@@ -86,9 +86,14 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public ListResponse<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
-                                                       String nextPointer) {
-            return new ListResponse<>(AgentUtils.lastN(messageData.getOrDefault(sessionId, List.of()), count), null);
+        public BiScrollable<AgentMessage> readMessages(String sessionId, int count, boolean skipSystemPrompt,
+                                                       BiScrollable.DataPointer pointer, QueryDirection queryDirection) {
+            var messages = messageData.getOrDefault(sessionId, List.of());
+            if (queryDirection == QueryDirection.OLDER) {
+                // Return newest first (reverse chronological) to match ESSessionStore
+                messages = com.google.common.collect.Lists.reverse(messages);
+            }
+            return new BiScrollable<>(AgentUtils.lastN(messages, count), new BiScrollable.DataPointer(null, null));
         }
 
     }
@@ -126,13 +131,11 @@ class AgentSessionExtensionTest {
         TestUtils.setupMocks(6, "se", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = new SimpleOpenAIModel(
+        final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(objectMapper)
                         .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder().build()))
@@ -192,10 +195,8 @@ class AgentSessionExtensionTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(objectMapper)
                         .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder().build()))
@@ -213,10 +214,13 @@ class AgentSessionExtensionTest {
                                                       .temperature(0.1f)
                                                       .seed(1)
                                                       .build())
-                               .build())
+                                .build())
                 .extensions(List.of(AgentSessionExtension.<UserInput, String, SimpleAgent>builder()
                                             .mapper(objectMapper)
                                             .sessionStore(sessionStore)
+                                            .setup(AgentSessionExtensionSetup.builder()
+                                                           .autoSummarizationThresholdPercentage(0)
+                                                           .build())
                                             .build()))
                 .build()
                 .registerToolbox(toolbox);
@@ -237,7 +241,7 @@ class AgentSessionExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> sessionStore.session("s1").isPresent());
         final var oldSession = sessionStore.session("s1").orElseThrow();
-        assertEquals(8, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null)
+        assertEquals(8, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null, QueryDirection.OLDER)
                 .getItems()
                 .size());
 
@@ -259,7 +263,7 @@ class AgentSessionExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> sessionStore.session("s1").map(SessionSummary::getUpdatedAt).orElse(-1L) > oldSession.getUpdatedAt());
         assertNotNull(sessionStore.session("s1").orElse(null));
-        assertEquals(16, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null)
+        assertEquals(16, sessionStore.readMessages("s1", Integer.MAX_VALUE, false, null, QueryDirection.OLDER)
                 .getItems()
                 .size());
     }

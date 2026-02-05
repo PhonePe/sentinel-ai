@@ -20,6 +20,8 @@ public class ESSessionDocument {
 
     List<String> topics;
 
+    String lastSummarizedMessageId;
+
     long updatedAtMicro;
 
     LocalDateTime createdAt;

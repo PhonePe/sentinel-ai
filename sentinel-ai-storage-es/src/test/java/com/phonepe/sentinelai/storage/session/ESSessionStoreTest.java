@@ -2,6 +2,8 @@ package com.phonepe.sentinelai.storage.session;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
+import com.phonepe.sentinelai.session.QueryDirection;
+import com.phonepe.sentinelai.session.BiScrollable;
 import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
@@ -12,6 +14,7 @@ import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.storage.ESClient;
 import com.phonepe.sentinelai.storage.ESIntegrationTestBase;
 import com.phonepe.sentinelai.storage.IndexSettings;
@@ -34,7 +37,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
     void testSessionStorage() {
         try (final var client = ESClient.builder()
                 .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
-                .apiKey("test")
+                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
                 .build()) {
 
             final var sessionStore = ESSessionStore.builder()
@@ -62,7 +65,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             assertTrue(retrievedSession.isPresent());
             assertEquals("Test Summary", retrievedSession.get().getSummary());
 
-            final var sessions = sessionStore.sessions(10, null);
+            final var sessions = sessionStore.sessions(10, null, QueryDirection.OLDER);
             assertFalse(sessions.getItems().isEmpty());
             assertEquals(1, sessions.getItems().size());
             assertEquals(sessionId, sessions.getItems().get(0).getSessionId());
@@ -93,9 +96,11 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             var nextPointer = "";
             final var retrieved = new HashSet<String>();
             do {
-                final var response = sessionStore.sessions(10, nextPointer);
+                final var response = sessionStore.sessions(10, nextPointer, QueryDirection.OLDER);
+                assertNotNull(response.getItems());
                 response.getItems().forEach(s -> retrieved.add(s.getSessionId()));
-                nextPointer = response.getNextPageToken();
+                assertNotNull(response.getPointer());
+                nextPointer = response.getPointer().getOlder();
             } while (!retrieved.containsAll(savedIds));
             assertEquals(savedIds.size(), retrieved.size(), () -> {
                 final var savedSize = savedIds.size();
@@ -114,7 +119,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
     void testSessionMessageStorage() {
         try (final var client = ESClient.builder()
                 .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
-                .apiKey("test")
+                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
                 .build()) {
 
             final var sessionStore = ESSessionStore.builder()
@@ -184,14 +189,22 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             final var retrieved = new HashSet<String>();
             final var maxIterations = 100;
             var iter = 0;
+            BiScrollable<AgentMessage> response = null;
             while (iter++ < maxIterations) {
-                final var response = sessionStore.readMessages(sessionId, 10, false, nextPointer);
+                response = sessionStore.readMessages(
+                        sessionId,
+                        10,
+                        false,
+                        AgentUtils.getIfNotNull(response, BiScrollable::getPointer, null),
+                        QueryDirection.OLDER);
+                assertNotNull(response.getItems());
                 response.getItems().forEach(m -> retrieved.add(m.getMessageId()));
                 if (retrieved.containsAll(expectedIds)) {
                     break;
                 }
                 prevPointer = nextPointer;
-                nextPointer = response.getNextPageToken();
+                assertNotNull(response.getPointer());
+                nextPointer = response.getPointer().getOlder();
                 if (Strings.isNullOrEmpty(nextPointer) || nextPointer.equals(prevPointer)) {
                     break;
                 }
@@ -202,10 +215,31 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                        () -> "Retrieved messages do not contain all saved messages. Missing: " +
                                String.join(",", Sets.difference(expectedIds, retrieved)));
 
-            final var responseSkipSystem = sessionStore.readMessages(sessionId, 100, true, null);
+            final var responseSkipSystem = sessionStore.readMessages(sessionId, 100, true, null, QueryDirection.OLDER);
+            assertNotNull(responseSkipSystem.getItems());
             final var anySystem = responseSkipSystem.getItems().stream()
                     .anyMatch(m -> m.getMessageType().equals(AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
             assertFalse(anySystem);
+
+            final var responseNewer = sessionStore.readMessages(sessionId,
+                                                                10,
+                                                                true,
+                                                                null,
+                                                                QueryDirection.NEWER);
+            assertNotNull(responseNewer.getItems());
+            assertFalse(responseNewer.getItems().isEmpty());
+            assertTrue(responseNewer.getItems().get(0).getTimestamp() <= responseNewer.getItems().get(1).getTimestamp());
+            assertNotNull(responseNewer.getPointer());
+            assertNotNull(responseNewer.getPointer().getNewer());
+
+            final var secondBatchNewer = sessionStore.readMessages(sessionId,
+                                                                   10,
+                                                                   true,
+                                                                   responseNewer.getPointer(),
+                                                                   QueryDirection.NEWER);
+            assertNotNull(secondBatchNewer.getItems());
+            assertFalse(secondBatchNewer.getItems().isEmpty());
+            assertTrue(secondBatchNewer.getItems().get(0).getTimestamp() >= responseNewer.getItems().get(responseNewer.getItems().size() - 1).getTimestamp());
         }
     }
 }

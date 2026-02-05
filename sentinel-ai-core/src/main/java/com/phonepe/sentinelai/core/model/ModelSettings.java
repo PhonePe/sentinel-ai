@@ -3,6 +3,7 @@ package com.phonepe.sentinelai.core.model;
 import lombok.Builder;
 import lombok.Value;
 import lombok.With;
+import lombok.Builder.Default;
 
 import java.util.Map;
 
@@ -68,6 +69,13 @@ public class ModelSettings {
     Reasoning reasoning;
 
     /**
+     * Attributes of the model.
+     * Context window size, token counting overheads etc.
+     */
+    @Default
+    ModelAttributes modelAttributes = ModelAttributes.DEFAULT_MODEL_ATTRIBUTES;
+
+    /**
      * Method to merge two model settings objects where the provided values in the rhs param are set if not null
      * else the lhs values are retained.
      * @param lhs Left hand side model settings
@@ -91,7 +99,8 @@ public class ModelSettings {
                 rhs.getPresencePenalty() != null ? rhs.getPresencePenalty() : lhs.getPresencePenalty(),
                 rhs.getFrequencyPenalty() != null ? rhs.getFrequencyPenalty() : lhs.getFrequencyPenalty(),
                 rhs.getLogitBias() != null ? rhs.getLogitBias() : lhs.getLogitBias(),
-                rhs.getReasoning() != null ? rhs.getReasoning() : lhs.getReasoning()
+                rhs.getReasoning() != null ? rhs.getReasoning() : lhs.getReasoning(),
+                rhs.getModelAttributes() != ModelAttributes.DEFAULT_MODEL_ATTRIBUTES ? rhs.getModelAttributes() : lhs.getModelAttributes()
         );
     }
 

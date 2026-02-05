@@ -1,5 +1,29 @@
 package com.phonepe.sentinelai.models;
 
+import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
+import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageReceivedEvent;
+import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageSentEvent;
+import static com.phonepe.sentinelai.core.utils.EventUtils.raiseOutputGeneratedEvent;
+import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat;
+import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertToOpenAIMessages;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -22,7 +46,13 @@ import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessContext;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
-import com.phonepe.sentinelai.core.model.*;
+import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
+import com.phonepe.sentinelai.core.model.Model;
+import com.phonepe.sentinelai.core.model.ModelOutput;
+import com.phonepe.sentinelai.core.model.ModelRunContext;
+import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.ParameterMapper;
@@ -31,6 +61,9 @@ import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
 import com.phonepe.sentinelai.models.errors.AgentMessagesPreProcessorExecutionFailedException;
 import com.phonepe.sentinelai.models.errors.InvalidAgentMessagesException;
+
+import org.apache.commons.lang3.ClassUtils;
+
 import io.github.sashirestela.cleverclient.support.CleverClientException;
 import io.github.sashirestela.openai.common.ResponseFormat;
 import io.github.sashirestela.openai.common.Usage;
@@ -48,22 +81,6 @@ import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.ClassUtils;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
-
-import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
-import static com.phonepe.sentinelai.core.utils.EventUtils.*;
-import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertIndividualMessageToOpenIDFormat;
-import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertToOpenAIMessages;
 
 /**
  * Model implementation based on SimpleOpenAI client.
@@ -116,17 +133,18 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     private final ObjectMapper mapper;
     private final ParameterMapper parameterMapper;
     private final SimpleOpenAIModelOptions modelOptions;
+    private final TokenCounter tokenCounter;
 
     public SimpleOpenAIModel(String modelName, M openAIProvider, ObjectMapper mapper) {
         this(modelName,
              openAIProvider,
              mapper,
-             new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.ToolChoice.REQUIRED));
+             SimpleOpenAIModelOptions.DEFAULT);
     }
 
     public SimpleOpenAIModel(
             final String modelName,
-            final M openAIProvider,
+            @NonNull final ChatCompletionServices openAIProvider,
             final ObjectMapper mapper,
             final SimpleOpenAIModelOptions modelOptions) {
         this(modelName,
@@ -140,13 +158,31 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             @NonNull final ChatCompletionServiceFactory openAIProviderFactory,
             final ObjectMapper mapper,
             final SimpleOpenAIModelOptions modelOptions) {
+        this(modelName,
+             openAIProviderFactory,
+             mapper,
+             modelOptions,
+             null);
+    }
+
+
+    public SimpleOpenAIModel(
+            final String modelName,
+            @NonNull final ChatCompletionServiceFactory openAIProviderFactory,
+            final ObjectMapper mapper,
+            final SimpleOpenAIModelOptions modelOptions,
+            final TokenCounter tokenCounter) {
         this.modelName = modelName;
         this.openAIProviderFactory = openAIProviderFactory;
         this.mapper = mapper;
         this.parameterMapper = new ParameterMapper(mapper);
         this.modelOptions = Objects.requireNonNullElse(
                 modelOptions,
-                new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.DEFAULT_TOOL_CHOICE));
+                new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.DEFAULT_TOOL_CHOICE,
+                                              TokenCountingConfig.DEFAULT));
+        this.tokenCounter = Objects.requireNonNullElseGet(
+                tokenCounter,
+                OpenAICompletionsTokenCounter::new);
     }
 
     @Override
@@ -339,6 +375,16 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                           Agent.StreamProcessingMode.TEXT,
                           agentMessagesPreProcessors);
     }
+
+    @Override
+    public int estimateTokenCount(List<AgentMessage> messages, AgentSetup agentSetup) {
+        return tokenCounter.estimateTokenCount(messages,
+                                               this.modelOptions.getTokenCountingConfig(),
+                                               agentSetup.getModelSettings()
+                                               .getModelAttributes()
+                                               .getEncodingType());
+    }
+
 
     @SuppressWarnings({"java:S107", "java:S3776"})
     private CompletableFuture<ModelOutput> streamImpl(
@@ -905,7 +951,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }
     }
 
-    public static void mergeUsage(ModelUsageStats stats, Usage usage) {
+    private static void mergeUsage(ModelUsageStats stats, Usage usage) {
         if (null != usage) {
             stats.incrementRequestTokens(safeGetInt(usage::getPromptTokens))
                     .incrementResponseTokens(safeGetInt(usage::getCompletionTokens))
@@ -1062,8 +1108,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                   toolCallResponse.getErrorType(),
                                   toolCallResponse.getResponse());
                     }
-                    agentMessages.getOpenAiMessages().add(convertIndividualMessageToOpenIDFormat(toolCallMessage));
-                    agentMessages.getOpenAiMessages().add(convertIndividualMessageToOpenIDFormat(toolCallResponse));
+                    agentMessages.getOpenAiMessages().add(convertIndividualMessageToOpenAIFormat(toolCallMessage));
+                    agentMessages.getOpenAiMessages().add(convertIndividualMessageToOpenAIFormat(toolCallResponse));
                     agentMessages.getAllMessages().add(toolCallMessage);
                     agentMessages.getNewMessages().add(toolCallMessage);
                     agentMessages.getAllMessages().add(toolCallResponse);

@@ -41,7 +41,7 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
     Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode);
 
     /**
-     * Model output consumption in non-streaming mode (i.e., when {@link Agent#executeAsync(AgentInput)}} is used)
+     * Model output consumption in non-streaming mode (i.e., when {@link Agent#executeAsync(AgentInput)} is used)
      *
      * @param context  Context passed to the agent in executeAsync call
      * @param messages Messages generated during the agent run

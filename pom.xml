@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -94,6 +94,10 @@
         <jackson.version>2.18.3</jackson.version>
         <mockito.version>5.20.0</mockito.version>
         <testcontainers.version>1.21.4</testcontainers.version>
+        <sentinelai.useRealEndpoints>false</sentinelai.useRealEndpoints>
+        <dotenv.file>${sentinelai.root}/sentinel-ai-core/src/test/resources/test.env</dotenv.file>
+        <console.disable>true</console.disable>
+        <success.print>false</success.print>
     </properties>
 
     <dependencyManagement>
@@ -162,6 +166,23 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.commonjava.maven.plugins</groupId>
+                <artifactId>directory-maven-plugin</artifactId>
+                <version>1.0</version>
+                <executions>
+                    <execution>
+                        <id>directories</id>
+                        <goals>
+                            <goal>highest-basedir</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                        <configuration>
+                            <property>sentinelai.root</property>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -251,7 +272,7 @@
                 <configuration>
                     <reportFormat>plain</reportFormat>
                     <consoleOutputReporter>
-                        <disable>true</disable>
+                        <disable>${console.disable}</disable>
                     </consoleOutputReporter>
                     <statelessTestsetInfoReporter
                             implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoTreeReporter">
@@ -259,17 +280,21 @@
                         <printStacktraceOnFailure>true</printStacktraceOnFailure>
                         <printStdoutOnError>true</printStdoutOnError>
                         <printStdoutOnFailure>true</printStdoutOnFailure>
-                        <printStdoutOnSuccess>false</printStdoutOnSuccess>
+                        <printStdoutOnSuccess>${success.print}</printStdoutOnSuccess>
                         <printStderrOnError>true</printStderrOnError>
                         <printStderrOnFailure>true</printStderrOnFailure>
                         <printStderrOnSuccess>false</printStderrOnSuccess>
                     </statelessTestsetInfoReporter>
+                    <systemPropertyVariables>
+                        <sentinelai.useRealEndpoints>${sentinelai.useRealEndpoints}</sentinelai.useRealEndpoints>
+                        <dotenv.file>${dotenv.file}</dotenv.file>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.8</version>
+                <version>0.8.14</version>
                 <executions>
                     <execution>
                         <goals>
@@ -342,6 +367,15 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>real-tests</id>
+            <properties>
+                <dotenv.file>${sentinelai.root}/.env</dotenv.file>
+                <console.disable>false</console.disable>
+                <success.print>true</success.print>
+                <sentinelai.useRealEndpoints>true</sentinelai.useRealEndpoints>
+            </properties>
         </profile>
     </profiles>
 </project>

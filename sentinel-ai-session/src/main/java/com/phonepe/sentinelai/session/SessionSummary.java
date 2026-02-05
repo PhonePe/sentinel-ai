@@ -25,5 +25,8 @@ public class SessionSummary {
     @JsonPropertyDescription("A short list of topics being discussed")
     List<String> keywords;
 
+    @JsonPropertyDescription("Message ID till which summarization has already been done")
+    String lastSummarizedMessageId;
+
     long updatedAt;
 }

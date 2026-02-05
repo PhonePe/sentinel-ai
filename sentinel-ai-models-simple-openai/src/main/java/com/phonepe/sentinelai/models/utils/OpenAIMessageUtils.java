@@ -24,7 +24,7 @@ public class OpenAIMessageUtils {
     public static List<ChatMessage> convertToOpenAIMessages(List<AgentMessage> agentMessages) {
         return Objects.requireNonNullElseGet(agentMessages, List::<AgentMessage>of)
                 .stream()
-                .map(OpenAIMessageUtils::convertIndividualMessageToOpenIDFormat)
+                .map(OpenAIMessageUtils::convertIndividualMessageToOpenAIFormat)
                 .toList();
 
     }
@@ -35,7 +35,7 @@ public class OpenAIMessageUtils {
      * @param agentMessage Message to convert
      * @return OpenAI ChatMessage representation of the AgentMessage
      */
-    public static ChatMessage convertIndividualMessageToOpenIDFormat(AgentMessage agentMessage) {
+    public static ChatMessage convertIndividualMessageToOpenAIFormat(AgentMessage agentMessage) {
         return agentMessage.accept(new AgentMessageVisitor<>() {
             @Override
             public ChatMessage visit(AgentRequest request) {

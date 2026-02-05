@@ -118,4 +118,8 @@ public class AgentUtils {
         final var toIndex = fromIndex + Math.min(count, list.size());
         return list.subList(fromIndex, toIndex);
     }
+
+    public static <T, R> R getIfNotNull(T value, Function<T, R> mapper, R defaultValue) {
+        return value != null ? mapper.apply(value) : defaultValue;
+    }
 }

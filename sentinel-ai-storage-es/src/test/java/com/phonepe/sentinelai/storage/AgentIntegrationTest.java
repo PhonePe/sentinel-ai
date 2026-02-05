@@ -12,6 +12,7 @@ import com.phonepe.sentinelai.agentmemory.AgentMemoryExtension;
 import com.phonepe.sentinelai.agentmemory.MemoryExtractionMode;
 import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
@@ -97,17 +98,15 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(11, "nme", getClass());
+        TestUtils.setupMocks(13, "nme", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(objectMapper)
                         .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
@@ -140,10 +139,8 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                                .memoryExtractionMode(MemoryExtractionMode.INLINE)
                                                .build(),
                                        AgentSessionExtension.<UserInput, OutputObject, SimpleAgent>builder()
-                                               .setup(AgentSessionExtensionSetup.builder()
-                                                              .historicalMessagesCount(6)
-                                                              .build())
                                                .sessionStore(sessionStorage)
+                                               .setup(AgentSessionExtensionSetup.DEFAULT.withAutoSummarizationThresholdPercentage(1))
                                                .build());
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()

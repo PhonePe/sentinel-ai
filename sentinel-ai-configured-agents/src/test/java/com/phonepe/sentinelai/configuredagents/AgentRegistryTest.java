@@ -191,10 +191,8 @@ class AgentRegistryTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(MAPPER)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
@@ -333,7 +331,7 @@ class AgentRegistryTest {
                                             .upstreamResolver(upstream -> new UpstreamResolver() {
                                                 @Override
                                                 public String resolve(String upstream) {
-                                                    return wiremock.getHttpBaseUrl();
+                                                    return TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl());
                                                 }
                                             })
                                             .build())
@@ -362,10 +360,8 @@ class AgentRegistryTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(MAPPER)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
@@ -439,10 +435,8 @@ class AgentRegistryTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                    .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                    .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(MAPPER)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
@@ -495,10 +489,8 @@ class AgentRegistryTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                    .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                    .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(MAPPER)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
@@ -590,10 +582,8 @@ class AgentRegistryTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(MAPPER)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
@@ -677,7 +667,7 @@ class AgentRegistryTest {
                                             .upstreamResolver(upstream -> new UpstreamResolver() {
                                                 @Override
                                                 public String resolve(String upstream) {
-                                                    return wiremock.getHttpBaseUrl();
+                                                    return TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl());
                                                 }
                                             })
                                             .build())
@@ -704,10 +694,8 @@ class AgentRegistryTest {
         final var model = new SimpleOpenAIModel<>(
                 "gpt-4o",
                 SimpleOpenAIAzure.builder()
-//                        .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                        .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("BLAH")
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                         .apiVersion("2024-10-21")
                         .objectMapper(MAPPER)
                         .clientAdapter(new OkHttpClientAdapter(okHttpClient))
@@ -733,7 +721,7 @@ class AgentRegistryTest {
                                          .upstream("weatherserver")
                                          .httpToolSource(toolSource)
                                          .httpClient(okHttpClient)
-                                         .upstreamResolver(upstream -> wiremock.getHttpBaseUrl())
+                                          .upstreamResolver(upstream -> TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl()))
                                          .mapper(MAPPER)
                                          .build());
         final var response = topAgent.executeAsync(AgentInput.<String>builder()
@@ -866,20 +854,16 @@ class AgentRegistryTest {
             WireMockRuntimeInfo wiremock) {
         return new DefaultChatCompletionServiceFactory()
                 .registerDefaultProvider(SimpleOpenAIAzure.builder()
-//                                         .baseUrl(EnvLoader.readEnv("AZURE_ENDPOINT"))
-//                                         .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                                         .baseUrl(wiremock.getHttpBaseUrl())
-                                         .apiKey("BLAH")
+                                         .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                                         .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                                          .apiVersion("2024-10-21")
                                          .objectMapper(MAPPER)
                                          .clientAdapter(new OkHttpClientAdapter(okHttpClient))
                                          .build())
                 .registerProvider("gpt-5",
                                   SimpleOpenAIAzure.builder()
-//                                         .baseUrl(EnvLoader.readEnv("AZURE_GPT5_ENDPOINT"))
-//                                          .apiKey(EnvLoader.readEnv("AZURE_API_KEY"))
-                                            .baseUrl(wiremock.getHttpBaseUrl())
-                                            .apiKey("BLAH")
+                                         .baseUrl(TestUtils.getTestProperty("AZURE_GPT5_ENDPOINT", wiremock.getHttpBaseUrl()))
+                                          .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
                                           .apiVersion("2024-10-21")
                                           .objectMapper(MAPPER)
                                           .clientAdapter(new OkHttpClientAdapter(okHttpClient))

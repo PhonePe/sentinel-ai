@@ -40,3 +40,6 @@ build/
 dep
 data
 .cache
+.env
+out
+deps

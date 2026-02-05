@@ -7,6 +7,7 @@ import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolMetadata;
@@ -46,7 +47,7 @@ class HttpCallTemplateExpanderTest {
                         }
                         """, 200)));
 
-        final var upstream = wiremock.getHttpBaseUrl();
+        final var upstream = TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl());
         final var toolSource = InMemoryHttpToolSource.builder()
                 .mapper(mapper)
                 .build()
@@ -134,7 +135,7 @@ class HttpCallTemplateExpanderTest {
                         }
                         """, 200)));
 
-        final var upstream = wiremock.getHttpBaseUrl();
+        final var upstream = TestUtils.getTestProperty("REMOTE_HTTP_ENDPOINT", wiremock.getHttpBaseUrl());
 
         // reading handlebar template from file
         final var handlebarFileContent = Files.readString(Paths.get(getClass().getClassLoader().getResource("templates/test.hbs").toURI()));

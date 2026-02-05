@@ -1,0 +1,38 @@
+{
+  "id" : "chatcmpl-D5Urlib4F5qdOGX7c1vQS6Kpl4Hr5",
+  "object" : "chat.completion",
+  "created" : 1770202661,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_f97eff32c5",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_3fzOnSQT8vEMPtHaEYeaFoSL",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":{\"message\":\"Hello Mr. Santanu! The weather in Bangalore is sunny today, as you mentioned earlier. How are you enjoying the weather?\",\"username\":\"Santanu\"},\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"User mentioned that today is sunny in Bangalore.\",\"name\":\"UserWeatherBangalore\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"weather\",\"Bangalore\"],\"type\":\"SEMANTIC\"}]}}"
+        }
+      } ],
+      "annotations" : [ ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1514,
+    "completion_tokens" : 107,
+    "total_tokens" : 1621,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 1408
+    }
+  }
+} 
+
+

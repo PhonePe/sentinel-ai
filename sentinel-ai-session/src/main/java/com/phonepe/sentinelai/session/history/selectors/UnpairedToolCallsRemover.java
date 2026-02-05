@@ -33,7 +33,6 @@ public class UnpairedToolCallsRemover implements MessageSelector {
     public List<AgentMessage> select(String sessionId, List<AgentMessage> messages) {
         final var toolCallDataMap = new HashMap<String, ToolCallData>();
         for (var message : messages) {
-            log.debug("Fetched message for session {}: {}", sessionId, message);
             message.accept(new AgentMessageVisitor<Void>() {
                 @Override
                 public Void visit(AgentRequest request) {
