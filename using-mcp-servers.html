@@ -1,0 +1,950 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="How to use MCP servers with SentinelAI agents to register and use tools.">
+      
+      
+      
+        <link rel="canonical" href="https://phonepe.github.io/sentinel-ai/using-mcp-servers.html">
+      
+      
+        <link rel="prev" href="tools.html">
+      
+      
+        <link rel="next" href="calling-remote-services.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Using MCP Servers - Sentinel AI Agent Framework</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+        
+        
+        
+        <link rel="stylesheet" href="assets/external/fonts.googleapis.com/css.49ea35f2.css">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/extra.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#using-mcp-servers" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Sentinel AI Agent Framework" class="md-header__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sentinel AI Agent Framework
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Using MCP Servers
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to system preference" type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Sentinel AI Agent Framework" class="md-nav__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    Sentinel AI Agent Framework
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agents.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tools.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Tools in Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="using-mcp-servers.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#using-mcptoolbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using MCPToolBox
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using MCPToolBox">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filtering-tools-from-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering tools from MCP server
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connecting-to-multiple-mcp-servers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting to multiple MCP servers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connecting to multiple MCP servers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-mcpjson-to-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using mcp.json to build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-mcp-servers-programmatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding MCP servers programmatically
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="calling-remote-services.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calling Remote HTTP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-registry.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configured Agents and Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#using-mcptoolbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using MCPToolBox
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using MCPToolBox">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filtering-tools-from-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering tools from MCP server
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connecting-to-multiple-mcp-servers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting to multiple MCP servers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connecting to multiple MCP servers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-mcpjson-to-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using mcp.json to build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-mcp-servers-programmatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding MCP servers programmatically
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="using-mcp-servers">Using MCP Servers<a class="headerlink" href="#using-mcp-servers" title="Permanent link">¶</a></h1>
+<p>An Agent by itself does very little. Most of the power comes from it's ability to invoke tools or a set of tools to
+perform a task. SentinelAI supports tool calling as a standard feature as seen in the section on <a href="tools.html">Tools</a>.</p>
+<p>MCP servers are servers that implement the <a href="https://modelcontextprotocol.org/">Model Context Protocol</a> (MCP) and
+expose tools that can be used by agents. These servers can be run locally or remotely and can be used to register
+tools with the agent.</p>
+<p>SentinelAI supports using MCP servers to register tools. This is useful when you want to create a library of tools
+and host them centrally to be used by multiple agents without needing to write them. There are many other open-source and
+useful MCP servers available on the internet.</p>
+<div class="admonition note">
+<p class="admonition-title">Support for MCP functionality</p>
+<p>Currently Sentinel AI supports making tool calls (with dynamic tool list changes tracking) and sampling. Other MCP
+features like prompt templates, resources and elicitation etc. are not supported. </p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">MCP Transport</p>
+<p>SentinelAI supports two types of MCP transports: <code>stdio</code> and <code>sse</code>. The <code>stdio</code> transport is used for local servers
+that can be run using a command line interface, while the <code>sse</code> transport is used for remote servers (or servers
+hosted locally using containers) that support Server-Sent Events (SSE).</p>
+</div>
+<div class="admonition danger">
+<p class="admonition-title">MCP Server security</p>
+<p>Please ensure MCP servers you decide to use off the internet are secure and come from trusted sources. Also scope
+exposure of tools provided by MCP servers to the minimum required for your agent to function. Please go through the
+following sections to understand how this can be achieved in SentinelAI.</p>
+</div>
+<p>The toolbox can be added to your project using the following dependency:</p>
+<p></p><div class="highlight"><pre><span></span><code><span class="nt">&lt;dependency&gt;</span>
+<span class="w">    </span><span class="nt">&lt;groupId&gt;</span>com.phonepe.sentinel-ai<span class="nt">&lt;/groupId&gt;</span>
+<span class="w">    </span><span class="nt">&lt;artifactId&gt;</span>sentinel-ai-toolbox-mcp<span class="nt">&lt;/artifactId&gt;</span>
+<span class="w">    </span><span class="nt">&lt;version&gt;</span>${sentinel.version}<span class="nt">&lt;/version&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</code></pre></div>
+This provides the <code>MCPToolBox</code> and <code>ComposingToolBox</code> classes t oconnect to and use tools from MCP servers.<p></p>
+<h2 id="using-mcptoolbox">Using MCPToolBox<a class="headerlink" href="#using-mcptoolbox" title="Permanent link">¶</a></h2>
+<p>Then create the MCP client:</p>
+<div class="highlight"><span class="filename">TestAgent.java</span><pre><span></span><code><span class="c1">// Build the client as prescribed in https://modelcontextprotocol.io/sdk/java/mcp-client</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">params</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ServerParameters</span><span class="p">.</span><span class="na">builder</span><span class="p">(</span><span class="s">"npx"</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">args</span><span class="p">(</span><span class="s">"-y"</span><span class="p">,</span><span class="w"> </span><span class="s">"@modelcontextprotocol/server-everything@2025.12.18"</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">transport</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StdioClientTransport</span><span class="p">(</span><span class="n">params</span><span class="p">);</span>
+
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">mcpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">McpClient</span><span class="p">.</span><span class="na">sync</span><span class="p">(</span><span class="n">transport</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+<span class="n">mcpClient</span><span class="p">.</span><span class="na">initialize</span><span class="p">();</span>
+</code></pre></div>
+<p>Create the <code>MCPToolBox</code> and register the toolbox to the agent:</p>
+<div class="highlight"><span class="filename">TestAgent.java</span><pre><span></span><code><span class="c1">//Create and register a toolbox to the agent</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">mcpToolBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MCPToolBox</span><span class="p">(</span><span class="s">"test"</span><span class="p">,</span><span class="w"> </span><span class="n">mcpClient</span><span class="p">,</span><span class="w"> </span><span class="n">objectMapper</span><span class="p">,</span><span class="w"> </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">());</span>
+<span class="n">agent</span><span class="p">.</span><span class="na">registerToolbox</span><span class="p">(</span><span class="n">mcpToolBox</span><span class="p">);</span>
+</code></pre></div>
+<p>This will register all the tools from the mcp server with the agent.</p>
+<div class="admonition note">
+<p class="admonition-title">Toolbox Name</p>
+<p>All ToolBoxes should be given a meaningful name. This is used to generate unique ids for all the tools exposed by
+the MCPServer</p>
+</div>
+<h3 id="filtering-tools-from-mcp-server">Filtering tools from MCP server<a class="headerlink" href="#filtering-tools-from-mcp-server" title="Permanent link">¶</a></h3>
+<p>One of the major problems with using multiple or large MCP servers is that it will make available a lot of tools that
+might be irrelevant to the context of the agent, but will still end up taking space in the context and tend to confuse
+the LLM. To mitigate this, SentinelAI provides a way to filter the tools being exposed to the agent.</p>
+<p>The <code>MCPToolBox</code> constructor accepts a set of tool names which are the identifiers for the tools.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">//This will expose only the "echo" and "sum" tools to the LLM</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">mcpToolBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MCPToolBox</span><span class="p">(</span><span class="s">"test"</span><span class="p">,</span><span class="w"> </span><span class="n">mcpClient</span><span class="p">,</span><span class="w"> </span><span class="n">objectMapper</span><span class="p">,</span><span class="w"> </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"echo"</span><span class="p">,</span><span class="w"> </span><span class="s">"sum"</span><span class="p">));</span>
+</code></pre></div>
+<p>This can be done programatically later as well using the <code>exposeTools</code> method as follows:</p>
+<div class="highlight"><span class="filename">TestAgent.java</span><pre><span></span><code><span class="n">mcpToolBox</span><span class="p">.</span><span class="na">exposeTools</span><span class="p">(</span><span class="s">"echo"</span><span class="p">,</span><span class="w"> </span><span class="s">"sum"</span><span class="p">);</span>
+</code></pre></div>
+<p>You can call this method repeatedly to add more tools to the set of exposed tools. If you want to expose all tools you
+can use the folliwing method:</p>
+<p></p><div class="highlight"><span class="filename">TestAgent.java</span><pre><span></span><code><span class="n">mcpToolBox</span><span class="p">.</span><span class="na">exposeAllTools</span><span class="p">();</span>
+</code></pre></div>
+This will reset the set of exposed tools to all the tools available in the MCP server.<p></p>
+<h2 id="connecting-to-multiple-mcp-servers">Connecting to multiple MCP servers<a class="headerlink" href="#connecting-to-multiple-mcp-servers" title="Permanent link">¶</a></h2>
+<p>For more complex use, cases, you might want to connect to multiple MCP servers. However, the authors of most servers
+would expose many tools for each server that may not be relevant to your user case. To solve this problem, SentinelAI
+supports connecting to multiple MCP servers using the <code>ComposingToolBox</code>.</p>
+<p>This toolbox allows you to:</p>
+<ul>
+<li>use <code>mcp.json</code> file to define multiple MCP servers to connect to</li>
+<li>Create a <code>ComposingToolBox</code> and register multiple MCP clients with ability to expose selected tools in each of them</li>
+</ul>
+<h3 id="using-mcpjson-to-build">Using <code>mcp.json</code> to build<a class="headerlink" href="#using-mcpjson-to-build" title="Permanent link">¶</a></h3>
+<p>Over time, a standard way oif configuring MCP servers has emerged. The <code>mcp.json</code> file is a JSON file that contains a
+map of MCP servers with relevant coordinates and parameters.</p>
+<p>Format:
+</p><div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">//(1)!</span>
+<span class="w">    </span><span class="nt">"everythingServer"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">//(2)!</span>
+<span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"stdio"</span><span class="p">,</span><span class="w"> </span><span class="c1">//(3)!</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx"</span><span class="p">,</span><span class="w"> </span><span class="c1">//(4)!</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="c1">//(5)!</span>
+<span class="w">        </span><span class="s2">"-y"</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">"@modelcontextprotocol/server-everything@2025.12.18"</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"env"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">//(6)!</span>
+<span class="w">        </span><span class="nt">"VAR1"</span><span class="p">:</span><span class="w"> </span><span class="s2">"value1"</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">"Var2"</span><span class="p">:</span><span class="w"> </span><span class="s2">"value2"</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">"exposedTools"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"sum"</span><span class="p">,</span><span class="w"> </span><span class="s2">"echo"</span><span class="p">]</span><span class="w"> </span><span class="c1">//(7)!</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">"someOtherServer"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sse"</span><span class="p">,</span><span class="w"> </span><span class="c1">//(8)!</span>
+<span class="w">      </span><span class="nt">"url"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http://localhost:3001"</span><span class="p">,</span><span class="w"> </span><span class="c1">//(9)!</span>
+<span class="w">      </span><span class="nt">"timeout"</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p">,</span><span class="w"> </span><span class="c1">//(10)!</span>
+<span class="w">      </span><span class="nt">"knownTools"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"getUserLocation"</span><span class="p">,</span><span class="w"> </span><span class="s2">"getUserName"</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><p></p>
+<ol>
+<li>The <code>mcpServers</code> key contains a map of MCP server names to their configurations.</li>
+<li>A unique name for the MCP server. This is used to identify the server in the code.</li>
+<li>The <code>type</code> of the MCP server. Currently, only <code>stdio</code> and <code>sse</code> are supported. For locally running servers this
+   should be set to <code>stdio</code>.</li>
+<li>Mandatory for <code>stdio</code> type servers, this is the command to run the MCP server. The <code>args</code> field contains the
+   arguments to pass to the command.</li>
+<li>The <code>args</code> field contains the arguments to pass to the command. This is an array of strings. This is optional.</li>
+<li>The <code>env</code> field is optional and contains environment variables to set when starting the MCP server. This is optional.</li>
+<li>The <code>exposedTools</code> field is a list of tool names that should be exposed to the agent. This is optional and
+   sentinel defaults to exposing all tools exposed by the MCP server to the LLM. This is useful to filter out tools
+   that are not relevant to the agent. <strong>This is not a standard field and is specific to SentinelAI.</strong></li>
+<li>For remote servers with Server-Sent Events (SSE) support, the <code>type</code> is <code>sse</code>.</li>
+<li>The <code>url</code> field is the URL of the remote MCP server. This is mandatory for <code>sse</code> type servers.</li>
+<li>Timeout in milliseconds for the connection to the remote MCP server. This is optional and defaults to 5000ms.</li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Ensuring efficiency</p>
+<p>When using multiple MCP servers, it is recommended to expose only the tools that are relevant to the agent's
+functionality. Please refer to documentation of the relevant MCP servers to set proper parameters and expose only
+relevant tools.</p>
+</div>
+<p>To create and use <code>ComposingToolBox</code>, you can use the following code:</p>
+<div class="highlight"><span class="filename">TestAgent.java</span><pre><span></span><code><span class="c1">// Create a ComposingToolBox using the mcp.json file</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">composingMCPToolBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ComposingMCPToolBox</span><span class="p">.</span><span class="na">buildFromFile</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="na">name</span><span class="p">(</span><span class="s">"MCP Servers for Test Agent"</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">objectMapper</span><span class="p">(</span><span class="n">objectMapper</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">mcpJsonPath</span><span class="p">(</span><span class="s">"/path/to/mcp.json"</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+<span class="n">agent</span><span class="p">.</span><span class="na">registerToolbox</span><span class="p">(</span><span class="n">mcpToolBox</span><span class="p">);</span>
+</code></pre></div>
+<p>It is possible to load multiple mcp json files into a pre-built <code>ComposingToolBox</code>:</p>
+<div class="highlight"><span class="filename">TestAgent.java</span><pre><span></span><code><span class="n">MCPJsonReader</span><span class="p">.</span><span class="na">loadFile</span><span class="p">(</span><span class="s">"/path/to/mcp.json"</span><span class="p">,</span><span class="w"> </span><span class="c1">//Path to the mcp.json file</span>
+<span class="w">                       </span><span class="n">mcpToolBox</span><span class="p">,</span><span class="w"> </span><span class="c1">//Pre built ComposingMCPToolBox. does not matter how it was created</span>
+<span class="w">                       </span><span class="n">objectMapper</span><span class="p">);</span><span class="w"> </span><span class="c1">//For serialization and deserialization of tools, arguments etc</span>
+</code></pre></div>
+<h3 id="adding-mcp-servers-programmatically">Adding MCP servers programmatically<a class="headerlink" href="#adding-mcp-servers-programmatically" title="Permanent link">¶</a></h3>
+<p>Clients to MCP servers can be added to <code>ComposingToolBox</code> programmatically as well.</p>
+<p>To build a <code>ComposingToolBox</code> programmatically, you can use the following code:</p>
+<div class="highlight"><span class="filename">TestAgent.java</span><pre><span></span><code><span class="c1">// Build the client as prescribed in https://modelcontextprotocol.io/sdk/java/mcp-client</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">params</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ServerParameters</span><span class="p">.</span><span class="na">builder</span><span class="p">(</span><span class="s">"npx"</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">args</span><span class="p">(</span><span class="s">"-y"</span><span class="p">,</span><span class="w"> </span><span class="s">"@modelcontextprotocol/server-everything@2025.12.18"</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">transport</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StdioClientTransport</span><span class="p">(</span><span class="n">params</span><span class="p">);</span>
+
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">mcpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">McpClient</span><span class="p">.</span><span class="na">sync</span><span class="p">(</span><span class="n">transport</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+<span class="n">mcpClient</span><span class="p">.</span><span class="na">initialize</span><span class="p">();</span>
+
+<span class="c1">// Build toolbox</span>
+<span class="kd">final</span><span class="w"> </span><span class="n">val</span><span class="w"> </span><span class="n">toolBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ComposingMCPToolBox</span><span class="p">.</span><span class="na">buildEmpty</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="na">objectMapper</span><span class="p">(</span><span class="n">objectMapper</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="n">toolBox</span><span class="p">.</span><span class="na">registerExistingMCP</span><span class="p">(</span><span class="s">"everythingServer"</span><span class="p">,</span><span class="w"> </span><span class="n">mcpClient</span><span class="p">,</span><span class="w"> </span><span class="s">"add"</span><span class="p">);</span>
+<span class="n">toolBox</span><span class="p">.</span><span class="na">registerExistingMCP</span><span class="p">(</span><span class="s">"someOtherServer"</span><span class="p">,</span><span class="w"> </span><span class="n">otherServerMcpClient</span><span class="p">,</span><span class="w"> </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"getUserLocation"</span><span class="p">,</span><span class="w"> </span><span class="s">"getUserName"</span><span class="p">));</span>
+</code></pre></div>
+<p>To override the exposed tools from a server, use the <code>exposeTools</code> method as follows: </p>
+<div class="highlight"><span class="filename">TestAgent.java</span><pre><span></span><code><span class="n">toolBox</span><span class="p">.</span><span class="na">exposeTools</span><span class="p">(</span><span class="s">"everythingServer"</span><span class="p">,</span><span class="w"> </span><span class="s">"echo"</span><span class="p">,</span><span class="w"> </span><span class="s">"sum"</span><span class="p">);</span>
+<span class="n">toolBox</span><span class="p">.</span><span class="na">exposeTools</span><span class="p">(</span><span class="s">"otherServer"</span><span class="p">,</span><span class="w"> </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"echo"</span><span class="p">,</span><span class="w"> </span><span class="s">"sum"</span><span class="p">));</span>
+</code></pre></div>
+<p>To expose all tools from a server, use the <code>exposeAllTools</code> method as follows:</p>
+<div class="highlight"><span class="filename">TestAgent.java</span><pre><span></span><code><span class="n">toolBox</span><span class="p">.</span><span class="na">exposeAllTools</span><span class="p">(</span><span class="s">"everythingServer"</span><span class="p">);</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Please note the following nuances about the above methods:</p>
+<ul>
+<li>Both the <code>exposeTools</code> and <code>exposeAllTools</code> methods can be used only after the MCP server has been registered.</li>
+<li>The <code>exposeTools</code> operations are additive. The elements/set passed to <code>exposeTools</code> method will be added to the
+     tools configure to be exposed from the server. If you want to remove some exposed tools use the <code>exposeAllTools</code>
+     method to reset the list and then rebuild it.</li>
+<li>Always rethink and ensure you are not exposing too many tools to the agent. This can lead to confusion and
+     inefficiency in the LLM's responses.</li>
+</ul>
+</div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2025  PhonePe Private Limited
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tracking", "navigation.path", "navigation.sections", "content.code.copy", "content.code.annotate", "navigation.expand", "toc.follow", "navigation.top", "search.suggest", "search.highlight", "search.share"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  
+<script id="init-glightbox">document.querySelectorAll('.glightbox').forEach(function(element) {
+    try {
+        var img = element.querySelector('img');
+        if (img && img.src) {
+            element.setAttribute('href', img.src);
+        } else {
+            console.log('No img element with src attribute found');
+        }
+    } catch (error) {
+        console.log('Error:', error);
+    }
+});
+const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>
