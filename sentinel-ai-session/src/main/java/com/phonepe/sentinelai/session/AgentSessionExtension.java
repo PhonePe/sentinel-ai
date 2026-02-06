@@ -436,7 +436,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                              mapper,
                                                              context.getModelUsageStats(),
                                                              sessionMessages,
-                                                             CompactionPrompts.DEFAULT,
+                                                             Objects.requireNonNullElseGet(setup
+                                                                     .getCompactionPrompts(),
+                                                                                           CompactionPrompts.DEFAULT),
                                                              setup.getMaxSummaryLength())
                 .join()
                 .orElse(null);
