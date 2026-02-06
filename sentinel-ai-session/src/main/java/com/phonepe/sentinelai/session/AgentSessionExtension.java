@@ -32,6 +32,7 @@ import com.phonepe.sentinelai.core.agent.ProcessingMode;
 import com.phonepe.sentinelai.core.agent.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
 import com.phonepe.sentinelai.core.compaction.ExtractedSummary;
 import com.phonepe.sentinelai.core.compaction.MessageCompactor;
 import com.phonepe.sentinelai.core.errors.ErrorType;
@@ -345,7 +346,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             final var updated = sessionStore.saveSession(new SessionSummary(
                                                                             sessionId,
                                                                             summary.getTitle(),
-                                                                            summary.getSessionSummary(),
+                                                                            summary.getSummary(),
                                                                             summary.getKeywords(),
                                                                             newestMessageId,
                                                                             AgentUtils
@@ -434,7 +435,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                              agentSetup,
                                                              mapper,
                                                              context.getModelUsageStats(),
-                                                             messages)
+                                                             sessionMessages,
+                                                             CompactionPrompts.DEFAULT,
+                                                             setup.getMaxSummaryLength())
                 .join()
                 .orElse(null);
         if (null == summary) {
@@ -451,7 +454,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                             .reduce((first, second) -> second)
                             .orElse(null);
             log.debug("Extracted session summary output: {}",
-                      summary.getSessionSummary());
+                      summary.getSummary());
             saveSummary(sessionId,
                         context,
                         summary,

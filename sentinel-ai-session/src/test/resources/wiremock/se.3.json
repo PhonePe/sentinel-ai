@@ -1,28 +1,29 @@
 {
-  "id" : "chatcmpl-BwNatyxZq6k1e9XsGBB40gSYdceqY",
+  "id" : "chatcmpl-D6AqxMf4REsvOUmwgAGIPJonZApEc",
   "object" : "chat.completion",
-  "created" : 1753253419,
+  "created" : 1770364059,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_efad92c60b",
+  "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_px9kH95O8zqPm25lC9kTx4S9",
+        "id" : "call_8e366duHlxmDJQDBkRAajXcr",
         "type" : "function",
         "function" : {
           "name" : "__output_generator__",
-          "arguments" : "{\"output\":\"Hello Mr. Santanu! How can I assist you today?\",\"sessionOutput\":{\"sessionId\":\"s1\",\"summary\":\"User greeted with a salutation.\",\"topics\":[\"greeting\",\"user assistance\"]}}"
+          "arguments" : "{\"output\":\"Hello, Mr. Santanu!\"}"
         }
-      } ]
+      } ],
+      "annotations" : [ ]
     },
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 721,
-    "completion_tokens" : 56,
-    "total_tokens" : 777,
+    "prompt_tokens" : 546,
+    "completion_tokens" : 23,
+    "total_tokens" : 569,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

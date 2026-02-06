@@ -16,27 +16,25 @@
 
 package com.phonepe.sentinelai.core.compaction;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
-import lombok.Builder;
-import lombok.Value;
-import lombok.experimental.FieldNameConstants;
-
-import java.util.List;
+import lombok.experimental.UtilityClass;
 
 /**
- * Summary extracted by LLM
+ * A compact representation of an agent message for compaction purposes
  */
-@Value
-@Builder
-@FieldNameConstants
-public class ExtractedSummary {
+@UtilityClass
+public class CompactMessage {
+    @UtilityClass
+    public static final class Roles {
+        public static final String SYSTEM = "system";
+        public static final String USER = "user";
+        public static final String ASSISTANT = "assistant";
+    }
 
-    String summary;
+    @UtilityClass
+    public static final class Types {
+        public static final String CHAT = "chat";
+        public static final String TOOL_CALL = "tool_call";
+        public static final String TOOL_CALL_RESPONSE = "tool_call_response";
+    }
 
-    String title;
-
-    List<String> keywords;
-
-    JsonNode rawData;
 }
