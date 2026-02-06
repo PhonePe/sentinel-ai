@@ -32,6 +32,7 @@ import com.phonepe.sentinelai.core.agent.ProcessingMode;
 import com.phonepe.sentinelai.core.agent.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
 import com.phonepe.sentinelai.core.compaction.ExtractedSummary;
 import com.phonepe.sentinelai.core.compaction.MessageCompactor;
 import com.phonepe.sentinelai.core.errors.ErrorType;
@@ -153,7 +154,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                     .formatted(sessionId),
                                                             List.of(new Fact("A summary of the conversation in this session",
                                                                              sessionSummary
-                                                                                     .getSummary())))))
+                                                                                     .getRaw())))))
                 .orElse(List.of());
     }
 
@@ -342,16 +343,17 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                          sessionId);
                 return;
             }
-            final var updated = sessionStore.saveSession(new SessionSummary(
-                                                                            sessionId,
-                                                                            summary.getTitle(),
-                                                                            summary.getSessionSummary(),
-                                                                            summary.getKeywords(),
-                                                                            newestMessageId,
-                                                                            AgentUtils
-                                                                                    .epochMicro()))
-                    .orElse(null);
-            log.info("Session summary: {}", updated);
+            final var updated = sessionStore.saveSession(SessionSummary
+                    .builder()
+                    .sessionId(sessionId)
+                    .title(summary.getTitle())
+                    .summary(summary.getSummary())
+                    .keywords(summary.getKeywords())
+                    .raw(mapper.writeValueAsString(summary.getRawData()))
+                    .lastSummarizedMessageId(newestMessageId)
+                    .updatedAt(AgentUtils.epochMicro())
+                    .build()).orElse(null);
+            log.debug("Session summary: {}", updated);
         }
         catch (Exception e) {
             log.error("Error converting json node to memory output. Error: %s Summary: %s"
@@ -434,7 +436,11 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                              agentSetup,
                                                              mapper,
                                                              context.getModelUsageStats(),
-                                                             messages)
+                                                             sessionMessages,
+                                                             Objects.requireNonNullElse(setup
+                                                                     .getCompactionPrompts(),
+                                                                                        CompactionPrompts.DEFAULT),
+                                                             setup.getMaxSummaryLength())
                 .join()
                 .orElse(null);
         if (null == summary) {
@@ -451,7 +457,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                             .reduce((first, second) -> second)
                             .orElse(null);
             log.debug("Extracted session summary output: {}",
-                      summary.getSessionSummary());
+                      summary.getSummary());
             saveSummary(sessionId,
                         context,
                         summary,

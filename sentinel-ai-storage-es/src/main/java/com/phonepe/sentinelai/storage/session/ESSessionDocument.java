@@ -36,6 +36,8 @@ public class ESSessionDocument {
 
     List<String> topics;
 
+    String raw;
+
     String lastSummarizedMessageId;
 
     long updatedAtMicro;

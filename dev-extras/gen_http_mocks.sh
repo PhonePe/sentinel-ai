@@ -23,7 +23,7 @@ echo "{}" > ${tfile}
 
 echo "Paste test output:"
 
-cat | awk '
+cat | awk '/Standard out/ {print; flag=1; next} flag' | awk '
   /Response from model: \{/ {
     flag = 1;
     sub(/.*Response from model: /, "", $0);

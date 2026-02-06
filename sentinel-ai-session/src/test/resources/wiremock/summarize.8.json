@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-Cy9hadcHYNQD67qsGzDCMt47LVvxp",
+  "id" : "chatcmpl-D6B5TJYY2TEvnsbzAnWXRhq9kJCWX",
   "object" : "chat.completion",
-  "created" : 1768453010,
+  "created" : 1770364959,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
@@ -9,11 +9,11 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_0ocGWcwSL8jqxvQW3AkMMngE",
+        "id" : "call_iV2IhOQHU5ePbrKgyfcfmEev",
         "type" : "function",
         "function" : {
           "name" : "__output_generator__",
-          "arguments" : "{\"sessionOutput\":{\"keywords\":[\"greeting\",\"name\",\"salutation\",\"weather\",\"location\"],\"sessionSummary\":\"The session began with the user greeting the agent with a simple 'Hi'. The agent responded by retrieving the user's name, which was identified as Santanu. Following this, the agent provided a list of possible salutations for Santanu, including 'Mr', 'Dr', and 'Prof'. The agent then greeted Santanu with 'Hello Santanu! How can I assist you today?'. The user inquired about the weather at their location. The agent proceeded to determine the user's location, which was found to be Bangalore. Subsequently, the agent fetched the current weather for Bangalore, revealing that it was sunny. Finally, the agent communicated this weather update back to the user, stating, 'The weather in Bangalore today is sunny.'\",\"title\":\"User Interaction and Weather Inquiry\"}}"
+          "arguments" : "{\"sessionOutput\":{\"title\":\"User interactions with assistant\",\"keywords\":[\"user input\",\"weather\",\"greeting\"],\"summary\":\"The user initiates a conversation with a greeting and inquires about the weather at their location. The assistant responds with a personalized greeting and provides the weather information based on the user's location.\",\"key_points\":[\"User greets assistant with 'Hi'.\",\"Assistant responds: 'Hello, Mr. Santanu!'.\",\"User asks about the weather at their location.\",\"Assistant identifies location as Bangalore.\",\"Assistant reports: 'The weather in Bangalore is sunny today.'.\"],\"key_facts\":[\"User's name is Santanu.\",\"User's location is Bangalore.\",\"Weather in Bangalore is sunny.\"],\"action_items\":[],\"citations\":[],\"sentiment\":\"neutral\",\"confidence\":9.0,\"metadata\":\"Processed user interactions for weather inquiry and greeting.\"}}"
         }
       } ],
       "annotations" : [ ]
@@ -21,16 +21,16 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 2350,
-    "completion_tokens" : 189,
-    "total_tokens" : 2539,
+    "prompt_tokens" : 1460,
+    "completion_tokens" : 182,
+    "total_tokens" : 1642,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 1152
+      "cached_tokens" : 0
     }
   }
 } 

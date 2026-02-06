@@ -45,5 +45,8 @@ public class SessionSummary {
     @JsonPropertyDescription("Message ID till which summarization has already been done")
     String lastSummarizedMessageId;
 
+    @JsonPropertyDescription("Structured data extracted from the conversation")
+    String raw;
+
     long updatedAt;
 }

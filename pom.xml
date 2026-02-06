@@ -91,6 +91,7 @@
         <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/../sentinel-ai-bom/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <maven-javadoc-plugin.version>3.8.0</maven-javadoc-plugin.version>
         <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+        <commons-text.version>1.13.1</commons-text.version>
         <jackson.version>2.18.3</jackson.version>
         <mockito.version>5.20.0</mockito.version>
         <testcontainers.version>1.21.4</testcontainers.version>
@@ -284,7 +285,7 @@
                         <printStdoutOnSuccess>${success.print}</printStdoutOnSuccess>
                         <printStderrOnError>true</printStderrOnError>
                         <printStderrOnFailure>true</printStderrOnFailure>
-                        <printStderrOnSuccess>false</printStderrOnSuccess>
+                        <printStderrOnSuccess>${success.print}</printStderrOnSuccess>
                     </statelessTestsetInfoReporter>
                     <systemPropertyVariables>
                         <sentinelai.useRealEndpoints>${sentinelai.useRealEndpoints}</sentinelai.useRealEndpoints>
@@ -351,6 +352,7 @@
                         <trimTrailingWhitespace/>
                         <forbidWildcardImports/>
                         <endWithNewline/>
+                        <ratchetFrom>origin/master</ratchetFrom>
                     </java>
                 </configuration>
                 <executions>

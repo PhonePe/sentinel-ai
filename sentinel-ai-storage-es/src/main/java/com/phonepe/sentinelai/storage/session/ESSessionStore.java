@@ -331,16 +331,19 @@ public class ESSessionStore implements SessionStore {
                 .sessionId(document.getSessionId())
                 .summary(document.getSummary())
                 .keywords(document.getTopics())
+                .raw(document.getRaw())
                 .lastSummarizedMessageId(document.getLastSummarizedMessageId())
                 .updatedAt(document.getUpdatedAtMicro())
                 .build();
     }
 
+    @SneakyThrows
     private ESSessionDocument toStoredSession(SessionSummary sessionSummary) {
         return ESSessionDocument.builder()
                 .sessionId(sessionSummary.getSessionId())
                 .summary(sessionSummary.getSummary())
                 .topics(sessionSummary.getKeywords())
+                .raw(mapper.writeValueAsString(sessionSummary.getRaw()))
                 .lastSummarizedMessageId(sessionSummary
                         .getLastSummarizedMessageId())
                 .updatedAtMicro(sessionSummary.getUpdatedAt())
@@ -378,6 +381,9 @@ public class ESSessionStore implements SessionStore {
                                         p -> p.text(t -> t))
                             .properties(ESSessionDocument.Fields.topics,
                                         p -> p.keyword(t -> t))
+                            .properties(ESSessionDocument.Fields.raw,
+                                        p -> p.text(t -> t.store(false)
+                                                .index(false)))
                             .properties(ESSessionDocument.Fields.lastSummarizedMessageId,
                                         p -> p.text(t -> t.store(false)
                                                 .index(false)))

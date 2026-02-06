@@ -17,6 +17,8 @@
 package com.phonepe.sentinelai.session;
 
 
+import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
+
 import lombok.Builder;
 import lombok.Value;
 import lombok.With;
@@ -37,7 +39,8 @@ public class AgentSessionExtensionSetup {
 
     public static final AgentSessionExtensionSetup DEFAULT = new AgentSessionExtensionSetup(MAX_HISTORICAL_MESSAGES_FETCH_COUNT,
                                                                                             DEFAULT_MAX_SUMMARY_LENGTH,
-                                                                                            DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD);
+                                                                                            DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD,
+                                                                                            CompactionPrompts.DEFAULT);
 
     /**
      * Number of historical messages to fetch from session store in one go.
@@ -60,4 +63,7 @@ public class AgentSessionExtensionSetup {
      */
     @Builder.Default
     int autoSummarizationThresholdPercentage = DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD;
+
+    @Builder.Default
+    CompactionPrompts compactionPrompts = CompactionPrompts.DEFAULT;
 }

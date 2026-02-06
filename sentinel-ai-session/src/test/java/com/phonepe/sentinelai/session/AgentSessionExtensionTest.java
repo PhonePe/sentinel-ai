@@ -191,7 +191,7 @@ class AgentSessionExtensionTest {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(6, "se", getClass());
+        TestUtils.setupMocks(7, "se", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var model = new SimpleOpenAIModel<>("gpt-4o",
@@ -288,7 +288,7 @@ class AgentSessionExtensionTest {
                         .mapper(objectMapper)
                         .sessionStore(sessionStore)
                         .setup(AgentSessionExtensionSetup.builder()
-                                .autoSummarizationThresholdPercentage(0)
+                                .autoSummarizationThresholdPercentage(1)
                                 .build())
                         .build()))
                 .build()
