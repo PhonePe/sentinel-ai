@@ -154,7 +154,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                     .formatted(sessionId),
                                                             List.of(new Fact("A summary of the conversation in this session",
                                                                              sessionSummary
-                                                                                     .getSummary())))))
+                                                                                     .getRaw())))))
                 .orElse(List.of());
     }
 
@@ -343,16 +343,17 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                          sessionId);
                 return;
             }
-            final var updated = sessionStore.saveSession(new SessionSummary(
-                                                                            sessionId,
-                                                                            summary.getTitle(),
-                                                                            summary.getSummary(),
-                                                                            summary.getKeywords(),
-                                                                            newestMessageId,
-                                                                            AgentUtils
-                                                                                    .epochMicro()))
-                    .orElse(null);
-            log.info("Session summary: {}", updated);
+            final var updated = sessionStore.saveSession(SessionSummary
+                    .builder()
+                    .sessionId(sessionId)
+                    .title(summary.getTitle())
+                    .summary(summary.getSummary())
+                    .keywords(summary.getKeywords())
+                    .raw(mapper.writeValueAsString(summary.getRawData()))
+                    .lastSummarizedMessageId(newestMessageId)
+                    .updatedAt(AgentUtils.epochMicro())
+                    .build()).orElse(null);
+            log.debug("Session summary: {}", updated);
         }
         catch (Exception e) {
             log.error("Error converting json node to memory output. Error: %s Summary: %s"
