@@ -30,7 +30,16 @@ import java.util.UUID;
  * An event that has occurred in the agent.
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type")
-@JsonSubTypes({@JsonSubTypes.Type(name = EventType.Values.MESSAGE_RECEIVED, value = MessageReceivedAgentEvent.class), @JsonSubTypes.Type(name = EventType.Values.MESSAGE_SENT, value = MessageSentAgentEvent.class), @JsonSubTypes.Type(name = EventType.Values.TOOL_CALL_APPROVAL_DENIED, value = ToolCallApprovalDeniedAgentEvent.class), @JsonSubTypes.Type(name = EventType.Values.TOOL_CALLED, value = ToolCalledAgentEvent.class), @JsonSubTypes.Type(name = EventType.Values.TOOL_CALL_COMPLETED, value = ToolCallCompletedAgentEvent.class)})
+@JsonSubTypes({
+        @JsonSubTypes.Type(name = EventType.Values.MESSAGE_RECEIVED, value = MessageReceivedAgentEvent.class),
+        @JsonSubTypes.Type(name = EventType.Values.MESSAGE_SENT, value = MessageSentAgentEvent.class),
+        @JsonSubTypes.Type(name = EventType.Values.TOOL_CALL_APPROVAL_DENIED, value = ToolCallApprovalDeniedAgentEvent.class),
+        @JsonSubTypes.Type(name = EventType.Values.TOOL_CALLED, value = ToolCalledAgentEvent.class),
+        @JsonSubTypes.Type(name = EventType.Values.TOOL_CALL_COMPLETED, value = ToolCallCompletedAgentEvent.class),
+        @JsonSubTypes.Type(name = EventType.Values.INPUT_RECEIVED, value = InputReceivedAgentEvent.class),
+        @JsonSubTypes.Type(name = EventType.Values.OUTPUT_GENERATED, value = OutputGeneratedAgentEvent.class),
+        @JsonSubTypes.Type(name = EventType.Values.OUTPUT_ERROR, value = OutputErrorAgentEvent.class)
+})
 @Data
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class AgentEvent {

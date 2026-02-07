@@ -172,10 +172,13 @@ class AgentSessionExtensionTest {
 
     }
 
-    public record OutputObject(String username, String message) {
+    public record OutputObject(
+            String username,
+            String message) {
     }
 
-    public record Salutation(List<String> salutation) {
+    public record Salutation(
+            List<String> salutation) {
     }
 
     @JsonClassDescription("Parameter to be passed to get salutation for a user")
@@ -184,7 +187,8 @@ class AgentSessionExtensionTest {
     }
 
     @JsonClassDescription("User input")
-    public record UserInput(String data) {
+    public record UserInput(
+            String data) {
     }
 
 

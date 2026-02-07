@@ -31,7 +31,8 @@ import java.util.Objects;
 public class OutputValidationResults {
 
     public enum FailureType {
-        RETRYABLE, PERMANENT
+        RETRYABLE,
+        PERMANENT
     }
 
     @Value

@@ -23,12 +23,18 @@ import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
+import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.events.AgentEvent;
+import com.phonepe.sentinelai.core.events.InputReceivedAgentEvent;
 import com.phonepe.sentinelai.core.events.MessageReceivedAgentEvent;
 import com.phonepe.sentinelai.core.events.MessageSentAgentEvent;
+import com.phonepe.sentinelai.core.events.OutputErrorAgentEvent;
 import com.phonepe.sentinelai.core.events.OutputGeneratedAgentEvent;
+import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 
 import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
 import java.util.List;
@@ -38,7 +44,31 @@ import java.util.concurrent.TimeUnit;
  *
  */
 @UtilityClass
+@Slf4j
 public class EventUtils {
+
+    public static void raiseInputReceivedEvent(String agentName,
+                                               AgentRunContext<?> context,
+                                               Object content,
+                                               AgentSetup agentSetup) {
+        try {
+            agentSetup.getEventBus()
+                    .notify(new InputReceivedAgentEvent(agentName,
+                                                        context.getRunId(),
+                                                        AgentUtils.sessionId(
+                                                                             context),
+                                                        AgentUtils.userId(
+                                                                          context),
+                                                        agentSetup.getMapper()
+                                                                .writeValueAsString(content)));
+        }
+        catch (Exception e) {
+            log.error("Error while raising input received event for agent: {}, runId: {}",
+                      agentName,
+                      context.getRunId(),
+                      AgentUtils.rootCause(e).getMessage());
+        }
+    }
 
     public static <R, T, A extends Agent<R, T, A>> void raiseMessageReceivedEvent(AgentRunContext<R> context,
                                                                                   A agent,
@@ -65,6 +95,7 @@ public class EventUtils {
                                   stopwatch);
     }
 
+
     public static void raiseMessageReceivedEvent(String agentName,
                                                  String runId,
                                                  String sessionId,
@@ -81,7 +112,6 @@ public class EventUtils {
                                                       Duration.ofMillis(stopwatch
                                                               .elapsed(TimeUnit.MILLISECONDS))));
     }
-
 
     public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(AgentRunContext<R> context,
                                                                               A agent,
@@ -118,34 +148,44 @@ public class EventUtils {
                                                   List.copyOf(oldMessages)));
     }
 
-    public static <R, T, A extends Agent<R, T, A>> void raiseOutputGeneratedEvent(AgentRunContext<R> context,
-                                                                                  A agent,
-                                                                                  String content,
-                                                                                  Stopwatch stopwatch) {
-        context.getAgentSetup()
-                .getEventBus()
-                .notify(new OutputGeneratedAgentEvent(agent.name(),
-                                                      context.getRunId(),
-                                                      AgentUtils.sessionId(
-                                                                           context),
-                                                      AgentUtils.userId(
-                                                                        context),
-                                                      content,
-                                                      Duration.ofMillis(stopwatch
-                                                              .elapsed(TimeUnit.MILLISECONDS))));
-    }
-
-    public static <R, T, A extends Agent<R, T, A>> void raiseOutputGeneratedEvent(ModelRunContext context,
-                                                                                  String content,
-                                                                                  Stopwatch stopwatch) {
-        context.getAgentSetup()
-                .getEventBus()
-                .notify(new OutputGeneratedAgentEvent(context.getAgentName(),
+    public static void raiseOutputEvent(ModelRunContext context,
+                                        ModelOutput output,
+                                        Stopwatch stopwatch) {
+        AgentEvent event;
+        try {
+            if (output.getError() == null || output.getError()
+                    .equals(ErrorType.SUCCESS)) {
+                event = new OutputGeneratedAgentEvent(context.getAgentName(),
                                                       context.getRunId(),
                                                       context.getSessionId(),
                                                       context.getUserId(),
-                                                      content,
+                                                      context.getAgentSetup()
+                                                              .getMapper()
+                                                              .writeValueAsString(output
+                                                                      .getData()),
                                                       Duration.ofMillis(stopwatch
-                                                              .elapsed(TimeUnit.MILLISECONDS))));
+                                                              .elapsed(TimeUnit.MILLISECONDS)));
+            }
+            else {
+                event = new OutputErrorAgentEvent(context.getAgentName(),
+                                                  context.getRunId(),
+                                                  context.getSessionId(),
+                                                  context.getUserId(),
+                                                  output.getError()
+                                                          .getErrorType(),
+                                                  output.getError()
+                                                          .getMessage(),
+                                                  Duration.ofMillis(stopwatch
+                                                          .elapsed(TimeUnit.MILLISECONDS)));
+            }
+            context.getAgentSetup().getEventBus().notify(event);
+        }
+        catch (Exception e) {
+            log.error("Error while raising output event for agent: {}, runId: {}",
+                      context.getAgentName(),
+                      context.getRunId(),
+                      AgentUtils.rootCause(e).getMessage());
+        }
     }
+
 }

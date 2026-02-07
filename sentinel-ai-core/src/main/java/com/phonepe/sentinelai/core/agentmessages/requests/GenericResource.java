@@ -34,7 +34,8 @@ import lombok.extern.jackson.Jacksonized;
 @ToString(callSuper = true)
 public class GenericResource extends AgentGenericMessage {
     public enum ResourceType {
-        TEXT, BLOB
+        TEXT,
+        BLOB
     }
 
     ResourceType resourceType;

@@ -36,10 +36,18 @@ import lombok.ToString;
 @ToString
 @Getter
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type")
-@JsonSubTypes({@JsonSubTypes.Type(name = "REMOTE_HTTP_CALLS", value = AgentRemoteHttpCallCapability.class), @JsonSubTypes.Type(name = "MCP", value = AgentMCPCapability.class), @JsonSubTypes.Type(name = "CUSTOM_TOOLS", value = AgentCustomToolCapability.class), @JsonSubTypes.Type(name = "TOOL_INHERITANCE", value = ParentToolInheritanceCapability.class),})
+@JsonSubTypes({
+        @JsonSubTypes.Type(name = "REMOTE_HTTP_CALLS", value = AgentRemoteHttpCallCapability.class),
+        @JsonSubTypes.Type(name = "MCP", value = AgentMCPCapability.class),
+        @JsonSubTypes.Type(name = "CUSTOM_TOOLS", value = AgentCustomToolCapability.class),
+        @JsonSubTypes.Type(name = "TOOL_INHERITANCE", value = ParentToolInheritanceCapability.class),})
 public abstract class AgentCapability {
     public enum Type {
-        REMOTE_HTTP_CALLS, MCP, CUSTOM_TOOLS, TOOL_INHERITANCE, AGENT_MEMORY,
+        REMOTE_HTTP_CALLS,
+        MCP,
+        CUSTOM_TOOLS,
+        TOOL_INHERITANCE,
+        AGENT_MEMORY,
         SESSION_MANAGEMENT,
     }
 

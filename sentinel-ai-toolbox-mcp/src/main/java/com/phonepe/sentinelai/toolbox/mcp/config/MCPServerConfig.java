@@ -28,7 +28,10 @@ import java.util.Set;
  * Config for specific MCP server
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type")
-@JsonSubTypes({@JsonSubTypes.Type(name = MCPServerType.Values.STDIO_TEXT, value = MCPStdioServerConfig.class), @JsonSubTypes.Type(name = MCPServerType.Values.SSE_TEXT, value = MCPSSEServerConfig.class), @JsonSubTypes.Type(name = MCPServerType.Values.HTTP_TEXT, value = MCPHttpServerConfig.class),})
+@JsonSubTypes({
+        @JsonSubTypes.Type(name = MCPServerType.Values.STDIO_TEXT, value = MCPStdioServerConfig.class),
+        @JsonSubTypes.Type(name = MCPServerType.Values.SSE_TEXT, value = MCPSSEServerConfig.class),
+        @JsonSubTypes.Type(name = MCPServerType.Values.HTTP_TEXT, value = MCPHttpServerConfig.class),})
 @Data
 @RequiredArgsConstructor
 public abstract class MCPServerConfig {
