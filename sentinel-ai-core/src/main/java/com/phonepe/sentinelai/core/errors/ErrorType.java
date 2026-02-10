@@ -32,6 +32,7 @@ public enum ErrorType {
     LENGTH_EXCEEDED("Content length exceeded", false),
     TOOL_CALL_PERMANENT_FAILURE("Tool call failed permanently for tool: %s", false),
     TOOL_CALL_TEMPORARY_FAILURE("Tool call failed temporarily for tool: %s", true),
+    TOOL_CALL_TIMEOUT("Tool call timed out for tool: %s", true),
     JSON_ERROR("Error parsing JSON. Error: %s", true),
     SERIALIZATION_ERROR("Error serializing object to JSON. Error: %s", true),
     DESERIALIZATION_ERROR("Error deserializing object to JSON. Error: %s", true),

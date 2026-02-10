@@ -281,6 +281,8 @@ public class SentinelMCPClient implements AutoCloseable {
                         // servers do properly. So for now we are setting strict false
                         // for tools obtained from mcp servers
                         .terminal(false)
+                        .retries(ToolDefinition.NO_RETRY) //Let the model retry if needed
+                        .timeoutSeconds(ToolDefinition.NO_TIMEOUT) //Can be maintained at client level
                         .build(),
                                                  mapper.valueToTree(toolDef
                                                          .inputSchema()),

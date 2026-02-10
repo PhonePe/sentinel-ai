@@ -30,11 +30,18 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExecutableToolVisitor;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
+import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.tools.ToolMethodInfo;
 import com.phonepe.sentinelai.core.tools.ToolRunApprovalSeeker;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 
+import dev.failsafe.Failsafe;
+import dev.failsafe.FailsafeException;
+import dev.failsafe.Policy;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.Timeout;
+import dev.failsafe.TimeoutExceededException;
 import lombok.SneakyThrows;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -52,9 +59,15 @@ import java.util.concurrent.TimeUnit;
 /**
  *
  */
-@Value
 @Slf4j
-class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
+@Value
+public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
+    private static final Set<Class<? extends Exception>> UNHANDLED_EXCEPTION_TYPES = Set
+            .of(
+                NullPointerException.class,
+                IllegalAccessException.class,
+                JsonProcessingException.class);
+
     A agent;
     AgentSetup setup;
     ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker;
@@ -273,7 +286,7 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
                                         toolCall.getToolCallId(),
                                         toolCall.getToolName(),
                                         ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                        ("Tool call %s failed. There is no tool with name: %s. " + "Retry by calling any of the following available tools with the" + " appropriate parameters: %s.")
+                                        ("Tool call %s failed. There is no tool with name: %s. Retry by calling any of the following available tools with the appropriate parameters: %s.")
                                                 .formatted(toolCall
                                                         .getToolCallId(),
                                                            toolCall.getToolName(),
@@ -281,19 +294,104 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
                                                                    .keySet())),
                                         LocalDateTime.now());
         }
-        //TODO::RETRY LOGIC
-        return tool.accept(new ExecutableToolVisitor<>() {
-            @Override
-            public ToolCallResponse visit(ExternalTool externalTool) {
-                return runExternalTool(externalTool, toolCall, context);
-            }
+        final var toolDefinition = tool.getToolDefinition();
+        final var policies = new ArrayList<Policy<ToolCallResponse>>();
+        final var attempts = 1 + Math.max(ToolDefinition.NO_RETRY,
+                                          toolDefinition.getRetries());
+        policies.add(RetryPolicy.<ToolCallResponse>builder()
+                .handleIf((response, error) -> {
+                    if (response != null && response.getErrorType() != null) {
+                        return response.getErrorType()
+                                .equals(ErrorType.TOOL_CALL_TEMPORARY_FAILURE) || response
+                                        .getErrorType()
+                                        .equals(ErrorType.FORCED_RETRY);
+                    }
+                    return error != null && !UNHANDLED_EXCEPTION_TYPES.contains(
+                                                                                AgentUtils
+                                                                                        .rootCause(error)
+                                                                                        .getClass());
 
-            @Override
-            public ToolCallResponse visit(InternalTool internalTool) {
-                return runInternalTool(internalTool, context, toolCall);
+                })
+                .withMaxAttempts(attempts)
+                .build());
+        if (toolDefinition.getTimeoutSeconds() != ToolDefinition.NO_TIMEOUT) {
+            final var timeoutSeconds = Duration.ofSeconds(toolDefinition
+                    .getTimeoutSeconds());
+            policies.add(Timeout.<ToolCallResponse>builder(timeoutSeconds)
+                    .withInterrupt()
+                    .build());
+        }
 
-            }
-        });
+        try {
+            return Failsafe.with(policies)
+                    .get(() -> tool.accept(new ExecutableToolVisitor<>() {
+                        @Override
+                        public ToolCallResponse visit(ExternalTool externalTool) {
+                            return runExternalTool(externalTool,
+                                                   toolCall,
+                                                   context);
+                        }
+
+                        @Override
+                        public ToolCallResponse visit(InternalTool internalTool) {
+                            return runInternalTool(internalTool,
+                                                   context,
+                                                   toolCall);
+
+                        }
+                    }));
+        }
+        catch (TimeoutExceededException e) {
+            log.error("Tool call {} -> {} timed out after {} seconds",
+                      toolCall.getToolCallId(),
+                      toolCall.getToolName(),
+                      toolDefinition.getTimeoutSeconds(),
+                      e);
+            return new ToolCallResponse(AgentUtils.sessionId(context),
+                                        context.getRunId(),
+                                        toolCall.getToolCallId(),
+                                        toolCall.getToolName(),
+                                        ErrorType.TOOL_CALL_TIMEOUT,
+                                        "Tool call timed out after %d seconds"
+                                                .formatted(toolDefinition
+                                                        .getTimeoutSeconds()),
+                                        LocalDateTime.now());
+        }
+        catch (FailsafeException e) {
+            log.error("Error calling tool {} -> {} after {} attempts",
+                      toolCall.getToolCallId(),
+                      toolCall.getToolName(),
+                      attempts,
+                      e);
+            final var cause = AgentUtils.rootCause(e);
+            return new ToolCallResponse(AgentUtils.sessionId(context),
+                                        context.getRunId(),
+                                        toolCall.getToolCallId(),
+                                        toolCall.getToolName(),
+                                        ErrorType.TOOL_CALL_TEMPORARY_FAILURE,
+                                        "Error calling tool after %d attempts: %s"
+                                                .formatted(attempts,
+                                                           cause.getMessage()),
+                                        LocalDateTime.now());
+        }
+        catch (Exception e) {
+            log.error("Error calling tool {} -> {} after {} attempts",
+                      toolCall.getToolCallId(),
+                      toolCall.getToolName(),
+                      attempts,
+                      e);
+            return new ToolCallResponse(AgentUtils.sessionId(context),
+                                        context.getRunId(),
+                                        toolCall.getToolCallId(),
+                                        toolCall.getToolName(),
+                                        ErrorType.TOOL_CALL_TEMPORARY_FAILURE,
+                                        "Error calling tool after %d attempts: %s"
+                                                .formatted(attempts,
+                                                           AgentUtils.rootCause(
+                                                                                e)
+                                                                   .getMessage()),
+                                        LocalDateTime.now());
+        }
 
     }
 
