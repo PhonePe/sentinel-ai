@@ -36,7 +36,7 @@ public class ToolCallCompletedAgentEvent extends AgentEvent {
     String toolCallId;
     String toolCallName;
     ErrorType errorType;
-    String errorMessage;
+    String content;
     Duration elapsedTime;
 
     @SuppressWarnings("java:S107")
@@ -47,7 +47,7 @@ public class ToolCallCompletedAgentEvent extends AgentEvent {
                                        @NonNull String toolCallId,
                                        @NonNull String toolCallName,
                                        ErrorType errorType,
-                                       String errorMessage,
+                                       String content,
                                        @NonNull Duration elapsedTime) {
         super(EventType.TOOL_CALL_COMPLETED,
               agentName,
@@ -57,7 +57,7 @@ public class ToolCallCompletedAgentEvent extends AgentEvent {
         this.toolCallId = toolCallId;
         this.toolCallName = toolCallName;
         this.errorType = errorType;
-        this.errorMessage = errorMessage;
+        this.content = content;
         this.elapsedTime = elapsedTime;
     }
 

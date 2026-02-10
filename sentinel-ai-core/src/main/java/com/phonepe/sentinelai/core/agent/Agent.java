@@ -25,6 +25,7 @@ import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Primitives;
 
@@ -52,6 +53,7 @@ import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.tools.ToolRunApprovalSeeker;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.core.utils.EventUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 
@@ -97,7 +99,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     public static final String OUTPUT_VARIABLE_NAME = "output";
 
     public enum StreamProcessingMode {
-        TYPED, TEXT
+        TYPED,
+        TEXT
     }
 
     @Value
@@ -110,8 +113,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         ProcessingMode processingMode;
     }
 
-    private record ModelOutputProcessingContext<R>(AgentRunContext<R> context,
-            AgentSetup agentSetup, List<AgentMessage> messages) {
+    private record ModelOutputProcessingContext<R>(
+            AgentRunContext<R> context,
+            AgentSetup agentSetup,
+            List<AgentMessage> messages) {
     }
 
     private final Class<T> outputType;
@@ -305,19 +310,27 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 .getAgentSetup(), this.setup);
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input
                 .getOldMessages(), List.of()));
-        final var runId = UUID.randomUUID().toString();
-        final var requestMetadata = input.getRequestMetadata();
+        final var requestMetadata = Objects.requireNonNullElseGet(input
+                .getRequestMetadata(),
+                                                                  AgentRequestMetadata::new);
+        final var runId = AgentUtils.createIfNotNull(requestMetadata,
+                                                     AgentRequestMetadata::getRunId,
+                                                     () -> UUID.randomUUID()
+                                                             .toString());
         final var facts = input.getFacts();
         final var inputRequest = input.getRequest();
         final var modelUsageStats = new ModelUsageStats();
         final var context = new AgentRunContext<>(runId,
                                                   inputRequest,
-                                                  Objects.requireNonNullElseGet(requestMetadata,
-                                                                                AgentRequestMetadata::new),
+                                                  requestMetadata,
                                                   mergedAgentSetup,
                                                   messages,
                                                   modelUsageStats,
                                                   ProcessingMode.DIRECT);
+        EventUtils.raiseInputReceivedEvent(name(),
+                                           context,
+                                           inputRequest,
+                                           mergedAgentSetup);
         var finalSystemPrompt = "";
         try {
             finalSystemPrompt = systemPrompt(context, facts);
@@ -458,20 +471,28 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input
                 .getOldMessages(), List.of()));
 
-        final var runId = UUID.randomUUID().toString();
-        final var requestMetadata = input.getRequestMetadata();
+        final var requestMetadata = Objects.requireNonNullElseGet(input
+                .getRequestMetadata(),
+                                                                  AgentRequestMetadata::new);
+        final var runId = AgentUtils.createIfNotNull(requestMetadata,
+                                                     AgentRequestMetadata::getRunId,
+                                                     () -> UUID.randomUUID()
+                                                             .toString());
         final var request = input.getRequest();
         final var facts = input.getFacts();
         final var processingMode = ProcessingMode.STREAMING;
         final var modelUsageStats = new ModelUsageStats();
         final var context = new AgentRunContext<>(runId,
                                                   request,
-                                                  Objects.requireNonNullElseGet(requestMetadata,
-                                                                                AgentRequestMetadata::new),
+                                                  requestMetadata,
                                                   mergedAgentSetup,
                                                   messages,
                                                   modelUsageStats,
                                                   processingMode);
+        EventUtils.raiseInputReceivedEvent(name(),
+                                           context,
+                                           request,
+                                           mergedAgentSetup);
         var finalSystemPrompt = "";
         try {
             finalSystemPrompt = systemPrompt(context, facts);
@@ -696,8 +717,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                       List<ModelOutputDefinition> outputDefinitions,
                                       List<AgentMessage> messages,
                                       AgentRunContext<R> context) {
+        ModelOutput modelOutput;
+        final var stopwatch = Stopwatch.createStarted();
         try {
-            return mergedAgentSetup.getModel()
+            modelOutput = mergedAgentSetup.getModel()
                     .compute(modelRunContext,
                              outputDefinitions,
                              messages,
@@ -712,20 +735,23 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return ModelOutput.error(context.getOldMessages(),
-                                     context.getModelUsageStats(),
-                                     SentinelError.error(
-                                                         ErrorType.GENERIC_MODEL_CALL_FAILURE,
-                                                         "Model run interrupted."));
+            modelOutput = ModelOutput.error(context.getOldMessages(),
+                                            context.getModelUsageStats(),
+                                            SentinelError.error(
+                                                                ErrorType.GENERIC_MODEL_CALL_FAILURE,
+                                                                "Model run interrupted."));
         }
         catch (Exception e) {
-            return ModelOutput.error(context.getOldMessages(),
-                                     context.getModelUsageStats(),
-                                     SentinelError.error(
-                                                         ErrorType.GENERIC_MODEL_CALL_FAILURE,
-                                                         AgentUtils.rootCause(e)
-                                                                 .getMessage()));
+            modelOutput = ModelOutput.error(context.getOldMessages(),
+                                            context.getModelUsageStats(),
+                                            SentinelError.error(
+                                                                ErrorType.GENERIC_MODEL_CALL_FAILURE,
+                                                                AgentUtils
+                                                                        .rootCause(e)
+                                                                        .getMessage()));
         }
+        EventUtils.raiseOutputEvent(modelRunContext, modelOutput, stopwatch);
+        return modelOutput;
     }
 
     @SuppressWarnings("java:S107")
@@ -738,6 +764,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                            boolean isTextStreaming,
                                            Consumer<byte[]> streamHandler) {
         CompletableFuture<ModelOutput> modelFuture;
+        ModelOutput modelOutput;
+        final var stopwatch = Stopwatch.createStarted();
 
         final var toolRunner = new AgentToolRunner<>(self,
                                                      mergedAgentSetup,
@@ -765,23 +793,27 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                 streamHandler,
                                 agentMessagesPreProcessors);
             }
-            return modelFuture.get();
+            modelOutput = modelFuture.get();
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return ModelOutput.error(context.getOldMessages(),
-                                     context.getModelUsageStats(),
-                                     SentinelError.error(ErrorType.NO_RESPONSE,
-                                                         "Model run interrupted."));
+            modelOutput = ModelOutput.error(context.getOldMessages(),
+                                            context.getModelUsageStats(),
+                                            SentinelError.error(
+                                                                ErrorType.NO_RESPONSE,
+                                                                "Model run interrupted."));
         }
         catch (Exception e) {
-            return ModelOutput.error(context.getOldMessages(),
-                                     context.getModelUsageStats(),
-                                     SentinelError.error(
-                                                         ErrorType.GENERIC_MODEL_CALL_FAILURE,
-                                                         AgentUtils.rootCause(e)
-                                                                 .getMessage()));
+            modelOutput = ModelOutput.error(context.getOldMessages(),
+                                            context.getModelUsageStats(),
+                                            SentinelError.error(
+                                                                ErrorType.GENERIC_MODEL_CALL_FAILURE,
+                                                                AgentUtils
+                                                                        .rootCause(e)
+                                                                        .getMessage()));
         }
+        EventUtils.raiseOutputEvent(modelRunContext, modelOutput, stopwatch);
+        return modelOutput;
     }
 
     private static void logEmptyData() {

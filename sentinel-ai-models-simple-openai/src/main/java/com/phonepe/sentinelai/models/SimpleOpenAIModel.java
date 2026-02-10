@@ -96,7 +96,6 @@ import java.util.stream.Stream;
 import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
 import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageReceivedEvent;
 import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageSentEvent;
-import static com.phonepe.sentinelai.core.utils.EventUtils.raiseOutputGeneratedEvent;
 import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat;
 import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertToOpenAIMessages;
 
@@ -927,7 +926,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, newMessage, stopwatch);
-            raiseOutputGeneratedEvent(context, content, stopwatch);
             try {
                 return ModelOutput.success(mapper.readTree(content),
                                            newMessages,
@@ -966,7 +964,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, newMessage, stopwatch);
-            raiseOutputGeneratedEvent(context, content, stopwatch);
             try {
                 return ModelOutput.success(mapper.createObjectNode()
                         .textNode(content), newMessages, allMessages, stats);

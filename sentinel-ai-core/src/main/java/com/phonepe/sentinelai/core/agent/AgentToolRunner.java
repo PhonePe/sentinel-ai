@@ -183,7 +183,8 @@ class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
                                                  AgentUtils.sessionId(context),
                                                  AgentUtils.userId(context),
                                                  toolCall.getToolCallId(),
-                                                 toolCall.getToolName()));
+                                                 toolCall.getToolName(),
+                                                 toolCall.getArguments()));
         final var stopwatch = Stopwatch.createStarted();
         final var response = runTool(context, tools, toolCall);
         eventBus.notify(new ToolCallCompletedAgentEvent(agent.name(),

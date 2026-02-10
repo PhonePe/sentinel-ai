@@ -23,30 +23,28 @@ import lombok.ToString;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
+
 /**
- * A tool call has been requested by the LLM
+ * A response was received from the LLM
  */
 @Value
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class ToolCalledAgentEvent extends AgentEvent {
-    String toolCallId;
-    String toolCallName;
-    String arguments;
+public class InputReceivedAgentEvent extends AgentEvent {
+    /**
+     * Serialized content for structured output
+     */
+    String content;
 
     @Builder
     @Jacksonized
-    public ToolCalledAgentEvent(@NonNull String agentName,
-                                @NonNull String runId,
-                                String sessionId,
-                                String userId,
-                                @NonNull String toolCallId,
-                                @NonNull String toolCallName,
-                                @NonNull String arguments) {
-        super(EventType.TOOL_CALLED, agentName, runId, sessionId, userId);
-        this.toolCallId = toolCallId;
-        this.toolCallName = toolCallName;
-        this.arguments = arguments;
+    public InputReceivedAgentEvent(@NonNull String agentName,
+                                   @NonNull String runId,
+                                   String sessionId,
+                                   String userId,
+                                   @NonNull String content) {
+        super(EventType.INPUT_RECEIVED, agentName, runId, sessionId, userId);
+        this.content = content;
     }
 
     @Override

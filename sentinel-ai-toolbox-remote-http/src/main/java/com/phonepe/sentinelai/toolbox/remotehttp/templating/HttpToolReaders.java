@@ -62,11 +62,14 @@ public class HttpToolReaders {
     }
 
 
-    public record ConfiguredHttpTool(HttpToolMetadata metadata,
+    public record ConfiguredHttpTool(
+            HttpToolMetadata metadata,
             HttpCallTemplate definition,
             ResponseTransformerConfig transformer) {
     }
 
-    public record ConfiguredUpstream(URL url, List<ConfiguredHttpTool> tools) {
+    public record ConfiguredUpstream(
+            URL url,
+            List<ConfiguredHttpTool> tools) {
     }
 }

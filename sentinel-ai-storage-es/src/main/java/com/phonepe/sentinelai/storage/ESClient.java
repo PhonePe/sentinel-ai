@@ -42,7 +42,8 @@ public class ESClient implements AutoCloseable {
     @Builder
     public ESClient(@NonNull String serverUrl, String apiKey) {
         RestClient restClient = RestClient.builder(HttpHost.create(serverUrl))
-                .setDefaultHeaders(new Header[] {new BasicHeader("Authorization",
+                .setDefaultHeaders(new Header[] {new BasicHeader(
+                                                                 "Authorization",
                                                                  "ApiKey " + apiKey)})
                 .build();
         ElasticsearchTransport transport = new RestClientTransport(restClient,

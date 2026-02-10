@@ -46,7 +46,9 @@ public class ExternalTool extends ExecutableTool {
         this.callable = callable;
     }
 
-    public record ExternalToolResponse(Object response, ErrorType error) {
+    public record ExternalToolResponse(
+            Object response,
+            ErrorType error) {
     }
 
     @Override

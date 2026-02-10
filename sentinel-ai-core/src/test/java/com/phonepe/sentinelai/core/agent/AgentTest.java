@@ -540,10 +540,12 @@ class AgentTest {
         assertTrue(response.getData().contains("Hello success"));
     }
 
-    private record Input(String data) {
+    private record Input(
+            String data) {
     }
 
-    private record Output(String output) {
+    private record Output(
+            String output) {
     }
 
 }

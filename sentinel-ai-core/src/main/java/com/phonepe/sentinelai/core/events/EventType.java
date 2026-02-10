@@ -24,12 +24,19 @@ import lombok.experimental.UtilityClass;
  */
 @Getter
 public enum EventType {
-    MESSAGE_RECEIVED(Values.MESSAGE_RECEIVED), MESSAGE_SENT(
-                                                            Values.MESSAGE_SENT),
-    TOOL_CALL_APPROVAL_DENIED(Values.TOOL_CALL_APPROVAL_DENIED), TOOL_CALLED(
-                                                                             Values.TOOL_CALLED),
-    TOOL_CALL_COMPLETED(Values.TOOL_CALL_COMPLETED), OUTPUT_GENERATED(
-                                                                      Values.OUTPUT_GENERATED),;
+    // Messages to and from model
+    MESSAGE_RECEIVED(Values.MESSAGE_RECEIVED),
+    MESSAGE_SENT(Values.MESSAGE_SENT),
+
+    // Tool calls from and to the model
+    TOOL_CALL_APPROVAL_DENIED(Values.TOOL_CALL_APPROVAL_DENIED),
+    TOOL_CALLED(Values.TOOL_CALLED),
+    TOOL_CALL_COMPLETED(Values.TOOL_CALL_COMPLETED),
+
+    // User level messages
+    INPUT_RECEIVED(Values.INPUT_RECEIVED),
+    OUTPUT_GENERATED(Values.OUTPUT_GENERATED),
+    OUTPUT_ERROR(Values.OUTPUT_ERROR);
 
     @UtilityClass
     public static final class Values {
@@ -38,7 +45,9 @@ public enum EventType {
         public static final String TOOL_CALL_APPROVAL_DENIED = "TOOL_CALL_APPROVAL_DENIED";
         public static final String TOOL_CALLED = "TOOL_CALLED";
         public static final String TOOL_CALL_COMPLETED = "TOOL_CALL_COMPLETED";
+        public static final String INPUT_RECEIVED = "INPUT_RECEIVED";
         public static final String OUTPUT_GENERATED = "OUTPUT_GENERATED";
+        public static final String OUTPUT_ERROR = "OUTPUT_ERROR";
     }
 
     private final String type;

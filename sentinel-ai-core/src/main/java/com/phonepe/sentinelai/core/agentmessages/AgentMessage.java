@@ -40,10 +40,14 @@ import java.util.UUID;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "messageType")
 @JsonSubTypes({
         //Agent->LLM
-        @JsonSubTypes.Type(name = "SYSTEM_PROMPT_REQUEST_MESSAGE", value = SystemPrompt.class), @JsonSubTypes.Type(name = "USER_PROMPT_REQUEST_MESSAGE", value = UserPrompt.class), @JsonSubTypes.Type(name = "TOOL_CALL_RESPONSE_MESSAGE", value = ToolCallResponse.class),
+        @JsonSubTypes.Type(name = "SYSTEM_PROMPT_REQUEST_MESSAGE", value = SystemPrompt.class),
+        @JsonSubTypes.Type(name = "USER_PROMPT_REQUEST_MESSAGE", value = UserPrompt.class),
+        @JsonSubTypes.Type(name = "TOOL_CALL_RESPONSE_MESSAGE", value = ToolCallResponse.class),
 
         //LLM->Agent
-        @JsonSubTypes.Type(name = "TEXT_RESPONSE_MESSAGE", value = Text.class), @JsonSubTypes.Type(name = "STRUCTURED_OUTPUT_RESPONSE_MESSAGE", value = StructuredOutput.class), @JsonSubTypes.Type(name = "TOOL_CALL_REQUEST_MESSAGE", value = ToolCall.class),
+        @JsonSubTypes.Type(name = "TEXT_RESPONSE_MESSAGE", value = Text.class),
+        @JsonSubTypes.Type(name = "STRUCTURED_OUTPUT_RESPONSE_MESSAGE", value = StructuredOutput.class),
+        @JsonSubTypes.Type(name = "TOOL_CALL_REQUEST_MESSAGE", value = ToolCall.class),
 
         //Generic messages
         @JsonSubTypes.Type(name = "GENERIC_TEXT_MESSAGE", value = GenericText.class),})

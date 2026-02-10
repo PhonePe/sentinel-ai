@@ -28,7 +28,8 @@ import lombok.Value;
 public class EarlyTerminationStrategyResponse {
 
     public enum ResponseType {
-        TERMINATE, CONTINUE
+        TERMINATE,
+        CONTINUE
     }
 
     ResponseType responseType;

@@ -38,6 +38,10 @@ public class AgentRequestMetadata {
      */
     private String sessionId;
     /**
+     * Run ID for the current execution. This is passed to LLM as additional data in system prompt.
+     */
+    private String runId;
+    /**
      * A User ID for the user the agent is having the current conversation with. This is passed to LLM as additional
      * data in system prompt.
      */

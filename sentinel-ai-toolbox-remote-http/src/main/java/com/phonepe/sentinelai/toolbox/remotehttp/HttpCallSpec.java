@@ -33,7 +33,11 @@ import java.util.function.UnaryOperator;
 @With
 public class HttpCallSpec {
     public enum HttpMethod {
-        GET, PUT, POST, HEAD, DELETE
+        GET,
+        PUT,
+        POST,
+        HEAD,
+        DELETE
     }
 
     @NonNull

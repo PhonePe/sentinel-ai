@@ -38,6 +38,18 @@ import java.util.function.Supplier;
  */
 @UtilityClass
 public class AgentUtils {
+    public static <T, R> R createIfNotNull(T value,
+                                           Function<T, R> mapper,
+                                           Supplier<R> defaultValueiSupplier) {
+        if (value != null) {
+            final var response = mapper.apply(value);
+            if (response != null) {
+                return response;
+            }
+        }
+        return defaultValueiSupplier.get();
+    }
+
     public static long epochMicro() {
         final var now = Instant.now();
         return now.getEpochSecond() * 1_000_000 + now.getNano() / 1_000;
@@ -46,7 +58,7 @@ public class AgentUtils {
     public static <T, R> R getIfNotNull(T value,
                                         Function<T, R> mapper,
                                         R defaultValue) {
-        return value != null ? mapper.apply(value) : defaultValue;
+        return createIfNotNull(value, mapper, () -> defaultValue);
     }
 
     public static String id(String... args) {

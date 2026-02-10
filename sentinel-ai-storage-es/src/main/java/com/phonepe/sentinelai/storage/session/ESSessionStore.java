@@ -70,10 +70,14 @@ public class ESSessionStore implements SessionStore {
      * @param timestamp A microsecond timestamp used to identify the update time
      * @param id        ID to search for
      */
-    record SessionScrollPointer(long timestamp, String id) {
+    record SessionScrollPointer(
+            long timestamp,
+            String id) {
     }
 
-    record MessageScrollPointer(long timestamp, String id) {
+    record MessageScrollPointer(
+            long timestamp,
+            String id) {
     }
 
     private static final String SESSIONS_INDEX = "agent-sessions";

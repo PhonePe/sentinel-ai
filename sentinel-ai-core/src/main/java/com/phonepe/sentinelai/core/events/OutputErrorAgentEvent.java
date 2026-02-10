@@ -16,6 +16,8 @@
 
 package com.phonepe.sentinelai.core.events;
 
+import com.phonepe.sentinelai.core.errors.ErrorType;
+
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
@@ -23,30 +25,42 @@ import lombok.ToString;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
+import java.time.Duration;
+
 /**
- * A tool call has been requested by the LLM
+ * There was an error in the model call
  */
 @Value
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class ToolCalledAgentEvent extends AgentEvent {
-    String toolCallId;
-    String toolCallName;
-    String arguments;
+public class OutputErrorAgentEvent extends AgentEvent {
+    /**
+     * Error type in case the output generation resulted in an error.
+     */
+    ErrorType errorType;
+
+    /**
+     * Serialized content for structured output
+     */
+    String content;
+    /**
+     * Elapsed time taken to generate the final output
+     */
+    Duration elapsedTime;
 
     @Builder
     @Jacksonized
-    public ToolCalledAgentEvent(@NonNull String agentName,
-                                @NonNull String runId,
-                                String sessionId,
-                                String userId,
-                                @NonNull String toolCallId,
-                                @NonNull String toolCallName,
-                                @NonNull String arguments) {
-        super(EventType.TOOL_CALLED, agentName, runId, sessionId, userId);
-        this.toolCallId = toolCallId;
-        this.toolCallName = toolCallName;
-        this.arguments = arguments;
+    public OutputErrorAgentEvent(@NonNull String agentName,
+                                 @NonNull String runId,
+                                 String sessionId,
+                                 String userId,
+                                 ErrorType errorType,
+                                 @NonNull String content,
+                                 @NonNull Duration elapsedTime) {
+        super(EventType.OUTPUT_ERROR, agentName, runId, sessionId, userId);
+        this.errorType = errorType;
+        this.content = content;
+        this.elapsedTime = elapsedTime;
     }
 
     @Override
