@@ -25,6 +25,7 @@ import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -52,7 +53,11 @@ class RemoveAllToolCallsSelectorTest {
                                                     runId,
                                                     "u3",
                                                     LocalDateTime.now()),
-                                     new Text(sessionId, runId, "t3"),
+                                     new Text(sessionId,
+                                              runId,
+                                              "t3",
+                                              new ModelUsageStats(),
+                                              100),
                                      new GenericText(sessionId,
                                                      runId,
                                                      Role.USER,
@@ -72,7 +77,11 @@ class RemoveAllToolCallsSelectorTest {
                                     runId,
                                     "u1",
                                     LocalDateTime.now()));
-        messages.add(new Text(sessionId, runId, "t1"));
+        messages.add(new Text(sessionId,
+                              runId,
+                              "t1",
+                              new ModelUsageStats(),
+                              100));
         messages.add(new ToolCall(sessionId, runId, "tc-1", "tool", "{}"));
         messages.add(new ToolCallResponse(sessionId,
                                           runId,

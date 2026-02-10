@@ -22,6 +22,7 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -57,11 +58,21 @@ class FullRunMessageSelectorTest {
                                                     runB,
                                                     "u2",
                                                     LocalDateTime.now()),
-                                     new Text(sessionId, runA, "t1"),
+                                     new Text(sessionId,
+                                              runA,
+                                              "t1",
+                                              new ModelUsageStats(),
+                                              100),
                                      new StructuredOutput(sessionId,
                                                           runB,
-                                                          "{}"),
-                                     new Text(sessionId, runC, "t-only"));
+                                                          "{}",
+                                                          new ModelUsageStats(),
+                                                          100),
+                                     new Text(sessionId,
+                                              runC,
+                                              "t-only",
+                                              new ModelUsageStats(),
+                                              100));
         final var modifiable = new ArrayList<AgentMessage>(messages);
         final var result = selector.select(sessionId, modifiable);
         assertEquals(4, result.size());
@@ -81,8 +92,16 @@ class FullRunMessageSelectorTest {
                                     runComplete,
                                     "ask",
                                     LocalDateTime.now()));
-        messages.add(new StructuredOutput(sessionId, runComplete, "{}"));
-        messages.add(new StructuredOutput(sessionId, runIncomplete, "{}"));
+        messages.add(new StructuredOutput(sessionId,
+                                          runComplete,
+                                          "{}",
+                                          new ModelUsageStats(),
+                                          100));
+        messages.add(new StructuredOutput(sessionId,
+                                          runIncomplete,
+                                          "{}",
+                                          new ModelUsageStats(),
+                                          100));
         final var result = selector.select(sessionId, messages);
         assertEquals(2, result.size());
         assertTrue(result.stream()
@@ -100,7 +119,11 @@ class FullRunMessageSelectorTest {
                                     runComplete,
                                     "hello",
                                     LocalDateTime.now()));
-        messages.add(new Text(sessionId, runComplete, "hi"));
+        messages.add(new Text(sessionId,
+                              runComplete,
+                              "hi",
+                              new ModelUsageStats(),
+                              100));
         messages.add(new UserPrompt(sessionId,
                                     runIncomplete,
                                     "only user",

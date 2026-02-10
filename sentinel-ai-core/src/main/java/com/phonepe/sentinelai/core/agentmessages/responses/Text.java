@@ -19,6 +19,7 @@ package com.phonepe.sentinelai.core.agentmessages.responses;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -39,9 +40,15 @@ public class Text extends AgentResponse {
      */
     String content;
 
-    public Text(String sessionId, String runId, @NonNull String content) {
-        this(sessionId, runId, null, null, content);
-    }
+    /**
+     * Usage for this run
+     */
+    ModelUsageStats stats;
+
+    /**
+     * Elapsed time in milliseconds
+     */
+    long elapsedTimeMs;
 
     @Builder
     @Jacksonized
@@ -49,13 +56,25 @@ public class Text extends AgentResponse {
                 String runId,
                 String messageId,
                 Long timestamp,
-                @NonNull String content) {
+                @NonNull String content,
+                @NonNull ModelUsageStats stats,
+                long elapsedTimeMs) {
         super(AgentMessageType.TEXT_RESPONSE_MESSAGE,
               sessionId,
               runId,
               messageId,
               timestamp);
         this.content = content;
+        this.stats = stats;
+        this.elapsedTimeMs = elapsedTimeMs;
+    }
+
+    public Text(String sessionId,
+                String runId,
+                @NonNull String content,
+                @NonNull ModelUsageStats stats,
+                long elapsedTimeMs) {
+        this(sessionId, runId, null, null, content, stats, elapsedTimeMs);
     }
 
     @Override

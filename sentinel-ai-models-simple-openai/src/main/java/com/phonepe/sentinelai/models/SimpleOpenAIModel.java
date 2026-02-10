@@ -88,6 +88,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -922,7 +923,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         if (!Strings.isNullOrEmpty(content)) {
             final var newMessage = new StructuredOutput(context.getSessionId(),
                                                         context.getRunId(),
-                                                        content);
+                                                        content,
+                                                        stats,
+                                                        stopwatch.elapsed(
+                                                                          TimeUnit.MILLISECONDS));
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, newMessage, stopwatch);
@@ -960,7 +964,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         if (!Strings.isNullOrEmpty(content)) {
             final var newMessage = new Text(context.getSessionId(),
                                             context.getRunId(),
-                                            content); //Always text output
+                                            content,
+                                            stats,
+                                            stopwatch.elapsed(
+                                                              TimeUnit.MILLISECONDS)); //Always text output
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, newMessage, stopwatch);

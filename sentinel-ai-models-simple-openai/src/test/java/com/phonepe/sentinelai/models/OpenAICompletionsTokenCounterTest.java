@@ -33,6 +33,7 @@ import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -55,7 +56,11 @@ class OpenAICompletionsTokenCounterTest {
     @Test
     void testEstimateTokenCountAssistantTextResponse() {
         final var content = "I am fine, thank you!";
-        Text assistantResponse = new Text("s1", "r1", content);
+        Text assistantResponse = new Text("s1",
+                                          "r1",
+                                          content,
+                                          new ModelUsageStats(),
+                                          100);
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + TokenCountingConfig.DEFAULT
@@ -122,7 +127,9 @@ class OpenAICompletionsTokenCounterTest {
         final var content = "{\"answer\": \"fine\"}";
         StructuredOutput structuredOutput = new StructuredOutput("s1",
                                                                  "r1",
-                                                                 content);
+                                                                 content,
+                                                                 new ModelUsageStats(),
+                                                                 100);
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + TokenCountingConfig.DEFAULT

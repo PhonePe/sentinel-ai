@@ -29,6 +29,7 @@ import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.session.BiScrollable;
@@ -113,6 +114,8 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                         .sessionId(sessionId)
                         .runId(runId)
                         .content("text-" + i)
+                        .stats(new ModelUsageStats())
+                        .elapsedTimeMs(100)
                         .build();
             }).toList();
 
