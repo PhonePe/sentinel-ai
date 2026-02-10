@@ -32,6 +32,7 @@ import lombok.extern.jackson.Jacksonized;
 public class ToolCalledAgentEvent extends AgentEvent {
     String toolCallId;
     String toolCallName;
+    String arguments;
 
     @Builder
     @Jacksonized
@@ -40,10 +41,12 @@ public class ToolCalledAgentEvent extends AgentEvent {
                                 String sessionId,
                                 String userId,
                                 @NonNull String toolCallId,
-                                @NonNull String toolCallName) {
+                                @NonNull String toolCallName,
+                                @NonNull String arguments) {
         super(EventType.TOOL_CALLED, agentName, runId, sessionId, userId);
         this.toolCallId = toolCallId;
         this.toolCallName = toolCallName;
+        this.arguments = arguments;
     }
 
     @Override

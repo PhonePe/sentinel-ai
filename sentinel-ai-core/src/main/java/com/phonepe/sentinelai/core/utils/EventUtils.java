@@ -154,6 +154,7 @@ public class EventUtils {
         AgentEvent event;
         try {
             if (output.getError() == null || output.getError()
+                    .getErrorType()
                     .equals(ErrorType.SUCCESS)) {
                 event = new OutputGeneratedAgentEvent(context.getAgentName(),
                                                       context.getRunId(),
