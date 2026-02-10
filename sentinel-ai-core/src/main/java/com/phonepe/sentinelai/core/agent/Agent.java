@@ -310,15 +310,19 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 .getAgentSetup(), this.setup);
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input
                 .getOldMessages(), List.of()));
-        final var runId = UUID.randomUUID().toString();
-        final var requestMetadata = input.getRequestMetadata();
+        final var requestMetadata = Objects.requireNonNullElseGet(input
+                .getRequestMetadata(),
+                                                                  AgentRequestMetadata::new);
+        final var runId = AgentUtils.createIfNotNull(requestMetadata,
+                                                     AgentRequestMetadata::getRunId,
+                                                     () -> UUID.randomUUID()
+                                                             .toString());
         final var facts = input.getFacts();
         final var inputRequest = input.getRequest();
         final var modelUsageStats = new ModelUsageStats();
         final var context = new AgentRunContext<>(runId,
                                                   inputRequest,
-                                                  Objects.requireNonNullElseGet(requestMetadata,
-                                                                                AgentRequestMetadata::new),
+                                                  requestMetadata,
                                                   mergedAgentSetup,
                                                   messages,
                                                   modelUsageStats,
@@ -467,16 +471,20 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input
                 .getOldMessages(), List.of()));
 
-        final var runId = UUID.randomUUID().toString();
-        final var requestMetadata = input.getRequestMetadata();
+        final var requestMetadata = Objects.requireNonNullElseGet(input
+                .getRequestMetadata(),
+                                                                  AgentRequestMetadata::new);
+        final var runId = AgentUtils.createIfNotNull(requestMetadata,
+                                                     AgentRequestMetadata::getRunId,
+                                                     () -> UUID.randomUUID()
+                                                             .toString());
         final var request = input.getRequest();
         final var facts = input.getFacts();
         final var processingMode = ProcessingMode.STREAMING;
         final var modelUsageStats = new ModelUsageStats();
         final var context = new AgentRunContext<>(runId,
                                                   request,
-                                                  Objects.requireNonNullElseGet(requestMetadata,
-                                                                                AgentRequestMetadata::new),
+                                                  requestMetadata,
                                                   mergedAgentSetup,
                                                   messages,
                                                   modelUsageStats,
