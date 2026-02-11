@@ -37,7 +37,9 @@ import static org.mockito.Mockito.when;
 /**
  * Tests {@link InMemoryAgentConfigurationSource}.
  */
-@SuppressWarnings({"unchecked"})
+@SuppressWarnings({
+        "unchecked"
+})
 class HttpToolboxFactoryTest {
 
     private static HttpCallSpec createSpec() {

@@ -113,12 +113,13 @@ public class SentinelMCPClient implements AutoCloseable {
         this.exposeTools(exposedTools);
     }
 
-    public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
-        this.agent = agent;
+    @Override
+    public void close() {
+        mcpClient.close();
     }
 
-    public SentinelMCPClient exposeTools(String... toolId) {
-        exposedTools.addAll(Arrays.asList(toolId));
+    public SentinelMCPClient exposeAllTools() {
+        exposedTools.clear();
         return this;
     }
 
@@ -128,29 +129,13 @@ public class SentinelMCPClient implements AutoCloseable {
         return this;
     }
 
-    public SentinelMCPClient exposeAllTools() {
-        exposedTools.clear();
+    public SentinelMCPClient exposeTools(String... toolId) {
+        exposedTools.addAll(Arrays.asList(toolId));
         return this;
     }
 
-    public Map<String, ExecutableTool> tools() {
-        if (knownTools.isEmpty()) {
-            log.debug("Loading tools from MCP server: {}", name);
-            //The read happens independently and uses putAll to load values into the map in a threadsafe manner
-            knownTools.putAll(toolsList(mcpClient.listTools().tools()));
-            log.info("Loaded {} tools from MCP server {}: {}",
-                     knownTools.size(),
-                     name,
-                     knownTools.keySet());
-        }
-        final var mapToReturn = exposedTools.isEmpty() ? knownTools : knownTools
-                .entrySet()
-                .stream()
-                .filter(entry -> exposedTools.contains(entry.getValue()
-                        .getToolDefinition()
-                        .getName()))
-                .collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
-        return Map.copyOf(mapToReturn);
+    public <R, T, A extends Agent<R, T, A>> void onRegistrationCompleted(A agent) {
+        this.agent = agent;
     }
 
     @SneakyThrows
@@ -182,6 +167,84 @@ public class SentinelMCPClient implements AutoCloseable {
                                                          ErrorType.GENERIC_MODEL_CALL_FAILURE);
         }
 
+    }
+
+    public Map<String, ExecutableTool> tools() {
+        if (knownTools.isEmpty()) {
+            log.debug("Loading tools from MCP server: {}", name);
+            //The read happens independently and uses putAll to load values into the map in a threadsafe manner
+            knownTools.putAll(toolsList(mcpClient.listTools().tools()));
+            log.info("Loaded {} tools from MCP server {}: {}",
+                     knownTools.size(),
+                     name,
+                     knownTools.keySet());
+        }
+        final var mapToReturn = exposedTools.isEmpty() ? knownTools : knownTools
+                .entrySet()
+                .stream()
+                .filter(entry -> exposedTools.contains(entry.getValue()
+                        .getToolDefinition()
+                        .getName()))
+                .collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
+        return Map.copyOf(mapToReturn);
+    }
+
+    private List<AgentMessage> convertFromSamplingToAgentMessages(String sessionId,
+                                                                  String runId,
+                                                                  List<McpSchema.SamplingMessage> messages) {
+        return messages.stream()
+                .map(message -> switch (message.content().type()) {
+                    case "text" -> new GenericText(sessionId,
+                                                   runId,
+                                                   translateRole(message
+                                                           .role()),
+                                                   ((McpSchema.TextContent) message
+                                                           .content()).text());
+                    case "resource" -> convertResourceResponse(sessionId,
+                                                               runId,
+                                                               message);
+                    default -> throw new IllegalArgumentException(
+                                                                  "Unsupported type");
+                })
+                .toList();
+    }
+
+    @SneakyThrows
+    private AgentMessage convertResourceResponse(String sessionId,
+                                                 String runId,
+                                                 McpSchema.SamplingMessage message) {
+        final var embeddedResource = (McpSchema.EmbeddedResource) message
+                .content();
+        return switch (embeddedResource.type()) {
+            case "text" -> new GenericResource(sessionId,
+                                               runId,
+                                               translateRole(message.role()),
+                                               GenericResource.ResourceType.TEXT,
+                                               embeddedResource.resource()
+                                                       .uri(),
+                                               embeddedResource.resource()
+                                                       .mimeType(),
+                                               ((McpSchema.TextResourceContents) embeddedResource
+                                                       .resource()).text(),
+                                               mapper.writeValueAsString(embeddedResource
+                                                       .resource()));
+            case "blob" -> new GenericResource(sessionId,
+                                               runId,
+                                               translateRole(message.role()),
+                                               GenericResource.ResourceType.BLOB,
+                                               embeddedResource.resource()
+                                                       .uri(),
+                                               embeddedResource.resource()
+                                                       .mimeType(),
+                                               ((McpSchema.BlobResourceContents) embeddedResource
+                                                       .resource()).blob(),
+                                               mapper.writeValueAsString(embeddedResource
+                                                       .resource()));
+            default -> throw new IllegalArgumentException(
+                                                          "Unsupported resource type: " + embeddedResource
+                                                                  .type());
+
+        };
     }
 
     private McpSyncClient createMcpClient(MCPServerConfig serverConfig) {
@@ -256,7 +319,8 @@ public class SentinelMCPClient implements AutoCloseable {
                 .sampling(this::handleSamplingRequest)
                 .toolsChangeConsumer(tools -> {
                     knownTools.clear();
-                    log.info("Received tools change notification from MCP server: {}. " + "Will reload on next tools call",
+                    log.info("Received tools change notification from MCP server: {}. "
+                            + "Will reload on next tools call",
                              name);
                 })
                 .build();
@@ -265,30 +329,6 @@ public class SentinelMCPClient implements AutoCloseable {
                   name,
                   result);
         return client;
-    }
-
-    private Map<String, ExternalTool> toolsList(final List<McpSchema.Tool> tools) {
-        return tools.stream()
-                .map(toolDef -> new ExternalTool(ToolDefinition.builder()
-                        .id(AgentUtils.id(name, toolDef.name()))
-                        .name(toolDef.name())
-                        .description(Objects.requireNonNullElseGet(toolDef
-                                .description(), toolDef::name))
-                        .contextAware(false)
-                        .strictSchema(false)
-                        // IMPORTANT::Strict means openai expects all object params to be
-                        // present in the required field. This is not something all MCP
-                        // servers do properly. So for now we are setting strict false
-                        // for tools obtained from mcp servers
-                        .terminal(false)
-                        .retries(ToolDefinition.NO_RETRY) //Let the model retry if needed
-                        .timeoutSeconds(ToolDefinition.NO_TIMEOUT) //Can be maintained at client level
-                        .build(),
-                                                 mapper.valueToTree(toolDef
-                                                         .inputSchema()),
-                                                 this::runTool))
-                .collect(toMap(tool -> tool.getToolDefinition().getId(),
-                               Function.identity()));
     }
 
     private McpSchema.CreateMessageResult handleSamplingRequest(McpSchema.CreateMessageRequest createMessageRequest) {
@@ -393,62 +433,28 @@ public class SentinelMCPClient implements AutoCloseable {
         };
     }
 
-    private List<AgentMessage> convertFromSamplingToAgentMessages(String sessionId,
-                                                                  String runId,
-                                                                  List<McpSchema.SamplingMessage> messages) {
-        return messages.stream()
-                .map(message -> switch (message.content().type()) {
-                    case "text" -> new GenericText(sessionId,
-                                                   runId,
-                                                   translateRole(message
-                                                           .role()),
-                                                   ((McpSchema.TextContent) message
-                                                           .content()).text());
-                    case "resource" -> convertResourceResponse(sessionId,
-                                                               runId,
-                                                               message);
-                    default -> throw new IllegalArgumentException(
-                                                                  "Unsupported type");
-                })
-                .toList();
-    }
-
-    @SneakyThrows
-    private AgentMessage convertResourceResponse(String sessionId,
-                                                 String runId,
-                                                 McpSchema.SamplingMessage message) {
-        final var embeddedResource = (McpSchema.EmbeddedResource) message
-                .content();
-        return switch (embeddedResource.type()) {
-            case "text" -> new GenericResource(sessionId,
-                                               runId,
-                                               translateRole(message.role()),
-                                               GenericResource.ResourceType.TEXT,
-                                               embeddedResource.resource()
-                                                       .uri(),
-                                               embeddedResource.resource()
-                                                       .mimeType(),
-                                               ((McpSchema.TextResourceContents) embeddedResource
-                                                       .resource()).text(),
-                                               mapper.writeValueAsString(embeddedResource
-                                                       .resource()));
-            case "blob" -> new GenericResource(sessionId,
-                                               runId,
-                                               translateRole(message.role()),
-                                               GenericResource.ResourceType.BLOB,
-                                               embeddedResource.resource()
-                                                       .uri(),
-                                               embeddedResource.resource()
-                                                       .mimeType(),
-                                               ((McpSchema.BlobResourceContents) embeddedResource
-                                                       .resource()).blob(),
-                                               mapper.writeValueAsString(embeddedResource
-                                                       .resource()));
-            default -> throw new IllegalArgumentException(
-                                                          "Unsupported resource type: " + embeddedResource
-                                                                  .type());
-
-        };
+    private Map<String, ExternalTool> toolsList(final List<McpSchema.Tool> tools) {
+        return tools.stream()
+                .map(toolDef -> new ExternalTool(ToolDefinition.builder()
+                        .id(AgentUtils.id(name, toolDef.name()))
+                        .name(toolDef.name())
+                        .description(Objects.requireNonNullElseGet(toolDef
+                                .description(), toolDef::name))
+                        .contextAware(false)
+                        .strictSchema(false)
+                        // IMPORTANT::Strict means openai expects all object params to be
+                        // present in the required field. This is not something all MCP
+                        // servers do properly. So for now we are setting strict false
+                        // for tools obtained from mcp servers
+                        .terminal(false)
+                        .retries(ToolDefinition.NO_RETRY) //Let the model retry if needed
+                        .timeoutSeconds(ToolDefinition.NO_TIMEOUT) //Can be maintained at client level
+                        .build(),
+                                                 mapper.valueToTree(toolDef
+                                                         .inputSchema()),
+                                                 this::runTool))
+                .collect(toMap(tool -> tool.getToolDefinition().getId(),
+                               Function.identity()));
     }
 
     private AgentGenericMessage.Role translateRole(McpSchema.Role role) {
@@ -456,10 +462,5 @@ public class SentinelMCPClient implements AutoCloseable {
             case USER -> AgentGenericMessage.Role.USER;
             case ASSISTANT -> AgentGenericMessage.Role.ASSISTANT;
         };
-    }
-
-    @Override
-    public void close() {
-        mcpClient.close();
     }
 }

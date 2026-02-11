@@ -24,6 +24,7 @@ import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -152,7 +153,11 @@ class UnpairedToolCallsRemoverTest {
                                           null,
                                           "r",
                                           LocalDateTime.now()));
-        messages.add(new Text(sessionId, runId, "txt"));
+        messages.add(new Text(sessionId,
+                              runId,
+                              "txt",
+                              new ModelUsageStats(),
+                              100));
         final var msgIdsByType = messages.stream()
                 .collect(Collectors.groupingBy(AgentMessage::getMessageType,
                                                Collectors.mapping(

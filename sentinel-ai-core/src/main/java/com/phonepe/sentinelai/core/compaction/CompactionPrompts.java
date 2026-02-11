@@ -28,17 +28,11 @@ import lombok.With;
 @AllArgsConstructor(access = AccessLevel.PUBLIC)
 public class CompactionPrompts {
     public static final String DEFAULT_SUMMARIZATION_SYSTEM_PROMPT = """
-            You are a prompt compactor. Rewrite the provided prompt material to be concise, unambiguous, and semantically equivalent. Preserve all safety rules, constraints, priorities, and required output specifications. Do not add new instructions or remove any critical ones. Maintain the original hierarchy and ordering of priorities; keep numbered/ordered lists when present. Keep proper nouns and safety/legal language intact. Remove redundancy, filler, hedging, and repeated phrasing. Prefer direct, imperative wording. Do not change schema or label names. Avoid reformatting unless it improves clarity without altering meaning.
+            You are a prompt compactor. Rewrite the provided prompt material to be concise, unambiguous, and semantically equivalent. Preserve all safety rules, constraints, priorities, and required output specifications. Do not add new instructions or remove any critical ones. Maintain the original hierarchy and ordering of priorities; keep numbered/ordered lists and TODOs when present. Keep proper nouns and safety/legal language intact. Remove redundancy, filler, hedging, and repeated phrasing. Prefer direct, imperative wording. Do not change schema or label names. Avoid reformatting unless it improves clarity without altering meaning.
 
             Target length: ${tokenBudget} tokens. If the original cannot be safely compacted under this limit, prioritize semantic preservation and produce the shortest faithful version.
 
-            Output requirement: Return only the compacted text with no commentary, headers, or code fences.""";
-
-    public static final String DEFAULT_SUMMARIZATION_USER_PROMPT = """
-            Compact the following messages while preserving semantics and priorities.
-
-            Messages to compact (JSON array of chat turns): ${sessionMessages}
-            Format: [{"type":"chat","role":"system|user|assistant","content":"…"}, {"type":"tool_call", "toolCallId" :"…", "toolName":"…", "arguments":{…}}, {"type" : "tool_call_response", "toolCallId": "", "result":"…"}]
+            Output requirement: Return only the compacted text with no commentary, headers, or code fences.
 
             Instructions:
 
@@ -48,7 +42,11 @@ public class CompactionPrompts {
                 - Keep ordering and priority intact; convert rambling text into succinct bullet points or numbered rules when helpful.
                 - Target length: ${tokenBudget} tokens.
 
-            Return only the compacted prompt text.""";
+            IMPORTANT: THE OUTPUT NEEDS TO WORK ON COMPACTING THE MESSAGES PRESENT IN JSON FORMAT IN THE USER PROMPT BELOW. DO NOT COMPACT THE USER PROMPT ITSELF, IT IS JUST AN INSTRUCTION TO COMPACT THE MESSAGES.""";
+
+    public static final String DEFAULT_SUMMARIZATION_USER_PROMPT = """
+            Messages to compact (JSON array of chat turns): ${sessionMessages}
+            Format: [{"type":"chat","role":"system|user|assistant","content":"…"}, {"type":"tool_call", "toolCallId" :"…", "toolName":"…", "arguments":{…}}, {"type" : "tool_call_response", "toolCallId": "", "result":"…"}]""";
 
     public static final String DEFAULT_PROMPT_SCHEMA = """
             {
@@ -60,7 +58,7 @@ public class CompactionPrompts {
                     "properties": {
                         "title": {
                             "type": "string",
-                            "description": "Short, human-readable heading that captures the main topic or outcome. Aim for 3–10 words, sentence case, no trailing period."
+                            "description": "Short, human-readable heading that captures the core essence of the user query. Aim for 3–10 words, sentence case, no trailing period."
                         },
                         "keywords": {
                             "type": "array",

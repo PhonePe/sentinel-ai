@@ -50,7 +50,8 @@ import java.util.UUID;
         @JsonSubTypes.Type(name = "TOOL_CALL_REQUEST_MESSAGE", value = ToolCall.class),
 
         //Generic messages
-        @JsonSubTypes.Type(name = "GENERIC_TEXT_MESSAGE", value = GenericText.class),})
+        @JsonSubTypes.Type(name = "GENERIC_TEXT_MESSAGE", value = GenericText.class),
+})
 public abstract class AgentMessage {
     private final AgentMessageType messageType;
     private final String sessionId;

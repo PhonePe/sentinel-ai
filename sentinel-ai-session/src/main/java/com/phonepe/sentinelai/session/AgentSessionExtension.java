@@ -69,7 +69,9 @@ import static com.phonepe.sentinelai.session.MessageReadingUtils.rearrangeMessag
  * Injects session summary as fact in the system prompt. Also provides messages from the session history to the agent.
  */
 @Slf4j
-@Getter(value = AccessLevel.PACKAGE, onMethod_ = {@VisibleForTesting})
+@Getter(value = AccessLevel.PACKAGE, onMethod_ = {
+        @VisibleForTesting
+})
 public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
     private static final String OUTPUT_KEY = "sessionOutput";
 
@@ -227,7 +229,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     protected UserPrompt buildSummarizationUserPrompt(final AgentRunContext<R> context,
                                                       final String sessionId,
                                                       final String currentSummary,
-                                                      final List<AgentMessage> sessionMessages) throws JsonProcessingException {
+                                                      final List<AgentMessage> sessionMessages)
+            throws JsonProcessingException {
         return new UserPrompt(sessionId,
                               context.getRunId(),
                               """
@@ -284,7 +287,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
         final var currentBoundary = (contextWindowSize * threshold) / 100;
         final var evalResult = estimateTokenCount >= currentBoundary;
-        log.debug("Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, " + "threshold={}%, currentBoundary={}, needsSummarization={}",
+        log.debug("Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, "
+                + "threshold={}%, currentBoundary={}, needsSummarization={}",
                   estimateTokenCount,
                   contextWindowSize,
                   threshold,
@@ -390,7 +394,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
     }
 
-    private void summarizeConversationImpl(Agent.ProcessingCompletedData<R, T, A> data) throws JsonProcessingException, InterruptedException, ExecutionException {
+    private void summarizeConversationImpl(Agent.ProcessingCompletedData<R, T, A> data) throws JsonProcessingException,
+            InterruptedException, ExecutionException {
         final var context = data.getContext();
 
         final var sessionId = AgentUtils.sessionId(context);
@@ -430,7 +435,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
         final var summary = MessageCompactor.compactMessages(data.getAgent()
                 .name(),
-                                                             sessionId,
+                                                             "session-compaction-for-" + sessionId,
                                                              AgentUtils.userId(
                                                                                context),
                                                              agentSetup,

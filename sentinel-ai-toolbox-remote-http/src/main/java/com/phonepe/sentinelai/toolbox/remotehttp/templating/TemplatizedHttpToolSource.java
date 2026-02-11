@@ -33,8 +33,32 @@ import java.util.function.UnaryOperator;
 /**
  * A source of {@link TemplatizedHttpTool} instances that can be used to create HTTP tools
  */
-public abstract class TemplatizedHttpToolSource<S extends HttpToolSource<TemplatizedHttpTool, S>> implements HttpToolSource<TemplatizedHttpTool, S> {
+public abstract class TemplatizedHttpToolSource<S extends HttpToolSource<TemplatizedHttpTool, S>> implements
+        HttpToolSource<TemplatizedHttpTool, S> {
+    private static final class JoltTransformer implements UnaryOperator<String> {
+        private final Chainr chainr;
+        private final ObjectMapper mapper;
+
+        @SneakyThrows
+        @SuppressWarnings("rawtypes")
+        public JoltTransformer(String config, ObjectMapper mapper) {
+            this.chainr = Chainr.fromSpec(mapper.readValue(config,
+                                                           new TypeReference<List>() {
+                                                           }));
+            this.mapper = mapper;
+        }
+
+        @Override
+        @SneakyThrows
+        public String apply(String body) {
+            return mapper.writeValueAsString(chainr.transform(mapper.readValue(
+                                                                               body,
+                                                                               Object.class)));
+        }
+    }
+
     protected final HttpCallTemplateExpander expander;
+
     protected final ObjectMapper mapper;
 
     protected TemplatizedHttpToolSource(HttpCallTemplateExpander expander,
@@ -62,28 +86,6 @@ public abstract class TemplatizedHttpToolSource<S extends HttpToolSource<Templat
             };
         }
         return spec;
-    }
-
-    private static final class JoltTransformer implements UnaryOperator<String> {
-        private final Chainr chainr;
-        private final ObjectMapper mapper;
-
-        @SneakyThrows
-        @SuppressWarnings("rawtypes")
-        public JoltTransformer(String config, ObjectMapper mapper) {
-            this.chainr = Chainr.fromSpec(mapper.readValue(config,
-                                                           new TypeReference<List>() {
-                                                           }));
-            this.mapper = mapper;
-        }
-
-        @Override
-        @SneakyThrows
-        public String apply(String body) {
-            return mapper.writeValueAsString(chainr.transform(mapper.readValue(
-                                                                               body,
-                                                                               Object.class)));
-        }
     }
 
 }

@@ -88,6 +88,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -261,7 +262,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              .build()));
                 }
                 addToolChoice(toolsForExecution, builder, outputGenerationMode);
-                raiseMessageSentEvent(context, allMessages);
+                raiseMessageSentEvent(context, allMessages, allMessages.get(allMessages.size() - 1));
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
 
@@ -414,7 +415,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
 
-    @SuppressWarnings({"java:S107", "java:S3776"})
+    @SuppressWarnings({
+            "java:S107", "java:S3776"
+    })
     private CompletableFuture<ModelOutput> streamImpl(ModelRunContext context,
                                                       Collection<ModelOutputDefinition> outputDefinitions,
                                                       List<AgentMessage> oldMessages,
@@ -489,7 +492,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var request = builder.build();
                 logModelRequest(request);
                 Stream<Chat> completionResponseStream;
-                raiseMessageSentEvent(context, allMessages);
+                raiseMessageSentEvent(context, allMessages, allMessages.get(allMessages.size() - 1));
                 try {
                     completionResponseStream = openAIProviderFactory.get(
                                                                          modelName)
@@ -830,8 +833,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                        log.error("Error generating output: " + rootCause
                                                                .getMessage(),
                                                                  t);
-                                                       return new ExternalTool.ExternalToolResponse("Error running tool: " + rootCause
-                                                               .getMessage(),
+                                                       return new ExternalTool.ExternalToolResponse("Error running tool: "
+                                                               + rootCause
+                                                                       .getMessage(),
                                                                                                     ErrorType.TOOL_CALL_PERMANENT_FAILURE);
                                                    }
                                                }));
@@ -922,7 +926,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         if (!Strings.isNullOrEmpty(content)) {
             final var newMessage = new StructuredOutput(context.getSessionId(),
                                                         context.getRunId(),
-                                                        content);
+                                                        content,
+                                                        stats,
+                                                        stopwatch.elapsed(
+                                                                          TimeUnit.MILLISECONDS));
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, newMessage, stopwatch);
@@ -960,7 +967,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         if (!Strings.isNullOrEmpty(content)) {
             final var newMessage = new Text(context.getSessionId(),
                                             context.getRunId(),
-                                            content); //Always text output
+                                            content,
+                                            stats,
+                                            stopwatch.elapsed(
+                                                              TimeUnit.MILLISECONDS)); //Always text output
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, newMessage, stopwatch);
@@ -1270,7 +1280,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             case STRUCTURED_OUTPUT -> switch (this.modelOptions
                     .getToolChoice()) {
                 case REQUIRED -> {
-                    log.warn("Model is configured for STRUCTURED_OUTPUT generation mode, " + "but tool choice is set to REQUIRED. This might lead to infinite tool-call loops");
+                    log.warn("Model is configured for STRUCTURED_OUTPUT generation mode, "
+                            + "but tool choice is set to REQUIRED. This might lead to infinite tool-call loops");
                     yield ToolChoiceOption.REQUIRED;
                 }
                 case AUTO -> ToolChoiceOption.AUTO;

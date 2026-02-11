@@ -239,19 +239,9 @@ public class ESAgentMemoryStorage implements AgentMemoryStore {
         }
     }
 
-    private AgentMemory toWire(final ESAgentMemoryDocument agentMemoryDocument) {
-        return AgentMemory.builder()
-                .agentName(agentMemoryDocument.getAgentName())
-                .scope(agentMemoryDocument.getScope())
-                .scopeId(agentMemoryDocument.getScopeId())
-                .memoryType(agentMemoryDocument.getMemoryType())
-                .name(agentMemoryDocument.getName())
-                .content(agentMemoryDocument.getContent())
-                .topics(agentMemoryDocument.getTopics())
-                .reusabilityScore(agentMemoryDocument.getReusabilityScore())
-                .createdAt(agentMemoryDocument.getCreatedAt())
-                .updatedAt(agentMemoryDocument.getUpdatedAt())
-                .build();
+    private String indexName() {
+        return Strings.isNullOrEmpty(indexPrefix) ? MEMORIES_INDEX : "%s.%s"
+                .formatted(indexPrefix, MEMORIES_INDEX);
     }
 
     private ESAgentMemoryDocument toStored(final AgentMemory agentMemory) {
@@ -278,8 +268,18 @@ public class ESAgentMemoryStorage implements AgentMemoryStore {
                 .build();
     }
 
-    private String indexName() {
-        return Strings.isNullOrEmpty(indexPrefix) ? MEMORIES_INDEX : "%s.%s"
-                .formatted(indexPrefix, MEMORIES_INDEX);
+    private AgentMemory toWire(final ESAgentMemoryDocument agentMemoryDocument) {
+        return AgentMemory.builder()
+                .agentName(agentMemoryDocument.getAgentName())
+                .scope(agentMemoryDocument.getScope())
+                .scopeId(agentMemoryDocument.getScopeId())
+                .memoryType(agentMemoryDocument.getMemoryType())
+                .name(agentMemoryDocument.getName())
+                .content(agentMemoryDocument.getContent())
+                .topics(agentMemoryDocument.getTopics())
+                .reusabilityScore(agentMemoryDocument.getReusabilityScore())
+                .createdAt(agentMemoryDocument.getCreatedAt())
+                .updatedAt(agentMemoryDocument.getUpdatedAt())
+                .build();
     }
 }

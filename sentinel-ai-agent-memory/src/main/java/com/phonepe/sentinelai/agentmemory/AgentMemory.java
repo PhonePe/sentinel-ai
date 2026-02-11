@@ -53,7 +53,8 @@ public class AgentMemory {
     @JsonPropertyDescription("Topics associated with the memory")
     List<String> topics;
 
-    @JsonPropertyDescription("A score that indicates how reusable the information is. Score 0 means the information is " + "not reusable and score 10 means the information is highly reusable")
+    @JsonPropertyDescription("A score that indicates how reusable the information is. Score 0 means the information is "
+            + "not reusable and score 10 means the information is highly reusable")
     int reusabilityScore;
 
     @JsonPropertyDescription("When the memory was created")

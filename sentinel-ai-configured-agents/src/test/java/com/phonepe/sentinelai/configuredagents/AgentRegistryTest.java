@@ -623,7 +623,8 @@ class AgentRegistryTest {
 
         final var weatherAgentConfiguration = AgentConfiguration.builder()
                 .agentName("Weather Agent")
-                .description("Provides the weather information for a given location. Planner must call me instead of " + "directly calling the weather tools.")
+                .description("Provides the weather information for a given location. Planner must call me instead of "
+                        + "directly calling the weather tools.")
                 .prompt("Respond with the current weather for the given location.")
                 .inputSchema(schema(WeatherAgentInput.class))
                 .outputSchema(schema(WeatherAgentOutput.class))

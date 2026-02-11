@@ -116,7 +116,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private record ModelOutputProcessingContext<R>(
             AgentRunContext<R> context,
             AgentSetup agentSetup,
-            List<AgentMessage> messages) {
+            List<AgentMessage> messages
+    ) {
     }
 
     private final Class<T> outputType;
@@ -853,15 +854,17 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var knowledge = new ArrayList<>(knowledgeFromExtensions);
         knowledge.addAll(Objects.requireNonNullElseGet(facts, List::of));
         final var prompt = new SystemPrompt().setName(name())
-                .setCoreInstructions("Your main job is to answer the user query as provided in user prompt in the `user_input` tag. " + (!context
-                        .getOldMessages()
-                        .isEmpty()
-                                ? "Use the provided old messages for extra context and information. "
-                                : "") + ((!secondaryTasks.isEmpty())
-                                        ? "Perform the provided secondary tasks as well and populate the output in " + "designated output field for the task. "
-                                        : "") + ((!knowledge.isEmpty())
-                                                ? "Use the provided knowledge and facts to enrich your responses."
-                                                : ""))
+                .setCoreInstructions("Your main job is to answer the user query as provided in user prompt in the `user_input` tag. "
+                        + (!context
+                                .getOldMessages()
+                                .isEmpty()
+                                        ? "Use the provided old messages for extra context and information. "
+                                        : "") + ((!secondaryTasks.isEmpty())
+                                                ? "Perform the provided secondary tasks as well and populate the output in "
+                                                        + "designated output field for the task. "
+                                                : "") + ((!knowledge.isEmpty())
+                                                        ? "Use the provided knowledge and facts to enrich your responses."
+                                                        : ""))
                 .setPrimaryTask(SystemPrompt.Task.builder()
                         .objective(systemPrompt)
                         .tool(this.knownTools.values()

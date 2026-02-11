@@ -25,5 +25,6 @@ import java.util.List;
 public record ToolMethodInfo(
         List<ToolParameter> parameters,
         Method callable,
-        Class<?> returnType) {
+        Class<?> returnType
+) {
 }

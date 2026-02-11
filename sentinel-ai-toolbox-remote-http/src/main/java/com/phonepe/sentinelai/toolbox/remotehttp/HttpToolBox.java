@@ -77,6 +77,34 @@ public class HttpToolBox implements ToolBox {
              UpstreamResolver.direct(endpointUrl));
     }
 
+    private static RequestBody body(HttpCallSpec spec) {
+        if (!Strings.isNullOrEmpty(spec.getBody())) {
+            final var contentType = Objects.requireNonNullElse(spec
+                    .getContentType(),
+                                                               com.google.common.net.MediaType.JSON_UTF_8
+                                                                       .type());
+            return RequestBody.create(spec.getBody()
+                    .getBytes(StandardCharsets.UTF_8),
+                                      MediaType.parse(contentType));
+        }
+        throw new IllegalArgumentException("Body is null");
+    }
+
+    @SneakyThrows
+    private static String body(HttpCallSpec spec, Response response) {
+        final var responseBody = response.body();
+        if (null == responseBody) {
+            return response.isSuccessful() ? "Successful" : "Failure";
+        }
+        final var bodyStr = response.body()
+                .string()
+                .trim()
+                .replaceAll("\\s+", " ");
+        final var transformer = Objects.requireNonNullElseGet(spec
+                .getResponseTransformer(), UnaryOperator::<String>identity);
+        return transformer.apply(bodyStr);
+    }
+
     @Override
     public String name() {
         return AgentUtils.id(upstream);
@@ -170,33 +198,5 @@ public class HttpToolBox implements ToolBox {
             return new ExternalTool.ExternalToolResponse("Error running tool: " + rootCause(e),
                                                          ErrorType.TOOL_CALL_TEMPORARY_FAILURE);
         }
-    }
-
-    @SneakyThrows
-    private static String body(HttpCallSpec spec, Response response) {
-        final var responseBody = response.body();
-        if (null == responseBody) {
-            return response.isSuccessful() ? "Successful" : "Failure";
-        }
-        final var bodyStr = response.body()
-                .string()
-                .trim()
-                .replaceAll("\\s+", " ");
-        final var transformer = Objects.requireNonNullElseGet(spec
-                .getResponseTransformer(), UnaryOperator::<String>identity);
-        return transformer.apply(bodyStr);
-    }
-
-    private static RequestBody body(HttpCallSpec spec) {
-        if (!Strings.isNullOrEmpty(spec.getBody())) {
-            final var contentType = Objects.requireNonNullElse(spec
-                    .getContentType(),
-                                                               com.google.common.net.MediaType.JSON_UTF_8
-                                                                       .type());
-            return RequestBody.create(spec.getBody()
-                    .getBytes(StandardCharsets.UTF_8),
-                                      MediaType.parse(contentType));
-        }
-        throw new IllegalArgumentException("Body is null");
     }
 }

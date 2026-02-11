@@ -79,7 +79,8 @@ public class HttpToolboxFactory {
         return Optional.of(new HttpToolBox(upstream,
                                            Objects.requireNonNull(okHttpClientProvider
                                                    .apply(upstream),
-                                                                  "Could not resolve http client for upstream: " + upstream),
+                                                                  "Could not resolve http client for upstream: "
+                                                                          + upstream),
                                            toolConfigSource,
                                            objectMapper,
                                            upstreamResolver.apply(upstream)));
