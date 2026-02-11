@@ -48,7 +48,8 @@ public class ExternalTool extends ExecutableTool {
 
     public record ExternalToolResponse(
             Object response,
-            ErrorType error) {
+            ErrorType error
+    ) {
     }
 
     @Override

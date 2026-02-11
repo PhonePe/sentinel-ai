@@ -298,11 +298,13 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
         }
         if (memoryExtractionMode.equals(MemoryExtractionMode.INLINE)) {
             if (data.getProcessingMode().equals(ProcessingMode.DIRECT)) {
-                log.debug("Inline memory extraction is enabled, will extract memory from output. Out of band extraction" + " is not needed.");
+                log.debug("Inline memory extraction is enabled, will extract memory from output. Out of band extraction"
+                        + " is not needed.");
                 return;
             }
             else {
-                log.debug("Inline memory extraction is enabled, but the request was processed in streaming mode, out of" + " band extraction being forced.");
+                log.debug("Inline memory extraction is enabled, but the request was processed in streaming mode, out of"
+                        + " band extraction being forced.");
             }
         }
         else {
@@ -321,13 +323,14 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                                                                                          null));
         messages.add(new UserPrompt(sessionId,
                                     context.getRunId(),
-                                    "You must extract memory from the following conversation between user and agent :" + " " + objectMapper
-                                            .writeValueAsString(Map.of(
-                                                                       "conversation",
-                                                                       objectMapper
-                                                                               .writeValueAsString(data
-                                                                                       .getOutput()
-                                                                                       .getNewMessages()))),
+                                    "You must extract memory from the following conversation between user and agent :"
+                                            + " " + objectMapper
+                                                    .writeValueAsString(Map.of(
+                                                                               "conversation",
+                                                                               objectMapper
+                                                                                       .writeValueAsString(data
+                                                                                               .getOutput()
+                                                                                               .getNewMessages()))),
                                     LocalDateTime.now()));
         final var runId = "mem-extraction-" + UUID.randomUUID();
         final var modelRunContext = new ModelRunContext(agent.name(),

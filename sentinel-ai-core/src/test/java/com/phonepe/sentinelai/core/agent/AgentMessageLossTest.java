@@ -81,7 +81,8 @@ class AgentMessageLossTest {
                                                       // On every call, messages should NOT be empty.
                                                       // It should contain at least SystemPrompt and UserPrompt.
                                                       if (messages.isEmpty()) {
-                                                          throw new IllegalStateException("Messages list is empty on call " + currentCall);
+                                                          throw new IllegalStateException("Messages list is empty on call "
+                                                                  + currentCall);
                                                       }
 
                                                       if (currentCall == 1) {

@@ -41,7 +41,9 @@ import java.util.concurrent.CompletableFuture;
 /**
  * A configured agent is an envelope used by the Agent Registry to manage dynamically configured agents.
  */
-@SuppressWarnings({"unused", "FieldCanBeLocal"})
+@SuppressWarnings({
+        "unused", "FieldCanBeLocal"
+})
 public class ConfiguredAgent {
 
     public static final class RootAgent extends RegisterableAgent<RootAgent> {

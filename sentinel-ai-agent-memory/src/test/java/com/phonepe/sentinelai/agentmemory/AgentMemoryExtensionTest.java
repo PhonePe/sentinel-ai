@@ -151,28 +151,33 @@ class AgentMemoryExtensionTest {
 
         private record Key(
                 MemoryScope scope,
-                String scopeId) {
+                String scopeId
+        ) {
         }
 
     }
 
     public record OutputObject(
             String username,
-            String message) {
+            String message
+    ) {
     }
 
     public record Salutation(
-            List<String> salutation) {
+            List<String> salutation
+    ) {
     }
 
     @JsonClassDescription("Parameter to be passed to get salutation for a user")
     public record SalutationParams(
-            @JsonPropertyDescription("Name of the user") String name) {
+            @JsonPropertyDescription("Name of the user") String name
+    ) {
     }
 
     @JsonClassDescription("User input")
     public record UserInput(
-            String data) {
+            String data
+    ) {
     }
 
     @Test

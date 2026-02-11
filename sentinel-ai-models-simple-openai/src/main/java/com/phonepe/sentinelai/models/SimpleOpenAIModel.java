@@ -415,7 +415,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
 
-    @SuppressWarnings({"java:S107", "java:S3776"})
+    @SuppressWarnings({
+            "java:S107", "java:S3776"
+    })
     private CompletableFuture<ModelOutput> streamImpl(ModelRunContext context,
                                                       Collection<ModelOutputDefinition> outputDefinitions,
                                                       List<AgentMessage> oldMessages,
@@ -831,8 +833,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                        log.error("Error generating output: " + rootCause
                                                                .getMessage(),
                                                                  t);
-                                                       return new ExternalTool.ExternalToolResponse("Error running tool: " + rootCause
-                                                               .getMessage(),
+                                                       return new ExternalTool.ExternalToolResponse("Error running tool: "
+                                                               + rootCause
+                                                                       .getMessage(),
                                                                                                     ErrorType.TOOL_CALL_PERMANENT_FAILURE);
                                                    }
                                                }));
@@ -1277,7 +1280,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             case STRUCTURED_OUTPUT -> switch (this.modelOptions
                     .getToolChoice()) {
                 case REQUIRED -> {
-                    log.warn("Model is configured for STRUCTURED_OUTPUT generation mode, " + "but tool choice is set to REQUIRED. This might lead to infinite tool-call loops");
+                    log.warn("Model is configured for STRUCTURED_OUTPUT generation mode, "
+                            + "but tool choice is set to REQUIRED. This might lead to infinite tool-call loops");
                     yield ToolChoiceOption.REQUIRED;
                 }
                 case AUTO -> ToolChoiceOption.AUTO;

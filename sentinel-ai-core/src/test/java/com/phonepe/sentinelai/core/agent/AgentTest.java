@@ -541,11 +541,13 @@ class AgentTest {
     }
 
     private record Input(
-            String data) {
+            String data
+    ) {
     }
 
     private record Output(
-            String output) {
+            String output
+    ) {
     }
 
 }

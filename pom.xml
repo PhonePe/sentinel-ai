@@ -322,6 +322,7 @@
                             <file>${maven.multiModuleProjectDirectory}/license.header</file>
                         </licenseHeader>
                         <eclipse>
+                            <version>4.38</version>
                             <file>${maven.multiModuleProjectDirectory}/java-format.xml</file>
                             <sortMembersEnabled>true</sortMembersEnabled>
                             <!-- Sort order
@@ -352,7 +353,7 @@
                         <trimTrailingWhitespace/>
                         <forbidWildcardImports/>
                         <endWithNewline/>
-                        <ratchetFrom>origin/master</ratchetFrom>
+                        <!-- <ratchetFrom>origin/master</ratchetFrom> -->
                     </java>
                 </configuration>
                 <executions>

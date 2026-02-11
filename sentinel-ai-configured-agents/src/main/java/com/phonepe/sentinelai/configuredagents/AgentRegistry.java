@@ -115,27 +115,59 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
         });
     }
 
-    @SneakyThrows
-    public List<AgentMetadata> loadAgentsFromFile(final String agentConfig) {
-        return loadAgentsFromContent(Files.readAllBytes(Paths.get(
-                                                                  agentConfig)));
+    private static IllegalArgumentException agentNotFoundError(String agentId) {
+        return new IllegalArgumentException("Agent not found: " + agentId);
     }
 
-    @SneakyThrows
-    public List<AgentMetadata> loadAgentsFromContent(byte[] content) {
-        final var configs = mapper.readValue(content,
-                                             new TypeReference<List<AgentConfiguration>>() {
-                                             });
-        final var agents = configs.stream()
-                .map(this::configureAgent)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .toList();
-        if (log.isDebugEnabled()) {
-            log.debug("Loaded agents: {}",
-                      agents.stream().map(AgentMetadata::getId).toList());
-        }
-        return agents;
+    private static ExposedAgentMetadata convertToExposedMetadata(AgentMetadata metadata) {
+        return new ExposedAgentMetadata(metadata.getId(),
+                                        metadata.getConfiguration()
+                                                .getAgentName(),
+                                        metadata.getConfiguration()
+                                                .getDescription(),
+                                        metadata.getConfiguration()
+                                                .getInputSchema(),
+                                        metadata.getConfiguration()
+                                                .getOutputSchema());
+    }
+
+    @Override
+    public ExtensionPromptSchema additionalSystemPrompts(R request,
+                                                         AgentRunContext<R> context,
+                                                         A agent,
+                                                         ProcessingMode processingMode) {
+        final var promptForAgentInvocation = switch (agentMetadataAccessMode) {
+            case INCLUDE_IN_PROMPT ->
+                """
+                           Each agent's metadata is provided in the facts. Use this to understand the agent's
+                            capabilities, input and output schema.
+                        """;
+            case METADATA_TOOL_LOOKUP ->
+                """
+                        You MUST invoke the agent_registry_get_agent_metadata tool to understand the agent's
+                         capabilities and input/output schema.
+                        """;
+        };
+        return new ExtensionPromptSchema(List.of(SystemPrompt.Task.builder()
+                .objective("""
+                            Offload complex tasks to other agents if available.
+                        """)
+                .instructions("""
+                           The list of available agents is provided in the facts.
+                            %s
+                            Once understood, you can invoke an agent using the `agent_registry_invoke_agent` tool with the agent ID and input.
+                            Invocation response has the following fields:
+                            - successful: boolean indicating if the agent invocation was successful
+                            - agentOutput: json serialized structured output from the agent (present only if successful = true)
+                            - error: reason for failure (present only if successful = false)
+                            ALWAYS FOLLOW THESE INSTRUCTIONS:
+                            - DO NOT INVOKE AGENT WITHOUT UNDERSTANDING ITS CAPABILITIES AND INPUT/OUTPUT SCHEMA.
+                            - DO NOT MAKE ASSUMPTIONS ABOUT THE FUNCTIONALITY OF THE INVOKED AGENT.
+                            - DO NOT try to mimic the functionality of the invoked agent yourself.
+                            - It is ok to fail the task if no suitable agent is found or agent invocation fails.
+                        """
+                        .formatted(promptForAgentInvocation))
+                .build()), List.of());
     }
 
     /**
@@ -174,6 +206,39 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
             log.warn("Agent with id {} could not be configured", agentId);
         }
         return metadata;
+    }
+
+    @Override
+    public void consume(JsonNode output, A agent) {
+        //Nothing to do here
+    }
+
+    @Override
+    public List<FactList> facts(R request,
+                                AgentRunContext<R> context,
+                                A agent) {
+        return List.of(new FactList(
+                                    "List of agents registered in the system and can be invoked",
+                                    agentSource.list()
+                                            .stream()
+                                            .map(agentMetadata -> switch (agentMetadataAccessMode) {
+                                                case INCLUDE_IN_PROMPT ->
+                                                    new Fact("Available Agent: %s"
+                                                            .formatted(agentMetadata
+                                                                    .getConfiguration()
+                                                                    .getAgentName()),
+                                                             "Agent Metadata for invoking agent: %s"
+                                                                     .formatted(convertToExposedMetadataJson(agentMetadata)));
+                                                case METADATA_TOOL_LOOKUP ->
+                                                    new Fact("Available Agent: %s"
+                                                            .formatted(agentMetadata
+                                                                    .getConfiguration()
+                                                                    .getAgentName()),
+                                                             "Agent Metadata for invoking agent: %s"
+                                                                     .formatted(agentMetadata
+                                                                             .getId()));
+                                            })
+                                            .toList()));
     }
 
     @Tool("Get agent metadata. Use this to get agent id, name, description, input and output schema etc")
@@ -225,9 +290,42 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
         }
     }
 
+    @SneakyThrows
+    public List<AgentMetadata> loadAgentsFromContent(byte[] content) {
+        final var configs = mapper.readValue(content,
+                                             new TypeReference<List<AgentConfiguration>>() {
+                                             });
+        final var agents = configs.stream()
+                .map(this::configureAgent)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toList();
+        if (log.isDebugEnabled()) {
+            log.debug("Loaded agents: {}",
+                      agents.stream().map(AgentMetadata::getId).toList());
+        }
+        return agents;
+    }
+
+    @SneakyThrows
+    public List<AgentMetadata> loadAgentsFromFile(final String agentConfig) {
+        return loadAgentsFromContent(Files.readAllBytes(Paths.get(
+                                                                  agentConfig)));
+    }
+
     @Override
     public String name() {
         return "agent-registry";
+    }
+
+    @Override
+    public void onExtensionRegistrationCompleted(A agent) {
+        this.parent = agent;
+    }
+
+    @Override
+    public Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode) {
+        return Optional.empty();
     }
 
     @Override
@@ -241,108 +339,10 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
         return tools;
     }
 
-    @Override
-    public List<FactList> facts(R request,
-                                AgentRunContext<R> context,
-                                A agent) {
-        return List.of(new FactList(
-                                    "List of agents registered in the system and can be invoked",
-                                    agentSource.list()
-                                            .stream()
-                                            .map(agentMetadata -> switch (agentMetadataAccessMode) {
-                                                case INCLUDE_IN_PROMPT ->
-                                                    new Fact("Available Agent: %s"
-                                                            .formatted(agentMetadata
-                                                                    .getConfiguration()
-                                                                    .getAgentName()),
-                                                             "Agent Metadata for invoking agent: %s"
-                                                                     .formatted(convertToExposedMetadataJson(agentMetadata)));
-                                                case METADATA_TOOL_LOOKUP ->
-                                                    new Fact("Available Agent: %s"
-                                                            .formatted(agentMetadata
-                                                                    .getConfiguration()
-                                                                    .getAgentName()),
-                                                             "Agent Metadata for invoking agent: %s"
-                                                                     .formatted(agentMetadata
-                                                                             .getId()));
-                                            })
-                                            .toList()));
-    }
-
-    @Override
-    public ExtensionPromptSchema additionalSystemPrompts(R request,
-                                                         AgentRunContext<R> context,
-                                                         A agent,
-                                                         ProcessingMode processingMode) {
-        final var promptForAgentInvocation = switch (agentMetadataAccessMode) {
-            case INCLUDE_IN_PROMPT ->
-                """
-                           Each agent's metadata is provided in the facts. Use this to understand the agent's
-                            capabilities, input and output schema.
-                        """;
-            case METADATA_TOOL_LOOKUP ->
-                """
-                        You MUST invoke the agent_registry_get_agent_metadata tool to understand the agent's
-                         capabilities and input/output schema.
-                        """;
-        };
-        return new ExtensionPromptSchema(List.of(SystemPrompt.Task.builder()
-                .objective("""
-                            Offload complex tasks to other agents if available.
-                        """)
-                .instructions("""
-                           The list of available agents is provided in the facts.
-                            %s
-                            Once understood, you can invoke an agent using the `agent_registry_invoke_agent` tool with the agent ID and input.
-                            Invocation response has the following fields:
-                            - successful: boolean indicating if the agent invocation was successful
-                            - agentOutput: json serialized structured output from the agent (present only if successful = true)
-                            - error: reason for failure (present only if successful = false)
-                            ALWAYS FOLLOW THESE INSTRUCTIONS:
-                            - DO NOT INVOKE AGENT WITHOUT UNDERSTANDING ITS CAPABILITIES AND INPUT/OUTPUT SCHEMA.
-                            - DO NOT MAKE ASSUMPTIONS ABOUT THE FUNCTIONALITY OF THE INVOKED AGENT.
-                            - DO NOT try to mimic the functionality of the invoked agent yourself.
-                            - It is ok to fail the task if no suitable agent is found or agent invocation fails.
-                        """
-                        .formatted(promptForAgentInvocation))
-                .build()), List.of());
-    }
-
-    @Override
-    public Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode) {
-        return Optional.empty();
-    }
-
-    @Override
-    public void consume(JsonNode output, A agent) {
-        //Nothing to do here
-    }
-
-    @Override
-    public void onExtensionRegistrationCompleted(A agent) {
-        this.parent = agent;
-    }
-
-    private static IllegalArgumentException agentNotFoundError(String agentId) {
-        return new IllegalArgumentException("Agent not found: " + agentId);
-    }
-
     @SneakyThrows
     private String convertToExposedMetadataJson(AgentMetadata agentMetadata) {
         return mapper.writeValueAsString(convertToExposedMetadata(
                                                                   agentMetadata));
-    }
-
-    private static ExposedAgentMetadata convertToExposedMetadata(AgentMetadata metadata) {
-        return new ExposedAgentMetadata(metadata.getId(),
-                                        metadata.getConfiguration()
-                                                .getAgentName(),
-                                        metadata.getConfiguration()
-                                                .getDescription(),
-                                        metadata.getConfiguration()
-                                                .getInputSchema(),
-                                        metadata.getConfiguration()
-                                                .getOutputSchema());
     }
 
     private AgentExecutionResult fail(AgentRunContext<JsonNode> context,

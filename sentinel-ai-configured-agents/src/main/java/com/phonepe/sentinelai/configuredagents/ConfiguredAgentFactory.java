@@ -62,12 +62,14 @@ public class ConfiguredAgentFactory {
         this.httpToolboxFactory = null != httpToolboxFactory
                 ? new SimpleCache<>(upstream -> httpToolboxFactory.create(
                                                                           upstream)
-                        .orElseThrow(() -> new IllegalArgumentException("No HTTP tool box found for upstream: " + upstream)))
+                        .orElseThrow(() -> new IllegalArgumentException("No HTTP tool box found for upstream: "
+                                + upstream)))
                 : null;
         this.mcpToolboxFactory = null != mcpToolboxFactory ? new SimpleCache<>(
                                                                                upstream -> mcpToolboxFactory
                                                                                        .create(upstream)
-                                                                                       .orElseThrow(() -> new IllegalArgumentException("No MCP tool box found for upstream: " + upstream)))
+                                                                                       .orElseThrow(() -> new IllegalArgumentException("No MCP tool box found for upstream: "
+                                                                                               + upstream)))
                 : null;
         this.customToolBox = customToolBox;
         this.agentSetupProvider = Objects.requireNonNullElseGet(
@@ -126,8 +128,9 @@ public class ConfiguredAgentFactory {
                                                                                                        .of(mcpToolboxFactory
                                                                                                                .find(toolsFromUpstream
                                                                                                                        .getKey())
-                                                                                                               .orElseThrow(() -> new IllegalArgumentException("No MCP tool box found for: " + toolsFromUpstream
-                                                                                                                       .getKey()))),
+                                                                                                               .orElseThrow(() -> new IllegalArgumentException("No MCP tool box found for: "
+                                                                                                                       + toolsFromUpstream
+                                                                                                                               .getKey()))),
                                                                                                                                               toolsFromUpstream
                                                                                                                                                       .getValue()))
                                                                                                .toList());
@@ -157,8 +160,9 @@ public class ConfiguredAgentFactory {
                                                                                                        .of(httpToolboxFactory
                                                                                                                .find(toolsFromUpstream
                                                                                                                        .getKey())
-                                                                                                               .orElseThrow(() -> new IllegalArgumentException("No HTTP tool box found for: " + toolsFromUpstream
-                                                                                                                       .getKey()))),
+                                                                                                               .orElseThrow(() -> new IllegalArgumentException("No HTTP tool box found for: "
+                                                                                                                       + toolsFromUpstream
+                                                                                                                               .getKey()))),
                                                                                                                                               toolsFromUpstream
                                                                                                                                                       .getValue()))
                                                                                                .toList());

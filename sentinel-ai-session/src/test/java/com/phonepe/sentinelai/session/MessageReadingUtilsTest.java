@@ -77,12 +77,12 @@ class MessageReadingUtilsTest {
                 }
                 else if (queryDirection == QueryDirection.NEWER && pointer
                         .getNewer() != null) {
-                    final var newerTimestamp = Long.parseLong(pointer
-                            .getNewer());
-                    filtered = allMessages.stream()
-                            .filter(m -> m.getTimestamp() > newerTimestamp)
-                            .toList();
-                }
+                            final var newerTimestamp = Long.parseLong(pointer
+                                    .getNewer());
+                            filtered = allMessages.stream()
+                                    .filter(m -> m.getTimestamp() > newerTimestamp)
+                                    .toList();
+                        }
                 else {
                     filtered = allMessages;
                 }

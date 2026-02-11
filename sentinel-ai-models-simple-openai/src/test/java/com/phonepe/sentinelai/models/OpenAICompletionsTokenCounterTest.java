@@ -112,8 +112,9 @@ class OpenAICompletionsTokenCounterTest {
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + (TokenCountingConfig.DEFAULT
-                        .getMessageOverHead() + countTokens("SYSTEM") + countTokens("System")) + (TokenCountingConfig.DEFAULT
-                                .getMessageOverHead() + countTokens("USER") + countTokens("User"));
+                        .getMessageOverHead() + countTokens("SYSTEM") + countTokens("System"))
+                + (TokenCountingConfig.DEFAULT
+                        .getMessageOverHead() + countTokens("USER") + countTokens("User"));
 
         assertEquals(expected,
                      tokenCounter.estimateTokenCount(List.of(systemPrompt,
@@ -173,8 +174,10 @@ class OpenAICompletionsTokenCounterTest {
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + TokenCountingConfig.DEFAULT
-                        .getMessageOverHead() + countTokens("ASSISTANT") + countTokens(toolCallId) + countTokens(toolName) + TokenCountingConfig.DEFAULT
-                                .getFormattingOverhead() + countTokens(arguments) + countTokens("null"); // Content is null in ToolCall, Objects.toString(null) is "null"
+                        .getMessageOverHead() + countTokens("ASSISTANT") + countTokens(toolCallId) + countTokens(
+                                                                                                                 toolName)
+                + TokenCountingConfig.DEFAULT
+                        .getFormattingOverhead() + countTokens(arguments) + countTokens("null"); // Content is null in ToolCall, Objects.toString(null) is "null"
 
         assertEquals(expected,
                      tokenCounter.estimateTokenCount(List.of(toolCall),

@@ -31,7 +31,8 @@ import java.util.Set;
 @JsonSubTypes({
         @JsonSubTypes.Type(name = MCPServerType.Values.STDIO_TEXT, value = MCPStdioServerConfig.class),
         @JsonSubTypes.Type(name = MCPServerType.Values.SSE_TEXT, value = MCPSSEServerConfig.class),
-        @JsonSubTypes.Type(name = MCPServerType.Values.HTTP_TEXT, value = MCPHttpServerConfig.class),})
+        @JsonSubTypes.Type(name = MCPServerType.Values.HTTP_TEXT, value = MCPHttpServerConfig.class),
+})
 @Data
 @RequiredArgsConstructor
 public abstract class MCPServerConfig {

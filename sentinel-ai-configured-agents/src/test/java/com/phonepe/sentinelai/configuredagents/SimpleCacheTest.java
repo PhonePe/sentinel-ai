@@ -28,7 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SimpleCacheTest {
 
     private record TestObject(
-            String name) {
+            String name
+    ) {
         public static TestObject create(String name) {
             return new TestObject(name);
         }

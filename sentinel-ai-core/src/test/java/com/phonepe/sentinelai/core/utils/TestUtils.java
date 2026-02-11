@@ -71,7 +71,8 @@ public class TestUtils {
         final var messages = response.getNewMessages();
         assertTrue(messages != null && messages.stream()
                 .anyMatch(message -> message.getMessageType()
-                        .equals(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE) && message instanceof ToolCall toolCall && toolCall
+                        .equals(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE) && message instanceof ToolCall toolCall
+                        && toolCall
                                 .getToolName()
                                 .equals(Agent.OUTPUT_GENERATOR_ID)),
                    "Expected at least one output function call, but found none.");
