@@ -430,7 +430,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
         final var summary = MessageCompactor.compactMessages(data.getAgent()
                 .name(),
-                                                             sessionId,
+                                                             "session-compaction-for-" +sessionId,
                                                              AgentUtils.userId(
                                                                                context),
                                                              agentSetup,

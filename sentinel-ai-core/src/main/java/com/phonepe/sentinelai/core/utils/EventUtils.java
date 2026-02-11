@@ -121,17 +121,20 @@ public class EventUtils {
                               AgentUtils.sessionId(context),
                               AgentUtils.userId(context),
                               context.getAgentSetup(),
-                              oldMessages);
+                              oldMessages,
+                              oldMessages.isEmpty() ? null : oldMessages.get(oldMessages.size() - 1));
     }
 
     public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(ModelRunContext modelRunContext,
-                                                                              List<AgentMessage> oldMessages) {
+                                                                              List<AgentMessage> oldMessages,
+                                                                              AgentMessage currentMessage) {
         raiseMessageSentEvent(modelRunContext.getAgentName(),
                               modelRunContext.getRunId(),
                               modelRunContext.getSessionId(),
                               modelRunContext.getUserId(),
                               modelRunContext.getAgentSetup(),
-                              oldMessages);
+                              oldMessages,
+                              currentMessage);
     }
 
     public static void raiseMessageSentEvent(String agentName,
@@ -139,13 +142,15 @@ public class EventUtils {
                                              String sessionId,
                                              String userId,
                                              AgentSetup agentSetup,
-                                             List<AgentMessage> oldMessages) {
+                                             List<AgentMessage> oldMessages,
+                                             AgentMessage currentMessage) {
         agentSetup.getEventBus()
                 .notify(new MessageSentAgentEvent(agentName,
                                                   runId,
                                                   sessionId,
                                                   userId,
-                                                  List.copyOf(oldMessages)));
+                                                  List.copyOf(oldMessages),
+                                                  currentMessage));
     }
 
     public static void raiseOutputEvent(ModelRunContext context,

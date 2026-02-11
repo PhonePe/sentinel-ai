@@ -262,7 +262,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              .build()));
                 }
                 addToolChoice(toolsForExecution, builder, outputGenerationMode);
-                raiseMessageSentEvent(context, allMessages);
+                raiseMessageSentEvent(context, allMessages, allMessages.get(allMessages.size() - 1));
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
 
@@ -490,7 +490,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var request = builder.build();
                 logModelRequest(request);
                 Stream<Chat> completionResponseStream;
-                raiseMessageSentEvent(context, allMessages);
+                raiseMessageSentEvent(context, allMessages, allMessages.get(allMessages.size() - 1));
                 try {
                     completionResponseStream = openAIProviderFactory.get(
                                                                          modelName)
