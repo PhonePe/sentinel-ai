@@ -118,6 +118,8 @@ public class ToolUtils {
                 .contextAware(hasContext)
                 .strictSchema(true)
                 .terminal(false)
+                .retries(toolDef.retries())
+                .timeoutSeconds(toolDef.timeoutSeconds())
                 .build(),
                        new ToolMethodInfo(params,
                                           method,

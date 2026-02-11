@@ -117,6 +117,9 @@ public class HttpToolBox implements ToolBox {
                     .description(tool.getDescription())
                     .contextAware(false)
                     .strictSchema(true)
+                    .terminal(false)
+                    .retries(ToolDefinition.NO_RETRY) // Let model retry based on error response
+                    .timeoutSeconds(ToolDefinition.NO_TIMEOUT) // Can be set at okhttp level if needed
                     .build(), paramNodes, (context, toolId, arguments) -> {
                         final var toolDef = knownTools.get(toolId);
                         if (null == toolDef) {

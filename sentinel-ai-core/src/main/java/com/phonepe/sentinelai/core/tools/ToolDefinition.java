@@ -28,6 +28,10 @@ import lombok.With;
 @With
 @Builder
 public class ToolDefinition {
+    public static final int NO_RETRY = 0;
+    public static final int DEFAULT_TIMEOUT_SECONDS = 30;
+    public static final int NO_TIMEOUT = -1;
+
     @NonNull
     String id;
 
@@ -42,4 +46,10 @@ public class ToolDefinition {
     boolean strictSchema;
 
     boolean terminal;
+
+    @Builder.Default
+    int retries = NO_RETRY;
+
+    @Builder.Default
+    int timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
 }

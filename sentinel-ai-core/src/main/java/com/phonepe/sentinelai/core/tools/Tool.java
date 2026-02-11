@@ -38,6 +38,11 @@ public @interface Tool {
     int retries() default 0;
 
     /**
+     * Timeout for the tool execution in seconds. Default is 30 seconds.
+     */
+    int timeoutSeconds() default 30;
+
+    /**
      * Description of the tool. This is mandatory
      */
     String value();
