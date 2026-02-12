@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>sentinel-ai-filesystem</artifactId>
-    <name>Sentinel AI Agent Filesystem Storage</name>
+    <name>Sentinel AI Agent Filesystem Based Implementations</name>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
