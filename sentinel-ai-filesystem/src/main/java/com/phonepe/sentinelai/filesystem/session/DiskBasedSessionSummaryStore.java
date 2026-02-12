@@ -77,29 +77,23 @@ public class DiskBasedSessionSummaryStore {
         final var sessionDir = sessionRoot.resolve(sessionId);
         final var writeLock = cacheLock.writeLock();
         try {
-            return null == cache.computeIfPresent(sessionId, (id, existing) -> {
-                try {
-                    if (Files.exists(sessionDir, LinkOption.NOFOLLOW_LINKS)) {
-                        try (final var children = Files.walk(sessionDir)) {
-                            children.sorted(Comparator.reverseOrder())
-                                    .forEach(path -> {
-                                        try {
-                                            Files.deleteIfExists(path);
-                                        }
-                                        catch (Exception e) {
-                                            throw new RuntimeException("Failed to delete file: " + path, e);
-                                        }
-                                    });
-
-                        }
-                        return null; //Deleted successfully, remove from cache
-                    }
+            boolean deletedFromDisk = false;
+            if (Files.exists(sessionDir, LinkOption.NOFOLLOW_LINKS)) {
+                try (final var children = Files.walk(sessionDir)) {
+                    children.sorted(Comparator.reverseOrder())
+                            .forEach(path -> {
+                                try {
+                                    Files.deleteIfExists(path);
+                                }
+                                catch (Exception e) {
+                                    throw new RuntimeException("Failed to delete file: " + path, e);
+                                }
+                            });
                 }
-                catch (Exception e) {
-                    throw new RuntimeException("Failed to delete session summary for session: " + id, e);
-                }
-                return existing; //Could not delete, retain in cache
-            });
+                deletedFromDisk = true;
+            }
+            final var removedFromCache = cache.remove(sessionId) != null;
+            return deletedFromDisk || removedFromCache;
         }
         finally {
             cacheLock.unlockWrite(writeLock);
@@ -107,20 +101,8 @@ public class DiskBasedSessionSummaryStore {
     }
 
     public Optional<FileSystemMessageStorage> getMessageStorage(String sessionId) {
-        var stamp = cacheLock.readLock();
+        final var stamp = cacheLock.writeLock();
         try {
-            final var existingStorage = AgentUtils.getIfNotNull(cache.get(sessionId),
-                                                                SessionContainer::getMessageStorage,
-                                                                null);
-            if (null != existingStorage) {
-                return Optional.of(existingStorage);
-            }
-            stamp = cacheLock.tryConvertToWriteLock(stamp);
-            if (stamp == 0L) {
-                // Could not convert to write lock, release read lock and acquire write lock
-                cacheLock.unlockRead(stamp);
-                stamp = cacheLock.writeLock();
-            }
             final var sessionContainer = cache.compute(sessionId, (id, existing) -> {
                 final var session = Objects.requireNonNullElseGet(existing,
                                                                   () -> new SessionContainer());
@@ -139,7 +121,7 @@ public class DiskBasedSessionSummaryStore {
                                                                null));
         }
         finally {
-            cacheLock.unlock(stamp);
+            cacheLock.unlockWrite(stamp);
         }
     }
 

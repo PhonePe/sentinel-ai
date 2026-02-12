@@ -114,13 +114,31 @@ public class FileSystemSessionStore implements SessionStore {
                 .limit(count)
                 .toList();
 
+        if (filteredSummaries.isEmpty()) {
+            return new BiScrollable<>(List.of(), new DataPointer(null, null));
+        }
+
+        final var firstSummary = filteredSummaries.get(0);
         final var lastSummary = filteredSummaries.get(filteredSummaries.size() - 1);
-        final var lastPointer = new SessionScrollPointer(lastSummary.getUpdatedAt(), lastSummary.getSessionId());
-        final var nextPointer = filteredSummaries.isEmpty()
-                ? null
-                : Base64.getEncoder().encodeToString(mapper.writeValueAsBytes(lastPointer));
-        final var older = queryDirection == QueryDirection.OLDER ? nextPointer : null;
-        final var newer = queryDirection == QueryDirection.NEWER ? nextPointer : null;
+
+        final var firstPtr = Base64.getEncoder().encodeToString(mapper.writeValueAsBytes(
+                                                                                         new SessionScrollPointer(firstSummary
+                                                                                                 .getUpdatedAt(),
+                                                                                                                  firstSummary
+                                                                                                                          .getSessionId())));
+        final var lastPtr = Base64.getEncoder().encodeToString(mapper.writeValueAsBytes(
+                                                                                        new SessionScrollPointer(lastSummary
+                                                                                                .getUpdatedAt(),
+                                                                                                                 lastSummary
+                                                                                                                         .getSessionId())));
+
+        final String oldestResultPtr = (queryDirection == QueryDirection.NEWER) ? firstPtr : lastPtr;
+        final String newestResultPtr = (queryDirection == QueryDirection.NEWER) ? lastPtr : firstPtr;
+
+        final var older = queryDirection == QueryDirection.OLDER ? oldestResultPtr : (pointer == null ? oldestResultPtr
+                : null);
+        final var newer = queryDirection == QueryDirection.NEWER ? newestResultPtr : (pointer == null ? newestResultPtr
+                : null);
 
         return new BiScrollable<>(filteredSummaries, new DataPointer(older, newer));
     }

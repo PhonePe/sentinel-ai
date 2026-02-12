@@ -30,6 +30,21 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-models-simple-openai</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-agent-memory</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-embedding</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
@@ -40,6 +55,18 @@
             <artifactId>sentinel-ai-core</artifactId>
             <version>${project.version}</version>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

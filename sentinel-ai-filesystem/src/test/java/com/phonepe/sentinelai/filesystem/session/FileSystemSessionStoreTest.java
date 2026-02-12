@@ -165,9 +165,15 @@ class FileSystemSessionStoreTest {
         assertTrue(retrieved.containsAll(expectedIds));
 
         final var responseSkipSystem = sessionStore.readMessages(sessionId, 100, false, null, QueryDirection.OLDER);
+        assertTrue(responseSkipSystem.getItems().stream()
+                .anyMatch(m -> m.getMessageType() == AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
         final var skipResponse = sessionStore.readMessages(sessionId, 100, true, null, QueryDirection.OLDER);
         assertFalse(skipResponse.getItems().stream()
                 .anyMatch(m -> m.getMessageType() == AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE));
+        assertEquals(responseSkipSystem.getItems().size() - skipResponse.getItems().size(),
+                     responseSkipSystem.getItems().stream()
+                             .filter(m -> m.getMessageType() == AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)
+                             .count());
     }
 
     @Test

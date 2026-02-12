@@ -30,7 +30,7 @@ import java.util.List;
  */
 @Value
 @JsonClassDescription("memory to be used by AI Agents to learn new constructs and personalize conversations with users")
-@Builder
+@Builder(toBuilder = true)
 public class AgentMemory {
     @JsonPropertyDescription("Agent for whom this memory is relevant")
     String agentName;

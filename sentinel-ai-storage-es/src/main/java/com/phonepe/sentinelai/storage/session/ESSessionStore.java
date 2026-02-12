@@ -112,15 +112,17 @@ public class ESSessionStore implements SessionStore {
                                                    boolean skipSystemPrompt,
                                                    BiScrollable.DataPointer inPointer,
                                                    QueryDirection queryDirection) {
-        final var nextPointer = queryDirection == QueryDirection.OLDER
-                ? AgentUtils.getIfNotNull(inPointer,
-                                          BiScrollable.DataPointer::getOlder,
-                                          "") : AgentUtils.getIfNotNull(
-                                                                        inPointer,
-                                                                        BiScrollable.DataPointer::getNewer,
-                                                                        "");
-        final var pointer = Strings.isNullOrEmpty(nextPointer) ? null : mapper
-                .readValue(nextPointer, MessageScrollPointer.class);
+        final var olderPointerStr = AgentUtils.getIfNotNull(inPointer,
+                                                            BiScrollable.DataPointer::getOlder,
+                                                            null);
+        final var newerPointerStr = AgentUtils.getIfNotNull(inPointer,
+                                                            BiScrollable.DataPointer::getNewer,
+                                                            null);
+        final var nextPointerStr = queryDirection == QueryDirection.OLDER
+                ? olderPointerStr : newerPointerStr;
+
+        final var pointer = Strings.isNullOrEmpty(nextPointerStr) ? null : mapper
+                .readValue(nextPointerStr, MessageScrollPointer.class);
         final var queryBuilder = new SearchRequest.Builder().index(
                                                                    messagesIndexName());
         final var boolBuilder = new BoolQuery.Builder();
@@ -152,41 +154,52 @@ public class ESSessionStore implements SessionStore {
                 .search(queryBuilder.build(), ESMessageDocument.class);
         final var hits = searchResult.hits().hits();
 
-        final var documents = new ArrayList<>(hits.stream()
+        if (hits.isEmpty()) {
+            return new BiScrollable<>(List.of(),
+                                      new BiScrollable.DataPointer(olderPointerStr,
+                                                                   newerPointerStr));
+        }
+
+        final var documents = hits.stream()
                 .map(Hit::source)
                 .filter(Objects::nonNull)
                 .limit(count)
-                .toList());
-        final var nextResultSPointer = hits.isEmpty() ? null : mapper
-                .writeValueAsString(new MessageScrollPointer(hits.get(hits
-                        .size() - 1).sort().get(0).longValue(),
-                                                             hits.get(hits
-                                                                     .size() - 1)
-                                                                     .sort()
-                                                                     .get(1)
-                                                                     .stringValue()));
+                .toList();
+
+        final var firstHit = hits.get(0);
+        final var lastHit = hits.get(hits.size() - 1);
+
+        final var hit0Ptr = mapper.writeValueAsString(new MessageScrollPointer(
+                                                                               firstHit.sort().get(0).longValue(),
+                                                                               firstHit.sort().get(1).stringValue()));
+
+        final var hitLastPtr = mapper.writeValueAsString(new MessageScrollPointer(
+                                                                                  lastHit.sort().get(0).longValue(),
+                                                                                  lastHit.sort().get(1).stringValue()));
+
+        final var oldestResultPtr = (queryDirection == QueryDirection.NEWER) ? hit0Ptr : hitLastPtr;
+        final var newestResultPtr = (queryDirection == QueryDirection.NEWER) ? hitLastPtr : hit0Ptr;
+
+        final var outPointer = switch (queryDirection) {
+            case NEWER -> {
+                final var latestPtr = newestResultPtr;
+                final var oldestPtr = (olderPointerStr == null) ? oldestResultPtr : olderPointerStr;
+                yield new BiScrollable.DataPointer(oldestPtr, latestPtr);
+            }
+            case OLDER -> {
+                final var oldestPtr = oldestResultPtr;
+                final var latestPtr = (newerPointerStr == null) ? newestResultPtr : newerPointerStr;
+                yield new BiScrollable.DataPointer(oldestPtr, latestPtr);
+            }
+        };
+
         final var convertedMessages = documents.stream()
-                .limit(count)
                 .map(this::toWireMessage)
                 .sorted(Comparator.comparingLong(AgentMessage::getTimestamp)
                         .thenComparing(AgentMessage::getMessageId))
                 .toList();
 
-        final var messages = List.copyOf(convertedMessages);
-        return switch (queryDirection) {
-            case NEWER -> new BiScrollable<>(messages,
-                                             new BiScrollable.DataPointer(AgentUtils
-                                                     .getIfNotNull(inPointer,
-                                                                   BiScrollable.DataPointer::getOlder,
-                                                                   ""),
-                                                                          nextResultSPointer));
-            case OLDER -> new BiScrollable<>(messages,
-                                             new BiScrollable.DataPointer(nextResultSPointer,
-                                                                          AgentUtils
-                                                                                  .getIfNotNull(inPointer,
-                                                                                                BiScrollable.DataPointer::getNewer,
-                                                                                                "")));
-        };
+        return new BiScrollable<>(List.copyOf(convertedMessages), outPointer);
     }
 
     @Override
@@ -248,36 +261,46 @@ public class ESSessionStore implements SessionStore {
     @Override
     @SneakyThrows
     public BiScrollable<SessionSummary> sessions(int count,
-                                                 String nextPointer,
+                                                 String pointer,
                                                  QueryDirection queryDirection) {
         final var indexName = sessionIndexName();
         final var searchResult = client.getElasticsearchClient()
                 .search(s -> sessionQuery(count,
                                           indexName,
                                           s,
-                                          nextPointer,
+                                          pointer,
                                           queryDirection),
                         ESSessionDocument.class);
         final var hits = searchResult.hits().hits();
+        if (hits.isEmpty()) {
+            return new BiScrollable<>(List.of(), new BiScrollable.DataPointer(null, null));
+        }
+
+        final var firstHit = hits.get(0);
+        final var lastHit = hits.get(hits.size() - 1);
+
+        final var hit0Ptr = mapper.writeValueAsString(new SessionScrollPointer(
+                                                                               firstHit.sort().get(0).longValue(),
+                                                                               firstHit.sort().get(1).stringValue()));
+
+        final var hitLastPtr = mapper.writeValueAsString(new SessionScrollPointer(
+                                                                                  lastHit.sort().get(0).longValue(),
+                                                                                  lastHit.sort().get(1).stringValue()));
+
         final var summaries = hits.stream()
                 .map(Hit::source)
                 .filter(Objects::nonNull)
                 .map(this::toWireSession)
                 .toList();
 
-        final var nextResultPointer = hits.isEmpty() ? null : mapper
-                .writeValueAsString(new SessionScrollPointer(hits.get(hits
-                        .size() - 1).sort().get(0).longValue(),
-                                                             hits.get(hits
-                                                                     .size() - 1)
-                                                                     .sort()
-                                                                     .get(1)
-                                                                     .stringValue()));
+        final var oldestResultPtr = (queryDirection == QueryDirection.NEWER) ? hit0Ptr : hitLastPtr;
+        final var newestResultPtr = (queryDirection == QueryDirection.NEWER) ? hitLastPtr : hit0Ptr;
 
-        final var older = queryDirection == QueryDirection.OLDER
-                ? nextResultPointer : null;
-        final var newer = queryDirection == QueryDirection.NEWER
-                ? nextResultPointer : null;
+        final var older = queryDirection == QueryDirection.OLDER ? oldestResultPtr : (pointer == null ? oldestResultPtr
+                : null);
+        final var newer = queryDirection == QueryDirection.NEWER ? newestResultPtr : (pointer == null ? newestResultPtr
+                : null);
+
         return new BiScrollable<>(summaries,
                                   new BiScrollable.DataPointer(older, newer));
     }
