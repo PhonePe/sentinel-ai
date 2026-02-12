@@ -47,14 +47,14 @@ public class DiskBasedSessionSummaryStore {
     @Value
     private static final class SessionContainer {
         SessionSummary sessionSummary;
-        final AtomicReference<FileSystemMessageStorage> messageStorage = new AtomicReference<>(null);
+        AtomicReference<FileSystemMessageStorage> messageStorage = new AtomicReference<>(null);
 
         public FileSystemMessageStorage getMessageStorage() {
             return this.messageStorage.get();
         }
 
         public SessionContainer setMessageStorage(FileSystemMessageStorage storage) {
-            this.messageStorage.compareAndSet(null, storage);
+            this.messageStorage.set(storage);
             return this;
         }
     }
@@ -120,6 +120,9 @@ public class DiskBasedSessionSummaryStore {
         var stamp = cacheLock.readLock();
         try {
 
+            if (null == loadSessionContainerUnsafe(sessionId).orElse(null)) { //Rehydrate the cache if the data had been offloaded
+                return Optional.empty();
+            }
             final var existingStorage = AgentUtils.getIfNotNull(summaryCache.get(sessionId),
                                                                 SessionContainer::getMessageStorage,
                                                                 null);
@@ -137,7 +140,9 @@ public class DiskBasedSessionSummaryStore {
                     if (existing.getMessageStorage() == null) {
                         final var messagePath = sessionRoot.resolve(id)
                                 .toAbsolutePath()
+                                .normalize()
                                 .toString();
+                        log.info("Initializing message storage for session: {}, path: {}", id, messagePath);
                         final var storage = new FileSystemMessageStorage(messagePath, objectMapper);
                         existing.setMessageStorage(storage);
                     }
@@ -150,14 +155,15 @@ public class DiskBasedSessionSummaryStore {
                                                                null));
         }
         finally {
-            cacheLock.unlockRead(stamp);
+            cacheLock.unlock(stamp);
         }
     }
 
     @SneakyThrows
     public List<SessionSummary> listSessionSummaries() {
         try (final var sessionDirs = Files.list(sessionRoot)) {
-            return sessionDirs.filter(Files::isDirectory)
+            return sessionDirs
+                    .filter(Files::isDirectory)
                     .map(path -> sessionSummary(path.getFileName().toString()).orElse(null))
                     .filter(Objects::nonNull)
                     .toList();
@@ -202,29 +208,34 @@ public class DiskBasedSessionSummaryStore {
         }
     }
 
-    @SneakyThrows
     public Optional<SessionSummary> sessionSummary(final String sessionId) {
-        final var readLock = cacheLock.readLock();
+        final var stamp = cacheLock.writeLock();
         try {
-            final var data = summaryCache.computeIfAbsent(sessionId, id -> {
-                final var sessionFilePath = sessionRoot.resolve(id).resolve(SUMMARY_FILE_NAME);
-                if (Files.exists(sessionFilePath, LinkOption.NOFOLLOW_LINKS)) {
-                    try {
-                        return new SessionContainer(objectMapper.readValue(sessionFilePath.toFile(),
-                                                                           SessionSummary.class));
-                    }
-                    catch (Exception e) {
-                        throw new RuntimeException("Failed to read session summary for session: " + id, e);
-                    }
-                }
-                return null;
-            });
-            return Optional.ofNullable(AgentUtils.getIfNotNull(data, SessionContainer::getSessionSummary, null));
+            final var sessionContainer = loadSessionContainerUnsafe(sessionId).orElse(null);
+            return Optional.ofNullable(AgentUtils.getIfNotNull(sessionContainer,
+                                                               SessionContainer::getSessionSummary,
+                                                               null));
         }
         finally {
-            cacheLock.unlockRead(readLock);
+            cacheLock.unlockWrite(stamp);
         }
     }
 
+    private Optional<SessionContainer> loadSessionContainerUnsafe(final String sessionId) {
+        return Optional.ofNullable(summaryCache.computeIfAbsent(sessionId, id -> {
+            final var sessionFilePath = sessionRoot.resolve(id).resolve(SUMMARY_FILE_NAME);
+            if (Files.exists(sessionFilePath, LinkOption.NOFOLLOW_LINKS)) {
+                try {
+                    return new SessionContainer(
+                                                objectMapper.readValue(sessionFilePath.toFile(),
+                                                                       SessionSummary.class));
+                }
+                catch (Exception e) {
+                    throw new RuntimeException("Failed to read session summary for session: " + id, e);
+                }
+            }
+            return null;
+        }));
+    }
 
 }

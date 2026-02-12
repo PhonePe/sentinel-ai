@@ -79,14 +79,14 @@ public class FileSystemMessageStorage {
     public FileSystemMessageStorage(@NonNull String sessionDir, @NonNull ObjectMapper objectMapper) {
         this.messageCache = new TreeMap<>(Comparator.comparing(MessageMeta::timestamp)
                 .thenComparing(MessageMeta::messageId));
+        this.objectMapper = objectMapper;
+        this.filePath = ensureMessageFile(sessionDir);
         // Load existing messages from file into cache and be done and dusted with
         // the reading part
         readMessagesFromFile(sessionDir, objectMapper, msg -> {
             final var meta = new MessageMeta(msg.getMessageId(), msg.getTimestamp());
             messageCache.put(meta, msg);
         });
-        this.objectMapper = objectMapper;
-        this.filePath = ensureMessageFile(sessionDir);
     }
 
     /**

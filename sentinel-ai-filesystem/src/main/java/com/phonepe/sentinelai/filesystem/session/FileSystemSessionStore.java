@@ -27,15 +27,22 @@ import com.phonepe.sentinelai.session.SessionSummary;
 
 import lombok.SneakyThrows;
 
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 public class FileSystemSessionStore implements SessionStore {
     private final DiskBasedSessionSummaryStore summaryStore;
+    private final ObjectMapper mapper;
 
     public FileSystemSessionStore(String baseDir, final ObjectMapper mapper) {
-        this.summaryStore = new DiskBasedSessionSummaryStore(baseDir, mapper, 20);
+        this(baseDir, mapper, 20);
+    }
+
+    public FileSystemSessionStore(String baseDir, final ObjectMapper mapper, int cacheSize) {
+        this.summaryStore = new DiskBasedSessionSummaryStore(baseDir, mapper, cacheSize);
+        this.mapper = mapper;
     }
 
     @Override
@@ -74,12 +81,55 @@ public class FileSystemSessionStore implements SessionStore {
     }
 
     @Override
+    @SneakyThrows
     public BiScrollable<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection) {
-        final var allSummaries = summaryStore.listSessionSummaries()
-                .stream()
-                .sorted(Comparator.comparing(SessionSummary::getUpdatedAt))
+        final var scrollPointer = (pointer == null || pointer.isEmpty())
+                ? null
+                : mapper.readValue(Base64.getDecoder().decode(pointer), SessionScrollPointer.class);
+        final var allSummaries = summaryStore.listSessionSummaries();
+        final var comparator = queryDirection == QueryDirection.NEWER
+                ? Comparator.comparingLong(SessionSummary::getUpdatedAt)
+                        .thenComparing(SessionSummary::getSessionId)
+                : Comparator.comparingLong(SessionSummary::getUpdatedAt)
+                        .thenComparing(SessionSummary::getSessionId)
+                        .reversed();
+
+        final var filteredSummaries = allSummaries.stream()
+                .filter(summary -> {
+                    if (scrollPointer == null) {
+                        return true;
+                    }
+                    if (queryDirection == QueryDirection.NEWER) {
+                        return summary.getUpdatedAt() > scrollPointer.timestamp()
+                                || (summary.getUpdatedAt() == scrollPointer.timestamp()
+                                        && summary.getSessionId().compareTo(scrollPointer.id()) > 0);
+                    }
+                    else {
+                        return summary.getUpdatedAt() < scrollPointer.timestamp()
+                                || (summary.getUpdatedAt() == scrollPointer.timestamp()
+                                        && summary.getSessionId().compareTo(scrollPointer.id()) < 0);
+                    }
+                })
+                .sorted(comparator)
+                .limit(count)
                 .toList();
-        return new BiScrollable(allSummaries, new DataPointer(null, null));
+
+        final var lastSummary = filteredSummaries.get(filteredSummaries.size() - 1);
+        final var lastPointer = new SessionScrollPointer(lastSummary.getUpdatedAt(), lastSummary.getSessionId());
+        final var nextPointer = filteredSummaries.isEmpty()
+                ? null
+                : Base64.getEncoder().encodeToString(mapper.writeValueAsBytes(lastPointer));
+        final var older = queryDirection == QueryDirection.OLDER ? nextPointer : null;
+        final var newer = queryDirection == QueryDirection.NEWER ? nextPointer : null;
+
+        return new BiScrollable<>(filteredSummaries, new DataPointer(older, newer));
+    }
+
+
+    private record SessionScrollPointer(
+            long timestamp,
+            String id
+    ) {
     }
 
 
