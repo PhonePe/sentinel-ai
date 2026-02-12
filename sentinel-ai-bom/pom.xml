@@ -64,7 +64,7 @@
             </dependency>
             <dependency>
                 <groupId>com.phonepe.sentinel-ai</groupId>
-                <artifactId>sentinel-ai-disk-session</artifactId>
+                <artifactId>sentinel-ai-filesystem</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -126,7 +126,7 @@
         </dependency>
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
-            <artifactId>sentinel-ai-disk-session</artifactId>
+            <artifactId>sentinel-ai-filesystem</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
