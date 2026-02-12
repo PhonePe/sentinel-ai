@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Original Author(s), PhonePe India Pvt. Ltd.
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,35 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.session.disk;
-
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.Base64;
-import java.util.Comparator;
-import java.util.List;
-import java.util.TreeMap;
-import java.util.concurrent.locks.StampedLock;
-import java.util.function.Consumer;
+package com.phonepe.sentinelai.filesystem.session;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.filesystem.utils.FileUtils;
 import com.phonepe.sentinelai.session.BiScrollable;
 import com.phonepe.sentinelai.session.BiScrollable.DataPointer;
 import com.phonepe.sentinelai.session.QueryDirection;
 
+import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
+
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.util.Base64;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.TreeMap;
+import java.util.concurrent.locks.StampedLock;
+import java.util.function.Consumer;
 
 /**
  * Disk based storage for messages.
@@ -52,7 +56,7 @@ import lombok.SneakyThrows;
  * - All messages from file are read in one shot at startup and served from the treemap
  * - Writes are appended to file and committed to the treemap for access
  */
-public class MessageStorage {
+public class FileSystemMessageStorage {
 
     private static final String MESSAGES_FILE_NAME = "messages.jsonl";
 
@@ -71,10 +75,12 @@ public class MessageStorage {
     private final Path filePath;
 
     @SneakyThrows
-    public MessageStorage(@NonNull String sessionDir, @NonNull ObjectMapper objectMapper) {
+    @Builder
+    public FileSystemMessageStorage(@NonNull String sessionDir, @NonNull ObjectMapper objectMapper) {
         this.messageCache = new TreeMap<>(Comparator.comparing(MessageMeta::timestamp)
                 .thenComparing(MessageMeta::messageId));
-        // Load existing messages from file into cache and be done and suted with the reading part
+        // Load existing messages from file into cache and be done and dusted with
+        // the reading part
         readMessagesFromFile(sessionDir, objectMapper, msg -> {
             final var meta = new MessageMeta(msg.getMessageId(), msg.getTimestamp());
             messageCache.put(meta, msg);
@@ -86,18 +92,34 @@ public class MessageStorage {
     /**
      * Simple write Operation.
      * We do not overcomplicate with batching or async writes here because this is supposed to be written to at end of a
-     * run. A run would be long lived, which means that writes will be spaced out.
+     * run. A run would be long lived, which means that writes will be spaced out. So we use a relatively expensive
+     * atomic write operation to ensure data integrity and consistency between file and cache.
      */
     @SneakyThrows
-    public void addMessage(AgentMessage message) {
-        final var meta = new MessageMeta(message.getMessageId(), message.getTimestamp());
+    public void addMessages(List<AgentMessage> messages) {
         final var stamp = lock.writeLock();
         try {
-            final var data = (objectMapper.writeValueAsString(message)
-                    + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
-            Files.write(filePath, data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-            // Now add to in-memory cache
-            messageCache.put(meta, message);
+            final var messageData = new ByteArrayOutputStream();
+            final var newMessages = new HashMap<MessageMeta, AgentMessage>();
+            messages.forEach(message -> {
+                final var meta = new MessageMeta(message.getMessageId(), message.getTimestamp());
+                try {
+                    messageData.write((objectMapper.writeValueAsString(message) + System.lineSeparator())
+                            .getBytes(StandardCharsets.UTF_8));
+                    newMessages.put(meta, message);
+                }
+                catch (Exception e) {
+                    throw new RuntimeException("Failed to serialize message: " + message, e);
+                }
+            });
+            messageData.flush();
+            final var data = messageData.toByteArray();
+            if (FileUtils.write(filePath, data, true)) {
+                messageCache.putAll(newMessages);
+            }
+            else {
+                throw new RuntimeException("Failed to write message to file: " + filePath.toAbsolutePath());
+            }
         }
         finally {
             lock.unlockWrite(stamp);
@@ -110,7 +132,6 @@ public class MessageStorage {
      * {@link com.phonepe.sentinelai.session.BiScrollable.DataPointer} can be passed back to the server to get the
      * next set of messages in both directions. Messages are always returned in chronological order (oldest to newest).
      *
-     * @param sessionId        The unique identifier for the session.
      * @param count            The maximum number of messages to retrieve.
      * @param skipSystemPrompt If true, system prompt request messages will be excluded from the result.
      * @param pointer          The {@link com.phonepe.sentinelai.session.BiScrollable.DataPointer} used by the client
@@ -122,8 +143,7 @@ public class MessageStorage {
      *         further scrolling.
      */
     @SneakyThrows
-    public BiScrollable<AgentMessage> readMessages(String sessionId,
-                                                   int count,
+    public BiScrollable<AgentMessage> readMessages(int count,
                                                    boolean skipSystemPrompt,
                                                    BiScrollable.DataPointer pointer,
                                                    QueryDirection queryDirection) {
@@ -202,6 +222,21 @@ public class MessageStorage {
     }
 
     @SneakyThrows
+    public boolean purgeMessages(String sessionId) {
+        final var stamp = lock.writeLock();
+        try {
+            if (Files.deleteIfExists(filePath)) {
+                messageCache.clear();
+                return true;
+            }
+            return false;
+        }
+        finally {
+            lock.unlockWrite(stamp);
+        }
+    }
+
+    @SneakyThrows
     private static Path ensureMessageFile(String sessionDir) {
         final var dirPath = Path.of(sessionDir);
         if (!Files.exists(dirPath, LinkOption.NOFOLLOW_LINKS)
@@ -243,6 +278,5 @@ public class MessageStorage {
         }
         return Base64.getEncoder().encodeToString(objectMapper.writeValueAsBytes(meta));
     }
-
 
 }
