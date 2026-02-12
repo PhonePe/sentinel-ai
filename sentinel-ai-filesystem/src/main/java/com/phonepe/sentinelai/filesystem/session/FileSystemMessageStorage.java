@@ -239,10 +239,15 @@ public class FileSystemMessageStorage {
     @SneakyThrows
     private static Path ensureMessageFile(String sessionDir) {
         final var dirPath = Path.of(sessionDir);
-        if (!Files.exists(dirPath, LinkOption.NOFOLLOW_LINKS)
-                || !Files.isDirectory(dirPath)
-                || !Files.isWritable(dirPath)) {
-            throw new IllegalArgumentException("Provided sessionDir must be an existing writable directory");
+        if (Files.exists(dirPath, LinkOption.NOFOLLOW_LINKS)) {
+            if (!Files.isDirectory(dirPath)
+                    || !Files.isWritable(dirPath)) {
+                throw new IllegalArgumentException("Provided sessionDir %s must be an existing writable directory"
+                        .formatted(dirPath.toAbsolutePath().normalize()));
+            }
+        }
+        else {
+            Files.createDirectories(dirPath);
         }
         final var filePath = dirPath.resolve(MESSAGES_FILE_NAME);
         if (Files.exists(filePath, LinkOption.NOFOLLOW_LINKS)

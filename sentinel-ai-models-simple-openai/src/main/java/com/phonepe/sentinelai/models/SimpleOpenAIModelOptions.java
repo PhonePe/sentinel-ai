@@ -61,11 +61,8 @@ public class SimpleOpenAIModelOptions {
     @Builder
     public SimpleOpenAIModelOptions(ToolChoice toolChoice,
                                     TokenCountingConfig tokenCountingConfig) {
-        this.toolChoice = Objects.requireNonNullElse(toolChoice,
-                                                     ToolChoice.REQUIRED);
-        this.tokenCountingConfig = Objects.requireNonNullElse(
-                                                              tokenCountingConfig,
-                                                              TokenCountingConfig.DEFAULT);
+        this.toolChoice = Objects.requireNonNullElse(toolChoice, DEFAULT_TOOL_CHOICE);
+        this.tokenCountingConfig = Objects.requireNonNullElse(tokenCountingConfig, TokenCountingConfig.DEFAULT);
     }
 
     public SimpleOpenAIModelOptions merge(SimpleOpenAIModelOptions other) {

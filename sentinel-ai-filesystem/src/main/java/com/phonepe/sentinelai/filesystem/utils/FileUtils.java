@@ -16,15 +16,13 @@
 
 package com.phonepe.sentinelai.filesystem.utils;
 
-import com.phonepe.sentinelai.core.utils.AgentUtils;
 
+import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 
 @UtilityClass
@@ -77,30 +75,15 @@ public class FileUtils {
      * @param append   Whether to append to the existing file or overwrite it.
      * @return true if the write operation was successful, false otherwise.
      */
+    @SneakyThrows
     public static boolean write(Path filePath, byte[] data, boolean append) {
-        final Path tmp = filePath.resolveSibling(filePath.getFileName().toString() + ".tmp");
         final StandardOpenOption[] options = append ? new StandardOpenOption[]{
                 StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
         } : new StandardOpenOption[]{
                 StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING
         };
-        try {
-            Files.write(tmp, data, options);
-            Files.move(tmp, filePath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            return true;
-        }
-        catch (IOException e) {
-            // Fallback if atomic move not supported
-            try {
-                Files.move(tmp, filePath, StandardCopyOption.REPLACE_EXISTING);
-                return true;
-            }
-            catch (IOException ex) {
-                final var root = AgentUtils.rootCause(ex);
-                log.error("Could not create file %s: %s".formatted(filePath, root.getMessage()), root);
-                return false;
-            }
-        }
+        Files.write(filePath, data, options);
+        return true;
     }
 
 }

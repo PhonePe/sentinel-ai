@@ -57,8 +57,8 @@ public class FileSystemSessionStore implements SessionStore {
                                                    DataPointer pointer,
                                                    QueryDirection queryDirection) {
         return summaryStore.getMessageStorage(sessionId)
-                .orElseThrow(() -> new IllegalStateException("Message storage not found for session: " + sessionId))
-                .readMessages(count, skipSystemPrompt, pointer, queryDirection);
+                .map(storage -> storage.readMessages(count, skipSystemPrompt, pointer, queryDirection))
+                .orElseGet(() -> new BiScrollable<>(List.of(), new DataPointer(null, null)));
     }
 
     @Override
