@@ -64,6 +64,11 @@
             </dependency>
             <dependency>
                 <groupId>com.phonepe.sentinel-ai</groupId>
+                <artifactId>sentinel-ai-disk-session</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.phonepe.sentinel-ai</groupId>
                 <artifactId>sentinel-ai-configured-agents</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -117,6 +122,11 @@
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-session</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-disk-session</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
