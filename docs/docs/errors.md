@@ -58,7 +58,7 @@ if (response.isSuccessful()) {
 
 ## Retry Configuration
 
-As discussed in the [Tools & Retries](tools.md#retry-configuration) section, you can configure automatic retries for specific error types using `RetrySetup`.
+As discussed in the [Tool Retries & Timeouts](tools.md#tool-retries-timeouts) section, you can configure automatic retries for specific error types using `RetrySetup`.
 
 ```java
 final var retrySetup = RetrySetup.builder()

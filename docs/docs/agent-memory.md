@@ -5,36 +5,41 @@ description: Managing persistent agent memory across sessions in Sentinel AI
 
 # Agent Memory
 
-Agent Memory is a powerful feature that allows agents to remember information across different sessions and users. Unlike conversation history (which is session-specific), Agent Memory extracts semantic, episodic, or procedural information and stores it for long-term retrieval.
+Agent Memory is a powerful feature that allows agents to remember information across different sessions and users. Unlike conversation history (which is session-specific and typically ephemeral), Agent Memory extracts semantic, episodic, or procedural information and stores it in a persistent store for long-term retrieval.
+
+## Agent Memory vs. Conversation History
+
+It is important to distinguish between these two:
+
+| Feature | Conversation History | Agent Memory |
+|---------|----------------------|--------------|
+| **Scope** | Current Session | Cross-session / Cross-user |
+| **Storage** | Typically RAM or Session Store | Vector Database or File System |
+| **Retrieval** | All messages sent to LLM | Semantic search based on relevance |
+| **Content** | Raw messages | Extracted facts, procedures, and events |
 
 ## Agent Memory Extension
 
-The `AgentMemoryExtension` is used to enable memory capabilities for an agent. It handles:
-1. **Memory Retrieval**: Searching and injecting relevant memories into the system prompt before processing a request.
-2. **Memory Extraction**: Analyzing the conversation after a request is completed to extract new memories.
+The `AgentMemoryExtension` enables memory capabilities. It handles memory retrieval (injecting relevant facts into the prompt) and memory extraction (learning from the current conversation).
 
-### Configuration
+### Configuration Options
 
-To use Agent Memory, you need to add the `sentinel-ai-agent-memory` dependency:
+The `AgentMemoryExtension` can be configured using its builder:
 
-```xml
-<dependency>
-    <groupId>com.phonepe.sentinel-ai</groupId>
-    <artifactId>sentinel-ai-agent-memory</artifactId>
-</dependency>
-```
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `memoryStore` | `AgentMemoryStore` | **Required** | The storage implementation for memories. |
+| `memoryExtractionMode` | `MemoryExtractionMode` | `INLINE` | How memories are extracted. See [Extraction Modes](#memory-extraction-modes). |
+| `minRelevantReusabilityScore` | `int` | `0` | Minimum score (0-10) for a memory to be saved or retrieved. Helps filter "noise". |
+| `objectMapper` | `ObjectMapper` | Default Mapper | Used for serializing memory units. |
 
-Then, configure the extension in your `Agent` or `AgentSetup`:
+### Example Setup
 
 ```java
-final var memoryStore = FileSystemAgentMemoryStorage.builder()
-        .basePath("/path/to/memory/store")
-        .build();
-
 final var memoryExtension = AgentMemoryExtension.builder()
         .memoryStore(memoryStore)
-        .memoryExtractionMode(MemoryExtractionMode.INLINE) // Extract memory during the main model call
-        .minRelevantReusabilityScore(7) // Only store/retrieve high-quality memories
+        .memoryExtractionMode(MemoryExtractionMode.INLINE)
+        .minRelevantReusabilityScore(7) // Only "highly reusable" memories
         .build();
 
 final var agent = new MyAgent(AgentSetup.builder()
@@ -45,48 +50,59 @@ final var agent = new MyAgent(AgentSetup.builder()
 
 ## Memory Extraction Modes
 
-The `MemoryExtractionMode` determines how and when memories are extracted from the conversation:
+The `MemoryExtractionMode` determines the lifecycle of memory creation:
 
 | Mode | Description |
 |------|-------------|
-| `INLINE` | Extraction is performed as a secondary task in the same model call as the primary request. This is efficient but only supported in `DIRECT` (non-streaming) mode. |
-| `OUT_OF_BAND` | Extraction is performed as an asynchronous, separate model call after the primary response is generated. This is required for streaming mode. |
-| `DISABLED` | No new memories are extracted, though existing memories can still be retrieved. |
-
-## Memory Scopes
-
-Memories can be stored with different scopes to control their visibility:
-
-* **`AGENT`**: Shared across all users of the agent. Useful for "learning" facts about the agent's domain or tools.
-* **`ENTITY`**: Scoped to a specific user or entity (e.g., a customer ID). These memories are only retrieved when the same `userId` or `entityId` is present in the `AgentRequestMetadata`.
-
-## Memory Types
-
-Sentinel AI categorizes memories into three types:
-
-1. **`SEMANTIC`**: General facts (e.g., "The user lives in Bangalore").
-2. **`EPISODIC`**: Specific events or interactions (e.g., "The user complained about a delayed order on Tuesday").
-3. **`PROCEDURAL`**: Learned sequences of actions or preferences (e.g., "The user prefers to get summary before detail").
+| `INLINE` | Extraction happens during the primary model call using structured output. **Nuance:** This is the most efficient mode but is **not supported** in streaming mode. Sentinel AI will automatically force an out-of-band extraction if the agent is run in streaming mode. |
+| `OUT_OF_BAND` | Extraction happens as a separate, asynchronous model call after the primary response is generated. This ensures extraction works even with streaming. |
+| `DISABLED` | No new memories are extracted. Useful for read-only memory agents. |
 
 ## Storage Implementations
 
-Sentinel AI provides several storage implementations for Agent Memory:
+Sentinel AI requires an `EmbeddingModel` to generate vector representations of memories for semantic search.
 
-### File System Storage
-Available in `sentinel-ai-filesystem`. Ideal for local development or small-scale applications.
+### File System Storage (`sentinel-ai-filesystem`)
+
+Ideal for local development or small-scale applications. It stores memories as JSON files and vectors in a local directory.
 
 ```java
 final var storage = FileSystemAgentMemoryStorage.builder()
-        .basePath("./data/memory")
+        .baseDir("./data/memory")
+        .mapper(objectMapper)
+        .embeddingModel(embeddingModel) // e.g., LocalEmbeddingModel or OpenAIEmbeddingModel
         .build();
 ```
 
-### Elasticsearch Storage
-Available in `sentinel-ai-storage-es`. Recommended for production use cases requiring fast vector search or high scalability.
+!!!warning "Performance"
+    `FileSystemAgentMemoryStorage` performs a linear scan and manual cosine similarity calculation for search. It is not intended for production use with thousands of memories.
+
+### Elasticsearch Storage (`sentinel-ai-storage-es`)
+
+Recommended for production. Uses Elasticsearch's native KNN (k-nearest neighbors) search for efficient retrieval.
 
 ```java
 final var storage = ESAgentMemoryStorage.builder()
         .client(esClient)
-        .index("agent_memories")
+        .embeddingModel(embeddingModel)
+        .indexPrefix("prod") // Optional: prefixes the 'agent-memories' index
         .build();
 ```
+
+!!!note "Vector Dimensions"
+    The Elasticsearch implementation automatically determines vector dimensions based on the provided `EmbeddingModel` during initial index creation. If you change your embedding model later, you may need to recreate the index to match the new dimension count.
+
+## Tips and Nuances
+
+*   **Reusability Scores**: The LLM assigns a reusability score to each extracted memory. Use `minRelevantReusabilityScore` (e.g., `7`) to prevent your store from being cluttered with session-specific trivia.
+*   **Memory Scopes**: 
+    *   **`AGENT`**: Shared knowledge (e.g., "Field 'X' in the database refers to User Salary").
+    *   **`ENTITY`**: User-specific (e.g., "User prefers dark mode").
+*   **Facts Injection**: Memories are injected as `Facts` into the system prompt. This happens automatically based on the `userId` provided in `AgentRequestMetadata`.
+
+## Dangers and Risks
+
+*   **PII & Privacy**: Since memories are stored persistently across sessions, be extremely careful about extracting Personal Identifiable Information (PII). You can use a `AgentMessagesPreProcessor` to mask data before it reaches the extraction task.
+*   **Hallucinations**: The LLM might "remember" things that weren't explicitly stated or were misunderstood. Periodic auditing of the memory store is recommended.
+*   **Token Overhead**: Retrieving too many memories (high `count`) can bloat your system prompt and increase costs/latency.
+*   **Embedding Costs**: Every save and every search requires an embedding model call. If using remote models (like OpenAI), this adds to your per-request cost.

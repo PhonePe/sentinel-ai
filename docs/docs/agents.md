@@ -181,34 +181,9 @@ The `RetrySetup` class is a configuration class that is used to configure the re
 |---------------------|------------------------|-------------------------------------------------------------------------------------------------|
 | `totalAttempts`   | `int`                  | Total number of attempts to make. This includes the successful attempts.                        |
 | `delayAfterFailedAttempt` | `Duration`             | Delay after a failed attempt before retrying.                                                   |
-| `retriableErrorTypes` | `Set<ErrorTypes>` | Specific error types to retry on. If not provided, pre-defined set of error types are retried.  Check [relevant section](#default-error-codes). |
-                                    
-
-#### Default Error Codes
-The following error codes are retried by default:
-
-| Error Code                    | Description                                   | Retriable |
-|-------------------------------|-----------------------------------------------|-----------|
-| SUCCESS                       | Success                                       | No        |
-| NO_RESPONSE                   | No response                                   | Yes       |
-| REFUSED                       | Refused                                       | No        |
-| FILTERED                      | Content filtered                              | No        |
-| LENGTH_EXCEEDED               | Content length exceeded                       | No        |
-| TOOL_CALL_PERMANENT_FAILURE   | Tool call failed permanently for tool         | No        |
-| TOOL_CALL_TEMPORARY_FAILURE   | Tool call failed temporarily for tool         | Yes       |
-| JSON_ERROR                    | Error parsing JSON                            | Yes       |
-| SERIALIZATION_ERROR           | Error serializing object to JSON              | Yes       |
-| DESERIALIZATION_ERROR         | Error deserializing object to JSON            | Yes       |
-| UNKNOWN_FINISH_REASON         | Unknown finish reason                         | Yes       |
-| GENERIC_MODEL_CALL_FAILURE    | Model call failed with error                  | Yes       |
-| DATA_VALIDATION_FAILURE       | Model data validation failed. Errors          | Yes       |
-| FORCED_RETRY                  | Retry has been forced                         | Yes       |
-| UNKNOWN                       | Unknown response                              | Yes       |
-
-!!!warning
-    Refer to [ErrorCode.java](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-core/src/main/java/com/phonepe/sentinelai/core/errors/ErrorType.java){:target="_blank"} to get the latest list of error codes.
-
-### Sample setup
+| `retriableErrorTypes` | `Set<ErrorTypes>` | Specific error types to retry on. If not provided, a pre-defined set of error types are retried. See [Error Handling](errors.md) for details. |
+                                     
+ ### Sample setup
 
 Sample code for creating settings for an agent:
 

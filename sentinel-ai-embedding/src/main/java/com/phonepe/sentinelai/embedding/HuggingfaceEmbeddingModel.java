@@ -33,14 +33,14 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A model that uses huggingface models to get embeddings. Model will be downloaded automatically.
  * Check <a href="https://docs.djl.ai/master/docs/load_model.html">...</a> for more information on how to load models
  */
 @Slf4j
-public class HuggingfaceEmbeddingModel implements EmbeddingModel, AutoCloseable {
-    private static final int MAX_LENGTH = 10_000;
+public class HuggingfaceEmbeddingModel implements EmbeddingModel {
 
     @RequiredArgsConstructor
     private static final class PredictorFactory extends BasePooledObjectFactory<Predictor<String, float[]>> {
@@ -67,23 +67,23 @@ public class HuggingfaceEmbeddingModel implements EmbeddingModel, AutoCloseable 
     }
 
     private final String modelUrl;
-    private final int maxLength;
     private final ZooModel<String, float[]> zooModel;
 
     // The pool is needed as predictor is not threadsafe
     private final GenericObjectPool<Predictor<String, float[]>> predictors;
 
+    private AtomicInteger dimensions = new AtomicInteger(0);
+
     public HuggingfaceEmbeddingModel() {
-        this(null, MAX_LENGTH);
+        this(null);
     }
 
     @Builder
     @SneakyThrows
-    public HuggingfaceEmbeddingModel(String modelUrl, int maxLength) {
+    public HuggingfaceEmbeddingModel(String modelUrl) {
         this.modelUrl = Objects.requireNonNullElse(modelUrl,
                                                    "djl://ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
 
-        this.maxLength = Math.max(maxLength, MAX_LENGTH);
         System.setProperty("OPT_OUT_TRACKING", "true"); //DJL DIALS HOME ...
 
         Criteria<String, float[]> criteria = Criteria.builder()
@@ -102,6 +102,11 @@ public class HuggingfaceEmbeddingModel implements EmbeddingModel, AutoCloseable 
     public void close() {
         predictors.close();
         zooModel.close();
+    }
+
+    @Override
+    public int dimensions() {
+        return dimensions.updateAndGet(v -> (v == 0) ? getEmbedding("test").length : v);
     }
 
     @Override
