@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * Disk based storage for messages.
@@ -258,9 +259,10 @@ public class FileSystemMessageStorage {
         if (!Files.exists(filePath, LinkOption.NOFOLLOW_LINKS)) {
             return;
         }
-        Files.lines(filePath, StandardCharsets.UTF_8)
-                .map(line -> readFromJson(line, AgentMessage.class))
-                .forEach(messageConsumer);
+        try (final var lines = Files.lines(filePath, StandardCharsets.UTF_8)) {
+            lines.map(line -> readFromJson(line, AgentMessage.class))
+                    .forEach(messageConsumer);
+        }
     }
 
     @SneakyThrows
