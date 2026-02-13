@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.With;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.List;
 @Value
 @JsonClassDescription("memory to be used by AI Agents to learn new constructs and personalize conversations with users")
 @Builder
+@With
 public class AgentMemory {
     @JsonPropertyDescription("Agent for whom this memory is relevant")
     String agentName;

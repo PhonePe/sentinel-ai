@@ -123,6 +123,10 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     .map(AgentMessage::getMessageId)
                     .collect(Collectors.toUnmodifiableSet());
 
+            sessionStore.saveSession(SessionSummary.builder()
+                    .sessionId(sessionId)
+                    .updatedAt(AgentUtils.epochMicro())
+                    .build());
             sessionStore.saveMessages(sessionId, runId, messages);
 
             String nextPointer = null;
@@ -187,6 +191,22 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                             .getTimestamp());
             assertNotNull(responseNewer.getPointer());
             assertNotNull(responseNewer.getPointer().getNewer());
+            // Verify bi-directional pointer population
+            assertNotNull(responseNewer.getPointer().getOlder(),
+                          "Older pointer should be populated even in NEWER query if input was null");
+
+            final var responseOlderFromNewer = sessionStore.readMessages(sessionId,
+                                                                         10,
+                                                                         true,
+                                                                         responseNewer.getPointer(),
+                                                                         QueryDirection.OLDER);
+            // OLDER than the first message of NEWER result should be empty in this case
+            assertTrue(responseOlderFromNewer.getItems().isEmpty());
+
+            // Verify sessions also has bi-directional pointers
+            final var sessionList = sessionStore.sessions(10, null, QueryDirection.OLDER);
+            assertNotNull(sessionList.getPointer().getOlder());
+            assertNotNull(sessionList.getPointer().getNewer());
 
             final var secondBatchNewer = sessionStore.readMessages(sessionId,
                                                                    10,

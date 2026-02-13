@@ -1,0 +1,38 @@
+{
+  "id" : "chatcmpl-D6BdzKuZpTt2gWEw6j5jyIgEf3qmW",
+  "object" : "chat.completion",
+  "created" : 1770367099,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_f97eff32c5",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_VBWk0q7m7mxMfdDSH0d5EsGw",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":{\"message\":\"Hello, Mr. Santanu! How can I assist you today?\",\"username\":\"Santanu\"},\"memoryOutput\":{\"generatedMemory\":[]}}"
+        }
+      } ],
+      "annotations" : [ ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1271,
+    "completion_tokens" : 45,
+    "total_tokens" : 1316,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 1152
+    }
+  }
+} 
+
+

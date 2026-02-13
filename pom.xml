@@ -55,13 +55,15 @@
         <!-- extensions -->
         <module>sentinel-ai-agent-memory</module>
         <module>sentinel-ai-session</module>
+        <module>sentinel-ai-filesystem</module>
+        <module>sentinel-ai-configured-agents</module>
 
         <!-- Storage implementations -->
         <module>sentinel-ai-storage-es</module>
 
         <!-- All other modules above this -->
         <module>sentinel-ai-bom</module>
-        <module>sentinel-ai-configured-agents</module>
+        <module>sentinel-ai-reporting</module>
     </modules>
 
     <properties>
@@ -88,7 +90,7 @@
         <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
         <sonar.language>java</sonar.language>
         <sonar.qualitygate.wait>true</sonar.qualitygate.wait>
-        <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/../sentinel-ai-bom/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/../sentinel-ai-reporting/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <maven-javadoc-plugin.version>3.8.0</maven-javadoc-plugin.version>
         <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
         <commons-text.version>1.13.1</commons-text.version>

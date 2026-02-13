@@ -264,9 +264,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         summarizeConversation(data);
     }
 
-    private boolean isCompationNeeded(final Agent.ProcessingCompletedData<R, T, A> data,
-                                      final List<AgentMessage> messages,
-                                      final AgentSetup agentSetup) {
+    private boolean isCompactionNeeded(final Agent.ProcessingCompletedData<R, T, A> data,
+                                       final List<AgentMessage> messages,
+                                       final AgentSetup agentSetup) {
         if (data.getOutput()
                 .getError()
                 .getErrorType()
@@ -425,9 +425,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                           null),
                                                   sessionMessages));
         final var agentSetup = data.getAgentSetup();
-        final var needed = existingSession == null || isCompationNeeded(data,
-                                                                        messages,
-                                                                        agentSetup);
+        final var title = AgentUtils.getIfNotNull(existingSession, SessionSummary::getTitle, null);
+        final var needed = Strings.isNullOrEmpty(title)
+                || isCompactionNeeded(data, messages, agentSetup);
         if (!needed) {
             log.debug("Summarization not needed based on current state");
             return;

@@ -1,0 +1,38 @@
+{
+  "id" : "chatcmpl-D6Be5hbX3cAqUOyqmze6Diwk3sZso",
+  "object" : "chat.completion",
+  "created" : 1770367105,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_f97eff32c5",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_kYCxWUDNDS4PlzbSfoUw4ezw",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":{\"message\":\"That's great to hear! Sunny days in Bangalore can be quite pleasant. Do you have any plans to enjoy the weather today?\",\"username\":\"Santanu\"},\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"The user mentioned that today is sunny in Bangalore.\",\"name\":\"UserWeatherUpdate\",\"reusabilityScore\":5,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"weather\",\"Bangalore\"],\"type\":\"EPISODIC\"}]}}"
+        }
+      } ],
+      "annotations" : [ ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1563,
+    "completion_tokens" : 107,
+    "total_tokens" : 1670,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 1408
+    }
+  }
+} 
+
+
