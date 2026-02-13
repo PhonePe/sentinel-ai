@@ -48,6 +48,16 @@ final var agent = new MyAgent(AgentSetup.builder()
         .build());
 ```
 
+## Memory Tools
+
+The `AgentMemoryExtension` provides a specialized tool for semantic memory retrieval.
+
+| Tool Name | Description | Parameters |
+|-----------|-------------|------------|
+| `agent_memory_extension_find_memories` | Retrieves relevant memories from the persistent store based on a natural language query. | `query` (String) |
+
+When this extension is registered, the agent is instructed to use this tool to check for relevant background information before proceeding with complex tasks.
+
 ## Memory Extraction Modes
 
 The `MemoryExtractionMode` determines the lifecycle of memory creation:

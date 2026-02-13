@@ -16,6 +16,13 @@ The `AgentSessionExtension` provides automated conversation history management a
 - **Pre-filtering**: Supports filtering messages before persistence (e.g., removing system prompts or failed tool calls).
 - **Message Selection**: Supports selecting specific messages for context (e.g., removing unpaired tool calls).
 
+## Tools
+
+Unlike the Memory or Registry extensions, the `AgentSessionExtension` **does not expose any tools** to the agent. It operates strictly through automated background processes:
+1.  **Fact Injection**: Injects the current session summary into the system prompt.
+2.  **History Injection**: Prepends historical messages to the message list before calling the model.
+3.  **Post-Processing**: Captures new messages and triggers summarization after the agent execution finishes.
+
 ## Configuration
 
 The extension is configured using the `AgentSessionExtensionSetup` class.

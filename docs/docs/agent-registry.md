@@ -206,6 +206,18 @@ public class MyCustomAgent extends RegisterableAgent<MyCustomAgent> {
 agentRegistry.register(new MyCustomAgent(setup));
 ```
 
+## Registry Tools
+
+The `AgentRegistry` extension provides several tools that allow the parent agent to discover and interact with registered agents.
+
+| Tool Name | Description | Parameters |
+|-----------|-------------|------------|
+| `agent_registry_get_agent_metadata` | Retrieves detailed metadata for a specific agent, including its I/O schema and description. | `agentId` (String) |
+| `agent_registry_invoke_agent` | Executes a specific agent with a provided JSON input and returns the structured response. | `agentId` (String), `agentInput` (String) |
+
+!!! info "Conditional Tool Exposure"
+    The `agent_registry_get_agent_metadata` tool is only exposed if the registry is configured with `AgentMetadataAccessMode.METADATA_TOOL_LOOKUP`. If set to `INCLUDE_IN_PROMPT` (default), agent metadata is injected directly into the facts, and this tool is removed to save on tool definition overhead.
+
 ## Planner-Worker Discovery
 
 The `AgentRegistry` extension facilitates a "Planner-Worker" architecture by automatically exposing registered agents as tools to the parent agent. 
