@@ -6,3 +6,6 @@ nav:
   - using-mcp-servers.md
   - calling-remote-services.md
   - agent-registry.md
+  - agent-memory.md
+  - observability.md
+  - errors.md

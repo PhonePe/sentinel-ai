@@ -107,7 +107,7 @@ public class TestAgent extends Agent<String, String, TestAgent> {
               "Greet the user",
               setup,
               List.of(),
-              ToolUtils.readTools(new ExternalClass()));//(1)!
+              ToolUtils.fromObject(new ExternalClass()));//(1)!
     }
 
     @Override
@@ -117,14 +117,52 @@ public class TestAgent extends Agent<String, String, TestAgent> {
 }
 ```
 
-1. The `ToolUtils.readTools` method will read all the methods annotated with `@Tool` and register them with the agent. 
-    The methods can have complex object types as input and output. They can also optionally have an instance of
-   `AgentRunContext` as the first parameter.
+1. The `ToolUtils.fromObject` (or `ToolUtils.readTools`) method will read all the methods annotated with `@Tool` and 
+    register them with the agent. The methods can have complex object types as input and output. They can also 
+    optionally have an instance of `AgentRunContext` as the first parameter.
 
 As seen in the example, tools can be read and registered directly during agent creation, or by calling the
 `registerTools` method.
 
+## Tool Retries & Timeouts
+
+SentinelAI supports configuring retries and timeouts at both the model level and the individual tool level.
+
+### Model Call Retries & Timeouts
+
+The `ModelSettings` object allows you to configure a global timeout for LLM calls using `java.time.Duration`. Additionally, you can provide a `RetrySetup` in `AgentSetup` to handle transient failures.
+
+```java
+final var agentSetup = AgentSetup.builder()
+        .model(model)
+        .modelSettings(ModelSettings.builder()
+                .timeout(Duration.ofSeconds(30)) //(1)!
+                .build())
+        .retrySetup(RetrySetup.builder()
+                .totalAttempts(3) //(2)!
+                .delayAfterFailedAttempt(Duration.ofSeconds(1))
+                .retriableErrorTypes(Set.of(ErrorType.JSON_ERROR, ErrorType.MODEL_CALL_COMMUNICATION_ERROR)) //(3)!
+                .build())
+        .build();
+```
+
+1. Global timeout for the model call.
+2. Number of retry attempts.
+3. Specific error types that should trigger a retry.
+
+### Individual Tool Timeouts
+
+You can also specify timeouts for individual tools using the `@Tool` annotation. This is useful for tools that might perform long-running operations.
+
+```java
+@Tool(value = "Long running operation", timeoutSeconds = 60)
+public String longRunningTool() {
+    // implementation
+}
+```
+
 ## Using ToolBox
+
 `ToolBox` is a very simple interface to define a set of tools that are related to each other. The tools can be registered
 with the agent all together by registering the toolbox using the `registerToolbox` methods.
 

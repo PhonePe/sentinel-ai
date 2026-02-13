@@ -138,12 +138,41 @@ configure the model. The class is available in the core library itself and provi
 | `maxTokens`         | `Integer`              | Maximum number of tokens to generate.                                                          |
 | `temperature`       | `Float`                | Amount of randomness to inject in output. Lower values make the output more predictable.       |
 | `topP`              | `Float`                | Probabilistic sum of tokens to consider for each subsequent token. Range: 0-1.                 |
-| `timeout`           | `Float`                | Timeout for model calls in seconds.                                                            |
+| `timeout`           | `Duration`             | Timeout for model calls.                                                                       |
 | `parallelToolCalls` | `Boolean`              | Whether to call tools in parallel or not.                                                      |
 | `seed`              | `Integer`              | Seed for random number generator to make output more predictable.                              |
 | `presencePenalty`   | `Float`                | Penalty for adding new tokens based on their presence in the output so far.                    |
 | `frequencyPenalty`  | `Float`                | Penalty for adding new tokens based on how many times they have appeared in the output so far. |
 | `logitBias`         | `Map<String, Integer>` | Controls the likelihood of specific tokens being generated.                                    |
+
+### Model Specific Options
+
+Some models support additional configuration options that are not part of the standard `ModelSettings`. For example, `SimpleOpenAIModel` supports `SimpleOpenAIModelOptions`.
+
+#### Token Counting Configuration
+
+You can tune how Sentinel AI estimates token usage for OpenAI models by providing a `TokenCountingConfig`. This is useful for adjusting for specific prompt formats or model-specific overheads.
+
+```java
+final var tokenConfig = TokenCountingConfig.builder()
+        .messageOverHead(3) // Overhead tokens per message
+        .nameOverhead(1)    // Overhead tokens if 'name' is provided in message
+        .assistantPrimingOverhead(3) // Tokens added at the end of the prompt to prime assistant
+        .formattingOverhead(10) // Overhead for structured tool arguments
+        .build();
+
+final var modelOptions = SimpleOpenAIModelOptions.builder()
+        .tokenCountingConfig(tokenConfig)
+        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
+        .build();
+
+final var model = new SimpleOpenAIModel<>(
+        "gpt-4o",
+        client,
+        objectMapper,
+        modelOptions // Pass options here
+);
+```
 
 ### Retry Setup
 The `RetrySetup` class is a configuration class that is used to configure the retry mechanism for model calls.
@@ -189,6 +218,7 @@ final var agentSetup = AgentSetup.builder()
         .mapper(objectMapper)
         .modelSettings(ModelSettings.builder()
                                .temperature(0.1f)
+                               .timeout(Duration.ofSeconds(10))
                                .seed(1)
                                .build())
         .build();
@@ -536,11 +566,48 @@ public class CustomAgent extends Agent<MyRequest, MyResponse, CustomAgent> {
 
 Use advanced options if you need to:
 
-- Approve or reject tool runs dynamically
-- Add custom validation logic for model outputs
-- Handle errors in a custom way
+- approve or reject tool runs dynamically
+- add custom validation logic for model outputs
+- handle errors in a custom way
 
-Refer to the Javadoc for the `Agent` class for more details on each parameter and their advanced usage.
+## Advanced Features
+
+### Output Validation
+
+The `OutputValidator` interface allows you to add custom validation logic for the model's generated response. If validation fails, Sentinel AI can automatically prompt the model to fix the errors.
+
+```java
+public class MyValidator implements OutputValidator<MyRequest, MyResponse> {
+    @Override
+    public OutputValidationResults validate(AgentRunContext<MyRequest> context, MyResponse output) {
+        if (output.getSomeField() < 0) {
+            return OutputValidationResults.builder()
+                .failure(new ValidationFailure("someField must be non-negative"))
+                .build();
+        }
+        return OutputValidationResults.success();
+    }
+}
+```
+
+Register it in the `Agent` constructor:
+
+```java
+super(MyResponse.class, systemPrompt, setup, extensions, tools, approvalSeeker, new MyValidator(), errorHandler);
+```
+
+### Message Pre-processors
+
+`AgentMessagesPreProcessor` allows you to inspect or modify the list of messages just before they are sent to the LLM. This is useful for custom compaction, PII masking, or logging.
+
+```java
+agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
+    // Modify messages if needed
+    return AgentMessagesPreProcessResult.builder()
+        .messages(allMessages) // Return the (modified) list
+        .build();
+});
+```
 
 ## Extensions
 

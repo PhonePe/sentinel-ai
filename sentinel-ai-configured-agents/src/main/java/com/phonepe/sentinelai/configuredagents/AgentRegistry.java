@@ -191,6 +191,16 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
      * @param agent The agent to be registered
      * @return The metadata of the configured agent if successful, empty otherwise
      */
+    public Optional<AgentMetadata> register(@NonNull final RegisterableAgent<? extends RegisterableAgent<?>> agent) {
+        return configureAgent(agent);
+    }
+
+    /**
+     * Register a new agent. This will be treated as a singleton and reused when needed.
+     *
+     * @param agent The agent to be registered
+     * @return The metadata of the configured agent if successful, empty otherwise
+     */
     public Optional<AgentMetadata> configureAgent(@NonNull final RegisterableAgent<? extends RegisterableAgent<?>> agent) {
         final var fixedConfig = AgentConfiguration.fixConfiguration(agent
                 .agentConfiguration(), mapper);
