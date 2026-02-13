@@ -16,6 +16,8 @@
 
 package com.phonepe.sentinelai.core.events;
 
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
+
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
@@ -36,6 +38,12 @@ public class OutputGeneratedAgentEvent extends AgentEvent {
      * Serialized content for structured output
      */
     String content;
+
+    /**
+     * Usage stats for the model.
+     */
+    ModelUsageStats usage;
+
     /**
      * Elapsed time taken to generate the final output
      */
@@ -48,9 +56,11 @@ public class OutputGeneratedAgentEvent extends AgentEvent {
                                      String sessionId,
                                      String userId,
                                      @NonNull String content,
+                                     ModelUsageStats usage,
                                      @NonNull Duration elapsedTime) {
         super(EventType.OUTPUT_GENERATED, agentName, runId, sessionId, userId);
         this.content = content;
+        this.usage = usage;
         this.elapsedTime = elapsedTime;
     }
 

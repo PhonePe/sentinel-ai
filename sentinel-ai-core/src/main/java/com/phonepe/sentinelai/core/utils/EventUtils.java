@@ -169,6 +169,7 @@ public class EventUtils {
                                                               .getMapper()
                                                               .writeValueAsString(output
                                                                       .getData()),
+                                                      output.getUsage(),
                                                       Duration.ofMillis(stopwatch
                                                               .elapsed(TimeUnit.MILLISECONDS)));
             }
@@ -179,6 +180,7 @@ public class EventUtils {
                                                   context.getUserId(),
                                                   output.getError()
                                                           .getErrorType(),
+                                                  output.getUsage(),
                                                   output.getError()
                                                           .getMessage(),
                                                   Duration.ofMillis(stopwatch

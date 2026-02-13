@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.core.events;
 
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -40,6 +41,11 @@ public class OutputErrorAgentEvent extends AgentEvent {
     ErrorType errorType;
 
     /**
+     * Usage stats for the model.
+     */
+    ModelUsageStats usage;
+
+    /**
      * Serialized content for structured output
      */
     String content;
@@ -55,10 +61,12 @@ public class OutputErrorAgentEvent extends AgentEvent {
                                  String sessionId,
                                  String userId,
                                  ErrorType errorType,
+                                 ModelUsageStats usage,
                                  @NonNull String content,
                                  @NonNull Duration elapsedTime) {
         super(EventType.OUTPUT_ERROR, agentName, runId, sessionId, userId);
         this.errorType = errorType;
+        this.usage = usage;
         this.content = content;
         this.elapsedTime = elapsedTime;
     }
