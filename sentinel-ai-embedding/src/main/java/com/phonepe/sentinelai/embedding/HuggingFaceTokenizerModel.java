@@ -27,7 +27,7 @@ import java.util.Objects;
 /**
  * A tokenizer model that uses models hosted on Hugging Face
  */
-public class HuggingFaceTokenizerModel implements TokenizerModel, AutoCloseable {
+public class HuggingFaceTokenizerModel implements TokenizerModel {
     private static final int MAX_LENGTH = 10_000;
     private final String modelName;
     private final int maxLength;

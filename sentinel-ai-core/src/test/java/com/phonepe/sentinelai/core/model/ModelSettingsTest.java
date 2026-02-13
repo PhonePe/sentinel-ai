@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.core.model;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,7 +53,7 @@ class ModelSettingsTest {
                 .maxTokens(10)
                 .temperature(0.5f)
                 .topP(0.9f)
-                .timeout(30f)
+                .timeout(Duration.ofSeconds(30))
                 .parallelToolCalls(Boolean.TRUE)
                 .seed(123)
                 .presencePenalty(0.1f)
@@ -73,7 +74,7 @@ class ModelSettingsTest {
                 .maxTokens(50)
                 .temperature(0.1f)
                 .topP(0.2f)
-                .timeout(10f)
+                .timeout(Duration.ofSeconds(10))
                 .parallelToolCalls(Boolean.FALSE)
                 .seed(42)
                 .presencePenalty(0.3f)
@@ -97,7 +98,7 @@ class ModelSettingsTest {
         assertEquals(100, merged.getMaxTokens());
         assertEquals(0.9f, merged.getTemperature());
         assertEquals(0.2f, merged.getTopP());
-        assertEquals(10f, merged.getTimeout());
+        assertEquals(Duration.ofSeconds(10), merged.getTimeout());
         assertEquals(Boolean.FALSE, merged.getParallelToolCalls());
         assertEquals(42, merged.getSeed());
         assertEquals(0.5f, merged.getPresencePenalty());
@@ -135,7 +136,7 @@ class ModelSettingsTest {
                 .maxTokens(7)
                 .temperature(0.7f)
                 .topP(0.3f)
-                .timeout(5f)
+                .timeout(Duration.ofSeconds(5))
                 .parallelToolCalls(Boolean.TRUE)
                 .seed(77)
                 .presencePenalty(0.11f)
@@ -159,7 +160,7 @@ class ModelSettingsTest {
         assertEquals(7, merged.getMaxTokens());
         assertEquals(0.7f, merged.getTemperature());
         assertEquals(0.3f, merged.getTopP());
-        assertEquals(5f, merged.getTimeout());
+        assertEquals(Duration.ofSeconds(5), merged.getTimeout());
         assertEquals(Boolean.TRUE, merged.getParallelToolCalls());
         assertEquals(77, merged.getSeed());
         assertEquals(0.11f, merged.getPresencePenalty());

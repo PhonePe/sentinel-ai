@@ -21,6 +21,7 @@ import lombok.Builder.Default;
 import lombok.Value;
 import lombok.With;
 
+import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -51,7 +52,7 @@ public class ModelSettings {
     /**
      * Timeout for calls
      */
-    Float timeout;
+    Duration timeout;
 
     /**
      * Whether to call tools in parallel tool calls or not

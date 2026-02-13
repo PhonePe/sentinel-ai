@@ -328,6 +328,16 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
         return Optional.empty();
     }
 
+    /**
+     * Register a new agent. This will be treated as a singleton and reused when needed.
+     *
+     * @param agent The agent to be registered
+     * @return The metadata of the configured agent if successful, empty otherwise
+     */
+    public Optional<AgentMetadata> register(@NonNull final RegisterableAgent<? extends RegisterableAgent<?>> agent) {
+        return configureAgent(agent);
+    }
+
     @Override
     public Map<String, ExecutableTool> tools() {
         final var tools = ToolUtils.readTools(this);

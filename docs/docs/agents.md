@@ -138,12 +138,41 @@ configure the model. The class is available in the core library itself and provi
 | `maxTokens`         | `Integer`              | Maximum number of tokens to generate.                                                          |
 | `temperature`       | `Float`                | Amount of randomness to inject in output. Lower values make the output more predictable.       |
 | `topP`              | `Float`                | Probabilistic sum of tokens to consider for each subsequent token. Range: 0-1.                 |
-| `timeout`           | `Float`                | Timeout for model calls in seconds.                                                            |
+| `timeout`           | `Duration`             | Timeout for model calls.                                                                       |
 | `parallelToolCalls` | `Boolean`              | Whether to call tools in parallel or not.                                                      |
 | `seed`              | `Integer`              | Seed for random number generator to make output more predictable.                              |
 | `presencePenalty`   | `Float`                | Penalty for adding new tokens based on their presence in the output so far.                    |
 | `frequencyPenalty`  | `Float`                | Penalty for adding new tokens based on how many times they have appeared in the output so far. |
 | `logitBias`         | `Map<String, Integer>` | Controls the likelihood of specific tokens being generated.                                    |
+
+### Model Specific Options
+
+Some models support additional configuration options that are not part of the standard `ModelSettings`. For example, `SimpleOpenAIModel` supports `SimpleOpenAIModelOptions`.
+
+#### Token Counting Configuration
+
+You can tune how Sentinel AI estimates token usage for OpenAI models by providing a `TokenCountingConfig`. This is useful for adjusting for specific prompt formats or model-specific overheads.
+
+```java
+final var tokenConfig = TokenCountingConfig.builder()
+        .messageOverHead(3) // Overhead tokens per message
+        .nameOverhead(1)    // Overhead tokens if 'name' is provided in message
+        .assistantPrimingOverhead(3) // Tokens added at the end of the prompt to prime assistant
+        .formattingOverhead(10) // Overhead for structured tool arguments
+        .build();
+
+final var modelOptions = SimpleOpenAIModelOptions.builder()
+        .tokenCountingConfig(tokenConfig)
+        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
+        .build();
+
+final var model = new SimpleOpenAIModel<>(
+        "gpt-4o",
+        client,
+        objectMapper,
+        modelOptions // Pass options here
+);
+```
 
 ### Retry Setup
 The `RetrySetup` class is a configuration class that is used to configure the retry mechanism for model calls.
@@ -152,34 +181,9 @@ The `RetrySetup` class is a configuration class that is used to configure the re
 |---------------------|------------------------|-------------------------------------------------------------------------------------------------|
 | `totalAttempts`   | `int`                  | Total number of attempts to make. This includes the successful attempts.                        |
 | `delayAfterFailedAttempt` | `Duration`             | Delay after a failed attempt before retrying.                                                   |
-| `retriableErrorTypes` | `Set<ErrorTypes>` | Specific error types to retry on. If not provided, pre-defined set of error types are retried.  Check [relevant section](#default-error-codes). |
-                                    
-
-#### Default Error Codes
-The following error codes are retried by default:
-
-| Error Code                    | Description                                   | Retriable |
-|-------------------------------|-----------------------------------------------|-----------|
-| SUCCESS                       | Success                                       | No        |
-| NO_RESPONSE                   | No response                                   | Yes       |
-| REFUSED                       | Refused                                       | No        |
-| FILTERED                      | Content filtered                              | No        |
-| LENGTH_EXCEEDED               | Content length exceeded                       | No        |
-| TOOL_CALL_PERMANENT_FAILURE   | Tool call failed permanently for tool         | No        |
-| TOOL_CALL_TEMPORARY_FAILURE   | Tool call failed temporarily for tool         | Yes       |
-| JSON_ERROR                    | Error parsing JSON                            | Yes       |
-| SERIALIZATION_ERROR           | Error serializing object to JSON              | Yes       |
-| DESERIALIZATION_ERROR         | Error deserializing object to JSON            | Yes       |
-| UNKNOWN_FINISH_REASON         | Unknown finish reason                         | Yes       |
-| GENERIC_MODEL_CALL_FAILURE    | Model call failed with error                  | Yes       |
-| DATA_VALIDATION_FAILURE       | Model data validation failed. Errors          | Yes       |
-| FORCED_RETRY                  | Retry has been forced                         | Yes       |
-| UNKNOWN                       | Unknown response                              | Yes       |
-
-!!!warning
-    Refer to [ErrorCode.java](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-core/src/main/java/com/phonepe/sentinelai/core/errors/ErrorType.java){:target="_blank"} to get the latest list of error codes.
-
-### Sample setup
+| `retriableErrorTypes` | `Set<ErrorTypes>` | Specific error types to retry on. If not provided, a pre-defined set of error types are retried. See [Error Handling](errors.md) for details. |
+                                     
+ ### Sample setup
 
 Sample code for creating settings for an agent:
 
@@ -189,6 +193,7 @@ final var agentSetup = AgentSetup.builder()
         .mapper(objectMapper)
         .modelSettings(ModelSettings.builder()
                                .temperature(0.1f)
+                               .timeout(Duration.ofSeconds(10))
                                .seed(1)
                                .build())
         .build();
@@ -536,11 +541,48 @@ public class CustomAgent extends Agent<MyRequest, MyResponse, CustomAgent> {
 
 Use advanced options if you need to:
 
-- Approve or reject tool runs dynamically
-- Add custom validation logic for model outputs
-- Handle errors in a custom way
+- approve or reject tool runs dynamically
+- add custom validation logic for model outputs
+- handle errors in a custom way
 
-Refer to the Javadoc for the `Agent` class for more details on each parameter and their advanced usage.
+## Advanced Features
+
+### Output Validation
+
+The `OutputValidator` interface allows you to add custom validation logic for the model's generated response. If validation fails, Sentinel AI can automatically prompt the model to fix the errors.
+
+```java
+public class MyValidator implements OutputValidator<MyRequest, MyResponse> {
+    @Override
+    public OutputValidationResults validate(AgentRunContext<MyRequest> context, MyResponse output) {
+        if (output.getSomeField() < 0) {
+            return OutputValidationResults.builder()
+                .failure(new ValidationFailure("someField must be non-negative"))
+                .build();
+        }
+        return OutputValidationResults.success();
+    }
+}
+```
+
+Register it in the `Agent` constructor:
+
+```java
+super(MyResponse.class, systemPrompt, setup, extensions, tools, approvalSeeker, new MyValidator(), errorHandler);
+```
+
+### Message Pre-processors
+
+`AgentMessagesPreProcessor` allows you to inspect or modify the list of messages just before they are sent to the LLM. This is useful for custom compaction, PII masking, or logging.
+
+```java
+agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
+    // Modify messages if needed
+    return AgentMessagesPreProcessResult.builder()
+        .messages(allMessages) // Return the (modified) list
+        .build();
+});
+```
 
 ## Extensions
 

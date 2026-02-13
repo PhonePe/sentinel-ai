@@ -22,7 +22,7 @@ Let us understand a few fundamental constructs before we dive into the implement
 - `AgentCapability`: Capabilities define what an agent gets access to. For example, HTTP tools, MCP tools,
   local/custom tools etc.
 - `AgentConfiguration`: This represents the configuration details of an agent, including its name, description, input,
-  output spec, capabilities, capabilities and other settings.
+  output spec, capabilities and other settings.
 - `AgentConfigurationSource`: The agent configuration source is responsible for providing the configuration details
   for an agent during the build process. A default in-memory source is provided, but you can implement your own source
   based off more permanent storage.
@@ -186,8 +186,50 @@ The following parameters can be configured using the `AgentConfiguration` builde
 | outputSchema      | No        | Output schema for the agent. Defaults to String if missing. |
 | capabilities      | No        | Extra capabilities of the agent.                            |
 
+### Code-Based Agents
+While many agents can be fully configured using JSON/YAML, you might need to register agents implemented entirely in Java. You can do this by extending the `RegisterableAgent` class and registering it with the `AgentRegistry`.
+
+```java
+public class MyCustomAgent extends RegisterableAgent<MyCustomAgent> {
+    public MyCustomAgent(AgentSetup setup) {
+        super(AgentConfiguration.builder()
+                .agentName("custom-agent")
+                .description("A custom agent implemented in Java")
+                .build(),
+              setup,
+              List.of(),
+              Map.of());
+    }
+}
+
+// Registering the code-based agent
+agentRegistry.register(new MyCustomAgent(setup));
+```
+
+## Registry Tools
+
+The `AgentRegistry` extension provides several tools that allow the parent agent to discover and interact with registered agents.
+
+| Tool Name | Description | Parameters |
+|-----------|-------------|------------|
+| `agent_registry_get_agent_metadata` | Retrieves detailed metadata for a specific agent, including its I/O schema and description. | `agentId` (String) |
+| `agent_registry_invoke_agent` | Executes a specific agent with a provided JSON input and returns the structured response. | `agentId` (String), `agentInput` (String) |
+
+!!! info "Conditional Tool Exposure"
+    The `agent_registry_get_agent_metadata` tool is only exposed if the registry is configured with `AgentMetadataAccessMode.METADATA_TOOL_LOOKUP`. If set to `INCLUDE_IN_PROMPT` (default), agent metadata is injected directly into the facts, and this tool is removed to save on tool definition overhead.
+
+## Planner-Worker Discovery
+
+The `AgentRegistry` extension facilitates a "Planner-Worker" architecture by automatically exposing registered agents as tools to the parent agent. 
+
+1. **Discovery via Facts**: The registry injects a list of all available agents (their names and IDs) into the system prompt as "Facts".
+2. **Metadata Lookup**: If configured, the parent agent can use a tool to fetch the detailed I/O schema for a specific agent.
+3. **Automated Tool Exposure**: The registry provides an `invokeAgent` tool to the parent. When the parent LLM decides to delegate a task, it simply calls this tool with the target `agentId` and the required input.
+
+This mechanism allows Planner agents to dynamically discover and utilize any agent registered in the system without requiring explicit code changes to the Planner itself.
+
 ### Loading Agent configurations from file
-Agent Configurations can be leaded into the registry directly into registry from serialized JSON using the following
+Agent Configurations can be loaded into the registry directly into registry from serialized JSON using the following
 functions:
 
 - `loadAgentsFromContent(byte[] content)` - Load agent configurations from serialized JSON content.

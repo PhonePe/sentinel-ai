@@ -188,7 +188,7 @@ public class ESAgentMemoryStorage implements AgentMemoryStore {
                                                 p -> p.text(t -> t))
                                     .properties(ESAgentMemoryDocument.Fields.contentVector,
                                                 p -> p.denseVector(t -> t.dims(
-                                                                               384)
+                                                                               embeddingModel.dimensions())
                                                         .elementType("float")
                                                         .similarity("cosine")
                                                         .index(true)

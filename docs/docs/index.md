@@ -26,11 +26,20 @@ tasks.
 Sentinel AI libraries are published on maven central. Sentinel-ai is arranged as modules:
 
 - `sentinel-ai-core`: The core library that contains the main classes and interfaces for building agents.
-- `sentinel-ai-model-simple-openai`: Using OpenAI api compliant models for agents.
+- `sentinel-ai-models-simple-openai`: Using OpenAI api compliant models for agents.
 - `sentinel-ai-embedding`: Provides embedding models to be used for indexing information in vector databases.
-- `sentinel-ai-agent-memory`: Extension that implements memory extraction and storage from conversations.
-- `sentinel-ai-session`: Extension that can be used to store and update information about a conversation session.
+- `sentinel-ai-agent-memory`: Extension that implements memory extraction and storage from conversations. See [Agent Memory](agent-memory.md).
+- `sentinel-ai-session`: Extension that can be used to store and update information about a conversation session. See [Messages and Sessions](messages-session.md).
 - `sentinel-ai-storage-es`: Elasticsearch based implementation for storage abstractions for agent memory, sessions etc.
+- `sentinel-ai-configured-agents`: Implementation for Agent Registry and Planner-Worker orchestration. See [Agent Registry](agent-registry.md).
+- `sentinel-ai-toolbox-remote-http`: Flexible toolbox for making declarative HTTP calls to remote services. See [Calling Remote Services](calling-remote-services.md).
+- `sentinel-ai-toolbox-mcp`: Support for Model Context Protocol (MCP) servers. See [Using MCP Servers](using-mcp-servers.md).
+- `sentinel-ai-filesystem`: Local file system based storage for memories and sessions.
+
+## Additional Features
+
+- **[Observability](observability.md)**: Monitor your agent with the built-in event bus.
+- **[Agent Registry](agent-registry.md)**: Manage and discover agents dynamically.
 
 ## Getting Started
 

@@ -37,6 +37,31 @@
             <name>Santanu Sinha</name>
             <email>santanu.sinha@gmail.com</email>
         </developer>
+        <developer>
+            <id>praveen97uma</id>
+            <name>Praveen Kumar</name>
+            <email>praveen.k@phonepe.com</email>
+        </developer>
+        <developer>
+            <id>shubham-sharma-12</id>
+            <name>Shubham Sharma</name>
+            <email>shubham.sha12@gmail.com</email>
+        </developer>
+        <developer>
+            <id>avanishp</id>
+            <name>Avanish Pandey</name>
+            <email>avanish.pandey1@phonepe.com</email>
+        </developer>
+        <developer>
+            <id>kanikakhetawat</id>
+            <name>Kanika Khetawat</name>
+            <email>kanikakhetawat.kk@gmail.com</email>
+        </developer>
+        <developer>
+            <id>ektamishra</id>
+            <name>Ekta Mishra</name>
+            <email>ektamishra1999@gmail.com</email>
+        </developer>
     </developers>
 
     <packaging>pom</packaging>

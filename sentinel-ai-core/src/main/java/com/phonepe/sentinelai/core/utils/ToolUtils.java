@@ -61,6 +61,10 @@ public class ToolUtils {
         }).toList();
     }
 
+    public static Map<String, ExecutableTool> fromObject(Object instance) {
+        return readTools(instance);
+    }
+
     public static Map<String, ExecutableTool> readTools(Object instance) {
         Class<?> type = instance.getClass();
         final var tools = new HashMap<String, ExecutableTool>();
