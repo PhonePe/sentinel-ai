@@ -1,0 +1,38 @@
+{
+  "id" : "chatcmpl-D6BeFTthjQFcs0fS3neFduzvB4WxD",
+  "object" : "chat.completion",
+  "created" : 1770367115,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_f97eff32c5",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_DzUcVBB5JVkNiDqAbJN586sr",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"sessionOutput\":{\"title\":\"Weather Inquiry and Response\",\"keywords\":[\"weather\",\"Bangalore\",\"user\"],\"summary\":\"The user inquired about the weather. The response indicated that it is sunny in Bangalore. The assistant addressed the user as Mr. Santanu and asked how he plans to enjoy the weather.\",\"key_points\":[\"User asked about the weather.\",\"Response confirmed sunny weather in Bangalore.\",\"Assistant greeted Mr. Santanu and inquired about his plans.\"],\"key_facts\":[\"User's name is Santanu.\",\"Weather in Bangalore is sunny.\"],\"action_items\":[\"Confirm weather details for user inquiries.\",\"Maintain user memory for future interactions.\"],\"citations\":[],\"sentiment\":\"neutral\",\"confidence\":9,\"metadata\":\"Processed weather inquiry and response.\"}}"
+        }
+      } ],
+      "annotations" : [ ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1585,
+    "completion_tokens" : 161,
+    "total_tokens" : 1746,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+
