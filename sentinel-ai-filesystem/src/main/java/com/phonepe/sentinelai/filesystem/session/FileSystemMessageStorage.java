@@ -43,7 +43,6 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 /**
  * Disk based storage for messages.
