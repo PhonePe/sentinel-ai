@@ -2,6 +2,7 @@ nav:
   - index.md
   - agents.md
   - tools.md
+  - messages-session.md
   - using-mcp-servers.md
   - calling-remote-services.md
   - agent-registry.md
