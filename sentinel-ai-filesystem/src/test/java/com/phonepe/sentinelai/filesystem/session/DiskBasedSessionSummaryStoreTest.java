@@ -56,14 +56,7 @@ class DiskBasedSessionSummaryStoreTest {
         for (int i = 0; i < 15; i++) {
             summaryStore.getMessageStorage("s" + i);
         }
-        // At this point, s0 to s4 should have been evicted from messageStorage cache
-        // but the entries still exist in the map (LinkedHashMap.removeEldestEntry sets messageStorage to null)
-        // Wait, removeEldestEntry returns true, which REMOVES the entry from the map.
-        // Let's verify.
         for (int i = 0; i < 5; i++) {
-            // These should NOT be in cache anymore, so a new FileSystemMessageStorage will be created
-            // We can't easily verify identity without reflecting into the cache.
-            // But we can check that they are still retrievable.
             assertTrue(summaryStore.getMessageStorage("s" + i).isPresent());
         }
     }

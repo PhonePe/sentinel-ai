@@ -296,13 +296,13 @@ public class ESSessionStore implements SessionStore {
         final var oldestResultPtr = (queryDirection == QueryDirection.NEWER) ? hit0Ptr : hitLastPtr;
         final var newestResultPtr = (queryDirection == QueryDirection.NEWER) ? hitLastPtr : hit0Ptr;
 
-        final var older = queryDirection == QueryDirection.OLDER ? oldestResultPtr : (pointer == null ? oldestResultPtr
-                : null);
-        final var newer = queryDirection == QueryDirection.NEWER ? newestResultPtr : (pointer == null ? newestResultPtr
-                : null);
+        final var updatedOlderForNewQuery = pointer == null ? oldestResultPtr : null;
+        final var older = queryDirection == QueryDirection.OLDER ? oldestResultPtr : updatedOlderForNewQuery;
 
-        return new BiScrollable<>(summaries,
-                                  new BiScrollable.DataPointer(older, newer));
+        final var updatedNewerForOldQuery = pointer == null ? newestResultPtr : null;
+        final var newer = queryDirection == QueryDirection.NEWER ? newestResultPtr : updatedNewerForOldQuery;
+
+        return new BiScrollable<>(summaries, new BiScrollable.DataPointer(older, newer));
     }
 
     record MessageScrollPointer(

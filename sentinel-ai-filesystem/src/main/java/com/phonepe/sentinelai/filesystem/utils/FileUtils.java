@@ -30,6 +30,22 @@ import java.nio.file.StandardOpenOption;
 public class FileUtils {
 
     /**
+     * Deletes a file if it exists.
+     *
+     * @param filePath The path of the file to delete.
+     * @return true if the file was deleted or did not exist, false if the deletion failed.
+     */
+    public static boolean delete(Path filePath) {
+        try {
+            return Files.deleteIfExists(filePath);
+        }
+        catch (Exception e) {
+            log.error("Failed to delete file: {}", filePath, e);
+            return false;
+        }
+    }
+
+    /**
      * Ensures that the provided path exists and is a directory with the required permissions. If the path does not
      * exist and createIfNotExists is true, it will attempt to create the directory.
      *
@@ -54,7 +70,7 @@ public class FileUtils {
                 Files.createDirectories(absolutePath);
             }
             catch (Exception e) {
-                throw new RuntimeException("Failed to create directory: " + absolutePath, e);
+                throw new IllegalStateException("Failed to create directory: " + absolutePath, e);
             }
         }
         else {
