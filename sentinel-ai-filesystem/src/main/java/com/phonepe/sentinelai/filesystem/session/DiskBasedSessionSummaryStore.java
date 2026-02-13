@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.filesystem.session;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.phonepe.sentinelai.core.utils.AgentUtils;
@@ -81,14 +80,7 @@ public class DiskBasedSessionSummaryStore {
             if (Files.exists(sessionDir, LinkOption.NOFOLLOW_LINKS)) {
                 try (final var children = Files.walk(sessionDir)) {
                     children.sorted(Comparator.reverseOrder())
-                            .forEach(path -> {
-                                try {
-                                    Files.deleteIfExists(path);
-                                }
-                                catch (Exception e) {
-                                    throw new RuntimeException("Failed to delete file: " + path, e);
-                                }
-                            });
+                            .forEach(FileUtils::delete);
                 }
                 deletedFromDisk = true;
             }
@@ -104,8 +96,7 @@ public class DiskBasedSessionSummaryStore {
         final var stamp = cacheLock.writeLock();
         try {
             final var sessionContainer = cache.compute(sessionId, (id, existing) -> {
-                final var session = Objects.requireNonNullElseGet(existing,
-                                                                  () -> new SessionContainer());
+                final var session = Objects.requireNonNullElseGet(existing, SessionContainer::new);
                 if (session.getMessageStorage() == null) {
                     final var messagePath = sessionRoot.resolve(id)
                             .toAbsolutePath()
@@ -148,20 +139,10 @@ public class DiskBasedSessionSummaryStore {
         final var sessionFilePath = sessionDir.resolve(SUMMARY_FILE_NAME);
         final var writeLock = cacheLock.writeLock();
         try {
-            final var updated = cache.compute(sessionId, (id, existingSummary) -> {
-                final var session = Objects.requireNonNullElseGet(existingSummary, SessionContainer::new);
-                try {
-                    if (FileUtils.write(sessionFilePath,
-                                        objectMapper.writeValueAsBytes(sessionSummary),
-                                        false)) {
-                        return session.setSessionSummary(sessionSummary);
-                    }
-                }
-                catch (JsonProcessingException e) {
-                    throw new RuntimeException("Failed to serialize session summary for session: " + id, e);
-                }
-                return session;
-            });
+            final var updated = cache.compute(sessionId,
+                                              (id, existing) -> writeSession(sessionFilePath,
+                                                                             existing,
+                                                                             sessionSummary));
             final var session = AgentUtils.getIfNotNull(updated, SessionContainer::getSessionSummary, null);
             return session != null
                     && session.getSessionId().equals(sessionId)
@@ -186,20 +167,33 @@ public class DiskBasedSessionSummaryStore {
     }
 
     private Optional<SessionContainer> loadSessionContainerUnsafe(final String sessionId) {
-        return Optional.ofNullable(cache.computeIfAbsent(sessionId, id -> {
-            final var sessionFilePath = sessionRoot.resolve(id).resolve(SUMMARY_FILE_NAME);
-            if (Files.exists(sessionFilePath, LinkOption.NOFOLLOW_LINKS)) {
-                try {
-                    return new SessionContainer()
-                            .setSessionSummary(objectMapper.readValue(sessionFilePath.toFile(),
-                                                                      SessionSummary.class));
-                }
-                catch (Exception e) {
-                    throw new RuntimeException("Failed to read session summary for session: " + id, e);
-                }
-            }
-            return null;
-        }));
+        return Optional.ofNullable(cache.computeIfAbsent(sessionId, this::readSession));
+    }
+
+    @SneakyThrows
+    private SessionContainer readSession(final String sessionId) {
+        final var sessionFilePath = sessionRoot.resolve(sessionId).resolve(SUMMARY_FILE_NAME);
+        if (Files.exists(sessionFilePath, LinkOption.NOFOLLOW_LINKS)) {
+            return new SessionContainer()
+                    .setSessionSummary(objectMapper.readValue(sessionFilePath.toFile(),
+                                                              SessionSummary.class));
+        }
+        return null;
+    }
+
+    @SneakyThrows
+    private SessionContainer writeSession(final Path sessionFilePath,
+                                          final SessionContainer existing,
+                                          final SessionSummary sessionSummary) {
+
+        final var session = Objects.requireNonNullElseGet(existing, SessionContainer::new);
+        if (FileUtils.write(sessionFilePath,
+                            objectMapper.writeValueAsBytes(sessionSummary),
+                            false)) {
+            return session.setSessionSummary(sessionSummary);
+        }
+        throw new IllegalStateException("Failed to write session summary to disk for session: %s"
+                .formatted(sessionSummary.getSessionId()));
     }
 
 }

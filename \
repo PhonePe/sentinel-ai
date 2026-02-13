@@ -16,9 +16,25 @@
 
 package com.phonepe.sentinelai.filesystem.session;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.util.Base64;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.TreeMap;
+import java.util.concurrent.locks.StampedLock;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
-
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
@@ -30,19 +46,6 @@ import com.phonepe.sentinelai.session.QueryDirection;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
-
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Path;
-import java.util.Base64;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.TreeMap;
-import java.util.concurrent.locks.StampedLock;
-import java.util.function.Consumer;
 
 /**
  * Disk based storage for messages.
@@ -111,13 +114,18 @@ public class FileSystemMessageStorage {
                 messageCache.putAll(newMessages);
             }
             else {
-                throw new IllegalStateException("Failed to write messages to file: %s"
-                        .formatted(filePath.toAbsolutePath()));
+                throw new RuntimeException("Failed to write message to file: " + filePath.toAbsolutePath());
             }
         }
         finally {
             lock.unlockWrite(stamp);
         }
+    }
+
+    @SneakyThrows
+    private void populate(Object object, final ByteArrayOutputStream output) {
+        output.write((objectMapper.writeValueAsString(object) + System.lineSeparator())
+                .getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -274,12 +282,6 @@ public class FileSystemMessageStorage {
     @SneakyThrows
     private <T> T readFromJson(String json, Class<T> clazz) {
         return objectMapper.readValue(json, clazz);
-    }
-
-    @SneakyThrows
-    private void populate(Object object, final ByteArrayOutputStream output) {
-        output.write((objectMapper.writeValueAsString(object) + System.lineSeparator())
-                .getBytes(StandardCharsets.UTF_8));
     }
 
 }

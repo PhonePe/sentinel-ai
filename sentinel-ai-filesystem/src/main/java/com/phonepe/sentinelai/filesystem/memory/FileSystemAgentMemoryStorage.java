@@ -37,6 +37,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -44,10 +45,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.StampedLock;
 
 /**
- * Filesystem based implementation of AgentMemoryStore
+ * Filesystem based implementation of AgentMemoryStore.
+ * This is not for serious production use.
  */
 @Slf4j
 public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
+
+    private static final String MEMORY_FILE_NAME = "memory.json";
+    private static final String VECTOR_FILE_NAME = "vector.json";
 
     @Data
     @NoArgsConstructor
@@ -73,6 +78,7 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
     }
 
     @Override
+    @SuppressWarnings("java:S3776")
     public List<AgentMemory> findMemories(String scopeId,
                                           MemoryScope scope,
                                           Set<MemoryType> memoryTypes,
@@ -80,37 +86,42 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
                                           String query,
                                           int minReusabilityScore,
                                           int count) {
-        final float[] queryVector = !Strings.isNullOrEmpty(query) ? embeddingModel.getEmbedding(query) : null;
+        final var queryVector = !Strings.isNullOrEmpty(query)
+                ? embeddingModel.getEmbedding(query)
+                : null;
 
         return cache.values().stream()
                 .filter(stored -> {
                     final var memory = stored.getMemory();
                     if (scope != null && !Strings.isNullOrEmpty(scopeId)) {
-                        if (memory.getScope() != scope) return false;
-                        if (scope == MemoryScope.ENTITY && !scopeId.equals(memory.getScopeId())) return false;
-                    }
-                    if (memoryTypes != null && !memoryTypes.isEmpty() && !memoryTypes.contains(memory
-                            .getMemoryType())) {
-                        return false;
-                    }
-                    if (topics != null && !topics.isEmpty()) {
-                        if (memory.getTopics() == null || memory.getTopics().stream().noneMatch(topics::contains)) {
+                        if (memory.getScope() != scope) {
+                            return false;
+                        }
+                        if (scope == MemoryScope.ENTITY && !scopeId.equals(memory.getScopeId())) {
                             return false;
                         }
                     }
-                    if (minReusabilityScore > 0 && memory.getReusabilityScore() < minReusabilityScore) {
+                    if (memoryTypes != null && !memoryTypes.isEmpty()
+                            && !memoryTypes.contains(memory.getMemoryType())) {
                         return false;
                     }
-                    return true;
+                    if (topics != null && !topics.isEmpty()) {
+                        if (memory.getTopics() == null
+                                || memory.getTopics().stream().noneMatch(topics::contains)) {
+                            return false;
+                        }
+                    }
+                    return minReusabilityScore == 0 || memory.getReusabilityScore() >= minReusabilityScore;
                 })
                 .sorted((a, b) -> {
                     if (queryVector == null) {
-                        final var t1 = a.getMemory().getUpdatedAt();
-                        final var t2 = b.getMemory().getUpdatedAt();
-                        if (t1 == null || t2 == null) {
-                            return t1 == null ? (t2 == null ? 0 : 1) : -1;
+                        final var lhs = a.getMemory().getUpdatedAt();
+                        final var rhs = b.getMemory().getUpdatedAt();
+                        if (lhs == null || rhs == null) {
+                            final var rhsValue = rhs == null ? 0 : 1;
+                            return lhs == null ? rhsValue : -1;
                         }
-                        return t2.compareTo(t1);
+                        return rhs.compareTo(lhs);
                     }
                     return Double.compare(cosineSimilarity(b.getVector(), queryVector),
                                           cosineSimilarity(a.getVector(), queryVector));
@@ -124,10 +135,9 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
     @SneakyThrows
     public Optional<AgentMemory> save(AgentMemory agentMemory) {
         final var now = LocalDateTime.now();
-        final var memoryToSave = agentMemory.toBuilder()
-                .createdAt(agentMemory.getCreatedAt() == null ? now : agentMemory.getCreatedAt())
-                .updatedAt(now)
-                .build();
+        final var memoryToSave = agentMemory
+                .withCreatedAt(Objects.requireNonNullElse(agentMemory.getCreatedAt(), now))
+                .withUpdatedAt(now);
         final var id = UUID.nameUUIDFromBytes(("%s-%s-%s-%s").formatted(
                                                                         memoryToSave.getAgentName(),
                                                                         memoryToSave.getScope(),
@@ -142,8 +152,8 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
         final var stamp = lock.writeLock();
         try {
             final var memoryDir = FileUtils.ensurePath(memoryRoot.resolve(id).toString(), true, true);
-            final var memoryFile = memoryDir.resolve("memory.json");
-            final var vectorFile = memoryDir.resolve("vector.json");
+            final var memoryFile = memoryDir.resolve(MEMORY_FILE_NAME);
+            final var vectorFile = memoryDir.resolve(VECTOR_FILE_NAME);
 
             FileUtils.write(memoryFile, mapper.writeValueAsBytes(memoryToSave), false);
             FileUtils.write(vectorFile, mapper.writeValueAsBytes(vector), false);
@@ -156,18 +166,30 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
         }
     }
 
-    private double cosineSimilarity(float[] vectorA, float[] vectorB) {
-        if (vectorA == null || vectorB == null || vectorA.length != vectorB.length) return 0.0;
-        double dotProduct = 0.0;
-        double normA = 0.0;
-        double normB = 0.0;
-        for (int i = 0; i < vectorA.length; i++) {
-            dotProduct += vectorA[i] * vectorB[i];
-            normA += Math.pow(vectorA[i], 2);
-            normB += Math.pow(vectorB[i], 2);
+    /**
+     * Compute cosine similarity between two vectors.
+     * Returns a value between -1 and 1, where 1 means identical, 0 means orthogonal, and -1 means opposite.
+     * Implementation:
+     * - Compute the dot product of the two vectors.
+     * - Compute the magnitude (norm) of each vector.
+     * - Divide the dot product by the product of the magnitudes.
+     */
+    private double cosineSimilarity(float[] lhs, float[] rhs) {
+        if (lhs == null || rhs == null || lhs.length != rhs.length) {
+            return 0.0;
         }
-        if (normA == 0.0 || normB == 0.0) return 0.0;
-        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        double dotProduct = 0.0;
+        double normLhs = 0.0;
+        double normB = 0.0;
+        for (int i = 0; i < lhs.length; i++) {
+            dotProduct += lhs[i] * rhs[i];
+            normLhs += Math.pow(lhs[i], 2);
+            normB += Math.pow(rhs[i], 2);
+        }
+        if (normLhs == 0.0 || normB == 0.0) {
+            return 0.0;
+        }
+        return dotProduct / (Math.sqrt(normLhs) * Math.sqrt(normB));
     }
 
     @SneakyThrows
@@ -175,8 +197,8 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
         try (final var paths = Files.list(memoryRoot)) {
             paths.filter(Files::isDirectory).forEach(path -> {
                 try {
-                    final var memoryFile = path.resolve("memory.json");
-                    final var vectorFile = path.resolve("vector.json");
+                    final var memoryFile = path.resolve(MEMORY_FILE_NAME);
+                    final var vectorFile = path.resolve(VECTOR_FILE_NAME);
                     if (Files.exists(memoryFile) && Files.exists(vectorFile)) {
                         final var memory = mapper.readValue(memoryFile.toFile(), AgentMemory.class);
                         final var vector = mapper.readValue(vectorFile.toFile(), float[].class);

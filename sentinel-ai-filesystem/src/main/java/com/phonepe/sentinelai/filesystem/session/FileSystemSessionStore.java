@@ -82,6 +82,7 @@ public class FileSystemSessionStore implements SessionStore {
 
     @Override
     @SneakyThrows
+    @SuppressWarnings("java:S3776")
     public BiScrollable<SessionSummary> sessions(int count, String pointer, QueryDirection queryDirection) {
         final var scrollPointer = (pointer == null || pointer.isEmpty())
                 ? null
@@ -132,13 +133,14 @@ public class FileSystemSessionStore implements SessionStore {
                                                                                                                  lastSummary
                                                                                                                          .getSessionId())));
 
-        final String oldestResultPtr = (queryDirection == QueryDirection.NEWER) ? firstPtr : lastPtr;
-        final String newestResultPtr = (queryDirection == QueryDirection.NEWER) ? lastPtr : firstPtr;
+        final var oldestResultPtr = (queryDirection == QueryDirection.NEWER) ? firstPtr : lastPtr;
+        final var newestResultPtr = (queryDirection == QueryDirection.NEWER) ? lastPtr : firstPtr;
 
-        final var older = queryDirection == QueryDirection.OLDER ? oldestResultPtr : (pointer == null ? oldestResultPtr
-                : null);
-        final var newer = queryDirection == QueryDirection.NEWER ? newestResultPtr : (pointer == null ? newestResultPtr
-                : null);
+        final var updatedOlderForNewQuery = pointer == null ? oldestResultPtr : null;
+        final var older = queryDirection == QueryDirection.OLDER ? oldestResultPtr : updatedOlderForNewQuery;
+
+        final var updatedNewerForOlderQuery = pointer == null ? newestResultPtr : null;
+        final var newer = queryDirection == QueryDirection.NEWER ? newestResultPtr : updatedNewerForOlderQuery;
 
         return new BiScrollable<>(filteredSummaries, new DataPointer(older, newer));
     }
