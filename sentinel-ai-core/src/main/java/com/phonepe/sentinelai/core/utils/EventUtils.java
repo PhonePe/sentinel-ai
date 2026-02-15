@@ -73,6 +73,7 @@ public class EventUtils {
     public static <R, T, A extends Agent<R, T, A>> void raiseMessageReceivedEvent(AgentRunContext<R> context,
                                                                                   A agent,
                                                                                   AgentResponse newMessage,
+                                                                                  List<AgentMessage> allMessages,
                                                                                   Stopwatch stopwatch) {
         raiseMessageReceivedEvent(agent.name(),
                                   context.getRunId(),
@@ -80,11 +81,13 @@ public class EventUtils {
                                   AgentUtils.userId(context),
                                   context.getAgentSetup(),
                                   newMessage,
+                                  allMessages,
                                   stopwatch);
     }
 
     public static void raiseMessageReceivedEvent(ModelRunContext modelRunContext,
                                                  AgentResponse newMessage,
+                                                 List<AgentMessage> allMessages,
                                                  Stopwatch stopwatch) {
         raiseMessageReceivedEvent(modelRunContext.getAgentName(),
                                   modelRunContext.getRunId(),
@@ -92,6 +95,7 @@ public class EventUtils {
                                   modelRunContext.getUserId(),
                                   modelRunContext.getAgentSetup(),
                                   newMessage,
+                                  allMessages,
                                   stopwatch);
     }
 
@@ -101,7 +105,8 @@ public class EventUtils {
                                                  String sessionId,
                                                  String userId,
                                                  AgentSetup agentSetup,
-                                                 AgentResponse newMessage,
+                                                 AgentMessage newMessage,
+                                                 List<AgentMessage> allMessages,
                                                  Stopwatch stopwatch) {
         agentSetup.getEventBus()
                 .notify(new MessageReceivedAgentEvent(agentName,
@@ -109,6 +114,7 @@ public class EventUtils {
                                                       sessionId,
                                                       userId,
                                                       newMessage,
+                                                      allMessages,
                                                       Duration.ofMillis(stopwatch
                                                               .elapsed(TimeUnit.MILLISECONDS))));
     }

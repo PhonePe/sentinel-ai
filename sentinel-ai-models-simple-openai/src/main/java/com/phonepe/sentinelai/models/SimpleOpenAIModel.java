@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 
 import io.github.sashirestela.cleverclient.support.CleverClientException;
 import io.github.sashirestela.openai.common.ResponseFormat;
@@ -321,20 +322,19 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                   newMessages,
                                                                                   stopwatch));
                     }
-                    case FinishReasons.FUNCTION_CALL,
-                            FinishReasons.TOOL_CALLS -> runTools(message
-                                    .getToolCalls(),
-                                                                 context,
-                                                                 toolsForExecution,
-                                                                 toolRunner,
-                                                                 stats,
-                                                                 stopwatch,
-                                                                 generatedOutput,
-                                                                 openAiMessages,
-                                                                 allMessages,
-                                                                 newMessages,
-                                                                 oldMessages)
-                                    .orElse(null);
+                    case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> runTools(message
+                            .getToolCalls(),
+                                                                                           context,
+                                                                                           toolsForExecution,
+                                                                                           toolRunner,
+                                                                                           stats,
+                                                                                           stopwatch,
+                                                                                           generatedOutput,
+                                                                                           openAiMessages,
+                                                                                           allMessages,
+                                                                                           newMessages,
+                                                                                           oldMessages)
+                            .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(oldMessages,
                                                                    stats,
                                                                    SentinelError
@@ -657,25 +657,23 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              }
                                                                              yield null; //Continue to next chunk
                                                                          }
-                                                                         case FinishReasons.LENGTH ->
-                                                                             ModelOutput
-                                                                                     .error(oldMessages,
-                                                                                            stats,
-                                                                                            SentinelError
-                                                                                                    .error(ErrorType.LENGTH_EXCEEDED));
+                                                                         case FinishReasons.LENGTH -> ModelOutput
+                                                                                 .error(oldMessages,
+                                                                                        stats,
+                                                                                        SentinelError
+                                                                                                .error(ErrorType.LENGTH_EXCEEDED));
                                                                          case FinishReasons.CONTENT_FILTER ->
                                                                              ModelOutput
                                                                                      .error(oldMessages,
                                                                                             stats,
                                                                                             SentinelError
                                                                                                     .error(ErrorType.FILTERED));
-                                                                         default ->
-                                                                             ModelOutput
-                                                                                     .error(oldMessages,
-                                                                                            stats,
-                                                                                            SentinelError
-                                                                                                    .error(ErrorType.UNKNOWN_FINISH_REASON,
-                                                                                                           finishReason));
+                                                                         default -> ModelOutput
+                                                                                 .error(oldMessages,
+                                                                                        stats,
+                                                                                        SentinelError
+                                                                                                .error(ErrorType.UNKNOWN_FINISH_REASON,
+                                                                                                       finishReason));
                                                                      };
                                                                  })
                         .filter(Objects::nonNull)
@@ -932,7 +930,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                           TimeUnit.MILLISECONDS));
             allMessages.add(newMessage);
             newMessages.add(newMessage);
-            raiseMessageReceivedEvent(context, newMessage, stopwatch);
+            raiseMessageReceivedEvent(context, newMessage, allMessages, stopwatch);
             try {
                 return ModelOutput.success(mapper.readTree(content),
                                            newMessages,
@@ -973,7 +971,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                               TimeUnit.MILLISECONDS)); //Always text output
             allMessages.add(newMessage);
             newMessages.add(newMessage);
-            raiseMessageReceivedEvent(context, newMessage, stopwatch);
+            raiseMessageReceivedEvent(context, newMessage, allMessages, stopwatch);
             try {
                 return ModelOutput.success(mapper.createObjectNode()
                         .textNode(content), newMessages, allMessages, stats);
@@ -1180,6 +1178,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                               userId,
                                               agentSetup,
                                               toolCallMessage,
+                                              ImmutableList.<AgentMessage>builder()
+                                                      .addAll(agentMessages.getAllMessages())
+                                                      .add(toolCallMessage)
+                                                      .build(),
                                               stopwatch);
                     final var toolCallResponse = callTool(sessionId,
                                                           runId,

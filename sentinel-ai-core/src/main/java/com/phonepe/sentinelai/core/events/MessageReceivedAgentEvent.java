@@ -26,6 +26,7 @@ import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 import java.time.Duration;
+import java.util.List;
 
 /**
  * A response was received from the LLM
@@ -35,6 +36,7 @@ import java.time.Duration;
 @ToString(callSuper = true)
 public class MessageReceivedAgentEvent extends AgentEvent {
     AgentMessage message;
+    List<AgentMessage> allMessages;
     Duration elapsedTime;
 
     @Builder
@@ -44,9 +46,11 @@ public class MessageReceivedAgentEvent extends AgentEvent {
                                      String sessionId,
                                      String userId,
                                      @NonNull AgentMessage message,
+                                     @NonNull List<AgentMessage> allMessages,
                                      @NonNull Duration elapsedTime) {
         super(EventType.MESSAGE_RECEIVED, agentName, runId, sessionId, userId);
         this.message = message;
+        this.allMessages = allMessages;
         this.elapsedTime = elapsedTime;
     }
 

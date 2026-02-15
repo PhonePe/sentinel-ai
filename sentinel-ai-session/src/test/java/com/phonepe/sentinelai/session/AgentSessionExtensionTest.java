@@ -296,7 +296,7 @@ class AgentSessionExtensionTest {
                         .mapper(objectMapper)
                         .sessionStore(sessionStore)
                         .setup(AgentSessionExtensionSetup.builder()
-                                .autoSummarizationThresholdPercentage(1)
+                                .autoSummarizationThresholdPercentage(3)
                                 .build())
                         .build()))
                 .build()
@@ -317,7 +317,7 @@ class AgentSessionExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> sessionStore.session("s1").isPresent());
         final var oldSession = sessionStore.session("s1").orElseThrow();
-        assertEquals(8,
+        assertEquals(7,
                      sessionStore.readMessages("s1",
                                                Integer.MAX_VALUE,
                                                false,
@@ -345,7 +345,7 @@ class AgentSessionExtensionTest {
                         .map(SessionSummary::getUpdatedAt)
                         .orElse(-1L) > oldSession.getUpdatedAt());
         assertNotNull(sessionStore.session("s1").orElse(null));
-        assertEquals(16,
+        assertEquals(14,
                      sessionStore.readMessages("s1",
                                                Integer.MAX_VALUE,
                                                false,
