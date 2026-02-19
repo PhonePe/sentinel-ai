@@ -37,6 +37,9 @@ import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
 import com.phonepe.sentinelai.core.compaction.ExtractedSummary;
 import com.phonepe.sentinelai.core.compaction.MessageCompactor;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.events.AgentEvent;
+import com.phonepe.sentinelai.core.events.EventType;
+import com.phonepe.sentinelai.core.events.OutputErrorAgentEvent;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
@@ -59,10 +62,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 
-import static com.phonepe.sentinelai.core.utils.AgentUtils.sessionId;
 import static com.phonepe.sentinelai.session.MessageReadingUtils.readMessagesSinceId;
 import static com.phonepe.sentinelai.session.MessageReadingUtils.rearrangeMessages;
 
@@ -76,6 +80,8 @@ import static com.phonepe.sentinelai.session.MessageReadingUtils.rearrangeMessag
         @VisibleForTesting
 })
 public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
+    private static final String COMPACTION_SESSION_PREFIX = "session-compaction-for-";
+
     private static final String OUTPUT_KEY = "sessionOutput";
 
     private final ObjectMapper mapper;
@@ -83,6 +89,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     private final AgentSessionExtensionSetup setup;
     private final List<MessagePersistencePreFilter<R>> historyModifiers;
     private final List<MessageSelector> messageSelectors;
+    private final Set<EventType> compactionTriggeringEvents;
     private final AgentEventMessageExtractor extractor = new AgentEventMessageExtractor();
     private A agent;
 
@@ -114,6 +121,13 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 .requireNonNullElseGet(messageSelectors,
                                        () -> List.of(
                                                      new UnpairedToolCallsRemover())));
+        this.compactionTriggeringEvents = Objects.requireNonNullElse(
+                                                                     this.setup.getCompactionTriggeringEvents(),
+                                                                     AgentSessionExtensionSetup.DEFAULT_COMPACTION_TRIGGERING_EVENTS);
+    }
+
+    private static String compactionSessionId(String sessionId) {
+        return COMPACTION_SESSION_PREFIX + sessionId;
     }
 
     public AgentSessionExtension<R, T, A> addMessagePersistencePreFilter(MessagePersistencePreFilter<R> modifier) {
@@ -165,6 +179,49 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 .orElse(List.of());
     }
 
+    /**
+     * Forces compaction for a given session.
+     * This can be used to manually trigger summarization and reduce the session history size. Uses the current agent
+     * setup for summarization.
+     *
+     * @param sessionId Session Id for which compaction is to be forced
+     * @return CompletableFuture containing the updated session summary after compaction
+     */
+    public CompletableFuture<Optional<SessionSummary>> forceCompaction(@NonNull String sessionId) {
+        return forceCompaction(sessionId, null);
+    }
+
+
+    /**
+     * Forces compaction for a given session.
+     * This can be used to manually trigger summarization and reduce the session history size.
+     *
+     * @param sessionId  Session Id for which compaction is to be forced
+     * @param agentSetup Agent setup to be used for summarization. If null, current agent setup will be used.
+     * @return CompletableFuture containing the updated session summary after compaction
+     */
+    public CompletableFuture<Optional<SessionSummary>> forceCompaction(@NonNull String sessionId,
+                                                                       AgentSetup agentSetup) {
+        return CompletableFuture.supplyAsync(() -> {
+            final var runId = "manual-compaction-run-" + AgentUtils.epochMicro();
+            final var setup = Objects.requireNonNullElse(agentSetup, agent.getSetup());
+            try {
+                summarizeConversationImpl(sessionId, runId, null, setup, null, true);
+                return sessionStore.session(sessionId);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.info("Forced compaction interrupted for session: {}", sessionId);
+                return Optional.empty();
+            }
+            catch (Exception e) {
+                log.error("Error during forced compaction for session %s: %s"
+                        .formatted(sessionId, AgentUtils.rootCause(e).getMessage()), e);
+                return Optional.empty();
+            }
+        }, agent.getSetup().getExecutorService());
+    }
+
     @Override
     public List<AgentMessage> messages(AgentRunContext<R> context,
                                        A agent,
@@ -202,41 +259,16 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return "agent-session";
     }
 
-
+    // We want guaranteed message saving and inline summarization if needded
+    // This also means that the first call of a session will get summarized
+    // This helps set the title of the session can can be used for display purposes
     @Override
     public void onExtensionRegistrationCompleted(A agent) {
         this.agent = agent;
-        agent.onRequestCompleted().connect(this::extractAndStoreHistory);
+        // agent.onRequestCompleted().connect(this::extractAndStoreHistory);
         agent.getSetup().getEventBus()
-                .onEventBlocking()
-                .connect(event -> {
-                    final var extractedData = event.accept(extractor).orElse(null);
-                    if (null == extractedData) {
-                        log.debug("No messages from event {} of type {}", event.getEventId(), event.getType());
-                        return;
-                    }
-                    final var sessionId = event.getSessionId();
-                    if (sessionId.startsWith("session-compaction-for")) {
-                        log.debug("Skipping messages for compaction itself");
-                        return;
-                    }
-                    final var runId = event.getRunId();
-                    sessionStore.saveMessages(sessionId, runId, List.of(extractedData.getMessage()));
-                    log.debug("Message {}({}) saved", event.getEventId(), event.getType());
-                    try {
-                        summarizeConversationImpl(sessionId,
-                                                  runId,
-                                                  extractedData.getAllMessages(),
-                                                  agent.getSetup(),
-                                                  null,
-                                                  false);
-                    }
-                    catch (Exception e) {
-                        log.error("Failed to summariize session %s: %s"
-                                .formatted(sessionId, AgentUtils.rootCause(e).getMessage()),
-                                  e);
-                    }
-                });
+                .onEventBlocking() // Blocks the loop till work is done loop till work is done loop till work is done loop till work is done
+                .connect(this::processEvent);
     }
 
     @Override
@@ -251,6 +283,19 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return this;
     }
 
+    private SystemPrompt.Task buildSummarizationSystemPrompt(String sessionId) {
+        final var prompt = SystemPrompt.Task.builder()
+                .objective("UPDATE SESSION AND RUN SUMMARY")
+                .outputField(OUTPUT_KEY)
+                .instructions("""
+                        - Generate %d character summary for session %s based on all the messages.
+                        - Include at most 5 single word tags based on the topics being discussed.
+                        """
+                        .formatted(setup.getMaxSummaryLength(), sessionId));
+
+        return prompt.build();
+    }
+
     /**
      * Builds user prompt for summarization.
      * Clients may override to customize the prompt.
@@ -262,10 +307,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
      * @return UserPrompt for summarization
      * @throws JsonProcessingException Json processing exception
      */
-    protected UserPrompt buildSummarizationUserPrompt(final String sessionId,
-                                                      final String runId,
-                                                      final String currentSummary,
-                                                      final List<AgentMessage> sessionMessages)
+    private UserPrompt buildSummarizationUserPrompt(final String sessionId,
+                                                    final String runId,
+                                                    final String currentSummary,
+                                                    final List<AgentMessage> sessionMessages)
             throws JsonProcessingException {
         return new UserPrompt(sessionId,
                               runId,
@@ -281,22 +326,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                               LocalDateTime.now());
     }
 
-    SystemPrompt.Task buildSummarizationSystemPrompt(String sessionId) {
-        final var prompt = SystemPrompt.Task.builder()
-                .objective("UPDATE SESSION AND RUN SUMMARY")
-                .outputField(OUTPUT_KEY)
-                .instructions("""
-                        - Generate %d character summary for session %s based on all the messages.
-                        - Include at most 5 single word tags based on the topics being discussed.
-                        """
-                        .formatted(setup.getMaxSummaryLength(), sessionId));
-
-        return prompt.build();
-    }
-
     @SneakyThrows
     private void extractAndStoreHistory(Agent.ProcessingCompletedData<R, T, A> data) {
-        // saveMessages(data.getContext(), data.getOutput().getAllMessages());
         summarizeConversation(data);
     }
 
@@ -311,8 +342,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return false;
     }
 
-    private boolean isCompactionNeeded(final List<AgentMessage> messages,
-                                       final AgentSetup agentSetup) {
+    private boolean isContextWindowThresholdBreached(final List<AgentMessage> messages,
+                                                     final AgentSetup agentSetup) {
         final var estimateTokenCount = agentSetup
                 .getModel()
                 .estimateTokenCount(messages, agentSetup);
@@ -336,36 +367,155 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return evalResult;
     }
 
-    private void saveMessages(AgentRunContext<R> context,
-                              List<AgentMessage> messages) {
-        final var sessionId = AgentUtils.sessionId(context);
-        if (Strings.isNullOrEmpty(sessionId)) {
-            log.warn("No session id found in context. History storage will be skipped");
+    /*
+     * This method processes events and takes action as needed
+     * Actions taken:
+     * - If events are for session extraction itself it will ignore the changes
+     * - Run {@ling AgentEventMessageExtractor} to see if event contains any messages
+     * - In case messages are present they get saved
+     * - Calls summarizeConversationImpl to compact messages if needed
+     */
+    private void processEvent(AgentEvent event) {
+        final var sessionId = event.getSessionId();
+        if (sessionId.startsWith(COMPACTION_SESSION_PREFIX)) {
+            log.debug("Skipping messages for compaction itself");
             return;
         }
+        log.debug("Event {} ({})", event.getEventId(), event.getType());
+        final var extractedData = event.accept(extractor).orElse(null);
+        if (null == extractedData || extractedData.getNewMessages().isEmpty()) {
+            log.debug("No messages from event {} of type {}", event.getEventId(), event.getType());
+            return;
+        }
+        final var runId = event.getRunId();
+        final var newMessages = extractedData.getNewMessages();
+        if (!saveMessages(sessionId, runId, newMessages)) {
+            log.debug("No new messages for event: {}", event.getType());
+            return;
+        }
+        else {
+            log.debug("Messages saved for event {} ({})", event.getEventId(), event.getType());
+        }
+        log.debug("SESSION ID {}", event.getSessionId(), event);
+        //We do not want to trigger compaction for output generation tool call because it will be handled anyways
+        //The reason for this is that since we get tool call events before they are actually triggered,
+        //in the first run, when there is no session summary, compaction will get triggeredd
+        //final var considerCompaction = sessionStore.session(sessionId).isEmpty()
+        //        || newMessages
+        //                .stream()
+        //                .noneMatch(message -> {
+        //                    if (message instanceof ToolCall toolCall) {
+        //                        final var toolName = toolCall.getToolName();
+        //                        if (toolName.equals(Agent.OUTPUT_GENERATOR_ID)) {
+        //                            log.debug("Skipping compaction trigger for message {} as it is an output generation tool call",
+        //                                      toolCall.getMessageId());
+        //                            return true;
+        //                        }
+        //                    }
+        //                    return false;
+        //                });
+        //if (considerCompaction) {
+        //if (extractedData.getAllMessages().isEmpty()) {
+        //    log.debug("Nothing to compact for session: {}", sessionId);
+        //    return;
+        //}
 
-        var newMessages = messages.stream()
-                .filter(message -> message.getRunId()
-                        .equals(context.getRunId()))
-                .toList();
+        var compactionNeeded = false;
 
+        // There are some cases where we do not care about whitelisted events
+
+        // Did we get length exceeded? then we need to compact
+        // We don't honour the whitelisted events list. You don't get to take a call if the system is
+        // already crying about context window length. We need to compact in that case to be able to continue the conversation.
+        if (event.getType() == EventType.OUTPUT_ERROR) {
+            if (event instanceof OutputErrorAgentEvent errorEvent
+                    && errorEvent.getErrorType().equals(ErrorType.LENGTH_EXCEEDED)) {
+                log.debug("Compaction will be forced as we have received LENGTH_EXCEEDED for session: {}",
+                          sessionId);
+                compactionNeeded = true;
+            }
+        }
+        // Check messages to see if context window threshdold is breached
+        final var agentSetup = agent.getSetup();
+        if (!compactionNeeded) {
+            if (compactionTriggeringEvents.contains(event.getType())) {
+                if (isContextWindowThresholdBreached(extractedData.getAllMessages(), agentSetup)) {
+                    log.info("Context window threshold breached. Will compact session: {}", sessionId);
+                    compactionNeeded = true;
+                }
+            }
+            else {
+                log.debug("Event type {} is not in compaction triggering events, skipping compaction evaluation for session: {}",
+                          event.getType(),
+                          sessionId);
+            }
+        }
+        //If there is no session saved we do one quick compaction to populate a summary
+        if (!compactionNeeded) {
+            if (sessionStore.session(sessionId).isEmpty()) {
+                log.debug("There is no session saved, we use this opportunity to do a small compation");
+                compactionNeeded = true;
+            }
+        }
+
+        if (compactionNeeded) {
+            try {
+                summarizeConversationImpl(sessionId,
+                                          runId,
+                                          null, // Let it compact everything since last summary
+                                          agentSetup,
+                                          null,
+                                          true);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.info("Summarization interrupted for session: {}", sessionId);
+            }
+            catch (Exception e) {
+                log.error("Failed to summariize session %s: %s"
+                        .formatted(sessionId, AgentUtils.rootCause(e).getMessage()),
+                          e);
+            }
+        }
+        else {
+            log.debug("No compaction needed for session: {}", sessionId);
+        }
+    }
+
+    /*
+     * - Runs modifiers to remove messages we do not wat to save (by default system messages)
+     * - Saves messages
+     */
+    private boolean saveMessages(String sessionId,
+                                 String runId,
+                                 List<AgentMessage> messages) {
+        if (log.isDebugEnabled()) {
+            log.debug("Going to save messages for session {}: {}",
+                      sessionId,
+                      messages.stream()
+                              .map(AgentMessage::getMessageId)
+                              .toList());
+        }
+        var newMessages = messages;
         for (var modifier : historyModifiers) {
-            newMessages = modifier.filter(context, newMessages);
+            newMessages = modifier.filter(newMessages);
         }
         if (newMessages.isEmpty()) {
             log.warn("No new messages to save after applying modifiers");
-            return;
+            return false;
         }
-        sessionStore.saveMessages(sessionId, context.getRunId(), newMessages);
-        log.info("Saved {} messages to session {}",
-                 newMessages.size(),
-                 sessionId);
+        sessionStore.saveMessages(sessionId, runId, newMessages);
         if (log.isDebugEnabled()) {
-            log.debug("Saved message IDs: {}",
+            log.debug("Saved messages for session {}: {}",
+                      sessionId,
                       newMessages.stream()
                               .map(AgentMessage::getMessageId)
                               .toList());
         }
+        else {
+            log.info("Saved {} messages for session {}", newMessages.size(), sessionId);
+        }
+        return true;
     }
 
     private void saveSummary(final String sessionId,
@@ -376,9 +526,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             final var existingSessionMessageId = sessionStore.session(sessionId)
                     .map(SessionSummary::getLastSummarizedMessageId)
                     .orElse(null);
-            if (lastSummarizedMessageId != null && !Objects.equals(
-                                                                   lastSummarizedMessageId,
-                                                                   existingSessionMessageId)) {
+            if (lastSummarizedMessageId != null
+                    && !Objects.equals(lastSummarizedMessageId, existingSessionMessageId)) {
                 log.warn("Skipping summary save as the newest message id {} does not match existing session's last summarized message id {} for session: {}",
                          lastSummarizedMessageId,
                          existingSessionMessageId,
@@ -392,7 +541,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                     .summary(summary.getSummary())
                     .keywords(summary.getKeywords())
                     .raw(mapper.writeValueAsString(summary.getRawData()))
-                    .lastSummarizedMessageId(lastSummarizedMessageId)
+                    .lastSummarizedMessageId(newestMessageId)
                     .updatedAt(AgentUtils.epochMicro())
                     .build()).orElse(null);
             log.debug("Session summary: {}", updated);
@@ -403,15 +552,19 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
     }
 
-    /**
-     * Reads the last messages from summarization and summarizes them.
-     * Updates session with the generated summary.
-     *
-     * @param data Completed Data
+    /*
+     * This is used to trigger async compaction if needed _after_ the response is needed.
+     * It checks if LLM has responsed with a
      */
     private void summarizeConversation(Agent.ProcessingCompletedData<R, T, A> data) {
         try {
-            summarizeConversationImpl(data);
+            final var context = data.getContext();
+            summarizeConversationImpl(AgentUtils.sessionId(context),
+                                      context.getRunId(),
+                                      null,
+                                      context.getAgentSetup(),
+                                      context.getModelUsageStats(),
+                                      isAlreadyLengthExceeded(data));
         }
         catch (JsonProcessingException e) {
             log.error("Error during conversation summarization: {}",
@@ -430,17 +583,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                       error.getMessage(),
                       error);
         }
-    }
-
-    private void summarizeConversationImpl(Agent.ProcessingCompletedData<R, T, A> data) throws JsonProcessingException,
-            InterruptedException, ExecutionException {
-        final var context = data.getContext();
-        summarizeConversationImpl(AgentUtils.sessionId(context),
-                                  context.getRunId(),
-                                  null,
-                                  context.getAgentSetup(),
-                                  context.getModelUsageStats(),
-                                  isAlreadyLengthExceeded(data));
     }
 
     private void summarizeConversationImpl(String sessionId,
@@ -480,7 +622,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         final var title = AgentUtils.getIfNotNull(existingSession, SessionSummary::getTitle, null);
         final var needed = Strings.isNullOrEmpty(title)
                 || force
-                || isCompactionNeeded(messages, agentSetup);
+                || isContextWindowThresholdBreached(messagesToSummarize, agentSetup);
         if (!needed) {
             log.debug("Summarization not needed based on current state");
             return;
@@ -489,7 +631,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         final var stats = Objects.requireNonNullElseGet(modelUsageStats, ModelUsageStats::new);
 
         final var summary = MessageCompactor.compactMessages(agent.name(),
-                                                             "session-compaction-for-" + sessionId,
+                                                             compactionSessionId(sessionId),
                                                              null,
                                                              agentSetup,
                                                              mapper,

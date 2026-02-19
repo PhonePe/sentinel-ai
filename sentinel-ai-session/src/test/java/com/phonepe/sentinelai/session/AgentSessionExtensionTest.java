@@ -51,13 +51,16 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  *
@@ -282,6 +285,14 @@ class AgentSessionExtensionTest {
 
 
         final var sessionStore = new InMemorySessionStore();
+        final var agentSessionExtension = AgentSessionExtension
+                .<UserInput, String, SimpleAgent>builder()
+                .mapper(objectMapper)
+                .sessionStore(sessionStore)
+                .setup(AgentSessionExtensionSetup.builder()
+                        .autoSummarizationThresholdPercentage(3)
+                        .build())
+                .build();
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
                         .mapper(objectMapper)
@@ -291,14 +302,7 @@ class AgentSessionExtensionTest {
                                 .seed(1)
                                 .build())
                         .build())
-                .extensions(List.of(AgentSessionExtension
-                        .<UserInput, String, SimpleAgent>builder()
-                        .mapper(objectMapper)
-                        .sessionStore(sessionStore)
-                        .setup(AgentSessionExtensionSetup.builder()
-                                .autoSummarizationThresholdPercentage(3)
-                                .build())
-                        .build()))
+                .extensions(List.of(agentSessionExtension))
                 .build()
                 .registerToolbox(toolbox);
 
@@ -317,14 +321,20 @@ class AgentSessionExtensionTest {
                 .atMost(Duration.ofMinutes(1))
                 .until(() -> sessionStore.session("s1").isPresent());
         final var oldSession = sessionStore.session("s1").orElseThrow();
-        assertEquals(7,
-                     sessionStore.readMessages("s1",
-                                               Integer.MAX_VALUE,
-                                               false,
-                                               null,
-                                               QueryDirection.OLDER)
-                             .getItems()
-                             .size());
+        var messages = sessionStore.readMessages("s1",
+                                                 Integer.MAX_VALUE,
+                                                 false,
+                                                 null,
+                                                 QueryDirection.OLDER)
+                .getItems();
+        // request + get_name + summarization + get name response
+        // + get_salutation + get_salutation response + output_generation + structured output
+        assertEquals(8,
+                     messages.size(),
+                     "Actual Messages: " + messages.stream()
+                             .sorted(Comparator.comparing(AgentMessage::getTimestamp))
+                             .map(AgentMessage::getMessageType)
+                             .toList());
 
         final var response2 = agent.executeAsync(AgentInput.<UserInput>builder()
                 .request(new UserInput("How is the weather at user's location?"))
@@ -338,20 +348,27 @@ class AgentSessionExtensionTest {
                               .writeValueAsString(response2.getAllMessages()));
         }
 
-        Awaitility.await()
-                .pollDelay(Duration.ofSeconds(1))
-                .atMost(Duration.ofMinutes(1))
-                .until(() -> sessionStore.session("s1")
-                        .map(SessionSummary::getUpdatedAt)
-                        .orElse(-1L) > oldSession.getUpdatedAt());
+        final var sessionSummary = agentSessionExtension.forceCompaction("s1").get().orElseThrow();
+
+        assertTrue(sessionSummary.getUpdatedAt() > oldSession.getUpdatedAt());
         assertNotNull(sessionStore.session("s1").orElse(null));
-        assertEquals(14,
-                     sessionStore.readMessages("s1",
-                                               Integer.MAX_VALUE,
-                                               false,
-                                               null,
-                                               QueryDirection.OLDER)
-                             .getItems()
-                             .size());
+        messages = sessionStore.readMessages("s1",
+                                             Integer.MAX_VALUE,
+                                             false,
+                                             null,
+                                             QueryDirection.OLDER)
+                .getItems();
+        // request + get_name + summarization + get name response
+        // + get_salutation + get_salutation response + output_generation + structured output
+        // round 2.0 ->
+        // request + get_location + get location response + get_weather + get weather response
+        // + output generation + structured
+        assertEquals(16,
+                     messages.size(),
+                     "Actual Messages: " + messages.stream()
+                             .sorted(Comparator.comparing(AgentMessage::getTimestamp))
+                             .map(m -> "%s->%s".formatted(m.getMessageType(), m.getMessageId()))
+                             .collect(Collectors.joining("\n")));
+
     }
 }

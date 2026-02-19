@@ -150,7 +150,8 @@ class MessageReadingUtilsTest {
         setup = new AgentSessionExtensionSetup(2,
                                                1000,
                                                60,
-                                               CompactionPrompts.DEFAULT);
+                                               CompactionPrompts.DEFAULT,
+                                               AgentSessionExtensionSetup.DEFAULT_COMPACTION_TRIGGERING_EVENTS);
     }
 
     @Test

@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.session.history.modifiers;
 
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 
 import java.util.List;
@@ -27,6 +26,5 @@ import java.util.List;
  */
 @FunctionalInterface
 public interface MessagePersistencePreFilter<R> {
-    List<AgentMessage> filter(AgentRunContext<R> context,
-                              List<AgentMessage> agentMessages);
+    List<AgentMessage> filter(List<AgentMessage> agentMessages);
 }

@@ -36,7 +36,7 @@ public class AgentEventMessageExtractor implements
         AgentEventVisitor<Optional<AgentEventMessageExtractor.ExtractedData>> {
     @Value
     public static class ExtractedData {
-        AgentMessage message;
+        List<AgentMessage> newMessages;
         List<AgentMessage> allMessages;
     }
 
@@ -47,12 +47,12 @@ public class AgentEventMessageExtractor implements
 
     @Override
     public Optional<ExtractedData> visit(MessageReceivedAgentEvent messageReceived) {
-        return Optional.of(new ExtractedData(messageReceived.getMessage(), messageReceived.getAllMessages()));
+        return Optional.of(new ExtractedData(messageReceived.getNewMessages(), messageReceived.getAllMessages()));
     }
 
     @Override
     public Optional<ExtractedData> visit(MessageSentAgentEvent messageSent) {
-        return Optional.of(new ExtractedData(messageSent.getMessage(), messageSent.getAllMessages()));
+        return Optional.of(new ExtractedData(messageSent.getNewMessages(), messageSent.getAllMessages()));
     }
 
     @Override

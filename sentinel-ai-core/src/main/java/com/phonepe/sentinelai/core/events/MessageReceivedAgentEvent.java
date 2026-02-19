@@ -35,8 +35,8 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 public class MessageReceivedAgentEvent extends AgentEvent {
-    AgentMessage message;
     List<AgentMessage> allMessages;
+    List<AgentMessage> newMessages;
     Duration elapsedTime;
 
     @Builder
@@ -45,12 +45,12 @@ public class MessageReceivedAgentEvent extends AgentEvent {
                                      @NonNull String runId,
                                      String sessionId,
                                      String userId,
-                                     @NonNull AgentMessage message,
                                      @NonNull List<AgentMessage> allMessages,
+                                     @NonNull List<AgentMessage> newMessages,
                                      @NonNull Duration elapsedTime) {
         super(EventType.MESSAGE_RECEIVED, agentName, runId, sessionId, userId);
-        this.message = message;
         this.allMessages = allMessages;
+        this.newMessages = newMessages;
         this.elapsedTime = elapsedTime;
     }
 

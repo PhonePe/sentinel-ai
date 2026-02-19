@@ -18,7 +18,6 @@ package com.phonepe.sentinelai.session.history.modifiers;
 
 import com.google.common.base.Strings;
 
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageVisitor;
@@ -35,6 +34,7 @@ import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -82,6 +82,7 @@ public class FailedToolCallRemovalPreFilter<R> implements MessagePersistencePreF
 
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class FailedToolCallFilter implements AgentMessageVisitor<Boolean> {
+        @Getter
         private final Set<String> failedCallIds;
 
         @Override
@@ -132,17 +133,18 @@ public class FailedToolCallRemovalPreFilter<R> implements MessagePersistencePreF
     }
 
     @Override
-    public List<AgentMessage> filter(AgentRunContext<R> context,
-                                     List<AgentMessage> agentMessages) {
+    public List<AgentMessage> filter(List<AgentMessage> agentMessages) {
         // Find all failed tool calls and then remove all the call requests and responses
-        final var failedCallIds = agentMessages.stream()
+        final var failedCallFiler = new FailedToolCallFilter(agentMessages.stream()
                 .map(message -> message.accept(FAILED_TOOL_CALL_FINDER))
                 .filter(Predicate.not(Strings::isNullOrEmpty))
-                .collect(Collectors.toUnmodifiableSet());
-        log.debug("Found failed tool call ids: {}", failedCallIds);
+                .collect(Collectors.toUnmodifiableSet()));
+        final var failedCallIds = failedCallFiler.getFailedCallIds();
+        if (!failedCallIds.isEmpty()) {
+            log.debug("Found failed tool call ids: {}", failedCallFiler.getFailedCallIds());
+        }
         return agentMessages.stream()
-                .filter(agentMessage -> agentMessage.accept(
-                                                            new FailedToolCallFilter(failedCallIds)))
+                .filter(agentMessage -> agentMessage.accept(failedCallFiler))
                 .toList();
     }
 }

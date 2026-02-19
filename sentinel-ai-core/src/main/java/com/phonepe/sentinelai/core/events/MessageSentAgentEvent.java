@@ -35,7 +35,7 @@ import java.util.List;
 @ToString(callSuper = true)
 public class MessageSentAgentEvent extends AgentEvent {
     List<AgentMessage> allMessages;
-    AgentMessage message;
+    List<AgentMessage> newMessages;
 
     @Builder
     @Jacksonized
@@ -44,10 +44,10 @@ public class MessageSentAgentEvent extends AgentEvent {
                                  String sessionId,
                                  String userId,
                                  @NonNull List<AgentMessage> allMessages,
-                                 @NonNull AgentMessage message) {
+                                 @NonNull List<AgentMessage> newMessages) {
         super(EventType.MESSAGE_SENT, agentName, runId, sessionId, userId);
         this.allMessages = allMessages;
-        this.message = message;
+        this.newMessages = newMessages;
     }
 
     @Override

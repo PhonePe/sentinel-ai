@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.session.history.modifiers;
 
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 
@@ -28,8 +27,7 @@ import java.util.List;
 public class SystemPromptRemovalPreFilter<R> implements MessagePersistencePreFilter<R> {
 
     @Override
-    public List<AgentMessage> filter(AgentRunContext<R> context,
-                                     List<AgentMessage> agentMessages) {
+    public List<AgentMessage> filter(List<AgentMessage> agentMessages) {
         return agentMessages.stream()
                 .filter(message -> !AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE
                         .equals(message.getMessageType()))
