@@ -42,7 +42,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterEmptyListReturnsEmpty() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var messages = new ArrayList<AgentMessage>();
         var result = filter.filter(messages);
         assertTrue(result.isEmpty());
@@ -50,7 +50,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterKeepsSuccessfulToolCallResponseAndRequest() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-3";
         var runId = "run-3";
         var toolCallId = "tc-success";
@@ -82,7 +82,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterMixedSuccessAndFailureToolCalls() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-4";
         var runId = "run-4";
         var successId = "tc-success";
@@ -127,7 +127,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterMultipleRunsInSameSession() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-8";
         var messages = List.<AgentMessage>of(
                                              new UserPrompt(sessionId, "run-1", "user 1", LocalDateTime.now()),
@@ -163,7 +163,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterPreservesNonToolCallMessageOrder() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-7";
         var runId = "run-7";
         var userPrompt = new UserPrompt(sessionId, runId, "user message", LocalDateTime.now());
@@ -190,7 +190,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterRemovesFailedToolCallResponseAndRequest() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-2";
         var runId = "run-2";
         var toolCallId = "tc-failed";
@@ -222,7 +222,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterWithDifferentFailureTypes() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-6";
         var runId = "run-6";
         var timeoutId = "tc-timeout";
@@ -280,7 +280,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterWithGenericTextMessages() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-12";
         var runId = "run-12";
         var messages = List.<AgentMessage>of(
@@ -294,7 +294,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterWithMixedMessageTypesAndFailedToolCall() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-14";
         var runId = "run-14";
         var messages = List.<AgentMessage>of(
@@ -322,7 +322,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterWithNoToolCallsKeepsAllMessages() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-1";
         var runId = "run-1";
         var messages = List.<AgentMessage>of(
@@ -335,7 +335,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterWithOnlyFailedToolCallsReturnsEmpty() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-5";
         var runId = "run-5";
         var messages = List.<AgentMessage>of(
@@ -366,7 +366,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterWithStructuredOutputResponse() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-13";
         var runId = "run-13";
         var messages = List.<AgentMessage>of(
@@ -393,7 +393,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterWithSystemPromptMessages() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-11";
         var runId = "run-11";
         var messages = List.<AgentMessage>of(
@@ -407,7 +407,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterWithUnmatchedToolCallRequest() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-9";
         var runId = "run-9";
         var messages = List.<AgentMessage>of(
@@ -421,7 +421,7 @@ class FailedToolCallRemovalPreFilterTest {
 
     @Test
     void testFilterWithUnmatchedToolCallResponse() {
-        var filter = new FailedToolCallRemovalPreFilter<Object>();
+        var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-10";
         var runId = "run-10";
         var messages = List.<AgentMessage>of(

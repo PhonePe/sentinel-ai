@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
  * Removes all failed tool call responses from the agent message history.
  */
 @Slf4j
-public class FailedToolCallRemovalPreFilter<R> implements MessagePersistencePreFilter<R> {
+public class FailedToolCallRemovalPreFilter implements MessagePersistencePreFilter {
     private static final AgentMessageVisitor<String> FAILED_TOOL_CALL_FINDER = new AgentMessageVisitor<>() {
         @Override
         public String visit(AgentGenericMessage genericMessage) {

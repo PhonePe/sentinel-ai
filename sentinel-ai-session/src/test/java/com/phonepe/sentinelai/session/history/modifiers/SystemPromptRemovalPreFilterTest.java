@@ -35,7 +35,7 @@ class SystemPromptRemovalPreFilterTest {
 
     @Test
     void testFilterEmptyListReturnsEmpty() {
-        var filter = new SystemPromptRemovalPreFilter<Object>();
+        var filter = new SystemPromptRemovalPreFilter();
         var messages = new ArrayList<AgentMessage>();
         var result = filter.filter(messages);
         assertTrue(result.isEmpty());
@@ -43,7 +43,7 @@ class SystemPromptRemovalPreFilterTest {
 
     @Test
     void testFilterKeepsNonSystemPromptMessages() {
-        var filter = new SystemPromptRemovalPreFilter<Object>();
+        var filter = new SystemPromptRemovalPreFilter();
         var sessionId = "session-2";
         var runId = "run-2";
         var messages = List.of(
@@ -58,7 +58,7 @@ class SystemPromptRemovalPreFilterTest {
 
     @Test
     void testFilterPreservesMessageOrder() {
-        var filter = new SystemPromptRemovalPreFilter<Object>();
+        var filter = new SystemPromptRemovalPreFilter();
         var sessionId = "session-4";
         var runId = "run-4";
         var userPrompt = new UserPrompt(sessionId, runId, "user message", LocalDateTime.now());
@@ -77,7 +77,7 @@ class SystemPromptRemovalPreFilterTest {
 
     @Test
     void testFilterRemovesAllSystemPrompts() {
-        var filter = new SystemPromptRemovalPreFilter<Object>();
+        var filter = new SystemPromptRemovalPreFilter();
         var sessionId = "session-1";
         var runId = "run-1";
         var messages = List.of(
@@ -93,7 +93,7 @@ class SystemPromptRemovalPreFilterTest {
 
     @Test
     void testFilterWithDynamicAndStaticPrompts() {
-        var filter = new SystemPromptRemovalPreFilter<Object>();
+        var filter = new SystemPromptRemovalPreFilter();
         var sessionId = "session-5";
         var runId = "run-5";
         var messages = List.<AgentMessage>of(
@@ -112,7 +112,7 @@ class SystemPromptRemovalPreFilterTest {
 
     @Test
     void testFilterWithMultipleSessionsAndRuns() {
-        var filter = new SystemPromptRemovalPreFilter<Object>();
+        var filter = new SystemPromptRemovalPreFilter();
         var messages = List.<AgentMessage>of(
                                              new SystemPrompt("s1", "r1", "sys1", true, "m1"),
                                              new UserPrompt("s1", "r1", "u1", LocalDateTime.now()),
@@ -127,7 +127,7 @@ class SystemPromptRemovalPreFilterTest {
 
     @Test
     void testFilterWithOnlySystemPromptsReturnsEmpty() {
-        var filter = new SystemPromptRemovalPreFilter<Object>();
+        var filter = new SystemPromptRemovalPreFilter();
         var sessionId = "session-3";
         var runId = "run-3";
         var messages = List.<AgentMessage>of(

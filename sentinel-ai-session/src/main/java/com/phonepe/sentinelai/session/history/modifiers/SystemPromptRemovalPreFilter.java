@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Removes all system prompt messages from the agent message history.
  */
-public class SystemPromptRemovalPreFilter<R> implements MessagePersistencePreFilter<R> {
+public class SystemPromptRemovalPreFilter implements MessagePersistencePreFilter {
 
     @Override
     public List<AgentMessage> filter(List<AgentMessage> agentMessages) {

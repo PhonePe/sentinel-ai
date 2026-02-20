@@ -25,6 +25,6 @@ import java.util.List;
  * before they are persisted to the {@link com.phonepe.sentinelai.session.SessionStore}
  */
 @FunctionalInterface
-public interface MessagePersistencePreFilter<R> {
+public interface MessagePersistencePreFilter {
     List<AgentMessage> filter(List<AgentMessage> agentMessages);
 }

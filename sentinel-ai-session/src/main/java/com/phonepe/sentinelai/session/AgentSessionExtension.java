@@ -22,7 +22,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 
 import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.Agent.ProcessingCompletedData;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
@@ -53,7 +52,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -69,6 +67,8 @@ import java.util.concurrent.ExecutionException;
 
 import static com.phonepe.sentinelai.session.MessageReadingUtils.readMessagesSinceId;
 import static com.phonepe.sentinelai.session.MessageReadingUtils.rearrangeMessages;
+import static com.phonepe.sentinelai.session.internal.SessionUtils.isAlreadyLengthExceeded;
+import static com.phonepe.sentinelai.session.internal.SessionUtils.isContextWindowThresholdBreached;
 
 
 /**
@@ -87,7 +87,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     private final ObjectMapper mapper;
     private final SessionStore sessionStore;
     private final AgentSessionExtensionSetup setup;
-    private final List<MessagePersistencePreFilter<R>> historyModifiers;
+    private final List<MessagePersistencePreFilter> historyModifiers;
     private final List<MessageSelector> messageSelectors;
     private final Set<EventType> compactionTriggeringEvents;
     private final AgentEventMessageExtractor extractor = new AgentEventMessageExtractor();
@@ -105,7 +105,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     public AgentSessionExtension(ObjectMapper mapper,
                                  @NonNull SessionStore sessionStore,
                                  AgentSessionExtensionSetup setup,
-                                 List<MessagePersistencePreFilter<R>> historyModifiers,
+                                 List<MessagePersistencePreFilter> historyModifiers,
                                  List<MessageSelector> messageSelectors) {
         this.mapper = Objects.requireNonNullElseGet(mapper,
                                                     JsonUtils::createMapper);
@@ -115,8 +115,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         this.historyModifiers = new CopyOnWriteArrayList<>(Objects
                 .requireNonNullElseGet(historyModifiers,
                                        () -> List.of(
-                                                     new SystemPromptRemovalPreFilter<>(),
-                                                     new FailedToolCallRemovalPreFilter<>())));
+                                                     new SystemPromptRemovalPreFilter(),
+                                                     new FailedToolCallRemovalPreFilter())));
         this.messageSelectors = new CopyOnWriteArrayList<>(Objects
                 .requireNonNullElseGet(messageSelectors,
                                        () -> List.of(
@@ -130,11 +130,11 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return COMPACTION_SESSION_PREFIX + sessionId;
     }
 
-    public AgentSessionExtension<R, T, A> addMessagePersistencePreFilter(MessagePersistencePreFilter<R> modifier) {
+    public AgentSessionExtension<R, T, A> addMessagePersistencePreFilter(MessagePersistencePreFilter modifier) {
         return addMessagePersistencePreFilters(List.of(modifier));
     }
 
-    public AgentSessionExtension<R, T, A> addMessagePersistencePreFilters(List<MessagePersistencePreFilter<R>> modifiers) {
+    public AgentSessionExtension<R, T, A> addMessagePersistencePreFilters(List<MessagePersistencePreFilter> modifiers) {
         this.historyModifiers.addAll(modifiers);
         return this;
     }
@@ -206,7 +206,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             final var runId = "manual-compaction-run-" + AgentUtils.epochMicro();
             final var agentStup = Objects.requireNonNullElse(providedAgentSetup, agent.getSetup());
             try {
-                summarizeConversationImpl(sessionId, runId, null, agentStup, null, true);
+                summarizeConversation(sessionId, runId, null, agentStup, null, true);
                 return sessionStore.session(sessionId);
             }
             catch (InterruptedException e) {
@@ -265,7 +265,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     @Override
     public void onExtensionRegistrationCompleted(A agent) {
         this.agent = agent;
-        // agent.onRequestCompleted().connect(this::extractAndStoreHistory);
+        agent.onRequestCompleted().connect(this::summarizeConversation);
         agent.getSetup().getEventBus()
                 .onEventBlocking() // Blocks the loop till work is done loop till work is done loop till work is done loop till work is done
                 .connect(this::processEvent);
@@ -326,47 +326,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                               LocalDateTime.now());
     }
 
-    @SneakyThrows
-    private void extractAndStoreHistory(Agent.ProcessingCompletedData<R, T, A> data) {
-        summarizeConversation(data);
-    }
-
-    private boolean isAlreadyLengthExceeded(final ProcessingCompletedData<R, T, A> data) {
-        if (data.getOutput()
-                .getError()
-                .getErrorType()
-                .equals(ErrorType.LENGTH_EXCEEDED)) {
-            log.warn("Compaction needed as the last run ended with LENGTH_EXCEEDED error.");
-            return true;
-        }
-        return false;
-    }
-
-    private boolean isContextWindowThresholdBreached(final List<AgentMessage> messages,
-                                                     final AgentSetup agentSetup) {
-        final var estimateTokenCount = agentSetup
-                .getModel()
-                .estimateTokenCount(messages, agentSetup);
-        final var contextWindowSize = agentSetup.getModelSettings()
-                .getModelAttributes()
-                .getContextWindowSize();
-        final var threshold = setup.getAutoSummarizationThresholdPercentage();
-        if (threshold == 0) {
-            log.debug("Compaction needed as threshold is set to 0 (Every Run).");
-            return true;
-        }
-        final var currentBoundary = (contextWindowSize * threshold) / 100;
-        final var evalResult = estimateTokenCount >= currentBoundary;
-        log.debug("Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, "
-                + "threshold={}%, currentBoundary={}, needsSummarization={}",
-                  estimateTokenCount,
-                  contextWindowSize,
-                  threshold,
-                  currentBoundary,
-                  evalResult);
-        return evalResult;
-    }
-
     /*
      * This method processes events and takes action as needed
      * Actions taken:
@@ -417,7 +376,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         final var agentSetup = agent.getSetup();
         if (!compactionNeeded) {
             if (compactionTriggeringEvents.contains(event.getType())) {
-                if (isContextWindowThresholdBreached(extractedData.getAllMessages(), agentSetup)) {
+                if (isContextWindowThresholdBreached(extractedData.getAllMessages(), agentSetup, setup)) {
                     log.info("Context window threshold breached. Will compact session: {}", sessionId);
                     compactionNeeded = true;
                 }
@@ -438,12 +397,12 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
 
         if (compactionNeeded) {
             try {
-                summarizeConversationImpl(sessionId,
-                                          runId,
-                                          null, // Let it compact everything since last summary
-                                          agentSetup,
-                                          null,
-                                          true);
+                summarizeConversation(sessionId,
+                                      runId,
+                                      null, // Let it compact everything since last summary
+                                      agentSetup,
+                                      null,
+                                      true);
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -537,12 +496,12 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     private void summarizeConversation(Agent.ProcessingCompletedData<R, T, A> data) {
         try {
             final var context = data.getContext();
-            summarizeConversationImpl(AgentUtils.sessionId(context),
-                                      context.getRunId(),
-                                      null,
-                                      context.getAgentSetup(),
-                                      context.getModelUsageStats(),
-                                      isAlreadyLengthExceeded(data));
+            summarizeConversation(AgentUtils.sessionId(context),
+                                  context.getRunId(),
+                                  null,
+                                  context.getAgentSetup(),
+                                  context.getModelUsageStats(),
+                                  isAlreadyLengthExceeded(data));
         }
         catch (JsonProcessingException e) {
             log.error("Error during conversation summarization: {}",
@@ -563,12 +522,12 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
     }
 
-    private void summarizeConversationImpl(String sessionId,
-                                           String runId,
-                                           List<AgentMessage> messagesToSummarize,
-                                           AgentSetup agentSetup,
-                                           ModelUsageStats modelUsageStats,
-                                           boolean force)
+    private void summarizeConversation(String sessionId,
+                                       String runId,
+                                       List<AgentMessage> messagesToSummarize,
+                                       AgentSetup agentSetup,
+                                       ModelUsageStats modelUsageStats,
+                                       boolean force)
             throws JsonProcessingException,
             InterruptedException, ExecutionException {
         final var existingSession = sessionStore.session(sessionId)
@@ -600,7 +559,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         final var title = AgentUtils.getIfNotNull(existingSession, SessionSummary::getTitle, null);
         final var needed = Strings.isNullOrEmpty(title)
                 || force
-                || isContextWindowThresholdBreached(messagesToSummarize, agentSetup);
+                || isContextWindowThresholdBreached(messagesToSummarize, agentSetup, setup);
         if (!needed) {
             log.debug("Summarization not needed based on current state");
             return;
