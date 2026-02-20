@@ -62,7 +62,7 @@ class AgentEventMessageExtractorTest {
         var result = extractor.visit(event);
         assertTrue(result.isPresent());
         var extractedData = result.get();
-        assertTrue(extractedData.getNewMessages().getFirst() instanceof UserPrompt);
+        assertTrue(extractedData.getNewMessages().get(0) instanceof UserPrompt);
         assertTrue(extractedData.getAllMessages().get(1) instanceof Text);
     }
 
