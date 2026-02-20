@@ -87,7 +87,7 @@ public class EventUtils {
                                   stopwatch);
     }
 
-
+    @SuppressWarnings("java:S107")
     public static void raiseMessageReceivedEvent(String agentName,
                                                  String runId,
                                                  String sessionId,

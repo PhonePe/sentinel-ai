@@ -196,17 +196,17 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
      * Forces compaction for a given session.
      * This can be used to manually trigger summarization and reduce the session history size.
      *
-     * @param sessionId  Session Id for which compaction is to be forced
-     * @param agentSetup Agent setup to be used for summarization. If null, current agent setup will be used.
+     * @param sessionId          Session Id for which compaction is to be forced
+     * @param providedAgentSetup Agent setup to be used for summarization. If null, current agent setup will be used.
      * @return CompletableFuture containing the updated session summary after compaction
      */
     public CompletableFuture<Optional<SessionSummary>> forceCompaction(@NonNull String sessionId,
-                                                                       AgentSetup agentSetup) {
+                                                                       AgentSetup providedAgentSetup) {
         return CompletableFuture.supplyAsync(() -> {
             final var runId = "manual-compaction-run-" + AgentUtils.epochMicro();
-            final var setup = Objects.requireNonNullElse(agentSetup, agent.getSetup());
+            final var agentStup = Objects.requireNonNullElse(providedAgentSetup, agent.getSetup());
             try {
-                summarizeConversationImpl(sessionId, runId, null, setup, null, true);
+                summarizeConversationImpl(sessionId, runId, null, agentStup, null, true);
                 return sessionStore.session(sessionId);
             }
             catch (InterruptedException e) {

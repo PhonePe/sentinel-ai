@@ -153,7 +153,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithToolCall() throws Exception {
+    void testToCompactMessageWithToolCall() {
         final var toolCall = ToolCall.builder()
                 .sessionId("session-1")
                 .runId("run-1")
