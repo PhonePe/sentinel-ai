@@ -45,6 +45,20 @@ class RemoveAllToolCallsSelectorTest {
     }
 
     @Test
+    void testMultipleSessions() {
+        var selector = new RemoveAllToolCallsSelector();
+        final var messages = List.<AgentMessage>of(
+                                                   new UserPrompt("session-1", "run-1", "u1", LocalDateTime.now()),
+                                                   new ToolCall("session-1", "run-1", "tc-1", "tool", "{}"),
+                                                   new UserPrompt("session-2", "run-2", "u2", LocalDateTime.now()),
+                                                   new ToolCall("session-2", "run-2", "tc-2", "tool", "{}")
+        );
+        final var result = selector.select("session-1", new ArrayList<>(messages));
+        assertEquals(2, result.size());
+        assertTrue(result.stream().noneMatch(m -> m.getMessageType().name().contains("TOOL_CALL")));
+    }
+
+    @Test
     void testNoToolCallsKeepsAllMessages() {
         var selector = new RemoveAllToolCallsSelector();
         final var sessionId = "s-3";
@@ -65,6 +79,66 @@ class RemoveAllToolCallsSelectorTest {
         final var modifiable = new ArrayList<AgentMessage>(messages);
         final var result = selector.select(sessionId, modifiable);
         assertEquals(3, result.size());
+    }
+
+    @Test
+    void testPreservesNonToolCallMessageOrder() {
+        var selector = new RemoveAllToolCallsSelector();
+        final var sessionId = "s-6";
+        final var runId = "r-6";
+        var userPrompt = new UserPrompt(sessionId, runId, "user", LocalDateTime.now());
+        var textResponse = new Text(sessionId, runId, "text", new ModelUsageStats(), 100);
+        var genericText = new GenericText(sessionId, runId, Role.USER, "generic");
+        final var messages = List.<AgentMessage>of(
+                                                   userPrompt,
+                                                   new ToolCall(sessionId, runId, "tc-1", "tool", "{}"),
+                                                   new ToolCallResponse(sessionId,
+                                                                        runId,
+                                                                        "tc-1",
+                                                                        "tool",
+                                                                        null,
+                                                                        "resp",
+                                                                        LocalDateTime.now()),
+                                                   textResponse,
+                                                   new ToolCall(sessionId, runId, "tc-2", "tool2", "{}"),
+                                                   genericText
+        );
+        final var result = selector.select(sessionId, new ArrayList<>(messages));
+        assertEquals(3, result.size());
+        assertEquals(userPrompt, result.get(0));
+        assertEquals(textResponse, result.get(1));
+        assertEquals(genericText, result.get(2));
+    }
+
+    @Test
+    void testRemoveMultipleToolCallsFromMultipleRuns() {
+        var selector = new RemoveAllToolCallsSelector();
+        final var sessionId = "s-5";
+        final var messages = List.<AgentMessage>of(
+                                                   new UserPrompt(sessionId, "run-1", "user1", LocalDateTime.now()),
+                                                   new ToolCall(sessionId, "run-1", "tc-1", "tool1", "{}"),
+                                                   new ToolCallResponse(sessionId,
+                                                                        "run-1",
+                                                                        "tc-1",
+                                                                        "tool1",
+                                                                        null,
+                                                                        "resp1",
+                                                                        LocalDateTime.now()),
+                                                   new Text(sessionId, "run-1", "text1", new ModelUsageStats(), 100),
+                                                   new UserPrompt(sessionId, "run-2", "user2", LocalDateTime.now()),
+                                                   new ToolCall(sessionId, "run-2", "tc-2", "tool2", "{}"),
+                                                   new ToolCallResponse(sessionId,
+                                                                        "run-2",
+                                                                        "tc-2",
+                                                                        "tool2",
+                                                                        null,
+                                                                        "resp2",
+                                                                        LocalDateTime.now()),
+                                                   new Text(sessionId, "run-2", "text2", new ModelUsageStats(), 100)
+        );
+        final var result = selector.select(sessionId, new ArrayList<>(messages));
+        assertEquals(4, result.size());
+        assertTrue(result.stream().noneMatch(m -> m.getMessageType().name().contains("TOOL_CALL")));
     }
 
     @Test
@@ -119,5 +193,54 @@ class RemoveAllToolCallsSelectorTest {
         final var modifiable = new ArrayList<AgentMessage>(messages);
         final var result = selector.select(sessionId, modifiable);
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testRemovesOrphanedToolCallRequest() {
+        var selector = new RemoveAllToolCallsSelector();
+        final var sessionId = "s-7";
+        final var runId = "r-7";
+        final var messages = List.<AgentMessage>of(
+                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   new ToolCall(sessionId, runId, "tc-orphan", "tool", "{}"),
+                                                   new Text(sessionId, runId, "text", new ModelUsageStats(), 100)
+        );
+        final var result = selector.select(sessionId, new ArrayList<>(messages));
+        assertEquals(2, result.size());
+        assertTrue(result.stream().noneMatch(m -> m instanceof ToolCall));
+    }
+
+    @Test
+    void testRemovesOrphanedToolCallResponse() {
+        var selector = new RemoveAllToolCallsSelector();
+        final var sessionId = "s-8";
+        final var runId = "r-8";
+        final var messages = List.<AgentMessage>of(
+                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   new ToolCallResponse(sessionId,
+                                                                        runId,
+                                                                        "tc-orphan",
+                                                                        "tool",
+                                                                        null,
+                                                                        "resp",
+                                                                        LocalDateTime.now()),
+                                                   new Text(sessionId, runId, "text", new ModelUsageStats(), 100)
+        );
+        final var result = selector.select(sessionId, new ArrayList<>(messages));
+        assertEquals(2, result.size());
+        assertTrue(result.stream().noneMatch(m -> m instanceof ToolCallResponse));
+    }
+
+    @Test
+    void testWithNullSessionId() {
+        var selector = new RemoveAllToolCallsSelector();
+        final var runId = "r-9";
+        final var messages = List.<AgentMessage>of(
+                                                   new UserPrompt(null, runId, "user", LocalDateTime.now()),
+                                                   new ToolCall(null, runId, "tc-1", "tool", "{}"),
+                                                   new Text(null, runId, "text", new ModelUsageStats(), 100)
+        );
+        final var result = selector.select(null, new ArrayList<>(messages));
+        assertEquals(2, result.size());
     }
 }
