@@ -179,6 +179,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 .orElse(List.of());
     }
 
+
     /**
      * Forces compaction for a given session.
      * This can be used to manually trigger summarization and reduce the session history size. Uses the current agent
@@ -190,7 +191,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     public CompletableFuture<Optional<SessionSummary>> forceCompaction(@NonNull String sessionId) {
         return forceCompaction(sessionId, null);
     }
-
 
     /**
      * Forces compaction for a given session.
@@ -397,28 +397,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             log.debug("Messages saved for event {} ({})", event.getEventId(), event.getType());
         }
         log.debug("SESSION ID {}", event.getSessionId(), event);
-        //We do not want to trigger compaction for output generation tool call because it will be handled anyways
-        //The reason for this is that since we get tool call events before they are actually triggered,
-        //in the first run, when there is no session summary, compaction will get triggeredd
-        //final var considerCompaction = sessionStore.session(sessionId).isEmpty()
-        //        || newMessages
-        //                .stream()
-        //                .noneMatch(message -> {
-        //                    if (message instanceof ToolCall toolCall) {
-        //                        final var toolName = toolCall.getToolName();
-        //                        if (toolName.equals(Agent.OUTPUT_GENERATOR_ID)) {
-        //                            log.debug("Skipping compaction trigger for message {} as it is an output generation tool call",
-        //                                      toolCall.getMessageId());
-        //                            return true;
-        //                        }
-        //                    }
-        //                    return false;
-        //                });
-        //if (considerCompaction) {
-        //if (extractedData.getAllMessages().isEmpty()) {
-        //    log.debug("Nothing to compact for session: {}", sessionId);
-        //    return;
-        //}
 
         var compactionNeeded = false;
 

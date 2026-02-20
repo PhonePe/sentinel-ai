@@ -691,7 +691,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                               .error(ErrorType.UNKNOWN_FINISH_REASON,
                                                                                                                      finishReason));
                                                                      };
-                                                                 }).filter(Objects::nonNull).toList();
+                                                                 })
+                        .filter(Objects::nonNull)
+                        .toList();
                 //NOTE::DO NOT MERGE THE STREAM WITH BELOW
                 //The flow is intentionally done this way
                 // This needs to be done in two steps to ensure all chunks are consumed. Otherwise, some stuff like
@@ -1160,34 +1162,34 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                         ModelUsageStats stats,
                                         Stopwatch stopwatch) {
         final var prevMessages = List.copyOf(agentMessages.getAllMessages());
-        final var responseMessages = handleToolCalls(context.getAgentName(),
-                                                     context.getRunId(),
-                                                     context.getSessionId(),
-                                                     context.getUserId(),
-                                                     context.getAgentSetup(),
-                                                     tools,
-                                                     toolRunner,
-                                                     toolCalls,
-                                                     agentMessages,
-                                                     stats,
-                                                     stopwatch);
+        handleToolCalls(context.getAgentName(),
+                        context.getRunId(),
+                        context.getSessionId(),
+                        context.getUserId(),
+                        context.getAgentSetup(),
+                        tools,
+                        toolRunner,
+                        toolCalls,
+                        agentMessages,
+                        stats,
+                        stopwatch);
         raiseMessageSentEvent(context,
                               prevMessages,
                               agentMessages.getAllMessages());
     }
 
     @SuppressWarnings("java:S107")
-    private static <R, T, A extends Agent<R, T, A>> List<AgentMessage> handleToolCalls(String agentName,
-                                                                                       String runId,
-                                                                                       String sessionId,
-                                                                                       String userId,
-                                                                                       AgentSetup agentSetup,
-                                                                                       Map<String, ExecutableTool> tools,
-                                                                                       ToolRunner toolRunner,
-                                                                                       List<io.github.sashirestela.openai.common.tool.ToolCall> toolCalls,
-                                                                                       AgentMessages agentMessages,
-                                                                                       ModelUsageStats stats,
-                                                                                       Stopwatch stopwatch) {
+    private static <R, T, A extends Agent<R, T, A>> void handleToolCalls(String agentName,
+                                                                         String runId,
+                                                                         String sessionId,
+                                                                         String userId,
+                                                                         AgentSetup agentSetup,
+                                                                         Map<String, ExecutableTool> tools,
+                                                                         ToolRunner toolRunner,
+                                                                         List<io.github.sashirestela.openai.common.tool.ToolCall> toolCalls,
+                                                                         AgentMessages agentMessages,
+                                                                         ModelUsageStats stats,
+                                                                         Stopwatch stopwatch) {
         final var toolCallMessages = toolCalls.stream()
                 .filter(toolCall -> !Strings.isNullOrEmpty(toolCall.getId()))
                 .map(toolCall -> new ToolCall(sessionId,
@@ -1221,9 +1223,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }, agentSetup.getExecutorService()))
                 .toList();
         log.debug("Running {} tool calls in parallel", jobs.size());
-        return jobs.stream()
+        jobs.stream()
                 .map(CompletableFuture::join)
-                .map(pair -> {
+                .forEach(pair -> {
                     final var toolCallMessage = pair.getFirst();
                     final var toolCallResponse = pair.getSecond();
                     if (toolCallResponse.isSuccess()) {
@@ -1250,10 +1252,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     agentMessages.getAllMessages().add(toolCallResponse);
                     agentMessages.getNewMessages().add(toolCallResponse);
                     stats.incrementToolCallsForRun();
-                    return toolCallResponse;
-                })
-                .map(AgentMessage.class::cast)
-                .toList();
+                });
     }
 
     private static ToolCallResponse callTool(String sessionId,

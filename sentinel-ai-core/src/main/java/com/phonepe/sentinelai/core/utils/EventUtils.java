@@ -115,12 +115,15 @@ public class EventUtils {
                 .collect(Collectors.toUnmodifiableSet());
 
         final var newMessages = currentAllMessages.stream()
-                .filter(message -> !oldMessagesIds.contains(message.getMessageId()))
                 .filter(message -> ClassUtils.isAssignable(message.getClass(), AgentRequest.class))
+                .filter(message -> !oldMessagesIds.contains(message.getMessageId()))
                 .toList();
-        log.debug("Prev message ids: {}. Curr message ids: {}",
-                  oldMessagesIds,
-                  currentAllMessages.stream().map(AgentMessage::getMessageId).toList());
+
+        if (log.isTraceEnabled()) {
+            log.trace("Prev message ids: {}. Curr message ids: {}",
+                      oldMessagesIds,
+                      currentAllMessages.stream().map(AgentMessage::getMessageId).toList());
+        }
         if (newMessages.isEmpty()) {
             log.debug("No new messages");
             return;
