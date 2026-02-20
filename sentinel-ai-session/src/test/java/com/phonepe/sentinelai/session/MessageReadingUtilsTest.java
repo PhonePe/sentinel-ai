@@ -155,6 +155,66 @@ class MessageReadingUtilsTest {
     }
 
     @Test
+    void testReadMessagesSinceIdWhenIdIsFoundInEarlierBatch() {
+        // total 5 messages, batch size 2.
+        // Batch 1 (OLDER): msg-5, msg-4
+        // Batch 2 (OLDER): msg-3, msg-2
+        // Batch 3 (OLDER): msg-1
+        // If lastSummarizedMessageId = msg-2, should return msg-3, msg-4, msg-5
+
+        final var messages = IntStream.rangeClosed(1, 5)
+                .mapToObj(i -> (AgentMessage) UserPrompt.builder()
+                        .sessionId(sessionId)
+                        .runId("run-1")
+                        .messageId("msg-" + i)
+                        .timestamp((long) i)
+                        .content("Hi " + i)
+                        .build())
+                .toList();
+        sessionStore.saveMessages(sessionId, "run-1", messages);
+
+        final var result = MessageReadingUtils.readMessagesSinceId(
+                                                                   sessionStore,
+                                                                   setup, // setup has historicalMessageFetchSize = 2 (from setUp)
+                                                                   sessionId,
+                                                                   "msg-2",
+                                                                   false,
+                                                                   List.of());
+
+        assertEquals(3, result.size());
+        assertEquals("msg-3", result.get(0).getMessageId());
+        assertEquals("msg-4", result.get(1).getMessageId());
+        assertEquals("msg-5", result.get(2).getMessageId());
+    }
+
+    @Test
+    void testReadMessagesSinceIdWhenIdIsNotFound() {
+        final var messages = IntStream.rangeClosed(1, 3)
+                .mapToObj(i -> (AgentMessage) UserPrompt.builder()
+                        .sessionId(sessionId)
+                        .runId("run-1")
+                        .messageId("msg-" + i)
+                        .timestamp((long) i)
+                        .content("Hi " + i)
+                        .build())
+                .toList();
+        sessionStore.saveMessages(sessionId, "run-1", messages);
+
+        final var result = MessageReadingUtils.readMessagesSinceId(
+                                                                   sessionStore,
+                                                                   setup,
+                                                                   sessionId,
+                                                                   "msg-not-exists",
+                                                                   false,
+                                                                   List.of());
+
+        // When not found, it should return all messages (as per current implementation logic in do-while)
+        // Wait, let's check implementation again.
+        // If not found in any batch, it adds all batch messages to messagesFromLastSummary.
+        assertEquals(3, result.size());
+    }
+
+    @Test
     void testReadMessagesSinceIdWithPagination() {
         final var totalMessages = 10;
         final var messages = new ArrayList<>(IntStream.rangeClosed(1,
