@@ -330,10 +330,11 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
      * This method processes events and takes action as needed
      * Actions taken:
      * - If events are for session extraction itself it will ignore the changes
-     * - Run {@ling AgentEventMessageExtractor} to see if event contains any messages
+     * - Run {@link AgentEventMessageExtractor} to see if event contains any messages
      * - In case messages are present they get saved
      * - Calls summarizeConversationImpl to compact messages if needed
      */
+    @SuppressWarnings("java:S3776")
     private void processEvent(AgentEvent event) {
         final var sessionId = event.getSessionId();
         if (sessionId.startsWith(COMPACTION_SESSION_PREFIX)) {
@@ -371,6 +372,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                           sessionId);
                 compactionNeeded = true;
             }
+            else {
+                log.debug("Received output error event but error type is not LENGTH_EXCEEDED, skipping forced compaction for session: {}",
+                          sessionId);
+            }
         }
         // Check messages to see if context window threshdold is breached
         final var agentSetup = agent.getSetup();
@@ -392,6 +397,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             if (sessionStore.session(sessionId).isEmpty()) {
                 log.debug("There is no session saved, we use this opportunity to do a small compation");
                 compactionNeeded = true;
+            }
+            else {
+                log.debug("Session already exists, skipping first compaction for session: {}", sessionId);
             }
         }
 
@@ -532,12 +540,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
             InterruptedException, ExecutionException {
         final var existingSession = sessionStore.session(sessionId)
                 .orElse(null);
-        final var messages = new ArrayList<AgentMessage>();
-        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(sessionId,
-                                                                                         runId,
-                                                                                         mapper.writeValueAsString(buildSummarizationSystemPrompt(sessionId)),
-                                                                                         false,
-                                                                                         null));
         final var lastSummarizedMessageId = AgentUtils.getIfNotNull(
                                                                     existingSession,
                                                                     SessionSummary::getLastSummarizedMessageId,
@@ -549,6 +551,21 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                                             lastSummarizedMessageId,
                                                                                             false,
                                                                                             messageSelectors));
+        final var title = AgentUtils.getIfNotNull(existingSession, SessionSummary::getTitle, null);
+        final var needed = Strings.isNullOrEmpty(title)
+                || force
+                || isContextWindowThresholdBreached(sessionMessages, agentSetup, setup);
+        if (!needed) {
+            log.debug("Summarization not needed based on current state");
+            return;
+        }
+
+        final var messages = new ArrayList<AgentMessage>();
+        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(sessionId,
+                                                                                         runId,
+                                                                                         mapper.writeValueAsString(buildSummarizationSystemPrompt(sessionId)),
+                                                                                         false,
+                                                                                         null));
         messages.add(buildSummarizationUserPrompt(sessionId,
                                                   runId,
                                                   AgentUtils.getIfNotNull(
@@ -556,15 +573,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                           SessionSummary::getSummary,
                                                                           null),
                                                   sessionMessages));
-        final var title = AgentUtils.getIfNotNull(existingSession, SessionSummary::getTitle, null);
-        final var needed = Strings.isNullOrEmpty(title)
-                || force
-                || isContextWindowThresholdBreached(messagesToSummarize, agentSetup, setup);
-        if (!needed) {
-            log.debug("Summarization not needed based on current state");
-            return;
-        }
-
         final var stats = Objects.requireNonNullElseGet(modelUsageStats, ModelUsageStats::new);
 
         final var summary = MessageCompactor.compactMessages(agent.name(),
@@ -573,7 +581,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                              agentSetup,
                                                              mapper,
                                                              stats,
-                                                             sessionMessages,
+                                                             messages,
                                                              Objects.requireNonNullElse(setup
                                                                      .getCompactionPrompts(),
                                                                                         CompactionPrompts.DEFAULT),
