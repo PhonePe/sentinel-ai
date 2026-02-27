@@ -207,7 +207,7 @@ class RemoveAllToolCallsSelectorTest {
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
         assertEquals(2, result.size());
-        assertTrue(result.stream().noneMatch(m -> m instanceof ToolCall));
+        assertTrue(result.stream().noneMatch(ToolCall.class::isInstance));
     }
 
     @Test
@@ -228,7 +228,7 @@ class RemoveAllToolCallsSelectorTest {
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
         assertEquals(2, result.size());
-        assertTrue(result.stream().noneMatch(m -> m instanceof ToolCallResponse));
+        assertTrue(result.stream().noneMatch(ToolCallResponse.class::isInstance));
     }
 
     @Test

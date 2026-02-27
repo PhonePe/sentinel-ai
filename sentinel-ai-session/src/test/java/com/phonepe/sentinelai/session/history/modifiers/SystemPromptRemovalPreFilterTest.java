@@ -122,7 +122,7 @@ class SystemPromptRemovalPreFilterTest {
         );
         var result = filter.filter(messages);
         assertEquals(2, result.size());
-        assertTrue(result.stream().allMatch(m -> m instanceof UserPrompt));
+        assertTrue(result.stream().allMatch(UserPrompt.class::isInstance));
     }
 
     @Test
