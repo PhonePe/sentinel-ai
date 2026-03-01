@@ -21,6 +21,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 
+import io.appform.signals.signals.ConsumingFireForgetSignal;
+
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
@@ -91,6 +93,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     private final List<MessageSelector> messageSelectors;
     private final Set<EventType> compactionTriggeringEvents;
     private final AgentEventMessageExtractor extractor = new AgentEventMessageExtractor();
+    private final ConsumingFireForgetSignal<SessionSummary> onSessionSummarized = new ConsumingFireForgetSignal<>();
     private A agent;
 
     /**
@@ -179,7 +182,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 .orElse(List.of());
     }
 
-
     /**
      * Forces compaction for a given session.
      * This can be used to manually trigger summarization and reduce the session history size. Uses the current agent
@@ -191,6 +193,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     public CompletableFuture<Optional<SessionSummary>> forceCompaction(@NonNull String sessionId) {
         return forceCompaction(sessionId, null);
     }
+
 
     /**
      * Forces compaction for a given session.
@@ -269,6 +272,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         agent.getSetup().getEventBus()
                 .onEventBlocking() // Blocks the loop till work is done loop till work is done loop till work is done loop till work is done
                 .connect(this::processEvent);
+    }
+
+    public ConsumingFireForgetSignal<SessionSummary> onSessionSummarized() {
+        return onSessionSummarized;
     }
 
     @Override
@@ -404,6 +411,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
 
         if (compactionNeeded) {
+            log.info("Starting summarization for session: {} due to event: {} ({})",
+                     sessionId,
+                     event.getEventId(),
+                     event.getType());
             try {
                 summarizeConversation(sessionId,
                                       runId,
@@ -463,10 +474,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return true;
     }
 
-    private void saveSummary(final String sessionId,
-                             final ExtractedSummary summary,
-                             final String newestMessageId,
-                             final String lastSummarizedMessageId) {
+    private Optional<SessionSummary> saveSummary(final String sessionId,
+                                                 final ExtractedSummary summary,
+                                                 final String newestMessageId,
+                                                 final String lastSummarizedMessageId) {
         try {
             final var existingSessionMessageId = sessionStore.session(sessionId)
                     .map(SessionSummary::getLastSummarizedMessageId)
@@ -477,7 +488,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                          lastSummarizedMessageId,
                          existingSessionMessageId,
                          sessionId);
-                return;
+                return Optional.empty();
             }
             final var updated = sessionStore.saveSession(SessionSummary
                     .builder()
@@ -488,13 +499,19 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                     .raw(mapper.writeValueAsString(summary.getRawData()))
                     .lastSummarizedMessageId(newestMessageId)
                     .updatedAt(AgentUtils.epochMicro())
-                    .build()).orElse(null);
-            log.debug("Session summary: {}", updated);
+                    .build());
+            updated.ifPresentOrElse(
+                                    savedSummary -> log.info("Summary saved successfully for session: {}. Title: {}",
+                                                             sessionId,
+                                                             savedSummary.getTitle()),
+                                    () -> log.error("Failed to save summary for session: {}", sessionId));
+            return updated;
         }
         catch (Exception e) {
             log.error("Error converting json node to memory output. Error: %s Summary: %s"
                     .formatted(e.getMessage(), newestMessageId), e);
         }
+        return Optional.empty();
     }
 
     /*
@@ -603,10 +620,20 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                             .orElse(null);
             log.debug("Extracted session summary output: {}",
                       summary.getSummary());
-            saveSummary(sessionId,
-                        summary,
-                        newestMessageId,
-                        lastSummarizedMessageId);
+            final var saved = saveSummary(sessionId,
+                                          summary,
+                                          newestMessageId,
+                                          lastSummarizedMessageId);
+            if (saved.isEmpty()) {
+                log.warn("Summary was not saved for session: {}", sessionId);
+            }
+            else {
+                log.info("Session {} summarized. Summary length: {}, Title: {}",
+                         sessionId,
+                         summary.getSummary().length(),
+                         summary.getTitle());
+                onSessionSummarized.dispatch(saved.get());
+            }
         }
     }
 
