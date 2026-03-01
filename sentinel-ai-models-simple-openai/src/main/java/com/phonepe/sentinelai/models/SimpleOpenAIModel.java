@@ -16,66 +16,11 @@
 
 package com.phonepe.sentinelai.models;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.base.Stopwatch;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
-
-import io.github.sashirestela.cleverclient.support.CleverClientException;
-import io.github.sashirestela.openai.common.ResponseFormat;
-import io.github.sashirestela.openai.common.Usage;
-import io.github.sashirestela.openai.common.function.FunctionCall;
-import io.github.sashirestela.openai.common.tool.Tool;
-import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
-import io.github.sashirestela.openai.common.tool.ToolType;
-import io.github.sashirestela.openai.domain.chat.Chat;
-import io.github.sashirestela.openai.domain.chat.ChatMessage;
-import io.github.sashirestela.openai.domain.chat.ChatRequest;
-import io.github.sashirestela.openai.service.ChatCompletionServices;
-
-import org.apache.commons.lang3.ClassUtils;
-
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentSetup;
-import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
-import com.phonepe.sentinelai.core.agent.ToolRunner;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
-import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
-import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
-import com.phonepe.sentinelai.core.agentmessages.responses.Text;
-import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
-import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
-import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
-import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.core.errors.SentinelError;
-import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessContext;
-import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
-import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
-import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
-import com.phonepe.sentinelai.core.model.Model;
-import com.phonepe.sentinelai.core.model.ModelOutput;
-import com.phonepe.sentinelai.core.model.ModelRunContext;
-import com.phonepe.sentinelai.core.model.ModelSettings;
-import com.phonepe.sentinelai.core.model.ModelUsageStats;
-import com.phonepe.sentinelai.core.model.OutputGenerationMode;
-import com.phonepe.sentinelai.core.tools.ExecutableTool;
-import com.phonepe.sentinelai.core.tools.ExternalTool;
-import com.phonepe.sentinelai.core.tools.ParameterMapper;
-import com.phonepe.sentinelai.core.tools.ToolDefinition;
-import com.phonepe.sentinelai.core.utils.AgentUtils;
-import com.phonepe.sentinelai.core.utils.Pair;
-import com.phonepe.sentinelai.models.errors.AgentMessagesPreProcessorExecutionFailedException;
-import com.phonepe.sentinelai.models.errors.InvalidAgentMessagesException;
-
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.Value;
-import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
+import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
+import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageReceivedEvent;
+import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageSentEvent;
+import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat;
+import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertToOpenAIMessages;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -95,11 +40,65 @@ import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
-import static com.phonepe.sentinelai.core.utils.AgentUtils.safeGetInt;
-import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageReceivedEvent;
-import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageSentEvent;
-import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat;
-import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertToOpenAIMessages;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Stopwatch;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
+import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
+import com.phonepe.sentinelai.core.agent.ToolRunner;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
+import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
+import com.phonepe.sentinelai.core.agentmessages.responses.Text;
+import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
+import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.errors.SentinelError;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessContext;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
+import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
+import com.phonepe.sentinelai.core.model.Model;
+import com.phonepe.sentinelai.core.model.ModelAttributes;
+import com.phonepe.sentinelai.core.model.ModelOutput;
+import com.phonepe.sentinelai.core.model.ModelRunContext;
+import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
+import com.phonepe.sentinelai.core.tools.ExecutableTool;
+import com.phonepe.sentinelai.core.tools.ExternalTool;
+import com.phonepe.sentinelai.core.tools.ParameterMapper;
+import com.phonepe.sentinelai.core.tools.ToolDefinition;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.core.utils.Pair;
+import com.phonepe.sentinelai.models.errors.AgentMessagesPreProcessorExecutionFailedException;
+import com.phonepe.sentinelai.models.errors.InvalidAgentMessagesException;
+
+import org.apache.commons.lang3.ClassUtils;
+
+import io.github.sashirestela.cleverclient.support.CleverClientException;
+import io.github.sashirestela.openai.common.ResponseFormat;
+import io.github.sashirestela.openai.common.Usage;
+import io.github.sashirestela.openai.common.function.FunctionCall;
+import io.github.sashirestela.openai.common.tool.Tool;
+import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
+import io.github.sashirestela.openai.common.tool.ToolType;
+import io.github.sashirestela.openai.domain.chat.Chat;
+import io.github.sashirestela.openai.domain.chat.ChatMessage;
+import io.github.sashirestela.openai.domain.chat.ChatRequest;
+import io.github.sashirestela.openai.service.ChatCompletionServices;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.Value;
+import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Model implementation based on SimpleOpenAI client.
@@ -341,7 +340,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                            allMessages,
                                                                                            newMessages,
                                                                                            oldMessages)
-                            .orElse(null);
+                                                                                                   .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(oldMessages,
                                                                    stats,
                                                                    SentinelError
@@ -413,11 +412,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     @Override
     public int estimateTokenCount(List<AgentMessage> messages,
                                   AgentSetup agentSetup) {
+        final var modelAttributes = Objects.requireNonNullElse(agentSetup.getModelSettings()
+                .getModelAttributes(), ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
         return tokenCounter.estimateTokenCount(messages,
                                                this.modelOptions
                                                        .getTokenCountingConfig(),
-                                               agentSetup.getModelSettings()
-                                                       .getModelAttributes()
+                                               modelAttributes
                                                        .getEncodingType());
     }
 
@@ -617,8 +617,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                               stopwatch);
                                                                              }
                                                                          }
-                                                                         case FinishReasons.FUNCTION_CALL,
-                                                                                 FinishReasons.TOOL_CALLS -> {
+                                                                         case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
 
                                                                              //Model is waiting for us to run tools and respond back
                                                                              final var toolCalls = toolCallData
@@ -679,12 +678,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                                         stats,
                                                                                                                         SentinelError
                                                                                                                                 .error(ErrorType.LENGTH_EXCEEDED));
-                                                                         case FinishReasons.CONTENT_FILTER ->
-                                                                             ModelOutput
-                                                                                     .error(oldMessages,
-                                                                                            stats,
-                                                                                            SentinelError.error(
-                                                                                                                ErrorType.FILTERED));
+                                                                         case FinishReasons.CONTENT_FILTER -> ModelOutput
+                                                                                 .error(oldMessages,
+                                                                                        stats,
+                                                                                        SentinelError.error(
+                                                                                                            ErrorType.FILTERED));
                                                                          default -> ModelOutput.error(oldMessages,
                                                                                                       stats,
                                                                                                       SentinelError
