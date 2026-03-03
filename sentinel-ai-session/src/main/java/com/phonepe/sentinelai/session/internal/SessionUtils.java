@@ -20,12 +20,14 @@ import com.phonepe.sentinelai.core.agent.Agent.ProcessingCompletedData;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.model.ModelAttributes;
 import com.phonepe.sentinelai.session.AgentSessionExtensionSetup;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Objects;
 
 @UtilityClass
 @Slf4j
@@ -53,8 +55,9 @@ public class SessionUtils {
         final var estimateTokenCount = agentSetup
                 .getModel()
                 .estimateTokenCount(messages, agentSetup);
-        final var contextWindowSize = agentSetup.getModelSettings()
-                .getModelAttributes()
+        final var modelAttributes = Objects.requireNonNullElse(agentSetup.getModelSettings()
+                .getModelAttributes(), ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
+        final var contextWindowSize = modelAttributes
                 .getContextWindowSize();
         final var currentBoundary = (contextWindowSize * threshold) / 100;
         final var evalResult = estimateTokenCount >= currentBoundary;
