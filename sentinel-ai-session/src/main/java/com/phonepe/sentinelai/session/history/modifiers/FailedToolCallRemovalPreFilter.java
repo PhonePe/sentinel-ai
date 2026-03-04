@@ -135,16 +135,16 @@ public class FailedToolCallRemovalPreFilter implements MessagePersistencePreFilt
     @Override
     public List<AgentMessage> filter(List<AgentMessage> agentMessages) {
         // Find all failed tool calls and then remove all the call requests and responses
-        final var failedCallFiler = new FailedToolCallFilter(agentMessages.stream()
+        final var failedCallFilter = new FailedToolCallFilter(agentMessages.stream()
                 .map(message -> message.accept(FAILED_TOOL_CALL_FINDER))
                 .filter(Predicate.not(Strings::isNullOrEmpty))
                 .collect(Collectors.toUnmodifiableSet()));
-        final var failedCallIds = failedCallFiler.getFailedCallIds();
+        final var failedCallIds = failedCallFilter.getFailedCallIds();
         if (!failedCallIds.isEmpty()) {
-            log.debug("Found failed tool call ids: {}", failedCallFiler.getFailedCallIds());
+            log.debug("Found failed tool call ids: {}", failedCallFilter.getFailedCallIds());
         }
         return agentMessages.stream()
-                .filter(agentMessage -> agentMessage.accept(failedCallFiler))
+                .filter(agentMessage -> agentMessage.accept(failedCallFilter))
                 .toList();
     }
 }
