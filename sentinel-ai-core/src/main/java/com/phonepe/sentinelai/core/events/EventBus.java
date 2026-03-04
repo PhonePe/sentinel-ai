@@ -19,6 +19,7 @@ package com.phonepe.sentinelai.core.events;
 import com.google.common.annotations.VisibleForTesting;
 
 import io.appform.signals.signals.ConsumingFireForgetSignal;
+import io.appform.signals.signals.ConsumingSyncSignal;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +28,7 @@ import java.util.concurrent.Executors;
  * The common bus which is used to manage signal emission and handling
  */
 public class EventBus {
+    private final ConsumingSyncSignal<AgentEvent> blockingEventSignal;
     private final ConsumingFireForgetSignal<AgentEvent> eventSignal;
 
     /**
@@ -49,11 +51,14 @@ public class EventBus {
 
     @VisibleForTesting
     EventBus(ConsumingFireForgetSignal<AgentEvent> eventSignal) {
+        this.blockingEventSignal = ConsumingSyncSignal.<AgentEvent>builder()
+                .build();
         this.eventSignal = eventSignal;
+        blockingEventSignal.connect(eventSignal::dispatch);
     }
 
     public void notify(final AgentEvent event) {
-        eventSignal.dispatch(event);
+        blockingEventSignal.dispatch(event);
     }
 
     /**
@@ -61,5 +66,9 @@ public class EventBus {
      */
     public ConsumingFireForgetSignal<AgentEvent> onEvent() {
         return eventSignal;
+    }
+
+    public ConsumingSyncSignal<AgentEvent> onEventBlocking() {
+        return blockingEventSignal;
     }
 }

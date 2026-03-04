@@ -1,0 +1,38 @@
+{
+  "id" : "chatcmpl-DB0nZrevUmu3vW07G1lxVpfl1GgSs",
+  "object" : "chat.completion",
+  "created" : 1771517049,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_f97eff32c5",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_QBha63Gw3Z39eEAYWw7zidQp",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"sessionOutput\":{\"title\":\"No messages to compact\",\"keywords\":[\"empty\",\"no content\"],\"summary\":\"There are no messages available for compaction.\",\"key_points\":[\"No messages to process.\"],\"key_facts\":[],\"action_items\":[],\"citations\":[],\"sentiment\":\"neutral\",\"confidence\":10,\"metadata\":\"No content available for processing.\"}}"
+        }
+      } ],
+      "annotations" : [ ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 877,
+    "completion_tokens" : 82,
+    "total_tokens" : 959,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+

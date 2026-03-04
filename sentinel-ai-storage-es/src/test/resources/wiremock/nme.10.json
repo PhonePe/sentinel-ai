@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-D6BeBnlIXuonNHdMbiVtkUtCCwIR6",
+  "id" : "chatcmpl-DB0nQjrMvUSNjen5ehbF3Cjxfa4sx",
   "object" : "chat.completion",
-  "created" : 1770367111,
+  "created" : 1771517040,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
@@ -9,11 +9,11 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_JSh36eSBAGRaHdZ0yNLbJjEx",
+        "id" : "call_h4dvgg8rMryAPhJvuUW1yWi0",
         "type" : "function",
         "function" : {
-          "name" : "simple_agent_get_name",
-          "arguments" : "{}"
+          "name" : "__output_generator__",
+          "arguments" : "{\"sessionOutput\":{\"title\":\"Assistance request from Santanu\",\"keywords\":[\"assistance\",\"Santanu\",\"greeting\"],\"summary\":\"Mr. Santanu requested assistance. The assistant greeted him and inquired how to help.\",\"key_points\":[\"Mr. Santanu is seeking assistance.\",\"The assistant greeted Mr. Santanu.\"],\"key_facts\":[\"User: Santanu\"],\"action_items\":[],\"citations\":[],\"sentiment\":\"positive\",\"confidence\":9,\"metadata\":\"\"}}"
         }
       } ],
       "annotations" : [ ]
@@ -21,16 +21,16 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1322,
-    "completion_tokens" : 13,
-    "total_tokens" : 1335,
+    "prompt_tokens" : 923,
+    "completion_tokens" : 108,
+    "total_tokens" : 1031,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 1152
+      "cached_tokens" : 0
     }
   }
 } 

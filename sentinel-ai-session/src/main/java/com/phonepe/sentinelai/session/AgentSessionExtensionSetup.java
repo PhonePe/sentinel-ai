@@ -18,29 +18,35 @@ package com.phonepe.sentinelai.session;
 
 
 import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
+import com.phonepe.sentinelai.core.events.EventType;
 
 import lombok.Builder;
 import lombok.Value;
 import lombok.With;
 
+import java.util.Set;
+
 /**
  * Setup for Agent Session Extension
  */
 @Value
-@Builder
 @With
+@Builder
 @SuppressWarnings("java:S6548")
 public class AgentSessionExtensionSetup {
     public static final int MAX_HISTORICAL_MESSAGES_FETCH_COUNT = 30;
     public static final int DEFAULT_MAX_MESSAGES_TO_SUMMARIZE = 50;
     public static final int DEFAULT_MAX_SUMMARY_LENGTH = 1000;
     public static final boolean DEFAULT_DISABLE_SUMMARIZATION = false;
-    private static final int DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD = 60;
-
+    public static final int DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD = 60;
+    public static final Set<EventType> DEFAULT_COMPACTION_TRIGGERING_EVENTS = Set.of(EventType.OUTPUT_ERROR,
+                                                                                     EventType.OUTPUT_GENERATED,
+                                                                                     EventType.MESSAGE_RECEIVED);
     public static final AgentSessionExtensionSetup DEFAULT = new AgentSessionExtensionSetup(MAX_HISTORICAL_MESSAGES_FETCH_COUNT,
                                                                                             DEFAULT_MAX_SUMMARY_LENGTH,
                                                                                             DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD,
-                                                                                            CompactionPrompts.DEFAULT);
+                                                                                            CompactionPrompts.DEFAULT,
+                                                                                            DEFAULT_COMPACTION_TRIGGERING_EVENTS);
 
     /**
      * Number of historical messages to fetch from session store in one go.
@@ -66,4 +72,7 @@ public class AgentSessionExtensionSetup {
 
     @Builder.Default
     CompactionPrompts compactionPrompts = CompactionPrompts.DEFAULT;
+
+    @Builder.Default
+    Set<EventType> compactionTriggeringEvents = DEFAULT_COMPACTION_TRIGGERING_EVENTS;
 }

@@ -1,0 +1,38 @@
+{
+  "id" : "chatcmpl-DB0na2HhPB2Hhvicy8y4sgrlkXOWw",
+  "object" : "chat.completion",
+  "created" : 1771517050,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_f97eff32c5",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_njgTHNkNcYjIIEKUSUrqS80B",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"sessionOutput\":{\"title\":\"Bangalore Weather Update\",\"keywords\":[\"weather\",\"Bangalore\",\"sunny\"],\"summary\":\"The weather in Bangalore is sunny. The user enjoys this sunny weather.\",\"key_points\":[\"User mentioned the weather is sunny.\",\"User lives in Bangalore.\"],\"key_facts\":[\"Weather in Bangalore is sunny.\",\"User resides in Bangalore.\"],\"action_items\":[],\"citations\":[],\"sentiment\":\"positive\",\"confidence\":9,\"metadata\":\"\"}}"
+        }
+      } ],
+      "annotations" : [ ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1032,
+    "completion_tokens" : 103,
+    "total_tokens" : 1135,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+

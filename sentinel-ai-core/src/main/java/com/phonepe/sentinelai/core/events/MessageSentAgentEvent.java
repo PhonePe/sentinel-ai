@@ -34,8 +34,8 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 public class MessageSentAgentEvent extends AgentEvent {
-    List<AgentMessage> messages;
-    AgentMessage currentMessage;
+    List<AgentMessage> allMessages;
+    List<AgentMessage> newMessages;
 
     @Builder
     @Jacksonized
@@ -43,11 +43,11 @@ public class MessageSentAgentEvent extends AgentEvent {
                                  @NonNull String runId,
                                  String sessionId,
                                  String userId,
-                                 @NonNull List<AgentMessage> messages,
-                                 @NonNull AgentMessage currentMessage) {
+                                 @NonNull List<AgentMessage> allMessages,
+                                 @NonNull List<AgentMessage> newMessages) {
         super(EventType.MESSAGE_SENT, agentName, runId, sessionId, userId);
-        this.messages = messages;
-        this.currentMessage = currentMessage;
+        this.allMessages = allMessages;
+        this.newMessages = newMessages;
     }
 
     @Override

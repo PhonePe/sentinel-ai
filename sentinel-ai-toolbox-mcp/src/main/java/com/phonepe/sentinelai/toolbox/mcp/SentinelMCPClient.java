@@ -415,8 +415,7 @@ public class SentinelMCPClient implements AutoCloseable {
 
     private McpSchema.CreateMessageResult.StopReason toStopReason(ErrorType errorType) {
         return switch (errorType) {
-            case LENGTH_EXCEEDED ->
-                McpSchema.CreateMessageResult.StopReason.MAX_TOKENS;
+            case LENGTH_EXCEEDED -> McpSchema.CreateMessageResult.StopReason.MAX_TOKENS;
             default -> McpSchema.CreateMessageResult.StopReason.END_TURN;
             /*
             case SUCCESS, NO_RESPONSE -> null;

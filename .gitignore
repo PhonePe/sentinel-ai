@@ -45,3 +45,4 @@ data
 out
 deps
 docs/site
+test_output.log

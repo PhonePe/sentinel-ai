@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-D6Aqx5u30pbUwxg7zClDm06eWdtIf",
+  "id" : "chatcmpl-DAyj8TWasXH47ooAlhET5uit4Kd6F",
   "object" : "chat.completion",
-  "created" : 1770364059,
+  "created" : 1771509086,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
@@ -9,11 +9,11 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_HSCnCzTWjfkDjIifLtoUNF6d",
+        "id" : "call_HbENF9jzEkS64vIHhK6VP6aG",
         "type" : "function",
         "function" : {
-          "name" : "simple_agent_get_salutation",
-          "arguments" : "{\"params\":{\"name\":\"Santanu\"}}"
+          "name" : "simple_agent_get_name",
+          "arguments" : "{}"
         }
       } ],
       "annotations" : [ ]
@@ -21,9 +21,9 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 504,
-    "completion_tokens" : 21,
-    "total_tokens" : 525,
+    "prompt_tokens" : 480,
+    "completion_tokens" : 13,
+    "total_tokens" : 493,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

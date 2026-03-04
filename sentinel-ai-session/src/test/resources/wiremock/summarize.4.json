@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-D6B5NY6a2km1zqN6aJEY7bqw0Curf",
+  "id" : "chatcmpl-DAyhiXQb7krkmSPUmynitll4kJhBR",
   "object" : "chat.completion",
-  "created" : 1770364953,
+  "created" : 1771508998,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
@@ -9,11 +9,11 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_T0JQcd2UEbR6Czu0WTqkXrMi",
+        "id" : "call_lVblCevXEEuty6zdEuEaw1lI",
         "type" : "function",
         "function" : {
           "name" : "__output_generator__",
-          "arguments" : "{\"sessionOutput\":{\"title\":\"User Input and Tool Responses\",\"keywords\":[\"user input\",\"tool response\",\"salutation\"],\"summary\":\"The user input was 'Hi'. The tool responses included the name 'Santanu' and possible salutations: 'Mr', 'Dr', 'Prof'. The final output generated was 'Hello, Mr. Santanu!'.\",\"key_points\":[\"User greeted with 'Hi'.\",\"Name identified as 'Santanu'.\",\"Available salutations: 'Mr', 'Dr', 'Prof'.\",\"Final output: 'Hello, Mr. Santanu!'.\"],\"key_facts\":[\"User input: 'Hi'\",\"Identified name: 'Santanu'\",\"Salutations: 'Mr', 'Dr', 'Prof'\",\"Output: 'Hello, Mr. Santanu!'\"],\"action_items\":[],\"citations\":[],\"sentiment\":\"neutral\",\"confidence\":9.0,\"metadata\":\"Processed messages from user and tool responses.\"}}"
+          "arguments" : "{\"output\":\"Hello Mr Santanu!\"}"
         }
       } ],
       "annotations" : [ ]
@@ -21,9 +21,9 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1149,
-    "completion_tokens" : 204,
-    "total_tokens" : 1353,
+    "prompt_tokens" : 546,
+    "completion_tokens" : 21,
+    "total_tokens" : 567,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

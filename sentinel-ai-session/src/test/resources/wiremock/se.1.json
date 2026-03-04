@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-D6Aqw61ebl1PfuDVxPZbBEuOXClxZ",
+  "id" : "chatcmpl-DAyj6PWuo9qZMFKUNXrjbtBDtyQAT",
   "object" : "chat.completion",
-  "created" : 1770364058,
+  "created" : 1771509084,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
@@ -9,11 +9,11 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_hGpwTopwhooYy225q0tTNmB8",
+        "id" : "call_eeWJ2ddZ6yiKVFhyLSZZgAaC",
         "type" : "function",
         "function" : {
-          "name" : "simple_agent_get_name",
-          "arguments" : "{}"
+          "name" : "__output_generator__",
+          "arguments" : "{\"sessionOutput\":{\"title\":\"User greeting\",\"keywords\":[\"greeting\"],\"summary\":\"The user initiated a conversation with a simple greeting.\",\"key_points\":[\"User sent a greeting message.\"],\"key_facts\":[\"User input contained XML format.\"],\"action_items\":[],\"citations\":[],\"sentiment\":\"positive\",\"confidence\":9,\"metadata\":\"User input received in XML format.\"}}"
         }
       } ],
       "annotations" : [ ]
@@ -21,9 +21,9 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 480,
-    "completion_tokens" : 13,
-    "total_tokens" : 493,
+    "prompt_tokens" : 925,
+    "completion_tokens" : 87,
+    "total_tokens" : 1012,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

@@ -151,7 +151,7 @@ class AgentIntegrationTest {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(13, "nme", getClass());
+        TestUtils.setupMocks(14, "nme", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
@@ -228,7 +228,7 @@ class AgentIntegrationTest {
         log.info("Session created with updated time: {}", updatedTime);
         {
             final var response = agent.execute(AgentInput.<UserInput>builder()
-                    .request(new UserInput("Today is sunny in bangalore"))
+                    .request(new UserInput("I live in bangalore and the weather is sunny"))
                     .requestMetadata(requestMetadata)
                     .build());
             log.debug("Agent response: {}", response.getData().message());

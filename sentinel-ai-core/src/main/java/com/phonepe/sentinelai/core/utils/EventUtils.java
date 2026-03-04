@@ -18,11 +18,13 @@ package com.phonepe.sentinelai.core.utils;
 
 import com.google.common.base.Stopwatch;
 
+import org.apache.commons.lang3.ClassUtils;
+
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
+import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.events.AgentEvent;
 import com.phonepe.sentinelai.core.events.InputReceivedAgentEvent;
@@ -39,6 +41,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -70,87 +73,69 @@ public class EventUtils {
         }
     }
 
-    public static <R, T, A extends Agent<R, T, A>> void raiseMessageReceivedEvent(AgentRunContext<R> context,
-                                                                                  A agent,
-                                                                                  AgentResponse newMessage,
-                                                                                  Stopwatch stopwatch) {
-        raiseMessageReceivedEvent(agent.name(),
-                                  context.getRunId(),
-                                  AgentUtils.sessionId(context),
-                                  AgentUtils.userId(context),
-                                  context.getAgentSetup(),
-                                  newMessage,
-                                  stopwatch);
-    }
-
     public static void raiseMessageReceivedEvent(ModelRunContext modelRunContext,
-                                                 AgentResponse newMessage,
+                                                 List<AgentMessage> newMessages,
+                                                 List<AgentMessage> allMessages,
                                                  Stopwatch stopwatch) {
         raiseMessageReceivedEvent(modelRunContext.getAgentName(),
                                   modelRunContext.getRunId(),
                                   modelRunContext.getSessionId(),
                                   modelRunContext.getUserId(),
                                   modelRunContext.getAgentSetup(),
-                                  newMessage,
+                                  newMessages,
+                                  allMessages,
                                   stopwatch);
     }
 
-
+    @SuppressWarnings("java:S107")
     public static void raiseMessageReceivedEvent(String agentName,
                                                  String runId,
                                                  String sessionId,
                                                  String userId,
                                                  AgentSetup agentSetup,
-                                                 AgentResponse newMessage,
+                                                 List<AgentMessage> newMessages,
+                                                 List<AgentMessage> allMessages,
                                                  Stopwatch stopwatch) {
         agentSetup.getEventBus()
                 .notify(new MessageReceivedAgentEvent(agentName,
                                                       runId,
                                                       sessionId,
                                                       userId,
-                                                      newMessage,
+                                                      List.copyOf(allMessages),
+                                                      List.copyOf(newMessages),
                                                       Duration.ofMillis(stopwatch
                                                               .elapsed(TimeUnit.MILLISECONDS))));
     }
 
-    public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(AgentRunContext<R> context,
-                                                                              A agent,
-                                                                              List<AgentMessage> oldMessages) {
-        raiseMessageSentEvent(agent.name(),
-                              context.getRunId(),
-                              AgentUtils.sessionId(context),
-                              AgentUtils.userId(context),
-                              context.getAgentSetup(),
-                              oldMessages,
-                              oldMessages.isEmpty() ? null : oldMessages.get(oldMessages.size() - 1));
-    }
-
     public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(ModelRunContext modelRunContext,
-                                                                              List<AgentMessage> oldMessages,
-                                                                              AgentMessage currentMessage) {
-        raiseMessageSentEvent(modelRunContext.getAgentName(),
-                              modelRunContext.getRunId(),
-                              modelRunContext.getSessionId(),
-                              modelRunContext.getUserId(),
-                              modelRunContext.getAgentSetup(),
-                              oldMessages,
-                              currentMessage);
-    }
+                                                                              List<AgentMessage> prevMessages,
+                                                                              List<AgentMessage> currentAllMessages) {
+        final var oldMessagesIds = prevMessages.stream()
+                .map(AgentMessage::getMessageId)
+                .collect(Collectors.toUnmodifiableSet());
 
-    public static void raiseMessageSentEvent(String agentName,
-                                             String runId,
-                                             String sessionId,
-                                             String userId,
-                                             AgentSetup agentSetup,
-                                             List<AgentMessage> oldMessages,
-                                             AgentMessage currentMessage) {
-        agentSetup.getEventBus()
-                .notify(new MessageSentAgentEvent(agentName,
-                                                  runId,
-                                                  sessionId,
-                                                  userId,
-                                                  List.copyOf(oldMessages),
-                                                  currentMessage));
+        final var newMessages = currentAllMessages.stream()
+                .filter(message -> ClassUtils.isAssignable(message.getClass(), AgentRequest.class))
+                .filter(message -> !oldMessagesIds.contains(message.getMessageId()))
+                .toList();
+
+        if (log.isTraceEnabled()) {
+            log.trace("Prev message ids: {}. Curr message ids: {}",
+                      oldMessagesIds,
+                      currentAllMessages.stream().map(AgentMessage::getMessageId).toList());
+        }
+        if (newMessages.isEmpty()) {
+            log.debug("No new messages");
+            return;
+        }
+        modelRunContext.getAgentSetup()
+                .getEventBus()
+                .notify(new MessageSentAgentEvent(modelRunContext.getAgentName(),
+                                                  modelRunContext.getRunId(),
+                                                  modelRunContext.getSessionId(),
+                                                  modelRunContext.getUserId(),
+                                                  List.copyOf(prevMessages),
+                                                  List.copyOf(newMessages)));
     }
 
     public static void raiseOutputEvent(ModelRunContext context,

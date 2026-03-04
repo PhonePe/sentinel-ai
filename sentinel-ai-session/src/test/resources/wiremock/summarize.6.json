@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-D6B5QohXnz4R2I7LxbkzNuWW4GTxQ",
+  "id" : "chatcmpl-DAyhl6STQRzVtGzyAt0nuNFp0IFeF",
   "object" : "chat.completion",
-  "created" : 1770364956,
+  "created" : 1771509001,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
@@ -9,7 +9,7 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_vksrJqFfoZpItvz7ggZODKcf",
+        "id" : "call_bC99OPC0fFZtzuLtqqy3rqD1",
         "type" : "function",
         "function" : {
           "name" : "test_tool_box_get_weather_today",
@@ -21,9 +21,9 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 793,
+    "prompt_tokens" : 814,
     "completion_tokens" : 20,
-    "total_tokens" : 813,
+    "total_tokens" : 834,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

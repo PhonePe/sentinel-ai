@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-D6BeBnlIXuonNHdMbiVtkUtCCwIR6",
+  "id" : "chatcmpl-DB0aHreNo0ictMyxnxPGR5XUOGEuz",
   "object" : "chat.completion",
-  "created" : 1770367111,
+  "created" : 1771516225,
   "model" : "gpt-4o-mini-2024-07-18",
   "system_fingerprint" : "fp_f97eff32c5",
   "choices" : [ {
@@ -9,11 +9,11 @@
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_JSh36eSBAGRaHdZ0yNLbJjEx",
+        "id" : "call_bw3Ul75EfNA68kQLPD1cOvLE",
         "type" : "function",
         "function" : {
-          "name" : "simple_agent_get_name",
-          "arguments" : "{}"
+          "name" : "__output_generator__",
+          "arguments" : "{\"sessionOutput\":{\"title\":\"User Interaction Summary\",\"keywords\":[\"Bangalore\",\"weather\",\"Santanu\"],\"summary\":\"User Santanu lives in Bangalore, where the weather is sunny. The assistant acknowledges this and inquires about how things are going for him.\",\"key_points\":[\"User lives in Bangalore.\",\"The weather in Bangalore is sunny.\",\"Assistant greets Santanu and asks about his well-being.\"],\"key_facts\":[\"User: Santanu\",\"Location: Bangalore\",\"Weather: Sunny\"],\"action_items\":[],\"citations\":[],\"sentiment\":\"positive\",\"confidence\":9,\"metadata\":\"User interaction data.\"}}"
         }
       } ],
       "annotations" : [ ]
@@ -21,16 +21,16 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1322,
-    "completion_tokens" : 13,
-    "total_tokens" : 1335,
+    "prompt_tokens" : 1516,
+    "completion_tokens" : 133,
+    "total_tokens" : 1649,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 1152
+      "cached_tokens" : 0
     }
   }
 } 
