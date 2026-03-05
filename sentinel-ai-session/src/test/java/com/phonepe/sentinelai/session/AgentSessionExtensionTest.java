@@ -721,6 +721,61 @@ class AgentSessionExtensionTest {
 
     }
 
+    @Test
+    void testNoSummaryWhenSessionMissing(WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(3, "sessionless", getClass());
+        final var objectMapper = JsonUtils.createMapper();
+        final var toolbox = new TestToolBox("Santanu");
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
+                                                                  .build()))
+                                                          .build(),
+                                                  objectMapper);
+
+
+        final var sessionStore = new InMemorySessionStore();
+        final var agentSessionExtension = AgentSessionExtension
+                .<UserInput, String, SimpleAgent>builder()
+                .mapper(objectMapper)
+                .sessionStore(sessionStore)
+                .setup(AgentSessionExtensionSetup.builder()
+                        .autoSummarizationThresholdPercentage(3)
+                        .build())
+                .build();
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                        .mapper(objectMapper)
+                        .model(model)
+                        .modelSettings(ModelSettings.builder()
+                                .temperature(0.1f)
+                                .seed(1)
+                                .build())
+                        .build())
+                .extensions(List.of(agentSessionExtension))
+                .build()
+                .registerToolbox(toolbox);
+
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .userId("ss") //No session id provided
+                .build();
+        final var response = agent.execute(AgentInput.<UserInput>builder()
+                .request(new UserInput("Hi"))
+                .requestMetadata(requestMetadata)
+                .build());
+        log.info("Agent response: {}", response.getData());
+        assertTrue(sessionStore.sessions(Integer.MAX_VALUE, null, QueryDirection.NEWER).getItems().isEmpty(),
+                   "Session should not be created when sessionId is missing");
+    }
+
     /**
      * Test messages() method with empty sessionId
      */

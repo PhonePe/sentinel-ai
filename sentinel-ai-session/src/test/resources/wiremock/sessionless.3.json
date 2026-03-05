@@ -1,0 +1,38 @@
+{
+  "id" : "chatcmpl-DG1cFDR3TemHOyiInn4Cg7GkTafA6",
+  "object" : "chat.completion",
+  "created" : 1772711831,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_f97eff32c5",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_o8CNOptzXV3HHNFJR9oFuG8A",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":\"Hello, Mr Santanu!\"}"
+        }
+      } ],
+      "annotations" : [ ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 536,
+    "completion_tokens" : 22,
+    "total_tokens" : 558,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+
