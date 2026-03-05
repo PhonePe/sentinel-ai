@@ -69,7 +69,6 @@ import java.util.concurrent.ExecutionException;
 
 import static com.phonepe.sentinelai.session.MessageReadingUtils.readMessagesSinceId;
 import static com.phonepe.sentinelai.session.MessageReadingUtils.rearrangeMessages;
-import static com.phonepe.sentinelai.session.internal.SessionUtils.isAlreadyLengthExceeded;
 import static com.phonepe.sentinelai.session.internal.SessionUtils.isContextWindowThresholdBreached;
 
 
@@ -207,9 +206,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                        AgentSetup providedAgentSetup) {
         return CompletableFuture.supplyAsync(() -> {
             final var runId = "manual-compaction-run-" + AgentUtils.epochMicro();
-            final var agentStup = Objects.requireNonNullElse(providedAgentSetup, agent.getSetup());
+            final var agentSetup = Objects.requireNonNullElse(providedAgentSetup, agent.getSetup());
             try {
-                summarizeConversation(sessionId, runId, null, agentStup, null, true);
+                summarizeConversation(sessionId, runId, agentSetup);
                 return sessionStore.session(sessionId);
             }
             catch (InterruptedException e) {
@@ -268,9 +267,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     @Override
     public void onExtensionRegistrationCompleted(A agent) {
         this.agent = agent;
-        agent.onRequestCompleted().connect(this::summarizeConversation);
         agent.getSetup().getEventBus()
-                .onEventBlocking() // Blocks the loop till work is done loop till work is done loop till work is done loop till work is done
+                .onEventBlocking() // Blocks the loop till work is done loop till work is done
                 .connect(this::processEvent);
     }
 
@@ -344,6 +342,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     @SuppressWarnings("java:S3776")
     private void processEvent(AgentEvent event) {
         final var sessionId = event.getSessionId();
+        if (Strings.isNullOrEmpty(sessionId)) {
+            log.debug("No session id found in event {}, skipping event processing", event.getEventId());
+            return;
+        }
         if (sessionId.startsWith(COMPACTION_SESSION_PREFIX)) {
             log.debug("Skipping messages for compaction itself");
             return;
@@ -416,12 +418,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                      event.getEventId(),
                      event.getType());
             try {
-                summarizeConversation(sessionId,
-                                      runId,
-                                      null, // Let it compact everything since last summary
-                                      agentSetup,
-                                      null,
-                                      true);
+                summarizeConversation(sessionId, runId, agentSetup);
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -514,45 +511,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return Optional.empty();
     }
 
-    /*
-     * This is used to trigger async compaction if needed _after_ the response is needed.
-     * It checks if LLM has responsed with a
-     */
-    private void summarizeConversation(Agent.ProcessingCompletedData<R, T, A> data) {
-        try {
-            final var context = data.getContext();
-            summarizeConversation(AgentUtils.sessionId(context),
-                                  context.getRunId(),
-                                  null,
-                                  context.getAgentSetup(),
-                                  context.getModelUsageStats(),
-                                  isAlreadyLengthExceeded(data));
-        }
-        catch (JsonProcessingException e) {
-            log.error("Error during conversation summarization: {}",
-                      e.getMessage(),
-                      e);
-        }
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("Summarization process was interrupted for session: {}",
-                      AgentUtils.sessionId(data.getContext()));
-        }
-        catch (ExecutionException e) {
-            final var error = AgentUtils.rootCause(e);
-            log.error("Execution error during conversation summarization for session {}: {}",
-                      AgentUtils.sessionId(data.getContext()),
-                      error.getMessage(),
-                      error);
-        }
-    }
-
     private void summarizeConversation(String sessionId,
                                        String runId,
-                                       List<AgentMessage> messagesToSummarize,
-                                       AgentSetup agentSetup,
-                                       ModelUsageStats modelUsageStats,
-                                       boolean force)
+                                       AgentSetup agentSetup)
             throws JsonProcessingException,
             InterruptedException, ExecutionException {
         final var existingSession = sessionStore.session(sessionId)
@@ -561,22 +522,12 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                     existingSession,
                                                                     SessionSummary::getLastSummarizedMessageId,
                                                                     null);
-        final var sessionMessages = Objects.requireNonNullElseGet(messagesToSummarize,
-                                                                  () -> readMessagesSinceId(sessionStore,
-                                                                                            setup,
-                                                                                            sessionId,
-                                                                                            lastSummarizedMessageId,
-                                                                                            false,
-                                                                                            messageSelectors));
-        final var title = AgentUtils.getIfNotNull(existingSession, SessionSummary::getTitle, null);
-        final var needed = Strings.isNullOrEmpty(title)
-                || force
-                || isContextWindowThresholdBreached(sessionMessages, agentSetup, setup);
-        if (!needed) {
-            log.debug("Summarization not needed based on current state");
-            return;
-        }
-
+        final var sessionMessages = readMessagesSinceId(sessionStore,
+                                                        setup,
+                                                        sessionId,
+                                                        lastSummarizedMessageId,
+                                                        false,
+                                                        messageSelectors);
         final var messages = new ArrayList<AgentMessage>();
         messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(sessionId,
                                                                                          runId,
@@ -590,7 +541,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                           SessionSummary::getSummary,
                                                                           null),
                                                   sessionMessages));
-        final var stats = Objects.requireNonNullElseGet(modelUsageStats, ModelUsageStats::new);
+        final var stats = new ModelUsageStats();
 
         final var summary = MessageCompactor.compactMessages(agent.name(),
                                                              compactionSessionId(sessionId),
