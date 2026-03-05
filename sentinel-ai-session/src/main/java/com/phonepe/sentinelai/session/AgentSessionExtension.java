@@ -204,9 +204,9 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
      */
     public CompletableFuture<Optional<SessionSummary>> forceCompaction(@NonNull String sessionId,
                                                                        AgentSetup providedAgentSetup) {
+        final var agentSetup = Objects.requireNonNullElse(providedAgentSetup, agent.getSetup());
         return CompletableFuture.supplyAsync(() -> {
             final var runId = "manual-compaction-run-" + AgentUtils.epochMicro();
-            final var agentSetup = Objects.requireNonNullElse(providedAgentSetup, agent.getSetup());
             try {
                 summarizeConversation(sessionId, runId, agentSetup);
                 return sessionStore.session(sessionId);
@@ -221,7 +221,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                         .formatted(sessionId, AgentUtils.rootCause(e).getMessage()), e);
                 return Optional.empty();
             }
-        }, agent.getSetup().getExecutorService());
+        }, agentSetup.getExecutorService());
     }
 
     @Override
