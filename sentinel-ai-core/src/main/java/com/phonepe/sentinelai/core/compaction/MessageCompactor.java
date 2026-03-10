@@ -94,8 +94,17 @@ public class MessageCompactor {
                 .content(systemPrompt)
                 .timestamp(AgentUtils.epochMicro())
                 .build());
-        final var userPrompt = StringSubstitutor.replace(prompts
-                .getSummarizationUserPrompt(), valueMap);
+        String replace;
+        try {
+            replace = StringSubstitutor.replace(prompts
+                    .getSummarizationUserPrompt(), valueMap);
+        }
+        catch (Exception e) {
+            log.error("Error substituting values into user prompt template: %s"
+                    .formatted(e.getMessage()), e);
+            replace = mapper.writeValueAsString(valueMap);
+        }
+        final var userPrompt = replace;
         log.debug("Using summarization user prompt: {}", userPrompt);
         messagesForCompaction.add(UserPrompt.builder()
                 .sessionId(sessionId)

@@ -1,19 +1,19 @@
 {
-  "id" : "chatcmpl-DB0a2tlvihZVqkhpQcfM69tmF4jvT",
+  "id" : "chatcmpl-DHuXba8iOrtys9Wj50U20vORweIzh",
   "object" : "chat.completion",
-  "created" : 1771516210,
+  "created" : 1773161291,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_f97eff32c5",
+  "system_fingerprint" : "fp_eb37e061ec",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_UVwe0btEiUhV08gn6jCojlVH",
+        "id" : "call_oTJbbPpzGis6V4Aa1RsOEEGj",
         "type" : "function",
         "function" : {
           "name" : "__output_generator__",
-          "arguments" : "{\"sessionOutput\":{\"title\":\"User greeting\",\"keywords\":[\"greeting\"],\"summary\":\"The user initiated the conversation with a simple greeting.\",\"key_points\":[\"User sent a greeting message.\"],\"key_facts\":[],\"action_items\":[],\"citations\":[],\"sentiment\":\"positive\",\"confidence\":9,\"metadata\":\"User input received in XML format.\"}}"
+          "arguments" : "{\"sessionOutput\":{\"title\":\"User greeting\",\"keywords\":[\"greeting\"],\"summary\":\"The user initiated the conversation with a simple greeting.\",\"key_points\":[\"User sent a greeting message.\"],\"key_facts\":[\"User input: 'Hi'\"],\"action_items\":[],\"citations\":[],\"sentiment\":\"positive\",\"confidence\":9,\"metadata\":\"User input received in XML format.\"}}"
         }
       } ],
       "annotations" : [ ]
@@ -22,8 +22,8 @@
   } ],
   "usage" : {
     "prompt_tokens" : 925,
-    "completion_tokens" : 81,
-    "total_tokens" : 1006,
+    "completion_tokens" : 88,
+    "total_tokens" : 1013,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

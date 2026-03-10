@@ -1,19 +1,19 @@
 {
-  "id" : "chatcmpl-DB0nSgovsM4CSBONSKx1OM7B6WoTp",
+  "id" : "chatcmpl-DHudftMY39OHLmuoot6RP89ldtSYI",
   "object" : "chat.completion",
-  "created" : 1771517042,
+  "created" : 1773161667,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_f97eff32c5",
+  "system_fingerprint" : "fp_eb37e061ec",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_pT2zlxkgWWLhNRlG9Sfrhqtp",
+        "id" : "call_rWcmdoz1pEenVBZuTYyZT7Jf",
         "type" : "function",
         "function" : {
-          "name" : "__output_generator__",
-          "arguments" : "{\"sessionOutput\":{\"title\":\"User interaction summary\",\"keywords\":[\"Bangalore\",\"weather\",\"user\"],\"summary\":\"User Santanu lives in Bangalore and reported sunny weather. The assistant engaged with a friendly greeting and inquired about the user's day.\",\"key_points\":[\"User lives in Bangalore.\",\"User mentioned sunny weather.\"],\"key_facts\":[\"User's name is Santanu.\",\"Location: Bangalore.\",\"Weather: sunny.\"],\"action_items\":[],\"citations\":[],\"sentiment\":\"positive\",\"confidence\":9,\"metadata\":\"User interaction data.\"}}"
+          "name" : "agent_memory_extension_find_memories",
+          "arguments" : "{\"query\":\"weather\"}"
         }
       } ],
       "annotations" : [ ]
@@ -21,9 +21,9 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1036,
-    "completion_tokens" : 118,
-    "total_tokens" : 1154,
+    "prompt_tokens" : 1510,
+    "completion_tokens" : 19,
+    "total_tokens" : 1529,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

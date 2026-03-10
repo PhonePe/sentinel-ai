@@ -1,0 +1,38 @@
+{
+  "id" : "chatcmpl-DHuYC5ErXrukI6dUZhvVvbl6KauPW",
+  "object" : "chat.completion",
+  "created" : 1773161328,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_eb37e061ec",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_hXs1xprKGlp4fuzEcSuwbGmP",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"sessionOutput\":{\"title\":\"Weather Inquiry for Santanu\",\"keywords\":[\"weather\",\"Bangalore\",\"Santanu\"],\"summary\":\"User inquired about the weather in Bangalore. The assistant confirmed that the weather is sunny and pleasant, suitable for outdoor activities. The assistant engaged the user by asking about their plans for the day.\",\"key_points\":[\"User lives in Bangalore and mentioned sunny weather.\",\"Assistant greeted Mr. Santanu and confirmed pleasant weather.\",\"Assistant encouraged sharing of plans for the day.\"],\"key_facts\":[\"User's location: Bangalore\",\"Current weather: Sunny\"],\"action_items\":[\"Ask Santanu about his plans for the day.\"],\"citations\":[{\"source\":\"User input\",\"quote\":\"User lives in Bangalore and mentioned that the weather is sunny.\"}],\"sentiment\":\"positive\",\"confidence\":9,\"metadata\":\"Processed on October 2023\"}}"
+        }
+      } ],
+      "annotations" : [ ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 1892,
+    "completion_tokens" : 182,
+    "total_tokens" : 2074,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+

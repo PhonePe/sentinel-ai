@@ -396,24 +396,22 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                             existingSession,
                                                                             SessionSummary::getLastSummarizedMessageId,
                                                                             null);
-                final var relevantMessages = new ArrayList<>(null == lastSummarizedMessageId
-                        ? extractedData.getAllMessages()
-                        : List.of());
-                if (null != lastSummarizedMessageId) {
-                    var timestamp = Long.MAX_VALUE;
-                    // Loop till you hit the last summarized message id
-                    for (final var message : extractedData.getAllMessages()) {
-                        if (message.getMessageId().equals(lastSummarizedMessageId)) {
-                            timestamp = message.getTimestamp();
-                        }
-                        if (message.getTimestamp() > timestamp) {
-                            relevantMessages.add(message);
-                        }
-                    }
-                }
+                final var relevantMessages = readMessagesSinceId(sessionStore,
+                                                                 setup,
+                                                                 sessionId,
+                                                                 lastSummarizedMessageId,
+                                                                 false,
+                                                                 messageSelectors);
                 log.info("Checking if context window threshold is breached for session: {}. Messages since last summary: {}",
                          sessionId,
                          relevantMessages.size());
+                if (log.isDebugEnabled()) {
+                    log.debug("Messages since last summary for session {}: {}",
+                              sessionId,
+                              relevantMessages.stream()
+                                      .map(AgentMessage::getMessageId)
+                                      .toList());
+                }
 
                 if (isContextWindowThresholdBreached(relevantMessages, agentSetup, setup)) {
                     log.info("Context window threshold breached. Will compact session: {}", sessionId);
@@ -554,19 +552,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                         false,
                                                         messageSelectors);
         log.info("Read {} messages for summarization for session: {}", sessionMessages.size(), sessionId);
-        final var messages = new ArrayList<AgentMessage>();
-        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(sessionId,
-                                                                                         runId,
-                                                                                         mapper.writeValueAsString(buildSummarizationSystemPrompt(sessionId)),
-                                                                                         false,
-                                                                                         null));
-        messages.add(buildSummarizationUserPrompt(sessionId,
-                                                  runId,
-                                                  AgentUtils.getIfNotNull(
-                                                                          existingSession,
-                                                                          SessionSummary::getSummary,
-                                                                          null),
-                                                  sessionMessages));
         final var stats = new ModelUsageStats();
 
         final var summary = MessageCompactor.compactMessages(agent.name(),
@@ -575,7 +560,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                              agentSetup,
                                                              mapper,
                                                              stats,
-                                                             messages,
+                                                             sessionMessages,
                                                              Objects.requireNonNullElse(setup
                                                                      .getCompactionPrompts(),
                                                                                         CompactionPrompts.DEFAULT),

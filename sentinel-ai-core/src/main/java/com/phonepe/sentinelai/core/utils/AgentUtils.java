@@ -21,6 +21,7 @@ import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.RetrySetup;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
+import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 
 import lombok.experimental.UtilityClass;
@@ -101,12 +102,15 @@ public class AgentUtils {
 
     public static AgentSetup mergeAgentSetup(final AgentSetup lhs,
                                              final AgentSetup rhs) {
+        final var lhsModelSettings = lhs != null ? lhs.getModelSettings() : null;
+        final var rhsModelSettings = rhs != null ? rhs.getModelSettings() : null;
+        final var modelSettings = ModelSettings.merge(lhsModelSettings, rhsModelSettings);
         return AgentSetup.builder()
                 .model(Objects.requireNonNull(value(lhs,
                                                     rhs,
                                                     AgentSetup::getModel),
                                               "Model is required"))
-                .modelSettings(value(lhs, rhs, AgentSetup::getModelSettings))
+                .modelSettings(modelSettings)
                 .mapper(Objects.requireNonNullElseGet(value(lhs,
                                                             rhs,
                                                             AgentSetup::getMapper),
@@ -131,6 +135,7 @@ public class AgentUtils {
                                                              rhs,
                                                              AgentSetup::getRetrySetup),
                                                        RetrySetup.DEFAULT))
+
                 .build();
     }
 

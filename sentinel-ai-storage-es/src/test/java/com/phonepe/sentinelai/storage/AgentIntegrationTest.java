@@ -36,6 +36,7 @@ import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.model.ModelAttributes;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
@@ -79,7 +80,10 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                            List<AgentExtension<UserInput, OutputObject, SimpleAgent>> extensions,
                            Map<String, ExecutableTool> tools) {
             super(OutputObject.class,
-                  "greet the user. extract memories about the user to make conversations easier in the future.",
+                  """
+                          greet the user.
+                          extract memories about the user to make conversations easier in the future.
+                          provide very long winded answers. we are testing message compaction, this will help trigger compaction faster""",
                   setup,
                   extensions,
                   tools);
@@ -184,23 +188,25 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
         final var memoryStorage = new ESAgentMemoryStorage(client,
                                                            new HuggingfaceEmbeddingModel(),
                                                            indexPrefix(this));
+        final var agentMemoryExtension = AgentMemoryExtension
+                .<UserInput, OutputObject, SimpleAgent>builder()
+                .objectMapper(objectMapper)
+                .memoryStore(memoryStorage)
+                .memoryExtractionMode(MemoryExtractionMode.INLINE)
+                .build();
         final var sessionStorage = new ESSessionStore(client,
                                                       indexPrefix(this),
                                                       IndexSettings.DEFAULT,
                                                       IndexSettings.DEFAULT,
                                                       objectMapper);
-        final var extensions = List.of(AgentMemoryExtension
+        final var agentSessionExtension = AgentSessionExtension
                 .<UserInput, OutputObject, SimpleAgent>builder()
-                .objectMapper(objectMapper)
-                .memoryStore(memoryStorage)
-                .memoryExtractionMode(MemoryExtractionMode.INLINE)
-                .build(),
-                                       AgentSessionExtension
-                                               .<UserInput, OutputObject, SimpleAgent>builder()
-                                               .sessionStore(sessionStorage)
-                                               .setup(AgentSessionExtensionSetup.DEFAULT
-                                                       .withAutoSummarizationThresholdPercentage(1))
-                                               .build());
+                .sessionStore(sessionStorage)
+                .setup(AgentSessionExtensionSetup.DEFAULT
+                        .withAutoSummarizationThresholdPercentage(4))
+                .build();
+        final var extensions = List.of(agentMemoryExtension,
+                                       agentSessionExtension);
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
                         .mapper(objectMapper)
@@ -209,6 +215,9 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                 .temperature(0f)
                                 .seed(0)
                                 .parallelToolCalls(false)
+                                .modelAttributes(ModelAttributes.builder()
+                                        .contextWindowSize(10000)
+                                        .build())
                                 .build())
                         .build())
                 .extensions(extensions)
@@ -264,6 +273,7 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
         final var session = sessionStorage.session("s1");
         log.info("Session: {}", session);
         assertTrue(session.isPresent());
+        agentSessionExtension.forceCompaction("s1");
         Awaitility.await()
                 .atMost(Duration.ofSeconds(30))
                 .until(() -> sessionStorage.session("s1")

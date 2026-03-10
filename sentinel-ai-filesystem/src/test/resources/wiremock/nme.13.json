@@ -1,19 +1,19 @@
 {
-  "id" : "chatcmpl-DB0aNYHWnKPDGnBf8aOsN1PJCjyFn",
+  "id" : "chatcmpl-DHuY4NzsL5JueLjtZqLGKgWJrZGLz",
   "object" : "chat.completion",
-  "created" : 1771516231,
+  "created" : 1773161320,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_f97eff32c5",
+  "system_fingerprint" : "fp_eb37e061ec",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_FPHQKlQwqAgAZqMZQclD1gAN",
+        "id" : "call_p4gDSqg63du6hKSr2VtGQmlC",
         "type" : "function",
         "function" : {
-          "name" : "__output_generator__",
-          "arguments" : "{\"sessionOutput\":{\"title\":\"Weather Inquiry\",\"keywords\":[\"weather\",\"Bangalore\",\"Santanu\"],\"summary\":\"User inquired about the weather. The response indicates that the weather in Bangalore is sunny. User's name is Santanu, and he prefers to be addressed as Mr.\",\"key_points\":[\"User asked about the weather.\",\"The weather in Bangalore is sunny.\",\"User's name is Santanu.\",\"User prefers to be addressed as Mr.\"],\"key_facts\":[\"User lives in Bangalore.\",\"Weather is sunny.\"],\"action_items\":[],\"citations\":[],\"sentiment\":\"neutral\",\"confidence\":9,\"metadata\":\"\"}}"
+          "name" : "simple_agent_get_name",
+          "arguments" : "{}"
         }
       } ],
       "annotations" : [ ]
@@ -21,16 +21,16 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1062,
-    "completion_tokens" : 135,
-    "total_tokens" : 1197,
+    "prompt_tokens" : 1510,
+    "completion_tokens" : 13,
+    "total_tokens" : 1523,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 0
+      "cached_tokens" : 1408
     }
   }
 } 

@@ -27,21 +27,41 @@ import lombok.With;
 @With
 public class ModelAttributes {
 
-    public static final ModelAttributes DEFAULT_MODEL_ATTRIBUTES = ModelAttributes
-            .builder()
-            .contextWindowSize(128_000)
-            .encodingType(EncodingType.CL100K_BASE)
-            .build();
+    public static final int DEFAULT_WINDOW_SIZE = 128_000;
+    public static final EncodingType DEFAULT_ENCODING_TYPE = EncodingType.CL100K_BASE;
+
+    public static final ModelAttributes DEFAULT_MODEL_ATTRIBUTES = new ModelAttributes(DEFAULT_WINDOW_SIZE,
+                                                                                       DEFAULT_ENCODING_TYPE);
 
     /**
      * Size of the context window for the model
      */
-    int contextWindowSize;
+    @Builder.Default
+    int contextWindowSize = DEFAULT_WINDOW_SIZE;
 
     /**
      * Encoding used for token counting
      */
     @Builder.Default
-    EncodingType encodingType = EncodingType.CL100K_BASE;
+    EncodingType encodingType = DEFAULT_ENCODING_TYPE;
+
+    public static ModelAttributes merge(final ModelAttributes lhs, final ModelAttributes rhs) {
+        if (lhs == null && rhs == null) {
+            return DEFAULT_MODEL_ATTRIBUTES;
+        }
+        if (lhs == null) {
+            return rhs;
+        }
+        if (rhs == null) {
+            return lhs;
+        }
+        return new ModelAttributes(
+                                   lhs.getContextWindowSize() != DEFAULT_WINDOW_SIZE
+                                           ? lhs.getContextWindowSize()
+                                           : rhs.getContextWindowSize(),
+                                   lhs.getEncodingType() != DEFAULT_ENCODING_TYPE
+                                           ? lhs.getEncodingType()
+                                           : rhs.getEncodingType());
+    }
 
 }
