@@ -26,7 +26,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -35,9 +34,7 @@ import java.util.stream.Stream;
 @Slf4j
 public class SkillParser {
 
-    // Pattern to match YAML frontmatter: ---\n..yaml..\n---
-    private static final Pattern FRONTMATTER_PATTERN = Pattern.compile("^---\\s*\\n(.*?)\\n---\\s*\\n(.*)$",
-                                                                       Pattern.DOTALL);
+    private static final String FRONTMATTER_DELIMITER = "---";
 
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
 
@@ -55,17 +52,14 @@ public class SkillParser {
         }
 
         final var content = Files.readString(skillFile);
-        final var matcher = FRONTMATTER_PATTERN.matcher(content);
+        final var parsed = parseFrontmatter(content);
 
-        if (!matcher.matches()) {
+        if (parsed == null) {
             throw new IllegalArgumentException(
                                                "Invalid SKILL.md format: YAML frontmatter not found in " + skillFile);
         }
 
-        final var yamlContent = matcher.group(1);
-        final var markdownBody = matcher.group(2).trim();
-
-        final var metadata = yamlMapper.readValue(yamlContent, SkillMetadata.class);
+        final var metadata = yamlMapper.readValue(parsed[0], SkillMetadata.class);
 
         // Validate name matches directory
         final var directoryName = skillDirectory.getFileName().toString();
@@ -73,7 +67,7 @@ public class SkillParser {
 
         return AgentSkill.builder()
                 .metadata(metadata)
-                .instructions(markdownBody)
+                .instructions(parsed[1])
                 .skillDirectory(skillDirectory)
                 .referenceFiles(scanSubdirectory(skillDirectory, "references"))
                 .scriptFiles(scanSubdirectory(skillDirectory, "scripts"))
@@ -91,20 +85,74 @@ public class SkillParser {
         }
 
         final var content = Files.readString(skillFile);
-        final var matcher = FRONTMATTER_PATTERN.matcher(content);
+        final var parsed = parseFrontmatter(content);
 
-        if (!matcher.matches()) {
+        if (parsed == null) {
             throw new IllegalArgumentException("Invalid SKILL.md format in " + skillFile);
         }
 
-        final var yamlContent = matcher.group(1);
-        final var metadata = yamlMapper.readValue(yamlContent, SkillMetadata.class);
+        final var metadata = yamlMapper.readValue(parsed[0], SkillMetadata.class);
 
         // Validate name
         final var directoryName = skillDirectory.getFileName().toString();
         metadata.validateName(directoryName);
 
         return metadata;
+    }
+
+    /**
+     * Parse YAML frontmatter from a SKILL.md file content.
+     * <p>
+     * The format is a line containing only {@code ---} at the start of the file,
+     * followed by YAML content, followed by another line containing only {@code ---}.
+     * Everything after the closing delimiter is the Markdown body.
+     *
+     * @param content the full file content
+     * @return a two-element array: {@code [yamlContent, markdownBody]}, or {@code null}
+     *         if the file does not contain valid frontmatter
+     */
+    private String[] parseFrontmatter(final String content) {
+        final var lines = content.split("\n", -1);
+
+        // File must start with a line that is exactly "---" (trim allows trailing whitespace)
+        if (lines.length < 3 || !lines[0].trim().equals(FRONTMATTER_DELIMITER)) {
+            return null;
+        }
+
+        // Find the closing --- line (first occurrence after the opening)
+        int closingLine = -1;
+        for (int i = 1; i < lines.length; i++) {
+            if (lines[i].trim().equals(FRONTMATTER_DELIMITER)) {
+                closingLine = i;
+                break;
+            }
+        }
+
+        if (closingLine == -1) {
+            return null;
+        }
+
+        // YAML is everything between the opening and closing ---
+        final var yaml = new StringBuilder();
+        for (int i = 1; i < closingLine; i++) {
+            if (i > 1) {
+                yaml.append('\n');
+            }
+            yaml.append(lines[i]);
+        }
+
+        // Body is everything after the closing ---, trimmed
+        final var body = new StringBuilder();
+        for (int i = closingLine + 1; i < lines.length; i++) {
+            if (i > closingLine + 1) {
+                body.append('\n');
+            }
+            body.append(lines[i]);
+        }
+
+        return new String[]{
+                yaml.toString(), body.toString().trim()
+        };
     }
 
     /**
