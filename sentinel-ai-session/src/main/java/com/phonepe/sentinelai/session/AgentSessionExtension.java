@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.session;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -31,9 +30,7 @@ import com.phonepe.sentinelai.core.agent.Fact;
 import com.phonepe.sentinelai.core.agent.FactList;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
-import com.phonepe.sentinelai.core.agent.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
 import com.phonepe.sentinelai.core.compaction.ExtractedSummary;
 import com.phonepe.sentinelai.core.compaction.MessageCompactor;
@@ -56,7 +53,6 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -288,49 +284,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return this;
     }
 
-    private SystemPrompt.Task buildSummarizationSystemPrompt(String sessionId) {
-        final var prompt = SystemPrompt.Task.builder()
-                .objective("UPDATE SESSION AND RUN SUMMARY")
-                .outputField(OUTPUT_KEY)
-                .instructions("""
-                        - Generate %d character summary for session %s based on all the messages.
-                        - Include at most 5 single word tags based on the topics being discussed.
-                        """
-                        .formatted(setup.getMaxSummaryLength(), sessionId));
-
-        return prompt.build();
-    }
-
-    /**
-     * Builds user prompt for summarization.
-     * Clients may override to customize the prompt.
-     *
-     * @param context         Agent run context
-     * @param sessionId       Session Id
-     * @param currentSummary  Current summary
-     * @param sessionMessages Messages to be summarized
-     * @return UserPrompt for summarization
-     * @throws JsonProcessingException Json processing exception
-     */
-    private UserPrompt buildSummarizationUserPrompt(final String sessionId,
-                                                    final String runId,
-                                                    final String currentSummary,
-                                                    final List<AgentMessage> sessionMessages)
-            throws JsonProcessingException {
-        return new UserPrompt(sessionId,
-                              runId,
-                              """
-                                      Generate a %d character summary of the conversation between user and \
-                                      agent from the following messages.
-                                      - Summary till now: %s,
-                                      - Messages JSON: %s"""
-                                      .formatted(setup.getMaxSummaryLength(),
-                                                 Objects.requireNonNullElse(currentSummary,
-                                                                            "Does not exist as this is the first compaction"),
-                                                 mapper.writeValueAsString(sessionMessages)),
-                              LocalDateTime.now());
-    }
-
     /*
      * This method processes events and takes action as needed
      * Actions taken:
@@ -537,8 +490,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     private void summarizeConversation(String sessionId,
                                        String runId,
                                        AgentSetup agentSetup)
-            throws JsonProcessingException,
-            InterruptedException, ExecutionException {
+            throws InterruptedException, ExecutionException {
         final var existingSession = sessionStore.session(sessionId)
                 .orElse(null);
         final var lastSummarizedMessageId = AgentUtils.getIfNotNull(

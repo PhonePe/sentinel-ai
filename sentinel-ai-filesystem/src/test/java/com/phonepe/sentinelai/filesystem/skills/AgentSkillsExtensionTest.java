@@ -21,14 +21,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.phonepe.sentinelai.core.agent.ProcessingMode;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AgentSkillsExtensionTest {
@@ -92,6 +96,84 @@ class AgentSkillsExtensionTest {
     }
 
     @Test
+    void testAdditionalSystemPromptsEmptyRegistry() {
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
+
+        assertNotNull(result);
+        // No skills, so no tasks and no hints
+        assertTrue(result.getTask().isEmpty());
+        assertTrue(result.getHints().isEmpty());
+    }
+
+    @Test
+    void testAdditionalSystemPromptsMultiSkillMode() throws IOException {
+        createTestSkill("my-skill", "A great skill");
+
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
+
+        assertNotNull(result);
+        // Should have 1 task (skill discovery) and 1 hint (catalog)
+        assertEquals(1, result.getTask().size());
+        assertEquals(1, result.getHints().size());
+        assertTrue(result.getHints().get(0).toString().contains("my-skill"));
+    }
+
+    @Test
+    void testAdditionalSystemPromptsSingleSkillMode() throws IOException {
+        final var skillDir = createTestSkill("single-skill", "A single skill");
+
+        final var extension = AgentSkillsExtension.withSingleSkill()
+                .baseDir(tempDir.toString())
+                .singleSkill(skillDir.toString())
+                .build();
+
+        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
+
+        assertNotNull(result);
+        // Single skill mode: instructions should be injected directly as a task
+        assertEquals(1, result.getTask().size());
+        assertTrue(result.getTask().get(0).getInstructions().toString().contains("single-skill"));
+    }
+
+    @Test
+    void testFactsReturnsEmpty() throws IOException {
+        createTestSkill("my-skill", "A skill");
+
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        final var facts = extension.facts(null, null, null);
+
+        assertNotNull(facts);
+        assertTrue(facts.isEmpty());
+    }
+
+    @Test
+    void testInvalidSkillsDirectoryThrowsException() {
+        assertThrows(IllegalArgumentException.class,
+                     () -> AgentSkillsExtension.withMultipleSkills()
+                             .baseDir(tempDir.toString())
+                             .skillsDirectories(List.of("/nonexistent/path/that/does/not/exist"))
+                             .skillsToLoad(null)
+                             .build());
+    }
+
+    @Test
     void testListSkillsWhenEmpty() {
         final var extension = AgentSkillsExtension.withMultipleSkills()
                 .baseDir(tempDir.toString())
@@ -138,6 +220,28 @@ class AgentSkillsExtensionTest {
     }
 
     @Test
+    void testName() {
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        assertEquals("agent-skills", extension.name());
+    }
+
+    @Test
+    void testOutputSchemaReturnsEmpty() {
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        assertTrue(extension.outputSchema(ProcessingMode.DIRECT).isEmpty());
+    }
+
+    @Test
     void testReadSkillReference() throws IOException {
         createTestSkillWithReferenceFile("my-skill", "A skill", "guide.md", "# Guide Content");
 
@@ -154,6 +258,47 @@ class AgentSkillsExtensionTest {
         final var result = extension.readSkillReference("my-skill", "guide.md");
 
         assertTrue(result.contains("# Guide Content"));
+    }
+
+    @Test
+    void testReadSkillReferenceFileNotFound() throws IOException {
+        createTestSkillWithReferenceFile("my-skill", "A skill", "guide.md", "# Guide Content");
+
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        // Activate the skill
+        extension.activateSkill("my-skill");
+
+        // Try to read a non-existent reference file
+        final var result = extension.readSkillReference("my-skill", "nonexistent.md");
+
+        assertTrue(result.contains("Error"));
+        assertTrue(result.contains("nonexistent.md"));
+    }
+
+    @Test
+    void testReadSkillReferenceNoRefFiles() throws IOException {
+        // Create a skill without reference files
+        createTestSkill("my-skill", "A skill");
+
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        // Activate the skill
+        extension.activateSkill("my-skill");
+
+        // Try to read a reference from a skill with no references
+        final var result = extension.readSkillReference("my-skill", "nonexistent.md");
+
+        assertTrue(result.contains("Error"));
+        assertTrue(result.contains("no reference files"));
     }
 
     @Test

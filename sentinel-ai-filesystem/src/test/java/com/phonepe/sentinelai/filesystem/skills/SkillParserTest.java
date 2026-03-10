@@ -54,6 +54,30 @@ class SkillParserTest {
     }
 
     @Test
+    void testParseMetadataMissingFrontmatter() throws IOException {
+        final var skillDir = tempDir.resolve("test-skill");
+        Files.createDirectory(skillDir);
+
+        final var skillContent = """
+                # No frontmatter here
+
+                Just instructions.
+                """;
+
+        Files.writeString(skillDir.resolve("SKILL.md"), skillContent);
+
+        assertThrows(IllegalArgumentException.class, () -> parser.parseMetadata(skillDir));
+    }
+
+    @Test
+    void testParseMetadataMissingSkillMd() throws IOException {
+        final var skillDir = tempDir.resolve("test-skill");
+        Files.createDirectory(skillDir);
+        // No SKILL.md created
+        assertThrows(IllegalArgumentException.class, () -> parser.parseMetadata(skillDir));
+    }
+
+    @Test
     void testParseMetadataOnly() throws IOException {
         final var skillDir = tempDir.resolve("test-skill");
         Files.createDirectory(skillDir);
@@ -109,6 +133,11 @@ class SkillParserTest {
         Files.writeString(skillDir.resolve("SKILL.md"), skillContent);
 
         assertThrows(IllegalArgumentException.class, () -> parser.parse(skillDir));
+    }
+
+    @Test
+    void testParseNotADirectory() {
+        assertThrows(IllegalArgumentException.class, () -> parser.parse(tempDir.resolve("nonexistent")));
     }
 
     @Test
