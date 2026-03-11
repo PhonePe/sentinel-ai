@@ -1,19 +1,19 @@
 {
-  "id" : "chatcmpl-DB0nWkngix9DJd1bKTTrhihjYQlkB",
+  "id" : "chatcmpl-DHudijlPC40vjrfh9wIICl4OnJ6EL",
   "object" : "chat.completion",
-  "created" : 1771517046,
+  "created" : 1773161670,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_f97eff32c5",
+  "system_fingerprint" : "fp_eb37e061ec",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_DoaMyo1MPqT15NsUICCq70H2",
+        "id" : "call_gTvz4na72gDnFwNhwqs5oDq9",
         "type" : "function",
         "function" : {
-          "name" : "__output_generator__",
-          "arguments" : "{\"output\":{\"message\":\"The weather in Bangalore is sunny, as you mentioned earlier! How are you enjoying the sunny weather today?\",\"username\":\"Santanu\"},\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"User mentioned that the weather is sunny.\",\"name\":\"UserWeather\",\"reusabilityScore\":8,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"weather\",\"Bangalore\"],\"type\":\"SEMANTIC\"},{\"content\":\"User lives in Bangalore.\",\"name\":\"UserLocation\",\"reusabilityScore\":9,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"location\",\"Bangalore\"],\"type\":\"SEMANTIC\"}]}}"
+          "name" : "simple_agent_get_salutation",
+          "arguments" : "{\"params\":{\"name\":\"Santanu\"}}"
         }
       } ],
       "annotations" : [ ]
@@ -21,16 +21,16 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1501,
-    "completion_tokens" : 141,
-    "total_tokens" : 1642,
+    "prompt_tokens" : 1587,
+    "completion_tokens" : 21,
+    "total_tokens" : 1608,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 1408
+      "cached_tokens" : 1536
     }
   }
 } 

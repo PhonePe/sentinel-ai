@@ -107,6 +107,7 @@ public class ModelSettings {
         if (rhs == null) {
             return lhs;
         }
+        final var mergedModelAttributes = ModelAttributes.merge(lhs.getModelAttributes(), rhs.getModelAttributes());
         return new ModelSettings(rhs.getMaxTokens() != null ? rhs.getMaxTokens()
                 : lhs.getMaxTokens(),
                                  rhs.getTemperature() != null ? rhs
@@ -131,9 +132,7 @@ public class ModelSettings {
                                          : lhs.getLogitBias(),
                                  rhs.getReasoning() != null ? rhs.getReasoning()
                                          : lhs.getReasoning(),
-                                 rhs.getModelAttributes() != ModelAttributes.DEFAULT_MODEL_ATTRIBUTES
-                                         ? rhs.getModelAttributes() : lhs
-                                                 .getModelAttributes());
+                                 mergedModelAttributes);
     }
 
 }

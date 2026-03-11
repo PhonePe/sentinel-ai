@@ -1,19 +1,19 @@
 {
-  "id" : "chatcmpl-DB0aFpoFzQNzEX3nn45FcAVZNr2eF",
+  "id" : "chatcmpl-DHuXrHWbU9O1gCKDIn0CL4ACf7CYZ",
   "object" : "chat.completion",
-  "created" : 1771516223,
+  "created" : 1773161307,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_f97eff32c5",
+  "system_fingerprint" : "fp_eb37e061ec",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_20FEUgI9y25mEaq5eEWHlxwk",
+        "id" : "call_sbvTNpKyywMLYP503J1w2m0z",
         "type" : "function",
         "function" : {
-          "name" : "__output_generator__",
-          "arguments" : "{\"sessionOutput\":{\"title\":\"User location and weather\",\"keywords\":[\"Bangalore\",\"weather\",\"user\"],\"summary\":\"User lives in Bangalore and reports sunny weather. User's name is Santanu, and he prefers to be addressed as Mr.\",\"key_points\":[\"User lives in Bangalore.\",\"Weather is sunny.\",\"User's name is Santanu.\",\"User prefers to be addressed as Mr.\"],\"key_facts\":[\"User location: Bangalore\",\"Weather: sunny\",\"User name: Santanu\",\"User salutation: Mr.\"],\"action_items\":[],\"citations\":[],\"sentiment\":\"neutral\",\"confidence\":8,\"metadata\":\"\"}}"
+          "name" : "simple_agent_get_salutation",
+          "arguments" : "{\"params\":{\"name\":\"Santanu\"}}"
         }
       } ],
       "annotations" : [ ]
@@ -21,16 +21,16 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1039,
-    "completion_tokens" : 135,
-    "total_tokens" : 1174,
+    "prompt_tokens" : 1466,
+    "completion_tokens" : 21,
+    "total_tokens" : 1487,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 0
+      "cached_tokens" : 1408
     }
   }
 } 

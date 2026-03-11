@@ -1,19 +1,19 @@
 {
-  "id" : "chatcmpl-DB0aK17f0bN4NXBb7TU0A0Frgc9cV",
+  "id" : "chatcmpl-DHuY2OQge4hqKbSb0ZD7w6WtfFfTl",
   "object" : "chat.completion",
-  "created" : 1771516228,
+  "created" : 1773161318,
   "model" : "gpt-4o-mini-2024-07-18",
-  "system_fingerprint" : "fp_f97eff32c5",
+  "system_fingerprint" : "fp_eb37e061ec",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_l2A1bIH4KEnX8uI1jDq2wMTF",
+        "id" : "call_TccavNvKYuSaI25mSEsVBPV5",
         "type" : "function",
         "function" : {
-          "name" : "__output_generator__",
-          "arguments" : "{\"output\":{\"message\":\"Hello Mr. Santanu! The weather in Bangalore is sunny. How are you doing today?\",\"username\":\"Santanu\"},\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"User lives in Bangalore.\",\"name\":\"UserLocation\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"Bangalore\",\"location\"],\"type\":\"SEMANTIC\"},{\"content\":\"The weather in Bangalore is sunny.\",\"name\":\"UserWeather\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"Bangalore\",\"weather\"],\"type\":\"SEMANTIC\"},{\"content\":\"User's name is Santanu.\",\"name\":\"UserName\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"name\"],\"type\":\"SEMANTIC\"},{\"content\":\"User prefers to be addressed as Mr.\",\"name\":\"UserSalutation\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"salutation\"],\"type\":\"SEMANTIC\"}]}}"
+          "name" : "agent_memory_extension_find_memories",
+          "arguments" : "{\"query\":\"weather\"}"
         }
       } ],
       "annotations" : [ ]
@@ -21,16 +21,16 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 1583,
-    "completion_tokens" : 223,
-    "total_tokens" : 1806,
+    "prompt_tokens" : 1456,
+    "completion_tokens" : 19,
+    "total_tokens" : 1475,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0
     },
     "prompt_tokens_details" : {
       "audio_tokens" : 0,
-      "cached_tokens" : 1408
+      "cached_tokens" : 0
     }
   }
 } 

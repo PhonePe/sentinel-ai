@@ -474,8 +474,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                      stats,
                                                      allMessages,
                                                      newMessages,
-                                                     openAiMessages).orElse(
-                                                                            null);
+                                                     openAiMessages)
+                        .orElse(null);
                 if (error != null) {
                     output = error;
                     break;
@@ -1436,8 +1436,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }
 
         // If nothing changed across the entire chain, indicate no-op to avoid unnecessary merging
-        if (transformedAllMessages.equals(allMessages) && transformedNewMessages
-                .equals(newMessages)) {
+        if (transformedAllMessages.equals(allMessages) && transformedNewMessages.equals(newMessages)) {
             return Optional.empty();
         }
 
