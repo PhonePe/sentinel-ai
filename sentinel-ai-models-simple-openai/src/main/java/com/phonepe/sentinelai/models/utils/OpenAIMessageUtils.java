@@ -38,10 +38,13 @@ import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 
 import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+@Slf4j
 @UtilityClass
 public class OpenAIMessageUtils {
     /**
@@ -60,20 +63,16 @@ public class OpenAIMessageUtils {
                                                  public ChatMessage visit(GenericResource genericResource) {
                                                      return switch (genericResource
                                                              .getRole()) {
-                                                         case SYSTEM ->
-                                                             ChatMessage.SystemMessage
-                                                                     .of(genericResource
-                                                                             .getSerializedJson());
-                                                         case USER ->
-                                                             ChatMessage.UserMessage
-                                                                     .of(genericResource
-                                                                             .getSerializedJson());
-                                                         case ASSISTANT ->
-                                                             ChatMessage.AssistantMessage
-                                                                     .of(genericResource
-                                                                             .getSerializedJson());
-                                                         case TOOL_CALL ->
-                                                             throw new UnsupportedOperationException("Tool calls are unsupported in this context");
+                                                         case SYSTEM -> ChatMessage.SystemMessage
+                                                                 .of(genericResource
+                                                                         .getSerializedJson());
+                                                         case USER -> ChatMessage.UserMessage
+                                                                 .of(genericResource
+                                                                         .getSerializedJson());
+                                                         case ASSISTANT -> ChatMessage.AssistantMessage
+                                                                 .of(genericResource
+                                                                         .getSerializedJson());
+                                                         case TOOL_CALL -> throw new UnsupportedOperationException("Tool calls are unsupported in this context");
                                                      };
                                                  }
 
@@ -81,20 +80,16 @@ public class OpenAIMessageUtils {
                                                  public ChatMessage visit(GenericText genericText) {
                                                      return switch (genericText
                                                              .getRole()) {
-                                                         case SYSTEM ->
-                                                             ChatMessage.SystemMessage
-                                                                     .of(genericText
-                                                                             .getText());
-                                                         case USER ->
-                                                             ChatMessage.UserMessage
-                                                                     .of(genericText
-                                                                             .getText());
-                                                         case ASSISTANT ->
-                                                             ChatMessage.AssistantMessage
-                                                                     .of(genericText
-                                                                             .getText());
-                                                         case TOOL_CALL ->
-                                                             throw new UnsupportedOperationException("Tool calls are unsupported in this context");
+                                                         case SYSTEM -> ChatMessage.SystemMessage
+                                                                 .of(genericText
+                                                                         .getText());
+                                                         case USER -> ChatMessage.UserMessage
+                                                                 .of(genericText
+                                                                         .getText());
+                                                         case ASSISTANT -> ChatMessage.AssistantMessage
+                                                                 .of(genericText
+                                                                         .getText());
+                                                         case TOOL_CALL -> throw new UnsupportedOperationException("Tool calls are unsupported in this context");
                                                      };
                                                  }
                                              });
@@ -162,8 +157,38 @@ public class OpenAIMessageUtils {
      * @return List of OpenAI messages
      */
     public static List<ChatMessage> convertToOpenAIMessages(List<AgentMessage> agentMessages) {
-        return Objects.requireNonNullElseGet(agentMessages,
-                                             List::<AgentMessage>of)
+        final var allMessages = Objects.requireNonNullElseGet(agentMessages,
+                                                              List::<AgentMessage>of);
+        //Find last compacted message and convert only messages after that
+        var lastCompactedMessageIndex = -1;
+        var lastSystemPromptIndex = -1;
+        for (int i = allMessages.size() - 1; i >= 0; i--) {
+            final var message = allMessages.get(i);
+            if (message instanceof UserPrompt userPrompt && userPrompt.isCompacted()) {
+                lastCompactedMessageIndex = Math.max(lastCompactedMessageIndex, i);
+                break;
+            }
+            else if (message instanceof SystemPrompt) {
+                lastSystemPromptIndex = Math.max(lastSystemPromptIndex, i);
+            }
+        }
+        log.debug("Last compacted message index: {}, Last system prompt index: {}",
+                  lastCompactedMessageIndex,
+                  lastSystemPromptIndex);
+        final var messagesToConvert = new ArrayList<AgentMessage>();
+        if (lastSystemPromptIndex != -1) {
+            messagesToConvert.add(allMessages.get(lastSystemPromptIndex));
+        }
+        if (lastCompactedMessageIndex != -1) {
+            messagesToConvert.addAll(allMessages.subList(lastCompactedMessageIndex, allMessages.size()));
+        }
+        else {
+            messagesToConvert.addAll(allMessages);
+        }
+        log.debug("Incoming messages count: {}, Messages to convert count: {}",
+                  allMessages.size(),
+                  messagesToConvert.size());
+        return messagesToConvert
                 .stream()
                 .map(OpenAIMessageUtils::convertIndividualMessageToOpenAIFormat)
                 .toList();

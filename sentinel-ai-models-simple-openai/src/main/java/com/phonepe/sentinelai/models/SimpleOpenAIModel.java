@@ -342,7 +342,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                            allMessages,
                                                                                            newMessages,
                                                                                            oldMessages)
-                            .orElse(null);
+                                                                                                   .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(oldMessages,
                                                                    stats,
                                                                    SentinelError
@@ -475,7 +475,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                      allMessages,
                                                      newMessages,
                                                      openAiMessages)
-                        .orElse(null);
+                                                             .orElse(null);
                 if (error != null) {
                     output = error;
                     break;
@@ -619,8 +619,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                               stopwatch);
                                                                              }
                                                                          }
-                                                                         case FinishReasons.FUNCTION_CALL,
-                                                                                 FinishReasons.TOOL_CALLS -> {
+                                                                         case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
 
                                                                              //Model is waiting for us to run tools and respond back
                                                                              final var toolCalls = toolCallData
@@ -681,12 +680,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                                         stats,
                                                                                                                         SentinelError
                                                                                                                                 .error(ErrorType.LENGTH_EXCEEDED));
-                                                                         case FinishReasons.CONTENT_FILTER ->
-                                                                             ModelOutput
-                                                                                     .error(oldMessages,
-                                                                                            stats,
-                                                                                            SentinelError.error(
-                                                                                                                ErrorType.FILTERED));
+                                                                         case FinishReasons.CONTENT_FILTER -> ModelOutput
+                                                                                 .error(oldMessages,
+                                                                                        stats,
+                                                                                        SentinelError.error(
+                                                                                                            ErrorType.FILTERED));
                                                                          default -> ModelOutput.error(oldMessages,
                                                                                                       stats,
                                                                                                       SentinelError
@@ -1346,23 +1344,22 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                      final List<AgentMessage> newMessages,
                                                      final List<ChatMessage> openAiMessages) {
         try {
-            runPreProcessors(messagesPreProcessors,
-                             context,
-                             allMessages,
-                             newMessages).ifPresent(processedAgentMessages -> {
-                                 // If pre-processing has returned responses
-                                 // Replace contents to be sent to the model
-                                 allMessages.clear();
-                                 newMessages.clear();
-                                 openAiMessages.clear();
+            final var preProcessorsOutput = runPreProcessors(messagesPreProcessors,
+                                                             context,
+                                                             allMessages,
+                                                             newMessages);
+            preProcessorsOutput.ifPresent(processedAgentMessages -> {
+                // If pre-processing has returned responses
+                // Replace contents to be sent to the model
+                allMessages.clear();
+                newMessages.clear();
+                openAiMessages.clear();
 
-                                 allMessages.addAll(
-                                                    processedAgentMessages.allMessages);
-                                 newMessages.addAll(
-                                                    processedAgentMessages.newMessages);
-                                 openAiMessages.addAll(convertToOpenAIMessages(
-                                                                               processedAgentMessages.allMessages));
-                             });
+                allMessages.addAll(processedAgentMessages.allMessages);
+                newMessages.addAll(processedAgentMessages.newMessages);
+                final var openAIMessages = convertToOpenAIMessages(processedAgentMessages.allMessages);
+                openAiMessages.addAll(openAIMessages);
+            });
         }
         catch (InvalidAgentMessagesException ie) {
             log.error("Preprocessor returned invalid messages ", ie);

@@ -19,6 +19,7 @@ package com.phonepe.sentinelai.core.compaction;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.apache.commons.text.StringSubstitutor;
 
@@ -50,6 +51,8 @@ import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
+import static com.phonepe.sentinelai.core.utils.AgentUtils.sessionId;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +65,10 @@ import java.util.concurrent.CompletableFuture;
 @UtilityClass
 public class MessageCompactor {
 
+    public static final String COMPACTION_SESSION_PREFIX = "compaction-for-";
     private static final String OUTPUT_KEY = "sessionOutput";
+    private static final String CONTEXT_DATA = "contextData";
+    private static final String CONTINUATION_PROMPT = "continuationPrompt";
 
     @SneakyThrows
     public static CompletableFuture<Optional<ExtractedSummary>> compactMessages(final String agentName,
@@ -76,11 +82,11 @@ public class MessageCompactor {
                                                                                 final int tokenBudget) {
         final var compactMessages = toCompactMessage(messages, mapper);
         final var messagesForCompaction = new ArrayList<AgentMessage>();
-        final var runId = "message-compaction-" + Objects.requireNonNullElseGet(
-                                                                                sessionId,
-                                                                                () -> UUID
-                                                                                        .randomUUID()
-                                                                                        .toString());
+        final var runId = "run-for-" + COMPACTION_SESSION_PREFIX + Objects.requireNonNullElseGet(
+                                                                                                 sessionId,
+                                                                                                 () -> UUID
+                                                                                                         .randomUUID()
+                                                                                                         .toString());
         final var valueMap = Map.<String, Object>of("tokenBudget",
                                                     tokenBudget,
                                                     "sessionMessages",
@@ -116,7 +122,7 @@ public class MessageCompactor {
                                                              ModelUsageStats::new);
         final var modelRunContext = new ModelRunContext(agentName,
                                                         runId,
-                                                        sessionId,
+                                                        COMPACTION_SESSION_PREFIX + sessionId,
                                                         userId,
                                                         agentSetup
                                                                 .withModelSettings(agentSetup
@@ -128,9 +134,8 @@ public class MessageCompactor {
                 .compute(modelRunContext,
                          List.of(ModelOutputDefinition.builder()
                                  .name(OUTPUT_KEY)
-                                 .description("Session summary output")
-                                 .schema(mapper.readTree(prompts
-                                         .getPromptSchema()))
+                                 .description("Output of the summarization run, containing the extracted summary and other relevant information as defined in the schema.")
+                                 .schema(compactionSchema(mapper, prompts))
                                  .build()),
                          messagesForCompaction,
                          Map.of(),
@@ -148,8 +153,8 @@ public class MessageCompactor {
                                   output.getError());
                     }
                     else {
-                        final var summaryData = output.getData()
-                                .get(OUTPUT_KEY);
+                        final var jsonNode = output.getData().get(OUTPUT_KEY);
+                        final var summaryData = jsonNode.get(CONTEXT_DATA);
                         if (JsonUtils.empty(summaryData)) {
                             log.debug("No summary extracted from the output");
                         }
@@ -169,6 +174,7 @@ public class MessageCompactor {
                                                                      new TypeReference<List<String>>() {
                                                                      }))
                                         .rawData(summaryData)
+                                        .continuation(jsonNode.get(CONTINUATION_PROMPT).asText())
                                         .build();
 
                                 return Optional.of(summary);
@@ -181,6 +187,27 @@ public class MessageCompactor {
                     }
                     return Optional.<ExtractedSummary>empty();
                 });
+    }
+
+    @SneakyThrows
+    private static JsonNode compactionSchema(final ObjectMapper mapper, final CompactionPrompts prompts) {
+        final var set = mapper.createObjectNode();
+        set.set(CONTINUATION_PROMPT,
+                mapper.createObjectNode()
+                        .put("type", "string")
+                        .put("description",
+                             "Prompt to be used to continue the session. This will be used as user input to continue the loop. Include a short log of what has happend already and instructions that need to be followed to continue the session."));
+        set.set(CONTEXT_DATA, mapper.readTree(prompts.getPromptSchema()));
+        final var schema = mapper.createObjectNode()
+                .put("type", "object")
+                .put("description", "Schema for the summary to be extracted from messages between user and the model.")
+                .put("additionalProperties", false);
+        schema.set("required",
+                   mapper.createArrayNode()
+                           .add(mapper.createObjectNode().textNode(CONTINUATION_PROMPT))
+                           .add(mapper.createObjectNode().textNode(CONTEXT_DATA)));
+        schema.set("properties", set);
+        return schema;
     }
 
     /**

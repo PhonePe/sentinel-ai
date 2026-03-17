@@ -331,6 +331,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                                                                                        .writeValueAsString(data
                                                                                                .getOutput()
                                                                                                .getNewMessages()))),
+                                    false,
                                     LocalDateTime.now()));
         final var runId = "mem-extraction-" + UUID.randomUUID();
         final var modelRunContext = new ModelRunContext(agent.name(),

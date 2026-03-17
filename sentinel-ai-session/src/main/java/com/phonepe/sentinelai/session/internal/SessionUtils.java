@@ -48,6 +48,12 @@ public class SessionUtils {
                                                            final AgentSetup agentSetup,
                                                            final AgentSessionExtensionSetup extensionSetup) {
         final var threshold = extensionSetup.getAutoSummarizationThresholdPercentage();
+        return isContextWindowThresholdBreached(messages, agentSetup, threshold);
+    }
+
+    public static boolean isContextWindowThresholdBreached(final List<AgentMessage> messages,
+                                                           final AgentSetup agentSetup,
+                                                           final int threshold) {
         if (threshold == 0) {
             log.debug("Compaction needed as threshold is set to 0 (Every Run).");
             return true;

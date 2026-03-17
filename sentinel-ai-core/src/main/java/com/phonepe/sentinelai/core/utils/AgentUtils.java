@@ -19,12 +19,15 @@ package com.phonepe.sentinelai.core.utils;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.RetrySetup;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
+import com.phonepe.sentinelai.core.model.ModelAttributes;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 
 import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -37,6 +40,7 @@ import java.util.function.Supplier;
 /**
  * Various small utilities for agent to perform tasks.
  */
+@Slf4j
 @UtilityClass
 public class AgentUtils {
     public static <T, R> R createIfNotNull(T value,
@@ -180,4 +184,31 @@ public class AgentUtils {
         }
         return null;
     }
+
+    public static boolean isContextWindowThresholdBreached(final List<AgentMessage> messages,
+                                                           final AgentSetup agentSetup,
+                                                           final int threshold) {
+        if (threshold == 0) {
+            log.debug("Compaction needed as threshold is set to 0 (Every Run).");
+            return true;
+        }
+        final var estimateTokenCount = agentSetup
+                .getModel()
+                .estimateTokenCount(messages, agentSetup);
+        final var modelAttributes = Objects.requireNonNullElse(agentSetup.getModelSettings()
+                .getModelAttributes(), ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
+        final var contextWindowSize = modelAttributes
+                .getContextWindowSize();
+        final var currentBoundary = (contextWindowSize * threshold) / 100;
+        final var evalResult = estimateTokenCount >= currentBoundary;
+        log.debug("Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, "
+                + "threshold={}%, currentBoundary={}, needsSummarization={}",
+                  estimateTokenCount,
+                  contextWindowSize,
+                  threshold,
+                  currentBoundary,
+                  evalResult);
+        return evalResult;
+    }
+
 }

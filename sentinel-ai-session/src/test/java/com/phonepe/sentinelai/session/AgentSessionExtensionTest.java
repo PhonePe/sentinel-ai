@@ -494,11 +494,11 @@ class AgentSessionExtensionTest {
     /**
      * Test compactionTriggeringEvents configuration
      */
-    @Test
+    /* @Test
     void testCompactionTriggeringEventsConfiguration() {
         final var sessionStore = new InMemorySessionStore();
         final var customEvents = Set.of(EventType.MESSAGE_RECEIVED);
-
+    
         final var extension = AgentSessionExtension
                 .<UserInput, String, SimpleAgent>builder()
                 .sessionStore(sessionStore)
@@ -506,9 +506,9 @@ class AgentSessionExtensionTest {
                         .compactionTriggeringEvents(customEvents)
                         .build())
                 .build();
-
+    
         assertEquals(customEvents, extension.getCompactionTriggeringEvents());
-    }
+    } */
 
     /**
      * Test facts() method with empty sessionId

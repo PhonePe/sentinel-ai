@@ -38,13 +38,22 @@ import java.util.Objects;
 @ToString(callSuper = true)
 public class UserPrompt extends AgentRequest {
     String content;
+    boolean compacted;
     LocalDateTime sentAt;
 
     public UserPrompt(String sessionId,
                       String runId,
                       @NonNull String content,
                       LocalDateTime sentAt) {
-        this(sessionId, runId, null, null, content, sentAt);
+        this(sessionId, runId, null, null, content, false, sentAt);
+    }
+
+    public UserPrompt(String sessionId,
+                      String runId,
+                      @NonNull String content,
+                      boolean compacted,
+                      LocalDateTime sentAt) {
+        this(sessionId, runId, null, null, content, compacted, sentAt);
     }
 
     @Builder
@@ -54,6 +63,7 @@ public class UserPrompt extends AgentRequest {
                       String messageId,
                       Long timestamp,
                       @NonNull String content,
+                      boolean compacted,
                       LocalDateTime sentAt) {
         super(AgentMessageType.USER_PROMPT_REQUEST_MESSAGE,
               sessionId,
@@ -61,6 +71,7 @@ public class UserPrompt extends AgentRequest {
               messageId,
               timestamp);
         this.content = content;
+        this.compacted = compacted;
         this.sentAt = Objects.requireNonNullElse(sentAt, LocalDateTime.now());
     }
 

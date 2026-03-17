@@ -48,6 +48,7 @@ import com.phonepe.sentinelai.core.outputvalidation.DefaultOutputValidator;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
 import com.phonepe.sentinelai.core.outputvalidation.ValidationErrorFixPrompt;
+import com.phonepe.sentinelai.core.preprocessors.AutoCompactionProcessor;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
@@ -133,7 +134,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
     private final XmlMapper xmlMapper = new XmlMapper();
     private final ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> requestCompleted = new ConsumingFireForgetSignal<>();
-    private final List<AgentMessagesPreProcessor> agentMessagesPreProcessors = new CopyOnWriteArrayList<>();
+    private final List<AgentMessagesPreProcessor> agentMessagesPreProcessors = new CopyOnWriteArrayList<>(List.of(
+                                                                                                                  AutoCompactionProcessor
+                                                                                                                          .builder()
+                                                                                                                          .build()));
 
     @SuppressWarnings("unchecked")
     private final A self = (A) this;
@@ -350,6 +354,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
                                     toXmlContent(inputRequest),
+                                    false,
                                     LocalDateTime.now()));
         final var processingMode = ProcessingMode.DIRECT;
         final var modelRunContext = new ModelRunContext(name(),
@@ -512,6 +517,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
                                     toXmlContent(input),
+                                    false,
                                     LocalDateTime.now()));
         final var modelRunContext = new ModelRunContext(name(),
                                                         runId,
@@ -621,6 +627,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                   mergedAgentSetup
                                                                                           .getMapper()
                                                                                           .writeValueAsString(agentOutputData))),
+                                        false,
                                         LocalDateTime.now()));
             return AgentOutput.error(modelOutput.getNewMessages(),
                                      modelOutput.getNewMessages(),
