@@ -69,8 +69,11 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                 JsonProcessingException.class);
 
     A agent;
+
     AgentSetup setup;
+
     ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker;
+
     AgentRunContext<R> context;
 
     private static void printToolCallError(ToolCall toolCall, Object error) {

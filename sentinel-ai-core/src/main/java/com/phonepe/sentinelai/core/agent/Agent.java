@@ -134,10 +134,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final Map<String, ExecutableTool> knownTools = new ConcurrentHashMap<>();
     private final XmlMapper xmlMapper = new XmlMapper();
     private final ConsumingFireForgetSignal<ProcessingCompletedData<R, T, A>> requestCompleted = new ConsumingFireForgetSignal<>();
-    private final List<AgentMessagesPreProcessor> agentMessagesPreProcessors = new CopyOnWriteArrayList<>(List.of(
-                                                                                                                  AutoCompactionProcessor
-                                                                                                                          .builder()
-                                                                                                                          .build()));
+    private final List<AgentMessagesPreProcessor> agentMessagesPreProcessors = new CopyOnWriteArrayList<>();
 
     @SuppressWarnings("unchecked")
     private final A self = (A) this;
@@ -203,6 +200,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             registerToolbox(extension);
             extension.onExtensionRegistrationCompleted(self);
         });
+        final var compactionSetup = Objects.requireNonNullElse(setup.getAutoCompactionSetup(),
+                                                               AutoCompactionSetup.DEFAULT);
+        this.agentMessagesPreProcessors.add(new AutoCompactionProcessor(compactionSetup));
     }
 
     public abstract String name();

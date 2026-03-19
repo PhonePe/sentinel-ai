@@ -72,7 +72,7 @@ public class MessageReadingUtils {
         var newPointer = "";
         BiScrollable<AgentMessage> response = null;
         final var fetchCount = Math.min(
-                                        AgentSessionExtensionSetup.MAX_HISTORICAL_MESSAGES_FETCH_COUNT,
+                                        AgentSessionExtensionSetup.DEFAULT_MAX_HISTORICAL_MESSAGES_FETCH_COUNT,
                                         Math.max(1,
                                                  setup.getHistoricalMessageFetchSize()));
 
@@ -133,7 +133,7 @@ public class MessageReadingUtils {
                 .isNullOrEmpty(pointer));
 
         // Sort all accumulated messages chronologically from oldest to newest
-        List<AgentMessage> chronological = messagesFromLastSummary.stream()
+        var chronological = messagesFromLastSummary.stream()
                 .sorted(Comparator.comparing(AgentMessage::getTimestamp)
                         .thenComparing(AgentMessage::getMessageId))
                 .toList();

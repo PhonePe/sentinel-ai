@@ -48,14 +48,6 @@ public class UserPrompt extends AgentRequest {
         this(sessionId, runId, null, null, content, false, sentAt);
     }
 
-    public UserPrompt(String sessionId,
-                      String runId,
-                      @NonNull String content,
-                      boolean compacted,
-                      LocalDateTime sentAt) {
-        this(sessionId, runId, null, null, content, compacted, sentAt);
-    }
-
     @Builder
     @Jacksonized
     public UserPrompt(String sessionId,
@@ -73,6 +65,14 @@ public class UserPrompt extends AgentRequest {
         this.content = content;
         this.compacted = compacted;
         this.sentAt = Objects.requireNonNullElse(sentAt, LocalDateTime.now());
+    }
+
+    public UserPrompt(String sessionId,
+                      String runId,
+                      @NonNull String content,
+                      boolean compacted,
+                      LocalDateTime sentAt) {
+        this(sessionId, runId, null, null, content, compacted, sentAt);
     }
 
     @Override

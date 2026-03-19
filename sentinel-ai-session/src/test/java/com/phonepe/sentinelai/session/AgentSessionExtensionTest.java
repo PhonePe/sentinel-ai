@@ -33,9 +33,9 @@ import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.AutoCompactionSetup;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import com.phonepe.sentinelai.core.events.EventType;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
@@ -57,7 +57,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -487,28 +486,9 @@ class AgentSessionExtensionTest {
 
         // Should use default setup
         assertNotNull(extension.getSetup());
-        assertEquals(AgentSessionExtensionSetup.DEFAULT.getMaxSummaryLength(),
-                     extension.getSetup().getMaxSummaryLength());
+        assertEquals(AgentSessionExtensionSetup.DEFAULT.getHistoricalMessageFetchSize(),
+                     extension.getSetup().getHistoricalMessageFetchSize());
     }
-
-    /**
-     * Test compactionTriggeringEvents configuration
-     */
-    /* @Test
-    void testCompactionTriggeringEventsConfiguration() {
-        final var sessionStore = new InMemorySessionStore();
-        final var customEvents = Set.of(EventType.MESSAGE_RECEIVED);
-    
-        final var extension = AgentSessionExtension
-                .<UserInput, String, SimpleAgent>builder()
-                .sessionStore(sessionStore)
-                .setup(AgentSessionExtensionSetup.builder()
-                        .compactionTriggeringEvents(customEvents)
-                        .build())
-                .build();
-    
-        assertEquals(customEvents, extension.getCompactionTriggeringEvents());
-    } */
 
     /**
      * Test facts() method with empty sessionId
@@ -638,9 +618,7 @@ class AgentSessionExtensionTest {
                 .<UserInput, String, SimpleAgent>builder()
                 .mapper(objectMapper)
                 .sessionStore(sessionStore)
-                .setup(AgentSessionExtensionSetup.builder()
-                        .autoSummarizationThresholdPercentage(3)
-                        .build())
+                .setup(AgentSessionExtensionSetup.DEFAULT)
                 .build();
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
@@ -650,6 +628,7 @@ class AgentSessionExtensionTest {
                                 .temperature(0.1f)
                                 .seed(1)
                                 .build())
+                        .autoCompactionSetup(AutoCompactionSetup.DEFAULT.withCompactionTriggerThresholdPercentage(3))
                         .build())
                 .extensions(List.of(agentSessionExtension))
                 .build()
@@ -851,9 +830,6 @@ class AgentSessionExtensionTest {
                 .<UserInput, String, SimpleAgent>builder()
                 .mapper(objectMapper)
                 .sessionStore(sessionStore)
-                .setup(AgentSessionExtensionSetup.builder()
-                        .autoSummarizationThresholdPercentage(3)
-                        .build())
                 .build();
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
@@ -960,15 +936,14 @@ class AgentSessionExtensionTest {
                 .<UserInput, String, SimpleAgent>builder()
                 .sessionStore(sessionStore)
                 .mapper(objectMapper)
-                .historyModifiers(List.of(
-                                          messages -> List.of()  // Filter that removes all messages
-                ))
+                .historyModifiers(List.of(messages -> List.of()))  // Filter that removes all messages
                 .build();
 
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
                         .mapper(objectMapper)
                         .model(model)
+                        .autoCompactionSetup(AutoCompactionSetup.DEFAULT.withCompactionTriggerThresholdPercentage(3))
                         .build())
                 .extensions(List.of(extension))
                 .build();

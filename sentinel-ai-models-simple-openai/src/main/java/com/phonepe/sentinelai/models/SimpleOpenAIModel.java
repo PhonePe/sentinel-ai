@@ -414,8 +414,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     @Override
     public int estimateTokenCount(List<AgentMessage> messages,
                                   AgentSetup agentSetup) {
-        final var modelAttributes = Objects.requireNonNullElse(agentSetup.getModelSettings()
-                .getModelAttributes(), ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
+        final var modelAttributes = AgentUtils.getIfNotNull(agentSetup.getModelSettings(),
+                                                            ModelSettings::getModelAttributes,
+                                                            ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
         return tokenCounter.estimateTokenCount(messages,
                                                this.modelOptions
                                                        .getTokenCountingConfig(),
@@ -1400,12 +1401,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         var transformedAllMessages = List.copyOf(allMessages);
         var transformedNewMessages = List.copyOf(newMessages);
 
+        final var ctx = AgentMessagesPreProcessContext.builder()
+                .modelRunContext(context)
+                .build();
         for (var processor : messagesPreProcessors) {
             AgentMessagesPreProcessResult response;
             try {
-                final var ctx = AgentMessagesPreProcessContext.builder()
-                        .modelRunContext(context)
-                        .build();
                 response = processor.process(ctx,
                                              transformedAllMessages,
                                              transformedNewMessages);
@@ -1422,9 +1423,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             final var candidateMessages = response.getTransformedMessages();
             if (candidateMessages != null) {
                 validateTransformedAgentMessages(processor,
-                                                 response.getTransformedMessages());
-                transformedAllMessages = List.copyOf(response
-                        .getTransformedMessages());
+                                                 candidateMessages);
+                transformedAllMessages = List.copyOf(candidateMessages);
             }
 
             if (response.getNewMessages() != null) {

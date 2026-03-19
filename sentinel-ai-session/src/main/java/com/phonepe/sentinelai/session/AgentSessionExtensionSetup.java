@@ -17,14 +17,9 @@
 package com.phonepe.sentinelai.session;
 
 
-import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
-import com.phonepe.sentinelai.core.events.EventType;
-
 import lombok.Builder;
 import lombok.Value;
 import lombok.With;
-
-import java.util.Set;
 
 /**
  * Setup for Agent Session Extension
@@ -34,19 +29,11 @@ import java.util.Set;
 @Builder
 @SuppressWarnings("java:S6548")
 public class AgentSessionExtensionSetup {
-    public static final int MAX_HISTORICAL_MESSAGES_FETCH_COUNT = 30;
-    public static final int DEFAULT_MAX_MESSAGES_TO_SUMMARIZE = 50;
-    public static final int DEFAULT_MAX_SUMMARY_LENGTH = 1000;
-    public static final boolean DEFAULT_DISABLE_SUMMARIZATION = false;
-    public static final int DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD = 60;
-    public static final Set<EventType> DEFAULT_COMPACTION_TRIGGERING_EVENTS = Set.of(EventType.OUTPUT_ERROR,
-                                                                                     EventType.OUTPUT_GENERATED,
-                                                                                     EventType.MESSAGE_RECEIVED);
-    public static final AgentSessionExtensionSetup DEFAULT = new AgentSessionExtensionSetup(MAX_HISTORICAL_MESSAGES_FETCH_COUNT,
-                                                                                            DEFAULT_MAX_SUMMARY_LENGTH,
-                                                                                            DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD,
-                                                                                            CompactionPrompts.DEFAULT,
-                                                                                            DEFAULT_COMPACTION_TRIGGERING_EVENTS);
+    public static final int DEFAULT_MAX_HISTORICAL_MESSAGES_FETCH_COUNT = 30;
+    public static final boolean DEFAULT_PRE_SUMMARIZATION_DISABLED = false;
+
+    public static final AgentSessionExtensionSetup DEFAULT = new AgentSessionExtensionSetup(DEFAULT_MAX_HISTORICAL_MESSAGES_FETCH_COUNT,
+                                                                                            DEFAULT_PRE_SUMMARIZATION_DISABLED);
 
     /**
      * Number of historical messages to fetch from session store in one go.
@@ -56,23 +43,8 @@ public class AgentSessionExtensionSetup {
      * it has enough messages to summarize or there are no more messages left.
      */
     @Builder.Default
-    int historicalMessageFetchSize = MAX_HISTORICAL_MESSAGES_FETCH_COUNT;
-
-    /**
-     * Maximum length of the summary to be generated.
-     */
-    @Builder.Default
-    int maxSummaryLength = DEFAULT_MAX_SUMMARY_LENGTH;
-
-    /**
-     * Threshold of percentage of tokens used in the session beyond which automatic summarization is triggered.
-     */
-    @Builder.Default
-    int autoSummarizationThresholdPercentage = DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD;
+    int historicalMessageFetchSize = DEFAULT_MAX_HISTORICAL_MESSAGES_FETCH_COUNT;
 
     @Builder.Default
-    CompactionPrompts compactionPrompts = CompactionPrompts.DEFAULT;
-
-    @Builder.Default
-    Set<EventType> compactionTriggeringEvents = DEFAULT_COMPACTION_TRIGGERING_EVENTS;
+    boolean preSummarizationDisabled = DEFAULT_PRE_SUMMARIZATION_DISABLED;
 }

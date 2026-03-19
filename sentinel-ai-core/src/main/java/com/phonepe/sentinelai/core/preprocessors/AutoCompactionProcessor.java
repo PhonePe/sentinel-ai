@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Original Author(s), PhonePe India Pvt. Ltd.
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,16 @@
 
 package com.phonepe.sentinelai.core.preprocessors;
 
+import static com.phonepe.sentinelai.core.utils.AgentUtils.isContextWindowThresholdBreached;
+import static com.phonepe.sentinelai.core.utils.AgentUtils.messagesAfterLastCompaction;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
-import javax.annotation.Nullable;
-
-import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.phonepe.sentinelai.core.agent.AutoCompactionSetup;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
@@ -38,67 +39,25 @@ import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.NonNull;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
-@AllArgsConstructor
 @Slf4j
-@Builder
 public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
+    private final CompactionPrompts prompts;
 
-    private static final int DEFAULT_TOKEN_BUDGET = 1500;
-    private static final int DEFAULT_COMPACTION_TRIGGER_THRESHOLD = 60;
-
-    @Builder.Default
-    private final CompactionPrompts prompts = CompactionPrompts.DEFAULT;
-    @Builder.Default
-    private final int tokenBudget = DEFAULT_TOKEN_BUDGET;
-    @Builder.Default
-    private final int compactionTriggerThresholdPercentage = DEFAULT_COMPACTION_TRIGGER_THRESHOLD;
-    @Nullable
+    private final int tokenBudget;
+    private final int compactionTriggerThresholdPercentage;
     private final Model model;
 
-    @Override
-    public AgentMessagesPreProcessResult process(AgentMessagesPreProcessContext ctx,
-                                                 List<AgentMessage> allMessages,
-                                                 List<AgentMessage> newMessages) {
-        final var modelRunContext = ctx.getModelRunContext();
-        final var latestMessage = newMessages.isEmpty() ? null : newMessages.get(newMessages.size() - 1);
-        var compactionNeeded = latestMessage != null
-                && latestMessage.getMessageType() != AgentMessageType.TOOL_CALL_REQUEST_MESSAGE
-                && AgentUtils.isContextWindowThresholdBreached(allMessages,
-                                                               modelRunContext.getAgentSetup(),
-                                                               compactionTriggerThresholdPercentage);
-        if (!compactionNeeded) {
-            log.debug("Compaction not needed for agent {}. Proceeding without compaction.",
-                      modelRunContext.getAgentName());
-            return new AgentMessagesPreProcessResult(allMessages, newMessages);
-        }
-        final var compactionOutput = compactMessages(modelRunContext,
-                                                     allMessages,
-                                                     prompts,
-                                                     tokenBudget,
-                                                     model).orElse(null);
-        if (null == compactionOutput) {
-            log.warn("Message compaction failed for agent {}. Proceeding without compaction.",
-                     modelRunContext.getAgentName());
-            return new AgentMessagesPreProcessResult(allMessages, newMessages);
-        }
-        final var compactedPrompt = """
-                Prompt to continue: %s
-                Existing context: %s
-                """.formatted(compactionOutput.getContinuation(), compactionOutput.getRawData());
-        final var outputAllMessages = new ArrayList<AgentMessage>(allMessages);
-        final var outputNewMessages = new ArrayList<AgentMessage>(newMessages);
-        final var userPrompt = new UserPrompt(modelRunContext.getSessionId(),
-                                              modelRunContext.getRunId(),
-                                              compactedPrompt,
-                                              true,
-                                              LocalDateTime.now());
-        outputAllMessages.add(userPrompt);
-        outputNewMessages.add(userPrompt);
-        return new AgentMessagesPreProcessResult(outputAllMessages, outputNewMessages);
+    @Builder
+    public AutoCompactionProcessor(@NonNull AutoCompactionSetup setup) {
+        this.prompts = setup.getPrompts();
+        this.compactionTriggerThresholdPercentage = setup.getCompactionTriggerThresholdPercentage();
+        this.tokenBudget = setup.getTokenBudget();
+        this.model = setup.getModel();
     }
 
     private static Optional<ExtractedSummary> compactMessages(ModelRunContext modelRunContext,
@@ -136,4 +95,58 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
         }
         return Optional.empty();
     }
+
+    @Override
+    public AgentMessagesPreProcessResult process(AgentMessagesPreProcessContext ctx,
+                                                 List<AgentMessage> allMessages,
+                                                 List<AgentMessage> newMessages) {
+        final var modelRunContext = ctx.getModelRunContext();
+        final var latestMessage = allMessages.isEmpty() ? null : allMessages.get(allMessages.size() - 1);
+        final var messagesAfterLastCompaction = messagesAfterLastCompaction(allMessages);
+        log.debug("Checking if compaction is needed for agent {}. All message count: {}, Relevant messages count: {}, token budget: {}, threshold percentage: {}",
+                  modelRunContext.getAgentName(),
+                  allMessages.size(),
+                  messagesAfterLastCompaction.size(),
+                  tokenBudget,
+                  compactionTriggerThresholdPercentage);
+        var compactionNeeded = latestMessage != null
+                && latestMessage.getMessageType() != AgentMessageType.TOOL_CALL_REQUEST_MESSAGE
+                && isContextWindowThresholdBreached(messagesAfterLastCompaction,
+                                                    modelRunContext.getAgentSetup(),
+                                                    compactionTriggerThresholdPercentage);
+        if (!compactionNeeded) {
+            log.debug("Compaction not needed for agent {}. Proceeding without compaction.",
+                      modelRunContext.getAgentName());
+            return new AgentMessagesPreProcessResult(null, newMessages);
+        }
+        final var compactionOutput = compactMessages(modelRunContext,
+                                                     messagesAfterLastCompaction,
+                                                     prompts,
+                                                     tokenBudget,
+                                                     model).orElse(null);
+        if (null == compactionOutput) {
+            log.warn("Message compaction failed for agent {}. Proceeding without compaction.",
+                     modelRunContext.getAgentName());
+            return new AgentMessagesPreProcessResult(null, newMessages);
+        }
+        final var mapper = modelRunContext.getAgentSetup().getMapper();
+        final var outputAllMessages = new ArrayList<AgentMessage>(allMessages);
+        final var outputNewMessages = new ArrayList<AgentMessage>(newMessages);
+        final var userPrompt = new UserPrompt(modelRunContext.getSessionId(),
+                                              modelRunContext.getRunId(),
+                                              continuationPrompt(compactionOutput, mapper),
+                                              true,
+                                              LocalDateTime.now());
+        outputAllMessages.add(userPrompt);
+        outputNewMessages.add(userPrompt);
+        return new AgentMessagesPreProcessResult(outputAllMessages, outputNewMessages);
+    }
+
+    @SneakyThrows
+    private static String continuationPrompt(final ExtractedSummary compactionOutput,
+                                             final ObjectMapper mapper) {
+        return mapper.writeValueAsString(mapper.createObjectNode()
+                .set("user_input", compactionOutput.getRawData()));
+    }
+
 }

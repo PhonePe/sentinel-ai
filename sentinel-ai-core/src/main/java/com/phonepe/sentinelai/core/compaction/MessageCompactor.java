@@ -16,13 +16,14 @@
 
 package com.phonepe.sentinelai.core.compaction;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.apache.commons.text.StringSubstitutor;
 
+import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
@@ -51,8 +52,6 @@ import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
-import static com.phonepe.sentinelai.core.utils.AgentUtils.sessionId;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -61,14 +60,14 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import static com.phonepe.sentinelai.core.utils.AgentUtils.sessionId;
+
 @Slf4j
 @UtilityClass
 public class MessageCompactor {
 
     public static final String COMPACTION_SESSION_PREFIX = "compaction-for-";
     private static final String OUTPUT_KEY = "sessionOutput";
-    private static final String CONTEXT_DATA = "contextData";
-    private static final String CONTINUATION_PROMPT = "continuationPrompt";
 
     @SneakyThrows
     public static CompletableFuture<Optional<ExtractedSummary>> compactMessages(final String agentName,
@@ -135,7 +134,7 @@ public class MessageCompactor {
                          List.of(ModelOutputDefinition.builder()
                                  .name(OUTPUT_KEY)
                                  .description("Output of the summarization run, containing the extracted summary and other relevant information as defined in the schema.")
-                                 .schema(compactionSchema(mapper, prompts))
+                                 .schema(mapper.readTree(prompts.getPromptSchema()))
                                  .build()),
                          messagesForCompaction,
                          Map.of(),
@@ -153,8 +152,7 @@ public class MessageCompactor {
                                   output.getError());
                     }
                     else {
-                        final var jsonNode = output.getData().get(OUTPUT_KEY);
-                        final var summaryData = jsonNode.get(CONTEXT_DATA);
+                        final var summaryData = output.getData().get(OUTPUT_KEY);
                         if (JsonUtils.empty(summaryData)) {
                             log.debug("No summary extracted from the output");
                         }
@@ -163,18 +161,13 @@ public class MessageCompactor {
                                       summaryData);
                             try {
                                 final var summary = ExtractedSummary.builder()
-                                        .title(summaryData.get(
-                                                               ExtractedSummary.Fields.title)
-                                                .asText())
-                                        .summary(summaryData.get(
-                                                                 ExtractedSummary.Fields.summary)
-                                                .asText())
+                                        .title(summaryData.get(ExtractedSummary.Fields.title).asText())
+                                        .summary(summaryData.get(ExtractedSummary.Fields.summary).asText())
                                         .keywords(mapper.treeToValue(summaryData
                                                 .get(ExtractedSummary.Fields.keywords),
                                                                      new TypeReference<List<String>>() {
                                                                      }))
                                         .rawData(summaryData)
-                                        .continuation(jsonNode.get(CONTINUATION_PROMPT).asText())
                                         .build();
 
                                 return Optional.of(summary);
@@ -187,27 +180,6 @@ public class MessageCompactor {
                     }
                     return Optional.<ExtractedSummary>empty();
                 });
-    }
-
-    @SneakyThrows
-    private static JsonNode compactionSchema(final ObjectMapper mapper, final CompactionPrompts prompts) {
-        final var set = mapper.createObjectNode();
-        set.set(CONTINUATION_PROMPT,
-                mapper.createObjectNode()
-                        .put("type", "string")
-                        .put("description",
-                             "Prompt to be used to continue the session. This will be used as user input to continue the loop. Include a short log of what has happend already and instructions that need to be followed to continue the session."));
-        set.set(CONTEXT_DATA, mapper.readTree(prompts.getPromptSchema()));
-        final var schema = mapper.createObjectNode()
-                .put("type", "object")
-                .put("description", "Schema for the summary to be extracted from messages between user and the model.")
-                .put("additionalProperties", false);
-        schema.set("required",
-                   mapper.createArrayNode()
-                           .add(mapper.createObjectNode().textNode(CONTINUATION_PROMPT))
-                           .add(mapper.createObjectNode().textNode(CONTEXT_DATA)));
-        schema.set("properties", set);
-        return schema;
     }
 
     /**
@@ -242,8 +214,7 @@ public class MessageCompactor {
                                                                              node.put("role",
                                                                                       CompactMessage.Roles.SYSTEM);
                                                                              node.put("content",
-                                                                                      systemPrompt
-                                                                                              .getContent());
+                                                                                      systemPrompt.getContent());
                                                                              return node;
                                                                          }
 
@@ -264,15 +235,13 @@ public class MessageCompactor {
 
                                                                          @Override
                                                                          public JsonNode visit(UserPrompt userPrompt) {
-                                                                             final var node = mapper
-                                                                                     .createObjectNode();
+                                                                             final var node = mapper.createObjectNode();
                                                                              node.put("type",
                                                                                       CompactMessage.Types.CHAT);
                                                                              node.put("role",
                                                                                       CompactMessage.Roles.USER);
                                                                              node.put("content",
-                                                                                      userPrompt
-                                                                                              .getContent());
+                                                                                      userPrompt.getContent());
                                                                              return node;
                                                                          }
 
@@ -285,6 +254,7 @@ public class MessageCompactor {
                                                                      .accept(new AgentResponseVisitor<>() {
 
                                                                          @Override
+                                                                         @SneakyThrows
                                                                          public JsonNode visit(StructuredOutput structuredOutput) {
                                                                              final var node = mapper
                                                                                      .createObjectNode();
@@ -292,9 +262,29 @@ public class MessageCompactor {
                                                                                       CompactMessage.Types.CHAT);
                                                                              node.put("role",
                                                                                       CompactMessage.Roles.ASSISTANT);
-                                                                             node.put("content",
-                                                                                      structuredOutput
-                                                                                              .getContent());
+                                                                             try {
+                                                                                 final var jsonNode = mapper
+                                                                                         .readTree(structuredOutput
+                                                                                                 .getContent());
+                                                                                 if (jsonNode.has(
+                                                                                                  Agent.OUTPUT_VARIABLE_NAME)) {
+                                                                                     node.put("content",
+                                                                                              mapper.writeValueAsString(jsonNode
+                                                                                                      .get(Agent.OUTPUT_VARIABLE_NAME)));
+                                                                                 }
+                                                                                 else {
+                                                                                     node.put("content",
+                                                                                              structuredOutput
+                                                                                                      .getContent());
+                                                                                 }
+                                                                             }
+                                                                             catch (JsonProcessingException e) {
+                                                                                 log.error("Error parsing structured output content as JSON: %s"
+                                                                                         .formatted(e.getMessage()), e);
+                                                                                 node.put("content",
+                                                                                          structuredOutput
+                                                                                                  .getContent());
+                                                                             }
                                                                              return node;
                                                                          }
 

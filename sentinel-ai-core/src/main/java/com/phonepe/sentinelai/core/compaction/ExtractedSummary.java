@@ -38,7 +38,5 @@ public class ExtractedSummary {
 
     List<String> keywords;
 
-    String continuation;
-
     JsonNode rawData;
 }

@@ -18,8 +18,11 @@ package com.phonepe.sentinelai.core.utils;
 
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.AutoCompactionSetup;
 import com.phonepe.sentinelai.core.agent.RetrySetup;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
+import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
 import com.phonepe.sentinelai.core.model.ModelAttributes;
@@ -30,6 +33,7 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -73,6 +77,33 @@ public class AgentUtils {
                                    .toList())
                 .replaceAll("[\\s\\p{Punct}]", "_")
                 .toLowerCase();
+    }
+
+    public static boolean isContextWindowThresholdBreached(final List<AgentMessage> messages,
+                                                           final AgentSetup agentSetup,
+                                                           final int threshold) {
+        if (threshold == 0) {
+            log.debug("Compaction needed as threshold is set to 0 (Every Run).");
+            return true;
+        }
+        final var estimateTokenCount = agentSetup
+                .getModel()
+                .estimateTokenCount(messages, agentSetup);
+        final var modelAttributes = getIfNotNull(agentSetup.getModelSettings(),
+                                                 ModelSettings::getModelAttributes,
+                                                 ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
+        final var contextWindowSize = modelAttributes
+                .getContextWindowSize();
+        final var currentBoundary = (contextWindowSize * threshold) / 100;
+        final var evalResult = estimateTokenCount >= currentBoundary;
+        log.debug("Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, "
+                + "threshold={}%, currentBoundary={}, needsSummarization={}",
+                  estimateTokenCount,
+                  contextWindowSize,
+                  threshold,
+                  currentBoundary,
+                  evalResult);
+        return evalResult;
     }
 
     public static <T> List<T> lastN(List<T> list, int count) {
@@ -139,8 +170,42 @@ public class AgentUtils {
                                                              rhs,
                                                              AgentSetup::getRetrySetup),
                                                        RetrySetup.DEFAULT))
+                .autoCompactionSetup(Objects.requireNonNullElse(value(lhs,
+                                                                      rhs,
+                                                                      AgentSetup::getAutoCompactionSetup),
+                                                                AutoCompactionSetup.DEFAULT))
 
                 .build();
+    }
+
+    public static List<AgentMessage> messagesAfterLastCompaction(final List<AgentMessage> agentMessages) {
+        final var allMessages = Objects.requireNonNullElseGet(agentMessages, List::<AgentMessage>of);
+        //Find last compacted message and only messages after that
+        var lastCompactedMessageIndex = -1;
+        var lastSystemPromptIndex = -1;
+        for (int i = allMessages.size() - 1; i >= 0; i--) {
+            final var message = allMessages.get(i);
+            if (message instanceof UserPrompt userPrompt && userPrompt.isCompacted()) {
+                lastCompactedMessageIndex = Math.max(lastCompactedMessageIndex, i);
+            }
+            else if (message instanceof SystemPrompt) {
+                lastSystemPromptIndex = Math.max(lastSystemPromptIndex, i);
+            }
+        }
+        log.debug("Last compacted message index: {}, Last system prompt index: {}",
+                  lastCompactedMessageIndex,
+                  lastSystemPromptIndex);
+        final var relevantMessages = new ArrayList<AgentMessage>();
+        if (lastCompactedMessageIndex != -1) {
+            if (lastSystemPromptIndex != -1) {
+                relevantMessages.add(allMessages.get(lastSystemPromptIndex));
+            }
+            relevantMessages.addAll(allMessages.subList(lastCompactedMessageIndex, allMessages.size()));
+        }
+        else {
+            relevantMessages.addAll(allMessages);
+        }
+        return relevantMessages;
     }
 
     public static Throwable rootCause(final Throwable leaf) {
@@ -183,32 +248,6 @@ public class AgentUtils {
             return mapper.apply(obj);
         }
         return null;
-    }
-
-    public static boolean isContextWindowThresholdBreached(final List<AgentMessage> messages,
-                                                           final AgentSetup agentSetup,
-                                                           final int threshold) {
-        if (threshold == 0) {
-            log.debug("Compaction needed as threshold is set to 0 (Every Run).");
-            return true;
-        }
-        final var estimateTokenCount = agentSetup
-                .getModel()
-                .estimateTokenCount(messages, agentSetup);
-        final var modelAttributes = Objects.requireNonNullElse(agentSetup.getModelSettings()
-                .getModelAttributes(), ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
-        final var contextWindowSize = modelAttributes
-                .getContextWindowSize();
-        final var currentBoundary = (contextWindowSize * threshold) / 100;
-        final var evalResult = estimateTokenCount >= currentBoundary;
-        log.debug("Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, "
-                + "threshold={}%, currentBoundary={}, needsSummarization={}",
-                  estimateTokenCount,
-                  contextWindowSize,
-                  threshold,
-                  currentBoundary,
-                  evalResult);
-        return evalResult;
     }
 
 }

@@ -24,6 +24,7 @@ import lombok.Value;
 @Value
 public class SentinelError {
     ErrorType errorType;
+
     String message;
 
     public static SentinelError error(ErrorType errorType, Object... args) {

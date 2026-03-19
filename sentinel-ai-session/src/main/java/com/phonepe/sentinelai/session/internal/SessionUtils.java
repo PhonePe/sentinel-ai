@@ -44,37 +44,4 @@ public class SessionUtils {
         return false;
     }
 
-    public static boolean isContextWindowThresholdBreached(final List<AgentMessage> messages,
-                                                           final AgentSetup agentSetup,
-                                                           final AgentSessionExtensionSetup extensionSetup) {
-        final var threshold = extensionSetup.getAutoSummarizationThresholdPercentage();
-        return isContextWindowThresholdBreached(messages, agentSetup, threshold);
-    }
-
-    public static boolean isContextWindowThresholdBreached(final List<AgentMessage> messages,
-                                                           final AgentSetup agentSetup,
-                                                           final int threshold) {
-        if (threshold == 0) {
-            log.debug("Compaction needed as threshold is set to 0 (Every Run).");
-            return true;
-        }
-        final var estimateTokenCount = agentSetup
-                .getModel()
-                .estimateTokenCount(messages, agentSetup);
-        final var modelAttributes = Objects.requireNonNullElse(agentSetup.getModelSettings()
-                .getModelAttributes(), ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
-        final var contextWindowSize = modelAttributes
-                .getContextWindowSize();
-        final var currentBoundary = (contextWindowSize * threshold) / 100;
-        final var evalResult = estimateTokenCount >= currentBoundary;
-        log.debug("Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, "
-                + "threshold={}%, currentBoundary={}, needsSummarization={}",
-                  estimateTokenCount,
-                  contextWindowSize,
-                  threshold,
-                  currentBoundary,
-                  evalResult);
-        return evalResult;
-    }
-
 }

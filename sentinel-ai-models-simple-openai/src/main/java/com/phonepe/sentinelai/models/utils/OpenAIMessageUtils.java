@@ -36,6 +36,7 @@ import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -72,7 +73,8 @@ public class OpenAIMessageUtils {
                                                          case ASSISTANT -> ChatMessage.AssistantMessage
                                                                  .of(genericResource
                                                                          .getSerializedJson());
-                                                         case TOOL_CALL -> throw new UnsupportedOperationException("Tool calls are unsupported in this context");
+                                                         case TOOL_CALL -> throw new UnsupportedOperationException(
+                                                                                                                   "Tool calls are unsupported in this context");
                                                      };
                                                  }
 
@@ -89,7 +91,8 @@ public class OpenAIMessageUtils {
                                                          case ASSISTANT -> ChatMessage.AssistantMessage
                                                                  .of(genericText
                                                                          .getText());
-                                                         case TOOL_CALL -> throw new UnsupportedOperationException("Tool calls are unsupported in this context");
+                                                         case TOOL_CALL -> throw new UnsupportedOperationException(
+                                                                                                                   "Tool calls are unsupported in this context");
                                                      };
                                                  }
                                              });
@@ -157,38 +160,7 @@ public class OpenAIMessageUtils {
      * @return List of OpenAI messages
      */
     public static List<ChatMessage> convertToOpenAIMessages(List<AgentMessage> agentMessages) {
-        final var allMessages = Objects.requireNonNullElseGet(agentMessages,
-                                                              List::<AgentMessage>of);
-        //Find last compacted message and convert only messages after that
-        var lastCompactedMessageIndex = -1;
-        var lastSystemPromptIndex = -1;
-        for (int i = allMessages.size() - 1; i >= 0; i--) {
-            final var message = allMessages.get(i);
-            if (message instanceof UserPrompt userPrompt && userPrompt.isCompacted()) {
-                lastCompactedMessageIndex = Math.max(lastCompactedMessageIndex, i);
-                break;
-            }
-            else if (message instanceof SystemPrompt) {
-                lastSystemPromptIndex = Math.max(lastSystemPromptIndex, i);
-            }
-        }
-        log.debug("Last compacted message index: {}, Last system prompt index: {}",
-                  lastCompactedMessageIndex,
-                  lastSystemPromptIndex);
-        final var messagesToConvert = new ArrayList<AgentMessage>();
-        if (lastSystemPromptIndex != -1) {
-            messagesToConvert.add(allMessages.get(lastSystemPromptIndex));
-        }
-        if (lastCompactedMessageIndex != -1) {
-            messagesToConvert.addAll(allMessages.subList(lastCompactedMessageIndex, allMessages.size()));
-        }
-        else {
-            messagesToConvert.addAll(allMessages);
-        }
-        log.debug("Incoming messages count: {}, Messages to convert count: {}",
-                  allMessages.size(),
-                  messagesToConvert.size());
-        return messagesToConvert
+        return AgentUtils.messagesAfterLastCompaction(agentMessages)
                 .stream()
                 .map(OpenAIMessageUtils::convertIndividualMessageToOpenAIFormat)
                 .toList();

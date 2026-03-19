@@ -33,6 +33,7 @@ public class EarlyTerminationStrategyResponse {
     }
 
     ResponseType responseType;
+
     ErrorType errorType;
 
     String reason;

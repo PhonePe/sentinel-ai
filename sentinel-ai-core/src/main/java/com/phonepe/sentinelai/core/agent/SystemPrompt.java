@@ -65,6 +65,7 @@ public class SystemPrompt {
     }
 
     private String name;
+
     private String coreInstructions;
     private Task primaryTask;
     @JacksonXmlElementWrapper(localName = "secondaryTasks")
