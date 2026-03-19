@@ -16,15 +16,8 @@
 
 package com.phonepe.sentinelai.core.preprocessors;
 
-import static com.phonepe.sentinelai.core.utils.AgentUtils.isContextWindowThresholdBreached;
-import static com.phonepe.sentinelai.core.utils.AgentUtils.messagesAfterLastCompaction;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.phonepe.sentinelai.core.agent.AutoCompactionSetup;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
@@ -43,6 +36,14 @@ import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static com.phonepe.sentinelai.core.utils.AgentUtils.isContextWindowThresholdBreached;
+import static com.phonepe.sentinelai.core.utils.AgentUtils.messagesAfterLastCompaction;
 
 @Slf4j
 public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
@@ -96,6 +97,13 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
         return Optional.empty();
     }
 
+    @SneakyThrows
+    private static String continuationPrompt(final ExtractedSummary compactionOutput,
+                                             final ObjectMapper mapper) {
+        return mapper.writeValueAsString(mapper.createObjectNode()
+                .set("user_input", compactionOutput.getRawData()));
+    }
+
     @Override
     public AgentMessagesPreProcessResult process(AgentMessagesPreProcessContext ctx,
                                                  List<AgentMessage> allMessages,
@@ -140,13 +148,6 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
         outputAllMessages.add(userPrompt);
         outputNewMessages.add(userPrompt);
         return new AgentMessagesPreProcessResult(outputAllMessages, outputNewMessages);
-    }
-
-    @SneakyThrows
-    private static String continuationPrompt(final ExtractedSummary compactionOutput,
-                                             final ObjectMapper mapper) {
-        return mapper.writeValueAsString(mapper.createObjectNode()
-                .set("user_input", compactionOutput.getRawData()));
     }
 
 }

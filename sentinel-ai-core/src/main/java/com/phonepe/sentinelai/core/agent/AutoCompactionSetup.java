@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Original Author(s), PhonePe India Pvt. Ltd.
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,6 @@
 
 package com.phonepe.sentinelai.core.agent;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
 import com.phonepe.sentinelai.core.model.Model;
 
@@ -26,6 +23,8 @@ import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.With;
+
+import javax.annotation.Nullable;
 
 /**
  * Details to setup auto compaction for an agent.
