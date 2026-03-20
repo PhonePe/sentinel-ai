@@ -31,7 +31,6 @@ docs/site/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
-sentinel-ai-examples/.data/
 
 ### VS Code ###
 .vscode/
@@ -47,3 +46,7 @@ out
 deps
 docs/site
 test_output.log
+
+# Exclusions and inclusions for sentinel-ai-examples module
+sentinel-ai-examples/.data/
+!sentinel-ai-examples/src/main/resources/.env

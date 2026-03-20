@@ -18,16 +18,11 @@ package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
-
-import com.phonepe.sentinelai.core.events.EventBus;
-import com.phonepe.sentinelai.core.model.OutputGenerationMode;
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.openai.SimpleOpenAI;
-
 import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
@@ -40,7 +35,8 @@ import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpToolReaders;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.InMemoryHttpToolSource;
-
+import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
+import io.github.sashirestela.openai.SimpleOpenAI;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -77,7 +73,7 @@ import java.util.concurrent.Callable;
  *
  * <p>On startup the CLI:
  * <ol>
- * <li>Reads the YAML credentials file ({@code .env/credentials.yaml} by default).</li>
+ * <li>Reads the YAML config file ({@code .env/agent=config.yml} by default).</li>
  * <li>Initialises the SQLite database (schema + sample data) if it does not exist.</li>
  * <li>Starts the embedded Dropwizard SQLite REST server on a free port.</li>
  * <li>Extracts the bundled SQL-execution skill to a temp directory.</li>
@@ -94,7 +90,7 @@ public class TextToSqlCLI implements Callable<Integer> {
     @Option(
             names = {
                     "--config", "-c"
-            }, description = "Path to credentials YAML file (default: .env/credentials.yaml)", defaultValue = ".env/credentials.yaml"
+            }, description = "Path to credentials YAML file (default: .env/agent-config.yml)", defaultValue = ".env/agent-config.yml"
     )
     private String configPath;
 
@@ -125,7 +121,7 @@ public class TextToSqlCLI implements Callable<Integer> {
         final Path path = Paths.get(configPath);
         if (!Files.exists(path)) {
             System.err.println("Config file not found: " + path.toAbsolutePath());
-            System.err.println("Copy src/main/resources/.env/credentials.yaml.example to "
+            System.err.println("Copy src/main/resources/.env/agent-config.yml.example to "
                     + path.toAbsolutePath() + " and fill in your API key.");
             System.exit(1);
         }

@@ -24,10 +24,10 @@ import lombok.NoArgsConstructor;
 /**
  * Top-level YAML configuration for the Text-to-SQL CLI.
  *
- * <p>Default location: {@code .env/credentials.yaml} relative to the working directory.
+ * <p>Default location: {@code .env/agent-config.yml} relative to the working directory.
  * Override with {@code --config <path>}.
  *
- * <p>Example file: {@code src/main/resources/.env/credentials.yaml.example}
+ * <p>Example file: {@code src/main/resources/.env/agent-config.yml.example}
  */
 @Data
 @NoArgsConstructor

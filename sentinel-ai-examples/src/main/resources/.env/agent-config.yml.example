@@ -1,0 +1,32 @@
+# =============================================================================
+# Sentinel AI Text-to-SQL Example — Credentials & Configuration
+# =============================================================================
+# Copy this file to .env/agent-config.yml (the default path) and fill in
+# your values. Pass a different path via --config if needed.
+# =============================================================================
+
+openai:
+  # Your OpenAI API key.  Get one at https://platform.openai.com/api-keys
+  apiKey: "sk-your-api-key-here"
+
+  # The OpenAI chat model to use.
+  # Recommended: gpt-4o  (best tool-use quality)
+  # Budget option: gpt-4o-mini
+  model: "gpt-4o"
+
+database:
+  # Absolute or relative path to the SQLite database file.
+  # If the file does not exist, the CLI will create it automatically and
+  # populate it with the bundled e-commerce schema and sample data.
+  path: "./ecommerce.db"
+
+agent:
+  # Temperature for the model (0.0 = deterministic, 1.0 = creative).
+  # Keep at 0 for SQL generation to ensure consistent, correct queries.
+  temperature: 0.0
+
+  # Maximum tokens the model may produce per response.
+  maxTokens: 4096
+
+  # Enable streaming output — assistant text streams token-by-token to stdout.
+  streaming: true
