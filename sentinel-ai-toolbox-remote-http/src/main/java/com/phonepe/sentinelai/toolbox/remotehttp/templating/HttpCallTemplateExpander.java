@@ -24,6 +24,8 @@ import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.handlebar.Ha
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,7 +58,6 @@ public class HttpCallTemplateExpander {
      */
     public HttpCallSpec convert(final HttpCallTemplate template,
                                 Map<String, Object> context) {
-
         final var path = convert(template.getPath(), context);
         final var method = template.getMethod();
         final var headers = Objects.requireNonNullElseGet(template.getHeaders(),

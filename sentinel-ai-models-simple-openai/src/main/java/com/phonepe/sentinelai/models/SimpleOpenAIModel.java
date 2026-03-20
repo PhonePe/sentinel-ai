@@ -330,19 +330,19 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              newMessages,
                                                                              stopwatch));
                     }
-                    case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> runTools(message
-                            .getToolCalls(),
-                                                                                           context,
-                                                                                           toolsForExecution,
-                                                                                           toolRunner,
-                                                                                           stats,
-                                                                                           stopwatch,
-                                                                                           generatedOutput,
-                                                                                           openAiMessages,
-                                                                                           allMessages,
-                                                                                           newMessages,
-                                                                                           oldMessages)
-                            .orElse(null);
+                    case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> runTools(
+                                    message.getToolCalls(),
+                                   context,
+                                   toolsForExecution,
+                                   toolRunner,
+                                   stats,
+                                   stopwatch,
+                                   generatedOutput,
+                                   openAiMessages,
+                                   allMessages,
+                                   newMessages,
+                                   oldMessages)
+                                    .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(oldMessages,
                                                                    stats,
                                                                    SentinelError
@@ -604,9 +604,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                      newMessages,
                                                                                                      stopwatch);
                                                                              }
-                                                                             else
-
-                                                                 {
+                                                                             else {
 
                                                                                  yield processStreamingOutput(context,
                                                                                                               responseData
@@ -619,8 +617,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                               stopwatch);
                                                                              }
                                                                          }
-                                                                         case FinishReasons.FUNCTION_CALL,
-                                                                                 FinishReasons.TOOL_CALLS -> {
+                                                                         case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
+                                                                             log.info("Tool call requested. Reasoning content = {}", message.getReasoningContent());
 
                                                                              //Model is waiting for us to run tools and respond back
                                                                              final var toolCalls = toolCallData
@@ -658,10 +656,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                              newMessages,
                                                                                                              stopwatch);
                                                                                      }
-                                                                                     else
-
-                                                                 {
-
+                                                                                     else {
                                                                                          yield processStreamingOutput(context,
                                                                                                                       generatedOutput
                                                                                                                               .get(),
@@ -671,7 +666,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                                       newMessages,
                                                                                                                       stopwatch);
                                                                                      }
-
                                                                                  }
                                                                              }
                                                                              yield null; //Continue to next chunk

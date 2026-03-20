@@ -1,0 +1,12 @@
+server:
+  applicationConnectors:
+    - type: http
+      port: ${DW_PORT:-8765}
+  adminConnectors:
+    - type: http
+      port: ${DW_ADMIN_PORT:-8766}
+logging:
+  level: WARN
+  loggers:
+    com.phonepe.sentinelai.examples: INFO
+
