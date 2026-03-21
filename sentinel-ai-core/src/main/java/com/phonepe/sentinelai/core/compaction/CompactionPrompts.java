@@ -54,7 +54,8 @@ public class CompactionPrompts {
                     "description": "Schema for a compact summary envelope used in prompt/response compaction workflows.",
                     "additionalProperties": false,
                     "required": [ "title", "keywords", "summary", "key_points", "key_facts", "action_items",
-                    "citations", "sentiment", "confidence", "metadata" ],
+                    "citations", "sentiment", "confidence", "metadata", "goal", "discoveries", "accomplishments", "relevant_files" ],
+                    "strict": true,
                     "properties": {
                         "title": {
                             "type": "string",
@@ -96,7 +97,32 @@ public class CompactionPrompts {
                                 "description": "One actionable task (e.g., 'Draft proposal by Friday', 'Alice to review PR #123')."
                             }
                         },
-                        "citations": {
+                            "goal": {
+                                "type": "string",
+                                "description": "The primary objective of the current session."
+                            },
+                            "discoveries": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Technical findings, bug insights, or environmental observations."
+                            },
+                            "accomplishments": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "A list of tasks or milestones successfully completed."
+                            },
+                            "relevant_files": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Paths to files that have been modified or are critical to the current task."
+                            },
+                         "citations": {
                             "type": "array",
                             "description": "Source references supporting facts or quotes. Useful for traceability and verification.",
                             "items": {

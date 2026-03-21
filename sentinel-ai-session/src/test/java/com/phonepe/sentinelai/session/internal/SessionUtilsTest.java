@@ -35,7 +35,7 @@ import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
-import com.phonepe.sentinelai.session.AgentSessionExtensionSetup;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 
 import java.util.Collection;
 import java.util.List;
@@ -124,11 +124,8 @@ class SessionUtilsTest {
     void testIsContextWindowThresholdBreached_WhenThresholdZero_ReturnsTrue() {
         var agentSetup = AgentSetup.builder()
                 .build();
-        var extensionSetup = AgentSessionExtensionSetup.builder()
-                .autoSummarizationThresholdPercentage(0)
-                .build();
 
-        assertTrue(SessionUtils.isContextWindowThresholdBreached(List.of(), agentSetup, extensionSetup));
+        assertTrue(AgentUtils.isContextWindowThresholdBreached(List.of(), agentSetup, 0));
     }
 
     @Test
@@ -143,11 +140,8 @@ class SessionUtilsTest {
                 .model(model)
                 .modelSettings(modelSettings)
                 .build();
-        var extensionSetup = AgentSessionExtensionSetup.builder()
-                .autoSummarizationThresholdPercentage(60)
-                .build();
 
-        assertTrue(SessionUtils.isContextWindowThresholdBreached(List.of(), agentSetup, extensionSetup));
+        assertTrue(AgentUtils.isContextWindowThresholdBreached(List.of(), agentSetup, 60));
     }
 
     @Test
@@ -162,11 +156,8 @@ class SessionUtilsTest {
                 .model(model)
                 .modelSettings(modelSettings)
                 .build();
-        var extensionSetup = AgentSessionExtensionSetup.builder()
-                .autoSummarizationThresholdPercentage(60)
-                .build();
 
-        assertFalse(SessionUtils.isContextWindowThresholdBreached(List.of(), agentSetup, extensionSetup));
+        assertFalse(AgentUtils.isContextWindowThresholdBreached(List.of(), agentSetup, 60));
     }
 
     @Test
@@ -181,11 +172,8 @@ class SessionUtilsTest {
                 .model(model)
                 .modelSettings(modelSettings)
                 .build();
-        var extensionSetup = AgentSessionExtensionSetup.builder()
-                .autoSummarizationThresholdPercentage(60)
-                .build();
 
-        assertTrue(SessionUtils.isContextWindowThresholdBreached(List.of(), agentSetup, extensionSetup));
+        assertTrue(AgentUtils.isContextWindowThresholdBreached(List.of(), agentSetup, 60));
     }
 
     @Test
@@ -200,13 +188,11 @@ class SessionUtilsTest {
                 .model(model)
                 .modelSettings(modelSettings)
                 .build();
-        var extensionSetup = AgentSessionExtensionSetup.builder()
-                .autoSummarizationThresholdPercentage(60)
-                .build();
 
-        assertFalse(SessionUtils.isContextWindowThresholdBreached(List.of(), agentSetup, extensionSetup));
+        assertFalse(AgentUtils.isContextWindowThresholdBreached(List.of(), agentSetup, 60));
     }
 
+    @SuppressWarnings("unchecked")
     private Agent.ProcessingCompletedData<Object, Object, TestAgent> createProcessingCompletedData(
                                                                                                    AgentOutput<?> output) {
         return new Agent.ProcessingCompletedData<Object, Object, TestAgent>(

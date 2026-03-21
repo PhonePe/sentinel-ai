@@ -121,6 +121,7 @@ Here are all available settings for the `AgentSetup` class:
 | `outputGenerationMode` | `OutputGenerationMode`  | Output generation mode to use for this model. Can be `TOOL_BASED` (default) or `STRUCTURED_OUTPUT`. Typically, other than OpenAI models, it is safer to leave it at the default `TOOL_BASED` mode. |
 | `outputGenerationTool` | `UnaryOperator<String>` | A function that the model can use to generate the JSON string output. If not provided (recommended), Sentinel AI will use it's built in tool if the `outputGenerationMode` is set to `TOOL_BASED`  |
 | `retrySetup`           | [`RetrySetup`](#retry-setup)            | Retry setup to use for model calls. If not provided, default setup will be added.                                |
+| `autoCompactionSetup`  | [`AutoCompactionSetup`](#auto-compaction-setup) | Configuration for automatic message history compaction. If not provided, default setup will be used. |
 
 !!!danger "Required parameters"
     - The `model`, and `modelSettings` are required parameters. If not provided, an error will be thrown. However, it is
@@ -144,6 +145,49 @@ configure the model. The class is available in the core library itself and provi
 | `presencePenalty`   | `Float`                | Penalty for adding new tokens based on their presence in the output so far.                    |
 | `frequencyPenalty`  | `Float`                | Penalty for adding new tokens based on how many times they have appeared in the output so far. |
 | `logitBias`         | `Map<String, Integer>` | Controls the likelihood of specific tokens being generated.                                    |
+
+### Auto Compaction Setup
+
+The `AutoCompactionSetup` class configures automatic message history compaction during agent execution. When enabled, Sentinel AI automatically compresses conversation history that exceeds a configured token threshold, allowing agents to maintain longer conversations without hitting context window limits.
+
+| **Setting**                              | **Type**             | **Default** | **Description**                                                                                                                  |
+|------------------------------------------|----------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------|
+| `prompts`                                | `CompactionPrompts`  | DEFAULT     | Custom prompts used for the compaction/summarization process.                                                                    |
+| `tokenBudget`                            | `int`                | 1500        | Target token count for the compacted message history.                                                                            |
+| `compactionTriggerThresholdPercentage`   | `int`                | 60          | Percentage of context window usage that triggers automatic compaction. Set to 0 to compact every run.                            |
+| `model`                                  | `Model`              | null        | Optional separate model to use for compaction. If not provided, uses the agent's main model.                                     |
+
+#### How Auto Compaction Works
+
+Auto compaction runs as a pre-processor before sending messages to the LLM:
+
+1. **Token Estimation**: Estimates token count of messages generated after the last compaction point.
+2. **Threshold Check**: Compares estimated tokens against the model's context window size.
+3. **Trigger**: If `(estimatedTokens / contextWindowSize) * 100 > compactionTriggerThresholdPercentage`, triggers compaction.
+4. **Compaction**: Invokes the `MessageCompactor` to summarize the history into a compact form.
+5. **Continuation**: Appends a continuation prompt with the compacted summary, allowing the agent to proceed with context preserved.
+
+#### Example Configuration
+
+```java
+final var autoCompactionSetup = AutoCompactionSetup.builder()
+        .tokenBudget(2000)
+        .compactionTriggerThresholdPercentage(70)
+        .prompts(CompactionPrompts.DEFAULT)
+        .build();
+
+final var agentSetup = AgentSetup.builder()
+        .model(model)
+        .modelSettings(modelSettings)
+        .autoCompactionSetup(autoCompactionSetup)
+        .build();
+```
+
+!!!tip "Token Budget Tuning"
+    The `tokenBudget` determines how much of the conversation history is preserved in the compacted form. A larger budget preserves more detail but consumes more tokens. A smaller budget is more aggressive but may lose nuance. Start with the default (1500) and adjust based on your use case.
+
+!!!note "Model Selection"
+    You can optionally specify a different (typically smaller and faster) model for compaction tasks by setting the `model` field. This can reduce costs and latency for the compaction operation. If not set, the agent's main model is used.
 
 ### Model Specific Options
 
@@ -583,6 +627,9 @@ agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
         .build();
 });
 ```
+
+!!!tip "Built-in Auto Compaction"
+    Sentinel AI includes a built-in `AutoCompactionProcessor` that automatically compacts message history when configured via `AutoCompactionSetup` in `AgentSetup`. This eliminates the need for manual compaction in most cases.
 
 ## Extensions
 

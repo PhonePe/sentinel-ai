@@ -17,17 +17,11 @@
 package com.phonepe.sentinelai.session.internal;
 
 import com.phonepe.sentinelai.core.agent.Agent.ProcessingCompletedData;
-import com.phonepe.sentinelai.core.agent.AgentSetup;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.core.model.ModelAttributes;
-import com.phonepe.sentinelai.session.AgentSessionExtensionSetup;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
-import java.util.Objects;
 
 @UtilityClass
 @Slf4j
@@ -42,33 +36,6 @@ public class SessionUtils {
             return true;
         }
         return false;
-    }
-
-    public static boolean isContextWindowThresholdBreached(final List<AgentMessage> messages,
-                                                           final AgentSetup agentSetup,
-                                                           final AgentSessionExtensionSetup extensionSetup) {
-        final var threshold = extensionSetup.getAutoSummarizationThresholdPercentage();
-        if (threshold == 0) {
-            log.debug("Compaction needed as threshold is set to 0 (Every Run).");
-            return true;
-        }
-        final var estimateTokenCount = agentSetup
-                .getModel()
-                .estimateTokenCount(messages, agentSetup);
-        final var modelAttributes = Objects.requireNonNullElse(agentSetup.getModelSettings()
-                .getModelAttributes(), ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
-        final var contextWindowSize = modelAttributes
-                .getContextWindowSize();
-        final var currentBoundary = (contextWindowSize * threshold) / 100;
-        final var evalResult = estimateTokenCount >= currentBoundary;
-        log.debug("Automatic summarization evaluation: estimatedTokenCount={}, contextWindowSize={}, "
-                + "threshold={}%, currentBoundary={}, needsSummarization={}",
-                  estimateTokenCount,
-                  contextWindowSize,
-                  threshold,
-                  currentBoundary,
-                  evalResult);
-        return evalResult;
     }
 
 }

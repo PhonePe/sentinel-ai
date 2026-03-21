@@ -37,6 +37,7 @@ import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.AutoCompactionSetup;
 import com.phonepe.sentinelai.core.model.ModelAttributes;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
@@ -155,7 +156,7 @@ class AgentIntegrationTest {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(16, "nme", getClass());
+        TestUtils.setupMocks(15, "nme", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
@@ -194,8 +195,7 @@ class AgentIntegrationTest {
         final var agentSessionExtension = AgentSessionExtension
                 .<UserInput, OutputObject, SimpleAgent>builder()
                 .sessionStore(sessionStorage)
-                .setup(AgentSessionExtensionSetup.DEFAULT
-                        .withAutoSummarizationThresholdPercentage(5))
+                .setup(AgentSessionExtensionSetup.DEFAULT)
                 .build();
         final var agentMemoryExtension = AgentMemoryExtension
                 .<UserInput, OutputObject, SimpleAgent>builder()
@@ -216,6 +216,9 @@ class AgentIntegrationTest {
                                 .modelAttributes(ModelAttributes.builder()
                                         .contextWindowSize(10000)
                                         .build())
+                                .build())
+                        .autoCompactionSetup(AutoCompactionSetup.builder()
+                                .compactionTriggerThresholdPercentage(15)
                                 .build())
                         .build())
                 .extensions(extensions)
