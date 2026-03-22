@@ -23,7 +23,6 @@ import com.phonepe.sentinelai.core.agent.ApproveAllToolRuns;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
-import com.phonepe.sentinelai.core.tools.ExecutableTool;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -72,6 +71,7 @@ public class TextToSqlAgent extends Agent<String, SqlQueryResult, TextToSqlAgent
             6. Finally call the output generator tool to display the result set json (type: SqlQueryResult) as an ASCII table.
 
             Always:
+            - The generated sql query need not be pretty. So remove '\\n', '\\t', '\\r' characters from the generated query.
             - Use table aliases and explicit column lists in complex JOINs.
             - Apply LIMIT 100 for queries that might return large result sets, unless the user
               asks for all rows.

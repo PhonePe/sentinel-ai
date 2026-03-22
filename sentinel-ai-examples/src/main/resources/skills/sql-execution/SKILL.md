@@ -1,13 +1,13 @@
 ---
 name: sql-execution
 description: >
-  Executes SQL queries against the e-commerce SQLite database using three
-  complementary paths: the MCP SQLite server (primary), the remote-HTTP
-  SQLite API (fallback/validation), and local Java tools (schema inspection,
-  timestamp conversion, result formatting). Activate this skill when the user
-  explicitly asks to run, execute, or query the database.
+  Executes SQL queries against the e-commerce SQLite database using two
+  complementary paths: the remote-HTTP SQLite API (primary query execution)
+  and local Java tools (schema inspection, timestamp conversion, result
+  formatting). Activate this skill when the user asks to run, execute, or
+  query the database.
 license: Apache-2.0
-compatibility: Requires mcp-sqlite MCP server (npx -y mcp-sqlite <db-path>) and the embedded SQLite REST API server.
+compatibility: Requires the embedded SQLite REST API server started by the CLI at launch.
 ---
 
 # SQL Execution Skill
@@ -16,14 +16,12 @@ compatibility: Requires mcp-sqlite MCP server (npx -y mcp-sqlite <db-path>) and 
 
 This skill enables the agent to translate natural-language questions into
 precise SQL queries and execute them against the e-commerce SQLite database.
-It orchestrates three types of tools:
+It uses two types of tools:
 
 1. **Local tools** — in-process Java methods for schema inspection, timestamp
-   conversion, and result formatting.
-2. **MCP SQLite tools** — provided by the `mcp-sqlite` Node.js MCP server
-   (primary query execution path).
-3. **Remote-HTTP tools** — provided by the embedded Dropwizard SQLite REST API
-   (fallback / cross-validation path).
+   conversion, and result formatting (registered via `LocalSqlTools`).
+2. **Remote-HTTP tools** — HTTP calls to the embedded Dropwizard SQLite REST
+   API (registered via `HttpToolBox` with the `sqlite-api` prefix).
 
 ---
 
@@ -47,7 +45,7 @@ or general SQL syntax — answer those directly.
 
 ### Step 1: Understand the Schema
 
-**Always call `getDatabaseSchema` (local tool) first.**
+**Always call `get_db_schema` (local tool) first.**
 
 This returns the complete DDL with column-level comments for all five tables:
 `users`, `sellers`, `catalog`, `inventory`, `orders`.
@@ -67,19 +65,19 @@ Key schema facts to remember:
   - `catalog.seller_id → sellers.seller_id`
   - `inventory.product_id → catalog.product_id`
 
-Optionally call `getTableRowCounts` (local tool) to understand data volume.
+Optionally call `get_table_row_counts` (local tool) to understand data volume.
 
 ---
 
 ### Step 2: Resolve Relative Dates
 
 If the user mentions relative time periods ("today", "this week", "last month",
-"in January", "past 30 days"), call `getCurrentDateTime` (local tool) to get
+"in January", "past 30 days"), call `get_current_dt` (local tool) to get
 the current epoch time in the user's timezone, then compute the epoch range for
 the WHERE clause.
 
 Example:
-- "Orders from last 7 days" → `ordered_at >= (now - 7*86400)`
+- "Orders from last 7 days" → `ordered_at >= (now_epoch - 7 * 86400)`
 
 ---
 
@@ -92,70 +90,65 @@ Write a clear, correct SQL query:
 - For aggregations, use CTEs (`WITH`) to make the query readable.
 - Prefer `INNER JOIN` for required relationships, `LEFT JOIN` for optional ones.
 - For ranking (e.g. "top 5 products"), use `ORDER BY ... LIMIT 5`.
-- Never use `SELECT *` in queries that will be shown to the user — be explicit
-  about which columns you return.
+- Never use `SELECT *` — be explicit about which columns you return.
+- Strip all `\n`, `\t`, `\r` characters from the generated SQL string before
+  passing it to the execution tool.
+- Use only READ-ONLY queries (SELECT). INSERT, UPDATE, DELETE, DROP, TRUNCATE
+  are not permitted unless the user explicitly requests a write operation.
 
 ---
 
-### Step 4: Execute the Query (Primary Path — MCP SQLite Server)
+### Step 4: Execute the Query
 
-Use the `mcp-sqlite_query` tool to execute the SQL. This is the primary
-execution path backed by the `mcp-sqlite` npm MCP server running via stdio.
+Use the `sqlite-api_execute_query` tool to run the SQL against the database.
 
 ```
-Tool: mcp-sqlite_query
+Tool: sqlite-api_execute_query
 Arguments: {"sql": "<your generated SQL>"}
 ```
 
-The result will contain a `rows` array of objects and a `rowCount`.
+For SELECT queries the response JSON follows this schema:
 
-If you need to inspect the schema interactively, you can also use:
-- `mcp-sqlite_list_tables` — list all tables
-- `mcp-sqlite_get_table_schema` — get column definitions for a table
+```json
+{
+  "rows": [
+    {"column1": value1, "column2": value2},
+    ...
+  ],
+  "rowCount": n
+}
+```
+
+If you need to cross-check available tables or inspect a specific table's
+columns before writing the query, you can use:
+- `sqlite-api_list_tables` — list all tables in the database
+- `sqlite-api_get_table_schema` — column definitions for a named table
+- `sqlite-api_get_database_info` — high-level database metadata
 
 ---
 
-### Step 5: Fallback / Validation (Remote-HTTP SQLite API)
-
-If the MCP path fails (e.g. `npx` is not available, the server did not start,
-or the tool returns an error), **fall back to the remote-HTTP tools**:
-
-```
-Tool: sqlite-api_executeQuery
-Arguments: {"sql": "<your generated SQL>"}
-```
-
-You can also use the HTTP tools to cross-validate results from the MCP path,
-or to perform simple CRUD operations:
-- `sqlite-api_listTables`
-- `sqlite-api_getTableSchema` (with `tableName` parameter)
-- `sqlite-api_readRecords` (with `tableName` and optional `conditions`)
-
----
-
-### Step 6: Process Timestamps
+### Step 5: Process Timestamps
 
 After receiving query results, inspect every value whose column name ends in
-`_at`. Convert each such value using the `convertEpochToLocalDateTime` local
-tool:
+`_at`. Convert each such value using the `convert_epoch_to_local_dt` local tool:
 
 ```
-Tool: convertEpochToLocalDateTime
+Tool: convert_epoch_to_local_dt
 Arguments: {"epochSeconds": <value>, "timezone": "<user-timezone>"}
 ```
 
-If you do not know the user's timezone, assume `"Asia/Kolkata"` (IST) as a
-sensible default for this dataset and mention the assumption in your explanation.
+If you do not know the user's timezone, assume `"Asia/Kolkata"` (IST) and
+mention the assumption in your explanation.
 
 ---
 
-### Step 7: Format and Present Results
+### Step 6: Format and Present Results
 
-1. Call `formatResultsAsTable` (local tool) on the `rows` array to produce a
-   clean Markdown table.
+1. Call `format_results_as_table` (local tool) on the `SqlQueryResult` to
+   produce a clean ASCII table for the CLI.
 2. Compose a final response that includes:
    - The generated SQL in a fenced code block.
-   - The formatted Markdown table of results.
+   - The formatted ASCII table of results.
    - A plain-English explanation of what the query found.
    - The total row count.
    - Any caveats (e.g. NULLs, approximate counts, timezone assumptions).
@@ -166,31 +159,37 @@ sensible default for this dataset and mention the assumption in your explanation
 
 | Tool | Type | Purpose |
 |---|---|---|
-| `getDatabaseSchema` | Local | Full schema with DDL and column comments |
-| `getTableRowCounts` | Local | Row counts per table |
-| `getCurrentDateTime` | Local | Current epoch time in given timezone |
-| `convertEpochToLocalDateTime` | Local | Epoch → yyyy/MM/dd HH:mm:ss |
-| `formatResultsAsTable` | Local | JSON rows → Markdown table |
-| `mcp-sqlite_query` | MCP | Execute arbitrary SQL (primary path) |
-| `mcp-sqlite_list_tables` | MCP | List all tables |
-| `mcp-sqlite_get_table_schema` | MCP | Get column definitions for a table |
-| `sqlite-api_executeQuery` | Remote-HTTP | Execute arbitrary SQL (fallback path) |
-| `sqlite-api_listTables` | Remote-HTTP | List all tables |
-| `sqlite-api_getTableSchema` | Remote-HTTP | Get column definitions |
-| `sqlite-api_readRecords` | Remote-HTTP | Read records with simple filters |
-| `sqlite-api_insertRecord` | Remote-HTTP | Insert a new record |
-| `sqlite-api_updateRecords` | Remote-HTTP | Update matching records |
+| `get_db_schema` | Local | Full schema DDL with column comments for all tables |
+| `get_table_row_counts` | Local | Row counts per table |
+| `get_current_dt` | Local | Current epoch time in a given IANA timezone |
+| `convert_epoch_to_local_dt` | Local | Epoch seconds → `yyyy/MM/dd HH:mm:ss` |
+| `format_results_as_table` | Local | Render a `SqlQueryResult` as an ASCII table |
+| `sqlite-api_execute_query` | Remote-HTTP | Execute arbitrary SQL (primary execution path) |
+| `sqlite-api_list_tables` | Remote-HTTP | List all tables in the database |
+| `sqlite-api_get_table_schema` | Remote-HTTP | Column definitions for a named table |
+| `sqlite-api_get_database_info` | Remote-HTTP | High-level database metadata |
+| `sqlite-api_read_records` | Remote-HTTP | Read rows with simple equality filters |
+| `sqlite-api_insert_record` | Remote-HTTP | Insert a new record into a table |
+| `sqlite-api_update_records` | Remote-HTTP | Update rows matching given conditions |
 
 ---
 
 ## Common Query Patterns
 
+### Top sellers by order volume
+```sql
+SELECT s.seller_name, COUNT(o.order_id) AS total_orders
+FROM orders o
+JOIN sellers s ON o.seller_id = s.seller_id
+WHERE o.status = 'delivered'
+GROUP BY s.seller_id, s.seller_name
+ORDER BY total_orders DESC
+LIMIT 10;
+```
+
 ### Revenue analysis
 ```sql
-SELECT
-    s.seller_name,
-    COUNT(o.order_id)   AS total_orders,
-    SUM(o.total_amount) AS total_revenue
+SELECT s.seller_name, COUNT(o.order_id) AS total_orders, SUM(o.total_amount) AS total_revenue
 FROM orders o
 JOIN sellers s ON o.seller_id = s.seller_id
 WHERE o.status = 'delivered'
@@ -198,13 +197,31 @@ GROUP BY s.seller_id, s.seller_name
 ORDER BY total_revenue DESC;
 ```
 
+### User with most orders
+```sql
+SELECT u.full_name, u.email, COUNT(o.order_id) AS order_count
+FROM orders o
+JOIN users u ON o.user_id = u.user_id
+GROUP BY o.user_id, u.full_name, u.email
+ORDER BY order_count DESC
+LIMIT 1;
+```
+
+### Top cities by product category sales
+```sql
+SELECT u.city, c.category, SUM(o.total_amount) AS revenue
+FROM orders o
+JOIN users u ON o.user_id = u.user_id
+JOIN catalog c ON o.product_id = c.product_id
+WHERE o.status = 'delivered'
+GROUP BY u.city, c.category
+ORDER BY revenue DESC
+LIMIT 20;
+```
+
 ### Inventory at risk (below reorder level)
 ```sql
-SELECT
-    c.product_name,
-    i.warehouse,
-    i.quantity,
-    i.reorder_level
+SELECT c.product_name, i.warehouse, i.quantity, i.reorder_level
 FROM inventory i
 JOIN catalog c ON i.product_id = c.product_id
 WHERE i.quantity <= i.reorder_level
@@ -213,13 +230,8 @@ ORDER BY i.quantity ASC;
 
 ### User purchase history
 ```sql
-SELECT
-    o.order_id,
-    c.product_name,
-    o.quantity,
-    o.total_amount,
-    o.status,
-    o.ordered_at  -- remember to convert this with convertEpochToLocalDateTime
+SELECT o.order_id, c.product_name, o.quantity, o.total_amount, o.status,
+       o.ordered_at  -- remember to convert with convert_epoch_to_local_dt
 FROM orders o
 JOIN catalog c ON o.product_id = c.product_id
 WHERE o.user_id = ?

@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Debug.Examples.TextToSqlCLI" type="Remote">
+  <configuration default="false" name="Examples.Debug.TextToSqlCLI" type="Remote">
     <module name="sentinel-ai-examples" />
     <option name="USE_SOCKET_TRANSPORT" value="true" />
     <option name="SERVER_MODE" value="false" />
