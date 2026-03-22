@@ -17,7 +17,12 @@ else
     mkdocs-material \
     mkdocs-glightbox \
     mkdocs-awesome-pages-plugin \
-    markdown-include
+    markdown-include \
+    pymdown-extensions \
+    mkdocs-material-extensions \
+    mkdocs-get-deps \
+    mkdocs-nav-weight \
+    mkdocs-pdf-export-plugin
 fi
 
 echo "Starting MkDocs dev server at http://127.0.0.1:8000 ..."
