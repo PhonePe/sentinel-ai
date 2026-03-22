@@ -16,27 +16,31 @@
 
 package com.phonepe.sentinelai.examples.texttosql.agent;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+
 import java.util.List;
-import java.util.Map;
 
 /**
  * Structured output produced by the {@link TextToSqlAgent} for every user query.
  *
- * <p>The agent always populates all fields, even when a query fails to execute
- * (in which case {@code results} will be empty and {@code explanation} will
- * describe the error).
- *
- * @param generatedSql    The SQL statement that was generated from the natural-language request.
- * @param results         Rows returned by the query. Each row is a map of column-name → value.
- *                        Empty list if the query returned no rows or could not be executed.
- * @param explanation     A human-readable summary of what was done, what the results mean,
- *                        and any caveats or errors encountered.
- * @param executionTimeMs Wall-clock time in milliseconds from query submission to result receipt.
- */
+*/
+@JsonClassDescription("Result of executing a SQL query against a SQLite database. Contains the generated SQL, " +
+        "the query results (if any), an explanation of the results or any errors, and the execution time.")
 public record SqlQueryResult(
+        @JsonPropertyDescription("The SQL statement that was generated from the user provided natural-language request")
         String generatedSql,
-        List<Map<String, Object>> results,
+
+        @JsonPropertyDescription("Rows returned by the query. Each entry is a JSON string representing one row, " +
+                "with the format {\"col1Name\": col1Value, \"col2Name\": col2Value, ...} where values can be any " +
+                "JSON type. Empty list if the query returned no rows or could not be executed.")
+        List<String> results,
+
+        @JsonPropertyDescription("A human-readable summary of what was done, what the results mean," +
+                " and any caveats or errors encountered.")
         String explanation,
+
+        @JsonPropertyDescription("Wall-clock time in milliseconds from query submission to result receipt.")
         long executionTimeMs
 ) {
 }

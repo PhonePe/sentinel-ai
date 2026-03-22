@@ -20,9 +20,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
+import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
+import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
+import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
@@ -59,8 +62,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 /**
@@ -141,7 +147,7 @@ public class TextToSqlCLI implements Callable<Integer> {
                 ╠════════════════════════════════════════════════════╣
                 ║  Ask questions in plain English about:             ║
                 ║    • users, sellers, catalog, inventory, orders    ║
-                ║  Type 'exit' or 'quit' to stop, Ctrl+D to EOF.    ║
+                ║  Type 'exit' or 'quit' to stop, Ctrl+D to EOF.     ║
                 ╚════════════════════════════════════════════════════╝
                 """);
     }
@@ -177,7 +183,7 @@ public class TextToSqlCLI implements Callable<Integer> {
 
         // 2. Resolve session ID
         final String effectiveSessionId = sessionId == null || sessionId.isBlank()
-                ? java.util.UUID.randomUUID().toString()
+                ? UUID.randomUUID().toString()
                 : sessionId;
 
         // 3. Shared Jackson mapper
@@ -195,21 +201,21 @@ public class TextToSqlCLI implements Callable<Integer> {
         TrustManager[] trustAllCerts = new TrustManager[]{
                 new X509TrustManager() {
                     @Override
-                    public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                    public void checkClientTrusted(X509Certificate[] chain, String authType) {
                     }
 
                     @Override
-                    public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                    public void checkServerTrusted(X509Certificate[] chain, String authType) {
                     }
 
                     @Override
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return new java.security.cert.X509Certificate[]{};
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[]{};
                     }
                 }
         };
         SSLContext sslContext = SSLContext.getInstance("SSL");
-        sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+        sslContext.init(null, trustAllCerts, new SecureRandom());
         final var httpClient = new OkHttpClient.Builder()
                 .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
                 .hostnameVerifier((hostname, session) -> true)
@@ -269,14 +275,7 @@ public class TextToSqlCLI implements Callable<Integer> {
                         .maxTokens(config.getAgent().getMaxTokens())
                         .build())
                 .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
-                .outputGenerationTool((result) -> {
-                    try {
-                        SqlQueryResult typedResult = mapper.readValue(result, SqlQueryResult.class);
-                        return LocalSqlTools.formatResultsAsTable(typedResult);
-                    } catch (Exception e) {
-                        throw new RuntimeException("Model didn't produce a JSON document of type SQLQueryResult. Got: " + result, e);
-                    }
-                })
+                .outputGenerationTool(result -> result)
                 .build();
 
         // 8. Skills extension — extract bundled skill to temp dir if no explicit path given
@@ -291,11 +290,12 @@ public class TextToSqlCLI implements Callable<Integer> {
         final TextToSqlAgent agent = TextToSqlAgent.builder()
                 .setup(agentSetup)
                 .extension(skillsExtension)
+                .outputValidator((context, agentOutput) ->
+                    OutputValidationResults.success()) // No-op validator for now, can add custom validation logic if needed
                 .build();
 
         // 10. Register local tools (timezone conversion, schema, formatting)
-        agent.registerTools(ToolUtils.readTools(new LocalSqlTools(dbPath
-                .toString())));
+        agent.registerTools(ToolUtils.readTools(new LocalSqlTools(dbPath.toString())));
 
         // 11. Register remote-HTTP toolbox pointing at the embedded Dropwizard server
         final var toolSource = new InMemoryHttpToolSource();
@@ -337,7 +337,7 @@ public class TextToSqlCLI implements Callable<Integer> {
                 if (config.getAgent().isStreaming()) {
                     // Stream text tokens to stdout as they arrive
                     System.out.println();
-                    final var outputFuture = agent.executeAsyncTextStreaming(
+                    final var outputFuture = agent.executeAsyncStreaming(
                                                                              AgentInput.<String>builder()
                                                                                      .request(question)
                                                                                      .requestMetadata(AgentRequestMetadata
@@ -352,6 +352,12 @@ public class TextToSqlCLI implements Callable<Integer> {
                     System.out.println();
                     if (output.getData() == null && output.getError() != null) {
                         System.err.println("[Error] " + output.getError().getMessage());
+                    } else {
+                        SqlQueryResult result = output.getData();
+                        // convert sql query result set to an ascii table
+                        String asciiTable = LocalSqlTools.formatResultsAsTable(result);
+                        // display ascii table on the console
+                        System.out.println(asciiTable);
                     }
                 }
                 else {

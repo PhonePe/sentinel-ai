@@ -16,7 +16,10 @@
 
 package com.phonepe.sentinelai.examples.texttosql.tools;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.tools.Tool;
+import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
 import de.vandermeer.asciitable.AsciiTable;
 import de.vandermeer.asciitable.CWC_LongestLine;
@@ -34,6 +37,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -50,10 +54,15 @@ import java.util.Map;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class LocalSqlTools {
+public class LocalSqlTools implements ToolBox {
     private static final DateTimeFormatter DISPLAY_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     private final String dbPath;
+
+    @Override
+    public String name() {
+        return "local_sql_tools";
+    }
 
     // -------------------------------------------------------------------------
     // Timestamp utilities
@@ -71,7 +80,8 @@ public class LocalSqlTools {
      * @param timezone     IANA timezone ID (e.g. "Asia/Kolkata", "America/New_York", "UTC")
      * @return formatted date-time string in {@code yyyy/MM/dd HH:mm:ss} format
      */
-    @Tool("Convert a Unix epoch timestamp (seconds) to a formatted date-time string in the given IANA timezone. "
+    @Tool(name="convert_epoch_to_local_dt",
+            value = "Convert a Unix epoch timestamp (seconds) to a formatted date-time string in the given IANA timezone. "
             + "Use this for any column ending in '_at' (e.g. ordered_at, created_at, delivered_at). "
             + "Returns the date-time as yyyy/MM/dd HH:mm:ss.")
     public String convertEpochToLocalDateTime(long epochSeconds, String timezone) {
@@ -98,7 +108,8 @@ public class LocalSqlTools {
      * @param timezone IANA timezone ID (e.g. "Asia/Kolkata")
      * @return current date-time as {@code yyyy/MM/dd HH:mm:ss} and current epoch seconds
      */
-    @Tool("Get the current date and time in the specified IANA timezone. "
+    @Tool(name = "get_current_dt",
+            value = "Get the current date and time in the specified IANA timezone. "
             + "Use this to resolve relative date references like 'today', 'this week', or 'last month' "
             + "into concrete epoch-second ranges for SQL WHERE clauses.")
     public String getCurrentDateTime(String timezone) {
@@ -126,7 +137,8 @@ public class LocalSqlTools {
      *
      * @return formatted schema description covering all tables
      */
-    @Tool("Get the complete e-commerce database schema with all table and column descriptions. "
+    @Tool(name = "get_db_schema",
+           value = "Get the complete e-commerce database schema with all table and column descriptions. "
             + "ALWAYS call this first before generating any SQL query. "
             + "Returns column names, types, constraints, and semantic descriptions for all tables: "
             + "users, sellers, catalog, inventory, orders.")
@@ -168,7 +180,8 @@ public class LocalSqlTools {
      *
      * @return table names with their row counts
      */
-    @Tool("Get the row count for every table in the e-commerce database. "
+    @Tool(name = "get_table_row_counts",
+            value = "Get the row count for every table in the e-commerce database. "
             + "Use this to understand data volume before running complex aggregation queries.")
     @SneakyThrows
     public String getTableRowCounts() {
@@ -193,15 +206,22 @@ public class LocalSqlTools {
      *
      * @param sqlQueryResult the result produced by the SQL execution step
      */
-    @Tool("Display query result rows from a SqlQueryResult into a clean ASCII table for display. "
+    @Tool(name = "format_results_as_table",
+            value = "Display query result rows from a SqlQueryResult into a clean ASCII table for display. "
             + "Pass the SqlQueryResult returned by the agent's SQL execution. "
             + "Returns a formatted ASCII table string.")
     public static String formatResultsAsTable(SqlQueryResult sqlQueryResult) {
         try {
-            final List<Map<String, Object>> rows = sqlQueryResult.results();
+            final List<String> jsonRows = sqlQueryResult.results();
 
-            if (rows == null || rows.isEmpty()) {
+            if (jsonRows == null || jsonRows.isEmpty()) {
                 return "No results found.";
+            }
+
+            final TypeReference<LinkedHashMap<String, Object>> rowType = new TypeReference<>() {};
+            final List<Map<String, Object>> rows = new ArrayList<>(jsonRows.size());
+            for (final String jsonRow : jsonRows) {
+                rows.add(MAPPER.readValue(jsonRow, rowType));
             }
 
             final List<String> headers = new ArrayList<>(rows.get(0).keySet());

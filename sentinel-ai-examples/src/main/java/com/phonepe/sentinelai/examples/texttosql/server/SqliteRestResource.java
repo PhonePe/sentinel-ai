@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.examples.texttosql.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -41,6 +42,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * JAX-RS resource that provides a REST interface to a SQLite database.
@@ -140,11 +142,14 @@ public class SqliteRestResource {
     }
 
     /**
-     * Execute a raw SQL statement against the database.
+     * Execute a raw SQL SELECT statement against the database.
      *
      * <p>Request body: {@code {"sql": "SELECT ...", "values": [...]}}
-     * <p>For SELECT statements, returns the rows as a JSON array.
-     * For DML statements, returns the number of affected rows.
+     * <p>Only SELECT, WITH, and PRAGMA statements are allowed. DML write statements
+     * (INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, REPLACE, TRUNCATE, MERGE) are
+     * rejected with a {@link WriteQueryNotAllowedException}.
+     * <p>Returns a {@link SqlQueryResult} containing the generated SQL, the rows
+     * returned, a null explanation (to be filled by the LLM), and the execution time.
      */
     @POST
     @Path("/query")
@@ -155,26 +160,53 @@ public class SqliteRestResource {
             return error(400, "Field 'sql' is required");
         }
 
+        final String trimmedUpper = sql.trim().toUpperCase();
+        final Set<String> writePrefixes = Set.of(
+                "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "REPLACE", "TRUNCATE", "MERGE");
+        for (final String prefix : writePrefixes) {
+            if (trimmedUpper.startsWith(prefix)) {
+                throw new WriteQueryNotAllowedException(
+                        "Write DML statements are not allowed via this endpoint. Offending statement starts with: "
+                                + prefix);
+            }
+        }
+
         @SuppressWarnings("unchecked") final List<Object> values = body.containsKey("values")
                 ? (List<Object>) body.get("values")
                 : List.of();
 
         log.info("Executing SQL Query: {}", sql);
 
+        final long startMs = System.currentTimeMillis();
         try (Connection conn = connect()) {
-            final String upper = sql.trim().toUpperCase();
-            if (upper.startsWith("SELECT") || upper.startsWith("WITH") || upper.startsWith("PRAGMA")) {
-                final var rows = executeSelect(conn, sql, values);
-                return ok(Map.of("rows", rows, "rowCount", rows.size()));
+            final var rows = executeSelect(conn, sql, values);
+            final long executionTimeMs = System.currentTimeMillis() - startMs;
+            final List<String> jsonRows = new ArrayList<>(rows.size());
+            for (final Map<String, Object> row : rows) {
+                jsonRows.add(mapper.writeValueAsString(row));
             }
-            else {
-                final int affected = executeDml(conn, sql, values);
-                return ok(Map.of("affectedRows", affected));
-            }
+            final var result = new SqlQueryResult(sql, jsonRows, null, executionTimeMs);
+            return ok(result);
+        }
+        catch (WriteQueryNotAllowedException e) {
+            throw e;
         }
         catch (Exception e) {
             log.error("SQL execution error: {}", e.getMessage());
             return error(500, "SQL execution failed: " + e.getMessage());
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Exception for write queries
+    // -------------------------------------------------------------------------
+
+    /**
+     * Thrown when a write DML statement is submitted to the read-only query endpoint.
+     */
+    public static class WriteQueryNotAllowedException extends RuntimeException {
+        public WriteQueryNotAllowedException(String message) {
+            super(message);
         }
     }
 

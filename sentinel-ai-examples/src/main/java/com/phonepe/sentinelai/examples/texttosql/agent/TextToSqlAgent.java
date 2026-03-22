@@ -19,6 +19,10 @@ package com.phonepe.sentinelai.examples.texttosql.agent;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.ApproveAllToolRuns;
+import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
+import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
+import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 
 import lombok.Builder;
@@ -57,14 +61,15 @@ public class TextToSqlAgent extends Agent<String, SqlQueryResult, TextToSqlAgent
             All *_at columns store Unix epoch seconds — always convert them before displaying.
 
             Mandatory workflow for every question:
-            1. Call getDatabaseSchema() to understand the data model (only needed once per session).
+            1. Use get_db_schema tool to understand the data model (only needed once per session).
             2. Analyse the user's question and identify the relevant tables and columns.
             3. Compose a valid SQLite SELECT (or other DML) statement.
-            4. Execute the query using the executeQuery tool (remote-HTTP toolbox) or the
-               mcp-sqlite 'query' tool if available.
-            5. Convert all *_at timestamps to human-readable format via convertEpochToLocalDateTime.
-            6. Return the result as a structured JSON output following the schema of SqlQueryResult.
-            7. Complete the response.
+            4. Execute the query using the execute_query tool (remote-HTTP toolbox) or the
+               mcp-sqlite 'query' tool if available. When the query executes successfully, it would return
+               the result set as a json which follows the schema of SqlQueryResult.
+            5. If there are any timestamp columns in the result, then convert all *_at timestamp column values
+               to human-readable format via convert_epoch_to_local_dt tool on each row in result set.
+            6. Finally call the output generator tool to display the result set json (type: SqlQueryResult) as an ASCII table.
 
             Always:
             - Use table aliases and explicit column lists in complex JOINs.
@@ -84,12 +89,17 @@ public class TextToSqlAgent extends Agent<String, SqlQueryResult, TextToSqlAgent
      */
     @Builder
     public TextToSqlAgent(@NonNull AgentSetup setup,
-                          @Singular List<AgentExtension<String, SqlQueryResult, TextToSqlAgent>> extensions) {
+                          @Singular List<AgentExtension<String, SqlQueryResult, TextToSqlAgent>> extensions,
+                          @NonNull OutputValidator<String, SqlQueryResult> outputValidator) {
         super(SqlQueryResult.class,
-              SYSTEM_PROMPT,
-              setup,
-              extensions,
-              Map.<String, ExecutableTool>of());
+                SYSTEM_PROMPT,
+                setup,
+                extensions,
+                Map.of(),
+                new ApproveAllToolRuns<>(),
+                outputValidator,
+                new DefaultErrorHandler<>(),
+                new NeverTerminateEarlyStrategy());
     }
 
     @Override

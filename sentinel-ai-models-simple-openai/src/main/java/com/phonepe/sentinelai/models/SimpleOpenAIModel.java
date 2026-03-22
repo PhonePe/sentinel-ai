@@ -895,6 +895,13 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     private static Chat.Choice extractResponse(Chat completionResponse) {
+        String errorMessage = """
+                Empty choices in completion response. 
+                This usually indicates a response deserialization failure or a malformed response from the server""";
+        if (completionResponse.getChoices() == null) {
+            log.warn(errorMessage);
+            throw new RuntimeException(errorMessage);
+        }
         return completionResponse.getChoices()
                 .stream()
                 .findFirst()

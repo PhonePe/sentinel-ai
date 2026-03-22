@@ -17,7 +17,7 @@ sqlite-api:
   tools:
     # ─── Query ───────────────────────────────────────────────────────────────
     - metadata:
-        name: executeQuery
+        name: execute_query
         description: >
           Execute a raw SQL query against the SQLite e-commerce database.
           Use this as a fallback when the MCP SQLite query tool is unavailable,
@@ -60,7 +60,7 @@ sqlite-api:
 
     # ─── Table listing ───────────────────────────────────────────────────────
     - metadata:
-        name: listTables
+        name: list_tables
         description: >
           List all tables in the SQLite e-commerce database.
           Returns a JSON array of table names: users, sellers, catalog,
@@ -74,7 +74,7 @@ sqlite-api:
 
     # ─── Schema inspection ───────────────────────────────────────────────────
     - metadata:
-        name: getTableSchema
+        name: get_table_schema
         description: >
           Get the column definitions (name, type, constraints, default value)
           for a specific table in the SQLite database. Call this for each
@@ -92,7 +92,7 @@ sqlite-api:
 
     # ─── Database info ────────────────────────────────────────────────────────
     - metadata:
-        name: getDatabaseInfo
+        name: get_database_info
         description: >
           Get high-level metadata about the SQLite database: file path,
           number of tables, approximate file size. Useful for understanding
@@ -105,7 +105,7 @@ sqlite-api:
 
     # ─── Read records (simple CRUD) ──────────────────────────────────────────
     - metadata:
-        name: readRecords
+        name: read_records
         description: >
           Read records from a table using simple equality filters.
           For complex queries with joins, aggregations, or subqueries
@@ -129,7 +129,7 @@ sqlite-api:
 
     # ─── Insert record ────────────────────────────────────────────────────────
     - metadata:
-        name: insertRecord
+        name: insert_record
         description: >
           Insert a new record into the specified table.
           The data parameter must be a JSON object mapping column names to values,
@@ -156,7 +156,7 @@ sqlite-api:
 
     # ─── Update records ───────────────────────────────────────────────────────
     - metadata:
-        name: updateRecords
+        name: update_records
         description: >
           Update records in a table that match the given conditions.
           Both 'data' (fields to update) and 'conditions' (filter) are required

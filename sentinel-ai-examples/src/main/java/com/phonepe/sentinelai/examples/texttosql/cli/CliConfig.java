@@ -45,7 +45,7 @@ public class CliConfig {
 
         /** Maximum tokens per model response. */
         @JsonProperty("maxTokens")
-        private int maxTokens = 8192;
+        private int maxTokens = 4096;
 
         /** Whether to stream the assistant response token-by-token. */
         @JsonProperty("streaming")
