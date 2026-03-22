@@ -16,6 +16,7 @@ Sentinel AI is a Java-based multi-module framework for building intelligent agen
 - `sentinel-ai-toolbox-remote-http`: Capability for agents to execute remote HTTP calls as tools.
 - `sentinel-ai-filesystem`: File system extension for agent operations.
 - `sentinel-ai-bom`: Bill of Materials for version management.
+- `sentinel-ai-examples`: Runnable end-to-end examples of real-world agents and tools demonstrating various capabilities.
 
 ## Core Concepts
 ### Agents
@@ -41,7 +42,7 @@ The project relies heavily on **Lombok**. If you encounter "symbol not found" er
 
 ### Code Formatting
 We use **Spotless** for consistent code styling.
-- **Mandatory:** Always run `mvn spotless:apply` before finalizing any code changes to ensure they adhere to the project's formatting rules.
+- **Mandatory:** Always run `mvn -Plint spotless:apply` before finalizing any code changes to ensure they adhere to the project's formatting rules.
 - Styling is based on `java-format.xml` (Eclipse-style).
 
 ### Language Server (JDTLS)
