@@ -110,6 +110,18 @@
             <version>2.0.5</version>
         </dependency>
 
+        <!-- ─── JUnit 5 ──────────────────────────────────────────────────── -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- ─── Lucene (schema vector store + hybrid search) ────────────── -->
         <dependency>
             <groupId>org.apache.lucene</groupId>
