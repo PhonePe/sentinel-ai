@@ -27,6 +27,7 @@ import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
 import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.nio.file.Paths;
@@ -43,16 +44,19 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
+import org.eclipse.jetty.server.Server;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 /**
- * Standalone MCP server that wraps SQLite operations over stdio.
+ * Standalone MCP server that wraps SQLite operations over stdio or HTTP SSE.
  *
  * <p>This server is launched as a subprocess by {@code TextToSqlCLI} when {@code --toolbox-mode
- * mcp} is selected. It communicates via the MCP protocol over stdin/stdout and exposes four tools:
+ * mcp} is selected. It communicates via the MCP protocol and exposes four tools:
  *
  * <ul>
  *   <li>{@code execute_query} – Execute a read-only SELECT statement
@@ -61,21 +65,57 @@ import picocli.CommandLine.Option;
  *   <li>{@code get_database_info} – Return database metadata
  * </ul>
  *
- * <p>All log output is redirected to {@code stderr} so it does not corrupt the MCP protocol
- * messages flowing over {@code stdout}.
+ * <p>Two transport modes are supported via {@code --transport}:
+ *
+ * <ul>
+ *   <li>{@code STDIO} (default) – reads/writes MCP messages via stdin/stdout. All log output is
+ *       redirected to {@code stderr} so it does not corrupt the MCP protocol messages.
+ *   <li>{@code SSE} – serves MCP over HTTP Server-Sent Events on the port specified by {@code
+ *       --port} (default: {@value #DEFAULT_SSE_PORT}).
+ * </ul>
  */
 @Slf4j
 @Command(
         name = "sqlite-mcp-server",
         mixinStandardHelpOptions = true,
-        description = "MCP server exposing SQLite operations over stdio")
+        description = "MCP server exposing SQLite operations over stdio or SSE")
 public class SqliteMcpServer implements Callable<Integer> {
+
+    /** Default port used when the server runs in SSE transport mode. */
+    public static final int DEFAULT_SSE_PORT = 8766;
+
+    /**
+     * Transport mode for the MCP server.
+     *
+     * <ul>
+     *   <li>{@code STDIO} – reads/writes MCP messages via stdin/stdout (default)
+     *   <li>{@code SSE} – serves MCP over HTTP Server-Sent Events on a fixed port
+     * </ul>
+     */
+    public enum TransportMode {
+        STDIO,
+        SSE
+    }
 
     @Option(
             names = {"--db-path"},
             required = true,
             description = "Absolute path to the SQLite database file")
     private String dbPath;
+
+    @Option(
+            names = {"--transport", "-T"},
+            description =
+                    "Transport mode for the MCP server: ${COMPLETION-CANDIDATES}. Default: STDIO",
+            defaultValue = "STDIO")
+    private TransportMode transport;
+
+    @Option(
+            names = {"--port", "-p"},
+            description =
+                    "HTTP port to which the MCP server should bind when using --transport=SSE (default: " + DEFAULT_SSE_PORT + ")",
+            defaultValue = "" + DEFAULT_SSE_PORT)
+    private int port;
 
     // -------------------------------------------------------------------------
     // Entry point
@@ -95,7 +135,24 @@ public class SqliteMcpServer implements Callable<Integer> {
     @SneakyThrows
     public Integer call() {
         DatabaseInitializer.ensureInitialised(Paths.get(dbPath).toAbsolutePath());
+        log.info("SQLite MCP server starting [transport={}, dbPath={}]", transport, dbPath);
+        return switch (transport) {
+            case STDIO -> runStdioMode();
+            case SSE -> runSseMode();
+        };
+    }
 
+    // -------------------------------------------------------------------------
+    // Transport-specific runners
+    // -------------------------------------------------------------------------
+
+    /**
+     * Runs the MCP server over stdin/stdout (STDIO transport).
+     *
+     * <p>Blocks the main thread until the parent process closes the pipe.
+     */
+    @SneakyThrows
+    private Integer runStdioMode() {
         final ObjectMapper mapper = JsonUtils.createMapper();
         final var jsonMapper = new JacksonMcpJsonMapper(mapper);
 
@@ -120,11 +177,63 @@ public class SqliteMcpServer implements Callable<Integer> {
                                 (exchange, args) -> handleGetDatabaseInfo(mapper))
                         .build();
 
-        log.info("SQLite MCP server started. Database: {}", dbPath);
+        log.info("SQLite MCP server started in STDIO mode. Database: {}", dbPath);
 
         // Block the main thread while the reactive pipeline processes stdin/stdout.
         // The server will be terminated when the parent process closes the pipe.
         new CountDownLatch(1).await();
+        server.close();
+        return 0;
+    }
+
+    /**
+     * Runs the MCP server over HTTP Server-Sent Events (SSE transport).
+     *
+     * <p>Starts an embedded Jetty server on {@link #port} and blocks until the server is stopped.
+     */
+    @SneakyThrows
+    private Integer runSseMode() {
+        final ObjectMapper mapper = JsonUtils.createMapper();
+        final var jsonMapper = new JacksonMcpJsonMapper(mapper);
+
+        final var transportProvider =
+                HttpServletSseServerTransportProvider.builder()
+                        .jsonMapper(jsonMapper)
+                        .baseUrl("http://localhost:" + port)
+                        .messageEndpoint("/sse")
+                        .build();
+
+        final McpSyncServer server =
+                McpServer.sync(transportProvider)
+                        .serverInfo("sqlite-mcp-server", "1.0.0")
+                        .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
+                        .tool(
+                                executeQueryTool(jsonMapper),
+                                (exchange, args) -> handleExecuteQuery(args, mapper))
+                        .tool(
+                                listTablesTool(jsonMapper),
+                                (exchange, args) -> handleListTables(mapper))
+                        .tool(
+                                getTableSchemaTool(jsonMapper),
+                                (exchange, args) -> handleGetTableSchema(args, mapper))
+                        .tool(
+                                getDatabaseInfoTool(jsonMapper),
+                                (exchange, args) -> handleGetDatabaseInfo(mapper))
+                        .build();
+
+        // Embed the SSE transport provider in a Jetty 12 (ee10) server
+        final var jettyServer = new Server(port);
+        final var context = new ServletContextHandler("/");
+        context.addServlet(new ServletHolder(transportProvider), "/*");
+        jettyServer.setHandler(context);
+        jettyServer.start();
+
+        log.info(
+                "SQLite MCP server started in SSE transport mode on http://localhost:{}/sse. Database: {}",
+                port,
+                dbPath);
+
+        jettyServer.join(); // block until Jetty is stopped
         server.close();
         return 0;
     }

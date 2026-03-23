@@ -29,12 +29,14 @@ import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
 import com.phonepe.sentinelai.examples.texttosql.agent.TextToSqlAgent;
+import com.phonepe.sentinelai.examples.texttosql.mcp.SqliteMcpServer;
 import com.phonepe.sentinelai.examples.texttosql.server.SqliteRestServer;
 import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
 import com.phonepe.sentinelai.examples.texttosql.tools.LocalSqlTools;
 import com.phonepe.sentinelai.filesystem.skills.AgentSkillsExtension;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPSSEServerConfig;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpToolReaders;
@@ -44,6 +46,8 @@ import io.github.sashirestela.openai.SimpleOpenAI;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -104,14 +108,30 @@ public class TextToSqlCLI implements Callable<Integer> {
      * <ul>
      *   <li>{@code HTTP} – embedded Dropwizard REST server accessed via the remote-HTTP toolbox
      *       (default)
-     *   <li>{@code MCP} – MCP server launched as a subprocess, accessed via the MCP toolbox over
-     *       stdio
+     *   <li>{@code MCP} – MCP server launched as a subprocess, accessed via the MCP toolbox
      * </ul>
      */
     public enum ToolboxMode {
         HTTP,
         MCP
     }
+
+    /**
+     * Selects the transport used when the MCP toolbox is active ({@code --toolbox-mode MCP}).
+     *
+     * <ul>
+     *   <li>{@code STDIO} – MCP messages are exchanged via stdin/stdout (default)
+     *   <li>{@code SSE} – MCP messages are exchanged over HTTP Server-Sent Events; the subprocess
+     *       binds to {@code --mcp-port}
+     * </ul>
+     */
+    public enum McpServerMode {
+        STDIO,
+        SSE
+    }
+
+    /** Default port for the MCP SSE server subprocess. */
+    public static final int DEFAULT_MCP_SSE_PORT = SqliteMcpServer.DEFAULT_SSE_PORT;
 
     @Option(
             names = {"--config", "-c"},
@@ -138,6 +158,24 @@ public class TextToSqlCLI implements Callable<Integer> {
                             + "(HTTP = embedded REST server, MCP = stdio MCP server). Default: HTTP",
             defaultValue = "HTTP")
     private ToolboxMode toolboxMode;
+
+    @Option(
+            names = {"--mcp-server-mode"},
+            description =
+                    "Transport mode for the MCP server subprocess: ${COMPLETION-CANDIDATES} "
+                            + "(only used when --toolbox-mode is MCP). Default: STDIO",
+            defaultValue = "STDIO")
+    private McpServerMode mcpServerMode;
+
+    @Option(
+            names = {"--mcp-port"},
+            description =
+                    "HTTP port for the MCP SSE server subprocess "
+                            + "(only used when --mcp-server-mode is SSE, default: "
+                            + DEFAULT_MCP_SSE_PORT
+                            + ")",
+            defaultValue = "" + DEFAULT_MCP_SSE_PORT)
+    private int mcpPort;
 
     /**
      * Caches the most recent {@link AgentOutput} so that {@code /dumpMessages} can export it at any
@@ -181,8 +219,13 @@ public class TextToSqlCLI implements Callable<Integer> {
         registerLocalTools(agent, dbPath);
 
         if (toolboxMode == ToolboxMode.MCP) {
-            log.info("Registering MCP toolbox (stdio subprocess)");
-            registerMcpToolbox(agent, dbPath, mapper);
+            if (mcpServerMode == McpServerMode.SSE) {
+                log.info("Registering MCP toolbox (SSE subprocess on port {})", mcpPort);
+                registerMcpToolboxSse(agent, dbPath, mapper, mcpPort);
+            } else {
+                log.info("Registering MCP toolbox (stdio subprocess)");
+                registerMcpToolbox(agent, dbPath, mapper);
+            }
         } else {
             log.info("Registering HTTP toolbox (embedded REST server)");
             final String baseUrl = startRestServer(dbPath, mapper);
@@ -190,9 +233,10 @@ public class TextToSqlCLI implements Callable<Integer> {
         }
 
         log.info(
-                "Initialisation complete — starting interactive session [sessionId={}, toolboxMode={}]",
+                "Initialisation complete — starting interactive session [sessionId={}, toolboxMode={}, mcpServerMode={}]",
                 effectiveSessionId,
-                toolboxMode);
+                toolboxMode,
+                toolboxMode == ToolboxMode.MCP ? mcpServerMode : "N/A");
         ConsoleUtils.printBanner();
         ConsoleUtils.printExamples();
 
@@ -467,6 +511,80 @@ public class TextToSqlCLI implements Callable<Integer> {
         log.info("MCP toolbox registered successfully");
     }
 
+    /**
+     * Registers an MCP toolbox that launches {@code SqliteMcpServer} as a subprocess using SSE
+     * transport and connects to it via the MCP SSE client.
+     *
+     * <p>The subprocess binds an embedded Jetty HTTP server on {@code port} and serves the MCP SSE
+     * endpoint at {@code http://localhost:<port>/sse}. The CLI polls the port until the server is
+     * ready before registering the toolbox.
+     */
+    @SneakyThrows
+    private static void registerMcpToolboxSse(
+            TextToSqlAgent agent, Path dbPath, ObjectMapper mapper, int port) {
+        final String javaCmd = ProcessHandle.current().info().command().orElse("java");
+        final String classpath = System.getProperty("java.class.path");
+        log.info(
+                "Launching MCP SSE server subprocess [javaCmd={}, dbPath={}, port={}]",
+                javaCmd,
+                dbPath,
+                port);
+
+        final var pb =
+                new ProcessBuilder(
+                        javaCmd,
+                        "-cp",
+                        classpath,
+                        "com.phonepe.sentinelai.examples.texttosql.mcp.SqliteMcpServer",
+                        "--db-path",
+                        dbPath.toString(),
+                        "--transport",
+                        "SSE",
+                        "--port",
+                        String.valueOf(port));
+        // Inherit stderr so MCP server logs appear in the parent process's stderr stream
+        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+        pb.start(); // subprocess runs in background; no handle needed
+
+        log.info("Waiting for MCP SSE server to become available on port {}", port);
+        waitForMcpSseServer("localhost", port, 30_000);
+        log.info("MCP SSE server ready at http://localhost:{}/sse", port);
+
+        final var mcpConfig = MCPSSEServerConfig.builder().url("http://localhost:" + port).build();
+
+        final var mcpToolBox =
+                MCPToolBox.buildFromConfig()
+                        .name("sqlite-mcp")
+                        .mapper(mapper)
+                        .mcpServerConfig(mcpConfig)
+                        .build();
+
+        agent.registerToolbox(mcpToolBox);
+        log.info("MCP SSE toolbox registered successfully");
+    }
+
+    /**
+     * Polls {@code host:port} until a TCP connection succeeds or the timeout elapses, then returns.
+     * Used to wait for the MCP SSE subprocess to bind its listening socket before the client
+     * attempts to connect.
+     *
+     * @throws RuntimeException if the port does not become reachable within {@code timeoutMs}
+     */
+    @SneakyThrows
+    private static void waitForMcpSseServer(String host, int port, long timeoutMs) {
+        final long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            try (var socket = new Socket()) {
+                socket.connect(new InetSocketAddress(host, port), 500);
+                return; // connected - server is ready
+            } catch (Exception ignored) {
+                Thread.sleep(200);
+            }
+        }
+        throw new RuntimeException(
+                "MCP SSE server did not start on port " + port + " within " + timeoutMs + " ms");
+    }
+
     // -------------------------------------------------------------------------
     // Interactive prompt loop
     // -------------------------------------------------------------------------
@@ -503,8 +621,10 @@ public class TextToSqlCLI implements Callable<Integer> {
                 break;
             }
             if (line.startsWith("/dumpMessages")) {
-                // output the message exchange thus far with the agent (based on the last agent output)
-                // the messages are written in JSON format for debugging purpose to a file in the current directory
+                // output the message exchange thus far with the agent (based on the last agent
+                // output)
+                // the messages are written in JSON format for debugging purpose to a file in the
+                // current directory
                 final String[] parts = line.split("\\s+", 2);
                 final String filename =
                         parts.length > 1 && !parts[1].isBlank()

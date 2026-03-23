@@ -52,7 +52,7 @@ public class MCPToolBox implements ToolBox {
                                                exposedTools);
     }
 
-    @Builder(builderMethodName = "buildFromConfig")
+    @Builder(builderMethodName = "buildFromConfig", builderClassName = "MCPToolBoxServerConfigBuilder")
     public MCPToolBox(@NonNull final String name,
                       @NonNull final ObjectMapper mapper,
                       @NonNull final MCPServerConfig mcpServerConfig) {
