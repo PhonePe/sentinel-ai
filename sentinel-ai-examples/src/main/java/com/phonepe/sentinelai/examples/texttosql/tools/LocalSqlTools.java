@@ -21,9 +21,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
+import com.phonepe.sentinelai.examples.texttosql.tools.vectorstore.SchemaSearchResult;
+import com.phonepe.sentinelai.examples.texttosql.tools.vectorstore.SchemaVectorStore;
+import com.phonepe.sentinelai.examples.texttosql.tools.vectorstore.VectorStoreInitializer;
 import de.vandermeer.asciitable.AsciiTable;
 import de.vandermeer.asciitable.CWC_LongestLine;
 import de.vandermeer.skb.interfaces.transformers.textformat.TextAlignment;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -36,7 +41,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,12 +56,29 @@ import lombok.extern.slf4j.Slf4j;
  * passed to {@code Agent.registerTools()}.
  */
 @Slf4j
-@RequiredArgsConstructor
 public class LocalSqlTools implements ToolBox {
     private static final DateTimeFormatter DISPLAY_FORMAT =
             DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final String dbPath;
+    private final SchemaVectorStore vectorStore;
+
+    /**
+     * Constructs LocalSqlTools and initialises the Lucene schema vector store.
+     *
+     * <p>The vector store index is written to {@code {dataDir}/lucene-schema-index/} the first
+     * time; on subsequent runs it is opened directly from disk without re-indexing.
+     *
+     * @param dbPath absolute path to the SQLite database file
+     * @param dataDir directory used for persisting vector store data (typically the {@code .data/}
+     *     directory that also contains the SQLite file)
+     */
+    @SneakyThrows
+    public LocalSqlTools(String dbPath, Path dataDir) {
+        this.dbPath = dbPath;
+        this.vectorStore = VectorStoreInitializer.ensureInitialized(dataDir);
+    }
 
     @Override
     public String name() {
@@ -175,6 +196,63 @@ public class LocalSqlTools implements ToolBox {
     }
 
     // -------------------------------------------------------------------------
+    // Vector store search
+    // -------------------------------------------------------------------------
+
+    /**
+     * Searches the schema vector store using hybrid (keyword + semantic) search to find the most
+     * relevant tables and columns for a given natural-language question.
+     *
+     * <p>Use this to quickly discover which tables and columns are relevant before writing a SQL
+     * query. The search combines BM25 keyword matching with cosine-similarity vector search over
+     * table and column descriptions indexed from {@code schema_descriptions.json}.
+     *
+     * @param query natural-language description of what you are looking for, e.g. "user timezone
+     *     and location" or "order delivery timestamp"
+     * @param topK maximum number of results to return (recommended: 5–10)
+     * @return formatted list of matching tables/columns with their descriptions and relevance
+     *     scores
+     */
+    @Tool(
+            name = "search_schema",
+            value =
+                    "Search the database schema using hybrid keyword and semantic search. "
+                            + "Returns the most relevant tables and columns for your question. "
+                            + "Use this to discover which tables/columns to query before writing SQL. "
+                            + "Parameters: query (natural-language description of what you need), "
+                            + "topK (max results, default 8).")
+    public String searchSchema(String query, int topK) {
+        if (topK <= 0) {
+            topK = 8;
+        }
+        try {
+            List<SchemaSearchResult> results = vectorStore.hybridSearch(query, topK);
+            if (results.isEmpty()) {
+                return "No schema matches found for: " + query;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("## Schema search results for: \"").append(query).append("\"\n\n");
+
+            for (int i = 0; i < results.size(); i++) {
+                SchemaSearchResult r = results.get(i);
+                sb.append(String.format(
+                        "%d. [%s] %s%s (score: %.3f)%n   %s%n%n",
+                        i + 1,
+                        r.docType().toUpperCase(),
+                        r.tableName(),
+                        r.columnName() != null ? "." + r.columnName() : "",
+                        r.score(),
+                        r.content()));
+            }
+            return sb.toString();
+        } catch (IOException e) {
+            log.warn("Schema vector search failed for query '{}': {}", query, e.getMessage());
+            return "Schema search failed: " + e.getMessage();
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Result formatting
     // -------------------------------------------------------------------------
 
@@ -254,7 +332,6 @@ public class LocalSqlTools implements ToolBox {
             }
             at.setTextAlignment(TextAlignment.LEFT);
 
-            // System.out.printf("%n%d row(s) returned.%n", rows.size());
             return at.render();
         } catch (Exception e) {
             log.warn("Failed to format results as table: {}", e.getMessage());
@@ -284,7 +361,6 @@ public class LocalSqlTools implements ToolBox {
         sb.append("\n**Columns:**\n");
         try (var stmt = conn.prepareStatement("PRAGMA table_info(\"" + table + "\")");
                 ResultSet rs = stmt.executeQuery()) {
-            final ResultSetMetaData meta = rs.getMetaData();
             while (rs.next()) {
                 final String colName = rs.getString("name");
                 final String colType = rs.getString("type");

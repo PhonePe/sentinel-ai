@@ -1,0 +1,415 @@
+{
+  "tables": [
+    {
+      "name": "users",
+      "description": "Registered buyers on the e-commerce marketplace. Stores user identity, contact details, geographic location, and account status. Each user has a timezone preference for displaying timestamps in their local time.",
+      "primaryKeyColumns": ["user_id"],
+      "uniqueKeyColumns": ["email"],
+      "columns": [
+        {
+          "name": "user_id",
+          "description": "Unique internal identifier for the user, auto-incremented by the database",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "email",
+          "description": "User login email address, must be unique across all users",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "full_name",
+          "description": "User display name shown on the platform",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "phone",
+          "description": "Contact phone number in E.164 format, e.g. +919876543210",
+          "nullable": true,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "timezone",
+          "description": "IANA timezone identifier for displaying dates in local time, e.g. Asia/Kolkata or America/New_York",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": "UTC"
+        },
+        {
+          "name": "city",
+          "description": "City of residence of the user",
+          "nullable": true,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "country",
+          "description": "ISO 3166-1 alpha-2 country code, e.g. IN for India, US for United States",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": "IN"
+        },
+        {
+          "name": "is_active",
+          "description": "Account status flag: 1 means the account is active, 0 means it has been deactivated",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": "1"
+        },
+        {
+          "name": "created_at",
+          "description": "Unix epoch seconds representing when the user account was created",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "last_login_at",
+          "description": "Unix epoch seconds of the most recent successful login, NULL if the user has never logged in",
+          "nullable": true,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        }
+      ]
+    },
+    {
+      "name": "sellers",
+      "description": "Merchants who list and sell products on the marketplace. Stores seller identity, contact information, geographic location, performance rating, and account status. A seller can list multiple products in the catalog.",
+      "primaryKeyColumns": ["seller_id"],
+      "uniqueKeyColumns": ["contact_email"],
+      "columns": [
+        {
+          "name": "seller_id",
+          "description": "Unique internal identifier for the seller, auto-incremented by the database",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "seller_name",
+          "description": "Business or brand name of the seller as shown to buyers",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "contact_email",
+          "description": "Primary contact email for the seller, must be unique across all sellers",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "phone",
+          "description": "Seller contact phone number in E.164 format",
+          "nullable": true,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "city",
+          "description": "City where the seller primarily operates",
+          "nullable": true,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "country",
+          "description": "ISO 3166-1 alpha-2 country code of the seller",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": "IN"
+        },
+        {
+          "name": "rating",
+          "description": "Rolling average buyer rating from 0.0 to 5.0 computed across all fulfilled orders",
+          "nullable": false,
+          "dataType": "REAL",
+          "defaultValue": "0.0"
+        },
+        {
+          "name": "total_reviews",
+          "description": "Total number of buyer reviews received by the seller",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": "0"
+        },
+        {
+          "name": "joined_at",
+          "description": "Unix epoch seconds representing when the seller account was approved and activated",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "is_active",
+          "description": "Seller account status flag: 1 means actively selling, 0 means suspended or deactivated",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": "1"
+        }
+      ]
+    },
+    {
+      "name": "catalog",
+      "description": "Product listings created by sellers. Each product belongs to exactly one seller and one top-level category. Stores pricing, categorisation, and availability status. The price field reflects the current list price, but orders capture unit_price at the time of purchase.",
+      "primaryKeyColumns": ["product_id"],
+      "uniqueKeyColumns": ["sku"],
+      "columns": [
+        {
+          "name": "product_id",
+          "description": "Unique internal identifier for the product, auto-incremented by the database",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "seller_id",
+          "description": "Foreign key referencing sellers.seller_id, identifies which seller listed this product",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "product_name",
+          "description": "Human-readable product title displayed to buyers on the product listing page",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "category",
+          "description": "Top-level product category, e.g. Electronics, Clothing, Books, Home, Sports",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "subcategory",
+          "description": "Optional finer-grained product category, e.g. Smartphones, T-Shirts, Novels, Furniture",
+          "nullable": true,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "brand",
+          "description": "Brand or manufacturer name of the product",
+          "nullable": true,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "sku",
+          "description": "Seller-assigned stock-keeping unit code, optional but unique when provided",
+          "nullable": true,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "price",
+          "description": "Current list price of the product in USD at the time of listing or last update",
+          "nullable": false,
+          "dataType": "REAL",
+          "defaultValue": null
+        },
+        {
+          "name": "description",
+          "description": "Full product description text shown on the product detail page",
+          "nullable": true,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "image_url",
+          "description": "URL to the primary product image",
+          "nullable": true,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "is_available",
+          "description": "Product availability flag: 1 means listed and available for purchase, 0 means delisted",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": "1"
+        },
+        {
+          "name": "created_at",
+          "description": "Unix epoch seconds representing when the product was first listed in the catalog",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "updated_at",
+          "description": "Unix epoch seconds representing when the product details were last modified",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        }
+      ]
+    },
+    {
+      "name": "inventory",
+      "description": "Current stock levels for products across multiple warehouse locations. Each row represents one product at one warehouse. A product may be stocked in multiple warehouses; the total available stock is the sum of quantity across all matching rows.",
+      "primaryKeyColumns": ["inventory_id"],
+      "uniqueKeyColumns": ["product_id,warehouse"],
+      "columns": [
+        {
+          "name": "inventory_id",
+          "description": "Unique internal identifier for the inventory record, auto-incremented by the database",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "product_id",
+          "description": "Foreign key referencing catalog.product_id, identifies which product this stock record belongs to",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "warehouse",
+          "description": "Warehouse location code identifying where the stock is held, e.g. MUM-01, DEL-02, BLR-03",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "quantity",
+          "description": "Current number of units available at this warehouse, never negative",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": "0"
+        },
+        {
+          "name": "reorder_level",
+          "description": "Stock quantity threshold that triggers a reorder alert when quantity falls at or below this level",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": "10"
+        },
+        {
+          "name": "updated_at",
+          "description": "Unix epoch seconds representing when this stock level was last updated",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        }
+      ]
+    },
+    {
+      "name": "orders",
+      "description": "Purchase transactions placed by users. Each row is one line item representing one product in one order. A multi-product cart results in multiple rows with different order_ids. Captures pricing at purchase time, shipping details, and the full order lifecycle status.",
+      "primaryKeyColumns": ["order_id"],
+      "uniqueKeyColumns": [],
+      "columns": [
+        {
+          "name": "order_id",
+          "description": "Unique internal identifier for the order line item, auto-incremented by the database",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "user_id",
+          "description": "Foreign key referencing users.user_id, identifies the buyer who placed this order",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "product_id",
+          "description": "Foreign key referencing catalog.product_id, identifies which product was ordered",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "seller_id",
+          "description": "Foreign key referencing sellers.seller_id, denormalised from the catalog for efficient seller-level queries",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "quantity",
+          "description": "Number of units of the product ordered, must be at least 1",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "unit_price",
+          "description": "Price per unit at the time of purchase, captured as a snapshot from catalog.price",
+          "nullable": false,
+          "dataType": "REAL",
+          "defaultValue": null
+        },
+        {
+          "name": "total_amount",
+          "description": "Pre-computed total value of the line item: quantity multiplied by unit_price, used for reporting",
+          "nullable": false,
+          "dataType": "REAL",
+          "defaultValue": null
+        },
+        {
+          "name": "status",
+          "description": "Current order lifecycle state: pending, confirmed, shipped, delivered, or cancelled",
+          "nullable": false,
+          "dataType": "TEXT",
+          "defaultValue": "pending"
+        },
+        {
+          "name": "shipping_city",
+          "description": "Destination city for package delivery",
+          "nullable": true,
+          "dataType": "TEXT",
+          "defaultValue": null
+        },
+        {
+          "name": "ordered_at",
+          "description": "Unix epoch seconds representing when the order was placed by the user",
+          "nullable": false,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "confirmed_at",
+          "description": "Unix epoch seconds representing when payment was confirmed, NULL if not yet confirmed",
+          "nullable": true,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "shipped_at",
+          "description": "Unix epoch seconds representing when the package was dispatched for delivery, NULL if not yet shipped",
+          "nullable": true,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "delivered_at",
+          "description": "Unix epoch seconds representing when the package was delivered to the buyer, NULL if not yet delivered",
+          "nullable": true,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        },
+        {
+          "name": "cancelled_at",
+          "description": "Unix epoch seconds representing when the order was cancelled, NULL if not cancelled",
+          "nullable": true,
+          "dataType": "INTEGER",
+          "defaultValue": null
+        }
+      ]
+    }
+  ]
+}

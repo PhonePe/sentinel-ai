@@ -441,13 +441,17 @@ public class TextToSqlCLI implements Callable<Integer> {
     }
 
     /**
-     * Registers the local SQL tools (timezone conversion, schema introspection, result formatting)
-     * with the agent.
+     * Registers the local SQL tools (timezone conversion, schema introspection, result formatting,
+     * and hybrid schema search) with the agent.
+     *
+     * <p>The {@link LocalSqlTools} constructor also initialises the Lucene schema vector store
+     * under {@code {dataDir}/lucene-schema-index/}, building the index on first run.
      */
     @SneakyThrows
     private static void registerLocalTools(TextToSqlAgent agent, Path dbPath) {
-        log.info("Registering local SQL tools for database: {}", dbPath);
-        agent.registerTools(ToolUtils.readTools(new LocalSqlTools(dbPath.toString())));
+        final Path dataDir = dbPath.getParent();
+        log.info("Registering local SQL tools for database: {} (dataDir: {})", dbPath, dataDir);
+        agent.registerTools(ToolUtils.readTools(new LocalSqlTools(dbPath.toString(), dataDir)));
         log.info("Local SQL tools registered successfully");
     }
 
