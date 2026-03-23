@@ -17,15 +17,14 @@
 package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
  * Top-level YAML configuration for the Text-to-SQL CLI.
  *
- * <p>Default location: {@code .env/agent-config.yml} relative to the working directory.
- * Override with {@code --config <path>}.
+ * <p>Default location: {@code .env/agent-config.yml} relative to the working directory. Override
+ * with {@code --config <path>}.
  *
  * <p>Example file: {@code src/main/resources/.env/agent-config.yml.example}
  */
@@ -33,9 +32,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class CliConfig {
 
-    /**
-     * Agent behaviour settings.
-     */
+    /** Agent behaviour settings. */
     @Data
     @NoArgsConstructor
     public static class AgentConfig {
@@ -52,23 +49,19 @@ public class CliConfig {
         private boolean streaming = true;
     }
 
-    /**
-     * SQLite database configuration.
-     */
+    /** SQLite database configuration. */
     @Data
     @NoArgsConstructor
     public static class DatabaseConfig {
         /**
-         * Path to the SQLite {@code .db} file. The CLI creates and seeds the
-         * database from the bundled schema + CSV files if it does not exist.
+         * Path to the SQLite {@code .db} file. The CLI creates and seeds the database from the
+         * bundled schema + CSV files if it does not exist.
          */
         @JsonProperty("path")
         private String path = "./ecommerce.db";
     }
 
-    /**
-     * OpenAI API credentials and model selection.
-     */
+    /** OpenAI API credentials and model selection. */
     @Data
     @NoArgsConstructor
     public static class OpenAIConfig {

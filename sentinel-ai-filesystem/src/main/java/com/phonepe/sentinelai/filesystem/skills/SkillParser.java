@@ -18,19 +18,15 @@ package com.phonepe.sentinelai.filesystem.skills;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-
-import lombok.extern.slf4j.Slf4j;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
+import lombok.extern.slf4j.Slf4j;
 
-/**
- * Parser for SKILL.md files with YAML frontmatter
- */
+/** Parser for SKILL.md files with YAML frontmatter */
 @Slf4j
 public class SkillParser {
 
@@ -38,9 +34,7 @@ public class SkillParser {
 
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
 
-    /**
-     * Parse a SKILL.md file and associated resources
-     */
+    /** Parse a SKILL.md file and associated resources */
     public AgentSkill parse(Path skillDirectory) throws IOException {
         if (!Files.isDirectory(skillDirectory)) {
             throw new IllegalArgumentException("Not a directory: " + skillDirectory);
@@ -56,10 +50,19 @@ public class SkillParser {
 
         if (parsed == null) {
             throw new IllegalArgumentException(
-                                               "Invalid SKILL.md format: YAML frontmatter not found in " + skillFile);
+                    "Invalid SKILL.md format: YAML frontmatter not found in " + skillFile);
         }
 
-        final var metadata = yamlMapper.readValue(parsed[0], SkillMetadata.class);
+        SkillMetadata metadata;
+        try {
+            metadata = yamlMapper.readValue(parsed[0], SkillMetadata.class);
+        } catch (IOException e) {
+            log.error(
+                    "Error deserializing YAML frontmatter for skill at path: {}",
+                    skillDirectory,
+                    e);
+            throw e;
+        }
 
         // Validate name matches directory
         final var directoryName = skillDirectory.getFileName().toString();
@@ -75,9 +78,7 @@ public class SkillParser {
                 .build();
     }
 
-    /**
-     * Parse only the metadata (for discovery phase)
-     */
+    /** Parse only the metadata (for discovery phase) */
     public SkillMetadata parseMetadata(Path skillDirectory) throws IOException {
         final var skillFile = skillDirectory.resolve("SKILL.md");
         if (!Files.exists(skillFile)) {
@@ -102,14 +103,14 @@ public class SkillParser {
 
     /**
      * Parse YAML frontmatter from a SKILL.md file content.
-     * <p>
-     * The format is a line containing only {@code ---} at the start of the file,
-     * followed by YAML content, followed by another line containing only {@code ---}.
-     * Everything after the closing delimiter is the Markdown body.
+     *
+     * <p>The format is a line containing only {@code ---} at the start of the file, followed by
+     * YAML content, followed by another line containing only {@code ---}. Everything after the
+     * closing delimiter is the Markdown body.
      *
      * @param content the full file content
-     * @return a two-element array: {@code [yamlContent, markdownBody]}, or {@code null}
-     *         if the file does not contain valid frontmatter
+     * @return a two-element array: {@code [yamlContent, markdownBody]}, or {@code null} if the file
+     *     does not contain valid frontmatter
      */
     private String[] parseFrontmatter(final String content) {
         final var lines = content.split("\n", -1);
@@ -150,15 +151,12 @@ public class SkillParser {
             body.append(lines[i]);
         }
 
-        return new String[]{
-                yaml.toString(), body.toString().trim()
-        };
+        return new String[] {yaml.toString(), body.toString().trim()};
     }
 
-    /**
-     * Scan a subdirectory for files and return a map of filename -> path
-     */
-    private Map<String, Path> scanSubdirectory(Path skillDirectory, String subdirName) throws IOException {
+    /** Scan a subdirectory for files and return a map of filename -> path */
+    private Map<String, Path> scanSubdirectory(Path skillDirectory, String subdirName)
+            throws IOException {
         final var subdir = skillDirectory.resolve(subdirName);
         if (!Files.isDirectory(subdir)) {
             return Map.of();
@@ -167,10 +165,11 @@ public class SkillParser {
         final var files = new HashMap<String, Path>();
         try (Stream<Path> paths = Files.walk(subdir)) {
             paths.filter(Files::isRegularFile)
-                    .forEach(path -> {
-                        String relativePath = subdir.relativize(path).toString();
-                        files.put(relativePath, path);
-                    });
+                    .forEach(
+                            path -> {
+                                String relativePath = subdir.relativize(path).toString();
+                                files.put(relativePath, path);
+                            });
         }
 
         return files;

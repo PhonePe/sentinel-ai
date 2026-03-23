@@ -23,40 +23,40 @@ import com.phonepe.sentinelai.core.agent.ApproveAllToolRuns;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
-
+import java.util.List;
+import java.util.Map;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Singular;
 
-import java.util.List;
-import java.util.Map;
-
 /**
- * Text-to-SQL agent that translates natural-language questions into SQLite queries
- * and returns structured results.
+ * Text-to-SQL agent that translates natural-language questions into SQLite queries and returns
+ * structured results.
  *
  * <p>The agent is equipped with three layers of tools:
+ *
  * <ol>
- * <li><b>Local tools</b> — registered via {@code registerTools()} after construction;
- * these include timestamp conversion, schema inspection, and result formatting
- * ({@link com.phonepe.sentinelai.examples.texttosql.tools.LocalSqlTools}).</li>
- * <li><b>Remote-HTTP toolbox</b> — registered via {@code registerToolbox()} after
- * construction; these call the embedded Dropwizard SQLite REST server.</li>
- * <li><b>Skills extension</b> — injected via {@code extensions} at construction time;
- * provides the SQL execution skill loaded from {@code resources/skills/sql-execution/}.</li>
+ *   <li><b>Local tools</b> — registered via {@code registerTools()} after construction; these
+ *       include timestamp conversion, schema inspection, and result formatting ({@link
+ *       com.phonepe.sentinelai.examples.texttosql.tools.LocalSqlTools}).
+ *   <li><b>Remote-HTTP toolbox</b> — registered via {@code registerToolbox()} after construction;
+ *       these call the embedded Dropwizard SQLite REST server.
+ *   <li><b>Skills extension</b> — injected via {@code extensions} at construction time; provides
+ *       the SQL execution skill loaded from {@code resources/skills/sql-execution/}.
  * </ol>
  *
- * <p>Output type is {@link SqlQueryResult}, a record holding the generated SQL,
- * result rows, a human-readable explanation, and wall-clock execution time.
+ * <p>Output type is {@link SqlQueryResult}, a record holding the generated SQL, result rows, a
+ * human-readable explanation, and wall-clock execution time.
  */
 public class TextToSqlAgent extends Agent<String, SqlQueryResult, TextToSqlAgent> {
 
-    private static final String SYSTEM_PROMPT = """
-            You are an expert SQL assistant for an Indian e-commerce platform.
+    private static final String SYSTEM_PROMPT =
+            """
+            You are an expert SQL assistant for an e-commerce platform.
             Your job is to translate the user's natural-language question into a correct
             SQLite query, execute it using the available tools, and return a structured result.
 
-            Database: SQLite, Indian e-commerce (users, sellers, catalog, inventory, orders).
+            Database: SQLite, e-commerce (users, sellers, catalog, inventory, orders).
             All *_at columns store Unix epoch seconds — always convert them before displaying.
 
             Mandatory workflow for every question:
@@ -84,14 +84,16 @@ public class TextToSqlAgent extends Agent<String, SqlQueryResult, TextToSqlAgent
     /**
      * Constructs the agent.
      *
-     * @param setup      agent setup (model, mapper, model settings)
+     * @param setup agent setup (model, mapper, model settings)
      * @param extensions agent extensions, e.g. {@code AgentSkillsExtension}
      */
     @Builder
-    public TextToSqlAgent(@NonNull AgentSetup setup,
-                          @Singular List<AgentExtension<String, SqlQueryResult, TextToSqlAgent>> extensions,
-                          @NonNull OutputValidator<String, SqlQueryResult> outputValidator) {
-        super(SqlQueryResult.class,
+    public TextToSqlAgent(
+            @NonNull AgentSetup setup,
+            @Singular List<AgentExtension<String, SqlQueryResult, TextToSqlAgent>> extensions,
+            @NonNull OutputValidator<String, SqlQueryResult> outputValidator) {
+        super(
+                SqlQueryResult.class,
                 SYSTEM_PROMPT,
                 setup,
                 extensions,

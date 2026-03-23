@@ -17,16 +17,15 @@
 package com.phonepe.sentinelai.examples.texttosql.server;
 
 import io.dropwizard.core.Configuration;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
  * Dropwizard configuration for the embedded SQLite REST server.
  *
- * <p>This is a minimal configuration; the database path is injected
- * programmatically when the server is started by the CLI rather than read
- * from a YAML file, so no additional fields are strictly required here.
+ * <p>This is a minimal configuration; the database path is injected programmatically when the
+ * server is started by the CLI rather than read from a YAML file, so no additional fields are
+ * strictly required here.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

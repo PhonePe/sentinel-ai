@@ -16,8 +16,6 @@
 
 package com.phonepe.sentinelai.filesystem.skills;
 
-import lombok.extern.slf4j.Slf4j;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,10 +27,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import lombok.extern.slf4j.Slf4j;
 
-/**
- * Registry for discovering and managing Agent Skills
- */
+/** Registry for discovering and managing Agent Skills */
 @Slf4j
 public class SkillRegistry {
 
@@ -41,44 +38,51 @@ public class SkillRegistry {
     private final Map<String, AgentSkill> loadedSkills = new LinkedHashMap<>();
     private final Set<Path> skillDirectories = new HashSet<>();
 
-    /**
-     * Discover skills in a directory (Tier 1: load metadata only)
-     */
+    /** Discover skills in a directory (Tier 1: load metadata only) */
     public void discoverSkills(Path skillsDirectory, Set<String> skillsToLoad) throws IOException {
         if (!Files.isDirectory(skillsDirectory)) {
             log.warn("Skills directory does not exist: {}", skillsDirectory);
             return;
         }
 
+        log.info("Discovering skills from directory: {}", skillsDirectory);
         skillDirectories.add(skillsDirectory);
 
         try (Stream<Path> paths = Files.list(skillsDirectory)) {
             paths.filter(Files::isDirectory)
-                    .filter(dir -> {
-                        // Get last component of path and check if it's in skillsToLoad (if specified)
-                        final var skillName = dir.getFileName().toString();
-                        if (!skillsToLoad.isEmpty() && !skillsToLoad.contains(skillName)) {
-                            log.info("Skipping skill {} as it's not in the specified skills to load", skillName);
-                            return false;
-                        }
-                        return true;
-                    })
-                    .forEach(skillDir -> {
-                        try {
-                            final var metadata = parser.parseMetadata(skillDir);
-                            skillCatalog.put(metadata.getName(), metadata);
-                            log.info("Discovered skill: {} - {}", metadata.getName(), metadata.getDescription());
-                        }
-                        catch (Exception e) {
-                            log.warn("Failed to parse skill in {}: {}", skillDir, e.getMessage());
-                        }
-                    });
+                    .filter(
+                            dir -> {
+                                // Get last component of path and check if it's in skillsToLoad (if
+                                // specified)
+                                final var skillName = dir.getFileName().toString();
+                                if (!skillsToLoad.isEmpty() && !skillsToLoad.contains(skillName)) {
+                                    log.warn(
+                                            "Skipping skill {} as it's not in the specified skills to load",
+                                            skillName);
+                                    return false;
+                                }
+                                return true;
+                            })
+                    .forEach(
+                            skillDir -> {
+                                try {
+                                    final var metadata = parser.parseMetadata(skillDir);
+                                    skillCatalog.put(metadata.getName(), metadata);
+                                    log.info(
+                                            "Discovered skill: {} - {}",
+                                            metadata.getName(),
+                                            metadata.getDescription());
+                                } catch (Exception e) {
+                                    log.warn(
+                                            "Failed to parse skill in {}: {}",
+                                            skillDir,
+                                            e.getMessage());
+                                }
+                            });
         }
     }
 
-    /**
-     * Format catalog for injection into system prompt
-     */
+    /** Format catalog for injection into system prompt */
     public String formatCatalog() {
         if (skillCatalog.isEmpty()) {
             return "No skills available.";
@@ -87,48 +91,44 @@ public class SkillRegistry {
         final var sb = new StringBuilder();
         sb.append("Available Skills:\n\n");
 
-        skillCatalog.values().forEach(metadata -> sb.append(String.format("- **%s**: %s%n",
-                                                                          metadata.getName(),
-                                                                          metadata.getDescription())));
+        skillCatalog
+                .values()
+                .forEach(
+                        metadata ->
+                                sb.append(
+                                        String.format(
+                                                "- **%s**: %s%n",
+                                                metadata.getName(), metadata.getDescription())));
         return sb.toString();
     }
 
-    /**
-     * Get a loaded skill by name
-     */
+    /** Get a loaded skill by name */
     public Optional<AgentSkill> getLoadedSkill(String skillName) {
         return Optional.ofNullable(loadedSkills.get(skillName));
     }
 
-    /**
-     * Get skill catalog (name + description only)
-     */
+    /** Get skill catalog (name + description only) */
     public Map<String, String> getSkillCatalog() {
         return skillCatalog.entrySet().stream()
-                .collect(Collectors.toMap(
-                                          Map.Entry::getKey,
-                                          e -> e.getValue().getDescription(),
-                                          (a, b) -> a,
-                                          LinkedHashMap::new));
+                .collect(
+                        Collectors.toMap(
+                                Map.Entry::getKey,
+                                e -> e.getValue().getDescription(),
+                                (a, b) -> a,
+                                LinkedHashMap::new));
     }
 
-    /**
-     * Get all discovered skill names
-     */
+    /** Get all discovered skill names */
     public Set<String> getSkillNames() {
         return Collections.unmodifiableSet(skillCatalog.keySet());
     }
 
-    /**
-     * Check if any skills are available
-     */
+    /** Check if any skills are available */
     public boolean hasSkills() {
         return !skillCatalog.isEmpty();
     }
 
-    /**
-     * Load a specific skill by name (Tier 2: load full instructions)
-     */
+    /** Load a specific skill by name (Tier 2: load full instructions) */
     public Optional<AgentSkill> loadSkill(String skillName) {
         if (loadedSkills.containsKey(skillName)) {
             return Optional.of(loadedSkills.get(skillName));
@@ -148,8 +148,7 @@ public class SkillRegistry {
                     loadedSkills.put(skillName, skill);
                     log.info("Loaded skill: {}", skillName);
                     return Optional.of(skill);
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     log.error("Failed to load skill {}: {}", skillName, e.getMessage(), e);
                     return Optional.empty();
                 }
@@ -160,10 +159,31 @@ public class SkillRegistry {
         return Optional.empty();
     }
 
-    /**
-     * Load a single skill from an absolute path (for single-skill mode)
-     */
+    /** Format all loaded skills as YAML with their names and descriptions */
+    public String formatLoadedSkillsAsYaml() {
+        if (loadedSkills.isEmpty()) {
+            return "loaded_skills: []\n";
+        }
+
+        final var sb = new StringBuilder();
+        sb.append("loaded_skills:\n");
+        loadedSkills
+                .values()
+                .forEach(
+                        skill -> {
+                            sb.append("  - name: ").append(skill.getName()).append("\n");
+                            sb.append("    description: ")
+                                    .append(skill.getDescription())
+                                    .append("\n");
+                        });
+        return sb.toString();
+    }
+
+    /** Load a single skill from an absolute path (for single-skill mode) */
     public Optional<AgentSkill> loadSkillFromPath(Path skillPath) throws IOException {
+        if (!Files.exists(skillPath)) {
+            throw new IllegalArgumentException("Path doesn't exist: " + skillPath);
+        }
         if (!Files.isDirectory(skillPath)) {
             throw new IllegalArgumentException("Not a directory: " + skillPath);
         }

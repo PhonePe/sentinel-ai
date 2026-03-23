@@ -49,4 +49,5 @@ test_output.log
 
 # Exclusions and inclusions for sentinel-ai-examples module
 sentinel-ai-examples/.data/
+sentinel-ai-examples/.logs/
 !sentinel-ai-examples/src/main/resources/.env

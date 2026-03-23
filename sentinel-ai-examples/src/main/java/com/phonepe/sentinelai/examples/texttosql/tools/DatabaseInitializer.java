@@ -16,11 +16,6 @@
 
 package com.phonepe.sentinelai.examples.texttosql.tools;
 
-import lombok.SneakyThrows;
-import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
-import lombok.val;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -33,17 +28,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
+import lombok.SneakyThrows;
+import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 
 /**
  * Utility class that initialises the SQLite e-commerce database on first run.
  *
  * <p>If the database file does not exist (or is empty), this class:
+ *
  * <ol>
- * <li>Creates the database file at the specified path.</li>
- * <li>Executes the bundled {@code schema.sql} DDL to create all tables and
- * indexes.</li>
- * <li>Loads CSV data from the bundled {@code db/data/*.csv} files into each
- * table, using a plain {@link BufferedReader} (no extra dependencies).</li>
+ *   <li>Creates the database file at the specified path.
+ *   <li>Executes the bundled {@code schema.sql} DDL to create all tables and indexes.
+ *   <li>Loads CSV data from the bundled {@code db/data/*.csv} files into each table, using a plain
+ *       {@link BufferedReader} (no extra dependencies).
  * </ol>
  *
  * <p>If the database already exists and has tables, it is left untouched.
@@ -53,12 +52,12 @@ import java.util.stream.Stream;
 public class DatabaseInitializer {
 
     private static final String[] TABLE_ORDER = {
-            "users", "sellers", "catalog", "inventory", "orders"
+        "users", "sellers", "catalog", "inventory", "orders"
     };
 
     /**
-     * Ensures the SQLite database at {@code dbPath} is initialised with the
-     * bundled schema and sample data.
+     * Ensures the SQLite database at {@code dbPath} is initialised with the bundled schema and
+     * sample data.
      *
      * @param dbPath path to the SQLite file (created if it does not exist)
      */
@@ -93,11 +92,11 @@ public class DatabaseInitializer {
     // -------------------------------------------------------------------------
 
     /**
-     * Parses a single CSV line into tokens, respecting double-quoted fields
-     * (which may contain commas). Escaped inner quotes ({@code ""}) are unescaped.
+     * Parses a single CSV line into tokens, respecting double-quoted fields (which may contain
+     * commas). Escaped inner quotes ({@code ""}) are unescaped.
      *
-     * <p>This is a minimal RFC-4180-compatible parser sufficient for the
-     * bundled seed CSV files — no external dependency required.
+     * <p>This is a minimal RFC-4180-compatible parser sufficient for the bundled seed CSV files —
+     * no external dependency required.
      */
     static List<String> parseCsvLine(String line) {
         final List<String> tokens = new ArrayList<>();
@@ -111,24 +110,19 @@ public class DatabaseInitializer {
                     if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
                         current.append('"');
                         i++; // skip second quote
-                    }
-                    else {
+                    } else {
                         inQuotes = false; // closing quote
                     }
-                }
-                else {
+                } else {
                     current.append(c);
                 }
-            }
-            else {
+            } else {
                 if (c == '"') {
                     inQuotes = true;
-                }
-                else if (c == ',') {
+                } else if (c == ',') {
                     tokens.add(current.toString());
                     current.setLength(0);
-                }
-                else {
+                } else {
                     current.append(c);
                 }
             }
@@ -144,8 +138,7 @@ public class DatabaseInitializer {
 
     @SneakyThrows
     private static void createSchema(Connection conn) {
-        final var schemaStream = DatabaseInitializer.class
-                .getResourceAsStream("/db/schema.sql");
+        final var schemaStream = DatabaseInitializer.class.getResourceAsStream("/db/schema.sql");
         Objects.requireNonNull(schemaStream, "Bundled schema.sql not found on classpath");
 
         final String schemaSql = new String(schemaStream.readAllBytes(), StandardCharsets.UTF_8);
@@ -171,9 +164,10 @@ public class DatabaseInitializer {
     @SneakyThrows
     private static boolean isDatabasePopulated(Path dbPath) {
         try (Connection conn = connect(dbPath);
-             var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(
-                                        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")) {
+                var stmt = conn.createStatement();
+                var rs =
+                        stmt.executeQuery(
+                                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")) {
             return rs.next() && rs.getInt(1) > 0;
         }
     }
@@ -187,7 +181,8 @@ public class DatabaseInitializer {
             return;
         }
 
-        try (var reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+        try (var reader =
+                new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             // First line = column headers
             final String headerLine = reader.readLine();
             if (headerLine == null) {
@@ -198,8 +193,14 @@ public class DatabaseInitializer {
             final List<String> headers = parseCsvLine(headerLine);
             final int colCount = headers.size();
             final String placeholders = "?,".repeat(colCount).replaceAll(",$", "");
-            final String insertSql = "INSERT OR IGNORE INTO \"" + table + "\" (\""
-                    + String.join("\", \"", headers) + "\") VALUES (" + placeholders + ")";
+            final String insertSql =
+                    "INSERT OR IGNORE INTO \""
+                            + table
+                            + "\" (\""
+                            + String.join("\", \"", headers)
+                            + "\") VALUES ("
+                            + placeholders
+                            + ")";
 
             try (var pstmt = conn.prepareStatement(insertSql)) {
                 String csvLine;
@@ -214,8 +215,7 @@ public class DatabaseInitializer {
                         final String val = i < row.size() ? row.get(i).trim() : "";
                         if (val.isEmpty()) {
                             pstmt.setNull(i + 1, java.sql.Types.NULL);
-                        }
-                        else {
+                        } else {
                             pstmt.setString(i + 1, val);
                         }
                     }

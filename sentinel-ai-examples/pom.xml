@@ -102,6 +102,13 @@
             <artifactId>asciitable</artifactId>
             <version>0.3.2</version>
         </dependency>
+
+        <!-- ─── SQL Formatter (pretty-print generated SQL queries) ──────── -->
+        <dependency>
+            <groupId>com.github.vertical-blank</groupId>
+            <artifactId>sql-formatter</artifactId>
+            <version>2.0.5</version>
+        </dependency>
     </dependencies>
 
     <build>

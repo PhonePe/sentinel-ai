@@ -18,7 +18,6 @@ package com.phonepe.sentinelai.examples.texttosql.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
-
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -30,10 +29,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -43,14 +38,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * JAX-RS resource that provides a REST interface to a SQLite database.
  *
- * <p>This mirrors the tools exposed by the {@code mcp-sqlite} MCP server,
- * giving the remote-HTTP toolbox an alternative path for SQL operations.
+ * <p>This mirrors the tools exposed by the {@code mcp-sqlite} MCP server, giving the remote-HTTP
+ * toolbox an alternative path for SQL operations.
  *
  * <h2>Endpoints</h2>
+ *
  * <pre>
  * POST /api/sqlite/query Execute raw SQL
  * GET /api/sqlite/tables List all tables
@@ -77,30 +76,35 @@ public class SqliteRestResource {
     // -------------------------------------------------------------------------
 
     /**
-     * Insert a new record into a table.
-     * Request body: {@code {"data": {"col1": val1, "col2": val2}}}
+     * Insert a new record into a table. Request body: {@code {"data": {"col1": val1, "col2":
+     * val2}}}
      */
     @POST
     @Path("/records/{table}")
     @SneakyThrows
     public Response createRecord(@PathParam("table") String table, Map<String, Object> body) {
-        @SuppressWarnings("unchecked") final Map<String, Object> data = (Map<String, Object>) body.get("data");
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> data = (Map<String, Object>) body.get("data");
         if (data == null || data.isEmpty()) {
             return error(400, "Field 'data' (non-empty object) is required");
         }
 
         final var cols = new ArrayList<>(data.keySet());
         final var placeholders = cols.stream().map(c -> "?").toList();
-        final String sql = "INSERT INTO \"" + table + "\" (\"" +
-                String.join("\", \"", cols) + "\") VALUES (" +
-                String.join(", ", placeholders) + ")";
+        final String sql =
+                "INSERT INTO \""
+                        + table
+                        + "\" (\""
+                        + String.join("\", \"", cols)
+                        + "\") VALUES ("
+                        + String.join(", ", placeholders)
+                        + ")";
         final List<Object> params = cols.stream().map(data::get).toList();
 
         try (Connection conn = connect()) {
             final int affected = executeDml(conn, sql, params);
             return ok(Map.of("affectedRows", affected));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return error(500, "Failed to create record: " + e.getMessage());
         }
     }
@@ -110,33 +114,35 @@ public class SqliteRestResource {
     // -------------------------------------------------------------------------
 
     /**
-     * Delete records from a table matching the given conditions.
-     * Request body: {@code {"conditions": {"col": val}}}
+     * Delete records from a table matching the given conditions. Request body: {@code
+     * {"conditions": {"col": val}}}
      */
     @DELETE
     @Path("/records/{table}")
     @SneakyThrows
     public Response deleteRecords(@PathParam("table") String table, Map<String, Object> body) {
-        @SuppressWarnings("unchecked") final Map<String, Object> conditions = (Map<String, Object>) body.get(
-                                                                                                             "conditions");
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> conditions = (Map<String, Object>) body.get("conditions");
         if (conditions == null || conditions.isEmpty()) {
-            return error(400, "Field 'conditions' is required (to avoid accidental full-table deletes)");
+            return error(
+                    400, "Field 'conditions' is required (to avoid accidental full-table deletes)");
         }
 
         final var params = new ArrayList<Object>();
         final var whereClauses = new ArrayList<String>();
-        conditions.forEach((k, v) -> {
-            whereClauses.add("\"" + k + "\" = ?");
-            params.add(v);
-        });
+        conditions.forEach(
+                (k, v) -> {
+                    whereClauses.add("\"" + k + "\" = ?");
+                    params.add(v);
+                });
 
-        final String sql = "DELETE FROM \"" + table + "\" WHERE " + String.join(" AND ", whereClauses);
+        final String sql =
+                "DELETE FROM \"" + table + "\" WHERE " + String.join(" AND ", whereClauses);
 
         try (Connection conn = connect()) {
             final int affected = executeDml(conn, sql, params);
             return ok(Map.of("affectedRows", affected));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return error(500, "Failed to delete records: " + e.getMessage());
         }
     }
@@ -145,11 +151,13 @@ public class SqliteRestResource {
      * Execute a raw SQL SELECT statement against the database.
      *
      * <p>Request body: {@code {"sql": "SELECT ...", "values": [...]}}
-     * <p>Only SELECT, WITH, and PRAGMA statements are allowed. DML write statements
-     * (INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, REPLACE, TRUNCATE, MERGE) are
-     * rejected with a {@link WriteQueryNotAllowedException}.
-     * <p>Returns a {@link SqlQueryResult} containing the generated SQL, the rows
-     * returned, a null explanation (to be filled by the LLM), and the execution time.
+     *
+     * <p>Only SELECT, WITH, and PRAGMA statements are allowed. DML write statements (INSERT,
+     * UPDATE, DELETE, DROP, ALTER, CREATE, REPLACE, TRUNCATE, MERGE) are rejected with a {@link
+     * WriteQueryNotAllowedException}.
+     *
+     * <p>Returns a {@link SqlQueryResult} containing the generated SQL, the rows returned, a null
+     * explanation (to be filled by the LLM), and the execution time.
      */
     @POST
     @Path("/query")
@@ -161,8 +169,17 @@ public class SqliteRestResource {
         }
 
         final String trimmedUpper = sql.trim().toUpperCase();
-        final Set<String> writePrefixes = Set.of(
-                "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "REPLACE", "TRUNCATE", "MERGE");
+        final Set<String> writePrefixes =
+                Set.of(
+                        "INSERT",
+                        "UPDATE",
+                        "DELETE",
+                        "DROP",
+                        "ALTER",
+                        "CREATE",
+                        "REPLACE",
+                        "TRUNCATE",
+                        "MERGE");
         for (final String prefix : writePrefixes) {
             if (trimmedUpper.startsWith(prefix)) {
                 throw new WriteQueryNotAllowedException(
@@ -171,11 +188,11 @@ public class SqliteRestResource {
             }
         }
 
-        @SuppressWarnings("unchecked") final List<Object> values = body.containsKey("values")
-                ? (List<Object>) body.get("values")
-                : List.of();
+        @SuppressWarnings("unchecked")
+        final List<Object> values =
+                body.containsKey("values") ? (List<Object>) body.get("values") : List.of();
 
-        log.info("Executing SQL Query: {}", sql);
+        log.debug("Executing SQL Query: {}", sql);
 
         final long startMs = System.currentTimeMillis();
         try (Connection conn = connect()) {
@@ -187,11 +204,9 @@ public class SqliteRestResource {
             }
             final var result = new SqlQueryResult(sql, jsonRows, null, executionTimeMs);
             return ok(result);
-        }
-        catch (WriteQueryNotAllowedException e) {
+        } catch (WriteQueryNotAllowedException e) {
             throw e;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("SQL execution error: {}", e.getMessage());
             return error(500, "SQL execution failed: " + e.getMessage());
         }
@@ -201,47 +216,51 @@ public class SqliteRestResource {
     // Exception for write queries
     // -------------------------------------------------------------------------
 
-    /**
-     * Thrown when a write DML statement is submitted to the read-only query endpoint.
-     */
+    /** Thrown when a write DML statement is submitted to the read-only query endpoint. */
     public static class WriteQueryNotAllowedException extends RuntimeException {
         public WriteQueryNotAllowedException(String message) {
             super(message);
         }
     }
 
-    /**
-     * Return high-level information about the database file.
-     */
+    /** Return high-level information about the database file. */
     @GET
     @Path("/info")
     @SneakyThrows
     public Response getDatabaseInfo() {
         try (Connection conn = connect()) {
-            final var tables = executeSelect(conn,
-                                             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
-                                             List.of());
+            final var tables =
+                    executeSelect(
+                            conn,
+                            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+                            List.of());
             final var pageSize = executeSelect(conn, "PRAGMA page_size", List.of());
             final var pageCount = executeSelect(conn, "PRAGMA page_count", List.of());
 
-            final long ps = tables.isEmpty() ? 0 : Long.parseLong(String.valueOf(
-                                                                                 pageSize.isEmpty() ? 0 : pageSize.get(
-                                                                                                                       0)
-                                                                                         .get("page_size")));
-            final long pc = pageCount.isEmpty() ? 0 : Long.parseLong(String.valueOf(pageCount.get(0).get(
-                                                                                                         "page_count")));
+            final long ps =
+                    tables.isEmpty()
+                            ? 0
+                            : Long.parseLong(
+                                    String.valueOf(
+                                            pageSize.isEmpty()
+                                                    ? 0
+                                                    : pageSize.get(0).get("page_size")));
+            final long pc =
+                    pageCount.isEmpty()
+                            ? 0
+                            : Long.parseLong(String.valueOf(pageCount.get(0).get("page_count")));
 
-            return ok(Map.of(
-                             "databasePath",
-                             dbPath,
-                             "tableCount",
-                             tables.size(),
-                             "tables",
-                             tables.stream().map(r -> r.get("name")).toList(),
-                             "approximateSizeBytes",
-                             ps * pc));
-        }
-        catch (Exception e) {
+            return ok(
+                    Map.of(
+                            "databasePath",
+                            dbPath,
+                            "tableCount",
+                            tables.size(),
+                            "tables",
+                            tables.stream().map(r -> r.get("name")).toList(),
+                            "approximateSizeBytes",
+                            ps * pc));
+        } catch (Exception e) {
             return error(500, "Failed to get db info: " + e.getMessage());
         }
     }
@@ -250,73 +269,67 @@ public class SqliteRestResource {
     // CRUD endpoints
     // -------------------------------------------------------------------------
 
-    /**
-     * Return the column definitions for a specific table.
-     */
+    /** Return the column definitions for a specific table. */
     @GET
     @Path("/schema/{tableName}")
     @SneakyThrows
     public Response getTableSchema(@PathParam("tableName") String tableName) {
         try (Connection conn = connect()) {
-            final var rows = executeSelect(conn, "PRAGMA table_info(\"" + tableName + "\")", List.of());
+            final var rows =
+                    executeSelect(conn, "PRAGMA table_info(\"" + tableName + "\")", List.of());
             if (rows.isEmpty()) {
                 return error(404, "Table not found: " + tableName);
             }
             return ok(Map.of("tableName", tableName, "columns", rows));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return error(500, "Failed to get schema: " + e.getMessage());
         }
     }
 
-    /**
-     * List all user-defined tables in the database.
-     */
+    /** List all user-defined tables in the database. */
     @GET
     @Path("/tables")
     @SneakyThrows
     public Response listTables() {
-        final String sql = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
+        final String sql =
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
         try (Connection conn = connect()) {
             final var rows = executeSelect(conn, sql, List.of());
-            final List<String> tables = rows.stream()
-                    .map(r -> (String) r.get("name"))
-                    .toList();
+            final List<String> tables = rows.stream().map(r -> (String) r.get("name")).toList();
             return ok(Map.of("tables", tables));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return error(500, "Failed to list tables: " + e.getMessage());
         }
     }
 
     /**
-     * Read records from a table. Accepts optional {@code ?columnName=value}
-     * query parameters to filter results, plus {@code ?limit} and
-     * {@code ?offset} for pagination.
+     * Read records from a table. Accepts optional {@code ?columnName=value} query parameters to
+     * filter results, plus {@code ?limit} and {@code ?offset} for pagination.
      */
     @GET
     @Path("/records/{table}")
     @SneakyThrows
     public Response readRecords(
-                                @PathParam("table") String table,
-                                @QueryParam("limit") Integer limit,
-                                @QueryParam("offset") Integer offset,
-                                @QueryParam("conditions") String conditionsJson) {
+            @PathParam("table") String table,
+            @QueryParam("limit") Integer limit,
+            @QueryParam("offset") Integer offset,
+            @QueryParam("conditions") String conditionsJson) {
 
         try (Connection conn = connect()) {
             final var sb = new StringBuilder("SELECT * FROM \"").append(table).append("\"");
             final List<Object> params = new ArrayList<>();
 
             if (conditionsJson != null && !conditionsJson.isBlank()) {
-                @SuppressWarnings("unchecked") final Map<String, Object> conditions = mapper.readValue(conditionsJson,
-                                                                                                       Map.class);
+                @SuppressWarnings("unchecked")
+                final Map<String, Object> conditions = mapper.readValue(conditionsJson, Map.class);
                 if (!conditions.isEmpty()) {
                     sb.append(" WHERE ");
                     final var clauses = new ArrayList<String>();
-                    conditions.forEach((k, v) -> {
-                        clauses.add("\"" + k + "\" = ?");
-                        params.add(v);
-                    });
+                    conditions.forEach(
+                            (k, v) -> {
+                                clauses.add("\"" + k + "\" = ?");
+                                params.add(v);
+                            });
                     sb.append(String.join(" AND ", clauses));
                 }
             }
@@ -330,50 +343,54 @@ public class SqliteRestResource {
 
             final var rows = executeSelect(conn, sb.toString(), params);
             return ok(Map.of("rows", rows, "rowCount", rows.size()));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return error(500, "Failed to read records: " + e.getMessage());
         }
     }
 
-    /**
-     * Update records in a table.
-     * Request body: {@code {"data": {...}, "conditions": {...}}}
-     */
+    /** Update records in a table. Request body: {@code {"data": {...}, "conditions": {...}}} */
     @PUT
     @Path("/records/{table}")
     @SneakyThrows
     public Response updateRecords(@PathParam("table") String table, Map<String, Object> body) {
-        @SuppressWarnings("unchecked") final Map<String, Object> data = (Map<String, Object>) body.get("data");
-        @SuppressWarnings("unchecked") final Map<String, Object> conditions = (Map<String, Object>) body.get(
-                                                                                                             "conditions");
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> data = (Map<String, Object>) body.get("data");
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> conditions = (Map<String, Object>) body.get("conditions");
         if (data == null || data.isEmpty()) {
             return error(400, "Field 'data' is required");
         }
         if (conditions == null || conditions.isEmpty()) {
-            return error(400, "Field 'conditions' is required (to avoid accidental full-table updates)");
+            return error(
+                    400, "Field 'conditions' is required (to avoid accidental full-table updates)");
         }
 
         final var params = new ArrayList<Object>();
         final var setClauses = new ArrayList<String>();
-        data.forEach((k, v) -> {
-            setClauses.add("\"" + k + "\" = ?");
-            params.add(v);
-        });
+        data.forEach(
+                (k, v) -> {
+                    setClauses.add("\"" + k + "\" = ?");
+                    params.add(v);
+                });
         final var whereClauses = new ArrayList<String>();
-        conditions.forEach((k, v) -> {
-            whereClauses.add("\"" + k + "\" = ?");
-            params.add(v);
-        });
+        conditions.forEach(
+                (k, v) -> {
+                    whereClauses.add("\"" + k + "\" = ?");
+                    params.add(v);
+                });
 
-        final String sql = "UPDATE \"" + table + "\" SET " + String.join(", ", setClauses)
-                + " WHERE " + String.join(" AND ", whereClauses);
+        final String sql =
+                "UPDATE \""
+                        + table
+                        + "\" SET "
+                        + String.join(", ", setClauses)
+                        + " WHERE "
+                        + String.join(" AND ", whereClauses);
 
         try (Connection conn = connect()) {
             final int affected = executeDml(conn, sql, params);
             return ok(Map.of("affectedRows", affected));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return error(500, "Failed to update records: " + e.getMessage());
         }
     }
@@ -405,7 +422,8 @@ public class SqliteRestResource {
     }
 
     @SneakyThrows
-    private List<Map<String, Object>> executeSelect(Connection conn, String sql, List<Object> params) {
+    private List<Map<String, Object>> executeSelect(
+            Connection conn, String sql, List<Object> params) {
         try (final var stmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < params.size(); i++) {
                 stmt.setObject(i + 1, params.get(i));
