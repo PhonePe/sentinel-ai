@@ -163,16 +163,16 @@ public class SqliteMcpServer implements Callable<Integer> {
                 McpServer.sync(transportProvider)
                         .serverInfo("sqlite-mcp-server", "1.0.0")
                         .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
-                        .tool(
+                        .toolCall(
                                 executeQueryTool(jsonMapper),
-                                (exchange, args) -> handleExecuteQuery(args, mapper))
-                        .tool(
+                                (exchange, args) -> handleExecuteQuery(args.arguments(), mapper))
+                        .toolCall(
                                 listTablesTool(jsonMapper),
                                 (exchange, args) -> handleListTables(mapper))
-                        .tool(
+                        .toolCall(
                                 getTableSchemaTool(jsonMapper),
-                                (exchange, args) -> handleGetTableSchema(args, mapper))
-                        .tool(
+                                (exchange, args) -> handleGetTableSchema(args.arguments(), mapper))
+                        .toolCall(
                                 getDatabaseInfoTool(jsonMapper),
                                 (exchange, args) -> handleGetDatabaseInfo(mapper))
                         .build();
@@ -233,7 +233,19 @@ public class SqliteMcpServer implements Callable<Integer> {
                 port,
                 dbPath);
 
-        jettyServer.join(); // block until Jetty is stopped
+        // add a shutdown hook that will stop the server when the JVM is terminated
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                log.info("Shutting down SQLite MCP server...");
+                jettyServer.stop();
+                server.close();
+            } catch (Exception e) {
+                log.error("Error during shutdown: {}", e.getMessage());
+            }
+        }));
+
+        // block until Jetty is stopped
+        jettyServer.join();
         server.close();
         return 0;
     }

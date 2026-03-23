@@ -43,6 +43,8 @@ The project relies heavily on **Lombok**. If you encounter "symbol not found" er
 ### Code Formatting
 We use **Spotless** for consistent code styling.
 - **Mandatory:** Always run `mvn -Plint spotless:apply` before finalizing any code changes to ensure they adhere to the project's formatting rules.
+- Only run spotless on the maven modules & files which are modified rather than running it on all the Maven modules/files in a module in the project.
+  You can do this by running `mvn -Plint spotless:apply -DspotlessFiles=path/to/modified/file1,path/to/modified/file2` from the root of the project.
 - Styling is based on `java-format.xml` (Eclipse-style).
 
 ### Language Server (JDTLS)
