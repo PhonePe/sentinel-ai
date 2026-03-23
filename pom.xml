@@ -127,6 +127,7 @@
         <dotenv.file>${sentinelai.root}/sentinel-ai-core/src/test/resources/test.env</dotenv.file>
         <console.disable>true</console.disable>
         <success.print>false</success.print>
+        <test.thread.count>2</test.thread.count>
     </properties>
 
     <dependencyManagement>
@@ -318,6 +319,12 @@
                         <sentinelai.useRealEndpoints>${sentinelai.useRealEndpoints}</sentinelai.useRealEndpoints>
                         <dotenv.file>${dotenv.file}</dotenv.file>
                     </systemPropertyVariables>
+
+                    <!-- Parallel execution configuration -->
+                    <parallel>classes</parallel>
+                    <threadCount>${test.thread.count}</threadCount>
+                    <perCoreThreadCount>true</perCoreThreadCount>
+                    <useUnlimitedThreads>false</useUnlimitedThreads>
                 </configuration>
             </plugin>
             <plugin>
@@ -456,6 +463,7 @@
                 <console.disable>false</console.disable>
                 <success.print>true</success.print>
                 <sentinelai.useRealEndpoints>true</sentinelai.useRealEndpoints>
+                <test.thread.count>1</test.thread.count>
             </properties>
         </profile>
     </profiles>
