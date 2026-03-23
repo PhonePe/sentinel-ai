@@ -76,6 +76,10 @@ public class CliConfig {
         /** Chat model to use. Defaults to {@code gpt-4o}. */
         @JsonProperty("model")
         private String model = "gpt-4o";
+
+        /** The bearer prefix to add to auth tokens when making calls to the LLM provider. */
+        @JsonProperty("bearerPrefix")
+        private String bearerPrefix = "Bearer ";
     }
 
     // -------------------------------------------------------------------------

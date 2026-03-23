@@ -341,25 +341,13 @@ public class TextToSqlCLI implements Callable<Integer> {
                                                                 HttpHeader.AUTHORIZATION.name())
                                                         .addHeader(
                                                                 HttpHeader.AUTHORIZATION.name(),
-                                                                "O-Bearer " + apiKey)
+                                                                config.getOpenai().getBearerPrefix() + apiKey)
                                                         .build();
                                         log.debug(
                                                 "Outgoing request: {} {}",
                                                 newRequest.method(),
                                                 newRequest.url());
                                         return chain.proceed(newRequest);
-                                    }
-                                })
-                        .addNetworkInterceptor(
-                                new Interceptor() {
-                                    @Override
-                                    public @NonNull Response intercept(Interceptor.Chain chain)
-                                            throws IOException {
-                                        log.debug(
-                                                "Network request: {} {}",
-                                                chain.request().method(),
-                                                chain.request().url());
-                                        return chain.proceed(chain.request());
                                     }
                                 })
                         .build();

@@ -14,6 +14,9 @@ openai:
   # Budget option: gpt-4o-mini
   model: "gpt-4o"
 
+  # The bearer prefix to use in the Authorization header when making API requests.
+  bearerPrefix: "Bearer "
+
 database:
   # Absolute or relative path to the SQLite database file.
   # If the file does not exist, the CLI will create it automatically and
