@@ -32,7 +32,6 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -218,7 +217,15 @@ public class LocalSqlTools implements ToolBox {
             value =
                     "Search the database schema using hybrid keyword and semantic search. "
                             + "Returns the most relevant tables and columns for your question. "
-                            + "Use this to discover which tables/columns to query before writing SQL. "
+                            + "Use this to find which tables/columns to query before writing SQL."
+                            + "The list of tables/columns are provided in descending order of their relevance. "
+                            + "Result format is as follows:"
+                            + "%num. [%type] %name (score: %score)"
+                            + "   %content"
+                            + "where %num is the index in the list, %type is TABLE or COLUMN, %name is either table name or column name "
+                            + "(column name is always table_name.column_name)"
+                            + "%score is the relevance score (floating point number between 0-1), "
+                            + "%content contains the natural-language description of the table/column that was indexed in the vector store. "
                             + "Parameters: query (natural-language description of what you need), "
                             + "topK (max results, default 8).")
     public String searchSchema(String query, int topK) {

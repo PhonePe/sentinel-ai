@@ -60,15 +60,14 @@ public class TextToSqlAgent extends Agent<String, SqlQueryResult, TextToSqlAgent
             All *_at columns store Unix epoch seconds — always convert them before displaying.
 
             Mandatory workflow for every question:
-            1. Use get_db_schema tool to understand the data model (only needed once per session).
-            2. Analyse the user's question and identify the relevant tables and columns.
-            3. Compose a valid SQLite SELECT (or other DML) statement.
-            4. Execute the query using the execute_query tool (remote-HTTP toolbox) or the
+            1. Analyse the user's question and identify the relevant tables and columns by using the search_schema tool.
+            2. Compose a valid SQLite SELECT (or other DML) statement.
+            3. Execute the query using the execute_query tool (remote-HTTP toolbox) or the
                mcp-sqlite 'query' tool if available. When the query executes successfully, it would return
                the result set as a json which follows the schema of SqlQueryResult.
-            5. If there are any timestamp columns in the result, then convert all *_at timestamp column values
+            4. If there are any timestamp columns in the result, then convert all *_at timestamp column values
                to human-readable format via convert_epoch_to_local_dt tool on each row in result set.
-            6. Finally call the output generator tool to display the result set json (type: SqlQueryResult) as an ASCII table.
+            5. Finally call the output generator tool to display the result set json (type: SqlQueryResult) as an ASCII table.
 
             Always:
             - The generated sql query need not be pretty. So remove '\\n', '\\t', '\\r' characters from the generated query.

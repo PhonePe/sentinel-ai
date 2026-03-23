@@ -47,6 +47,13 @@ public class VectorStoreInitializer {
 
     private VectorStoreInitializer() {}
 
+    public static void main(String[] args) throws Exception {
+        final Path dataDir = Path.of("sentinel-ai-examples/.data");
+        try (SchemaVectorStore vectorStore = VectorStoreInitializer.ensureInitialized(dataDir)) {
+            // ignored
+        }
+    }
+
     /**
      * Returns a ready-to-use {@link SchemaVectorStore}, building the index if it does not already
      * exist.
@@ -145,15 +152,13 @@ public class VectorStoreInitializer {
                 for (JsonNode colNode : columns) {
                     String columnName = colNode.get("name").asText();
                     String columnDescription = colNode.get("description").asText();
-                    String dataType = colNode.get("dataType").asText();
+                    //String dataType = colNode.get("dataType").asText();
 
                     String content =
                             tableName
                                     + " "
                                     + columnName
-                                    + " ("
-                                    + dataType
-                                    + "): "
+                                    + " "
                                     + columnDescription;
 
                     documents.add(
