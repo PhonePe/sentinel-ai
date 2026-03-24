@@ -21,7 +21,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
-import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
+import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
+import com.phonepe.sentinelai.examples.texttosql.tools.model.TableDescRequest;
 import com.phonepe.sentinelai.examples.texttosql.tools.vectorstore.SchemaSearchResult;
 import com.phonepe.sentinelai.examples.texttosql.tools.vectorstore.SchemaVectorStore;
 import com.phonepe.sentinelai.examples.texttosql.tools.vectorstore.VectorStoreInitializer;
@@ -177,50 +178,6 @@ public class LocalSqlTools implements ToolBox {
         }
     }
 
-    /**
-     * Returns the full database schema with all table definitions, column names, types,
-     * constraints, and inline comments describing the purpose of each column. This is the most
-     * important tool for understanding the data model before generating SQL queries.
-     *
-     * <p>Always call this at the start of any SQL generation task.
-     *
-     * @return formatted schema description covering all tables
-     */
-    @Tool(
-            name = "get_db_schema",
-            value =
-                    "Get the complete e-commerce database schema with all table and column descriptions. "
-                            + "ALWAYS call this first before generating any SQL query. "
-                            + "Returns column names, types, constraints, and semantic descriptions for all tables: "
-                            + "users, sellers, catalog, inventory, orders.")
-    @SneakyThrows
-    public String getDatabaseSchema() {
-        try (Connection conn = connect()) {
-            final var sb = new StringBuilder();
-            sb.append("# E-Commerce Database Schema\n\n");
-            sb.append("All *_at columns store Unix epoch seconds. ");
-            sb.append("Use convertEpochToLocalDateTime to display them.\n\n");
-
-            final List<String> tables = getTables(conn);
-            for (final String table : tables) {
-                sb.append("## Table: ").append(table).append("\n");
-                appendTableDdl(conn, table, sb);
-                sb.append("\n");
-            }
-
-            sb.append("## Table Relationships\n");
-            sb.append("- orders.user_id    → users.user_id\n");
-            sb.append("- orders.product_id → catalog.product_id\n");
-            sb.append("- orders.seller_id  → sellers.seller_id\n");
-            sb.append("- catalog.seller_id → sellers.seller_id\n");
-            sb.append("- inventory.product_id → catalog.product_id\n\n");
-            sb.append("## Status values in orders.status\n");
-            sb.append("pending → confirmed → shipped → delivered  (or cancelled)\n");
-
-            return sb.toString();
-        }
-    }
-
     // -------------------------------------------------------------------------
     // Vector store search
     // -------------------------------------------------------------------------
@@ -294,7 +251,8 @@ public class LocalSqlTools implements ToolBox {
      * <p>Call this after {@code search_schema} to get structured details for the tables identified
      * as relevant to the user's question.
      *
-     * @param tableNames list of table names to describe (e.g. ["orders", "users"])
+     * @param tableDescRequest An object of type {@code TableDescRequest} which
+     *                         contains the list of table names to describe (e.g. ["orders", "users"])
      * @return formatted description for each requested table with its columns
      */
     @Tool(
@@ -304,8 +262,12 @@ public class LocalSqlTools implements ToolBox {
                             + "Returns column names, data types, nullability, and semantic descriptions. "
                             + "Call this after search_schema to understand the tables relevant to the query. "
                             + "Parameters: tableNames (list of table names, e.g. [\"orders\", \"users\"]).")
-    public String getTableDescription(List<String> tableNames) {
+    public String getTableDescription(TableDescRequest tableDescRequest) {
         StringBuilder sb = new StringBuilder();
+        List<String> tableNames = tableDescRequest.tableNames();
+        if (tableNames == null) {
+            return "No results. No table names provided in input";
+        }
         for (String tableName : tableNames) {
             JsonNode tableNode = schemaDescriptions.get(tableName);
             if (tableNode == null) {

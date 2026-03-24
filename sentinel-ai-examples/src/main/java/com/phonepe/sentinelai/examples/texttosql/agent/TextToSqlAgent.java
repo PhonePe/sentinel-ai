@@ -25,6 +25,9 @@ import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
+
+import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Singular;
@@ -56,7 +59,8 @@ public class TextToSqlAgent extends Agent<String, SqlQueryResult, TextToSqlAgent
             Translate natural-language questions into SQL queries, execute them, and return structured results.
             Follow the sql-execution skill protocol for every request.
             If unable to proceed without user input, ask the user for clarification before continuing.
-            """;
+            The user's timezone is '%s'. Use this timezone for all date formatting and timestamp conversions.
+            """.formatted(TimeZone.getDefault().toZoneId().toString());
 
     /**
      * Constructs the agent.

@@ -27,7 +27,7 @@ import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
-import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
+import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.examples.texttosql.agent.TextToSqlAgent;
 import com.phonepe.sentinelai.examples.texttosql.mcp.SqliteMcpServer;
 import com.phonepe.sentinelai.examples.texttosql.server.SqliteRestServer;

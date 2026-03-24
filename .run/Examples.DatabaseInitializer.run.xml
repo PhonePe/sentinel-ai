@@ -6,7 +6,7 @@
     <module name="sentinel-ai-examples" />
     <extension name="coverage">
       <pattern>
-        <option name="PATTERN" value="com.phonepe.sentinelai.examples.texttosql.tools.*" />
+        <option name="PATTERN" value="com.phonepe.sentinelai.examples.texttosql.tools.model.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>

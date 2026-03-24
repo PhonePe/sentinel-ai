@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.examples.texttosql.agent;
+package com.phonepe.sentinelai.examples.texttosql.tools.model;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.phonepe.sentinelai.examples.texttosql.agent.TextToSqlAgent;
+
 import java.util.List;
 
 /** Structured output produced by the {@link TextToSqlAgent} for every user query. */

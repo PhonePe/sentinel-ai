@@ -18,7 +18,7 @@ package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import com.github.vertical_blank.sqlformatter.SqlFormatter;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
-import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
+import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.examples.texttosql.tools.LocalSqlTools;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

@@ -17,7 +17,7 @@
 package com.phonepe.sentinelai.examples.texttosql.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.phonepe.sentinelai.examples.texttosql.agent.SqlQueryResult;
+import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;

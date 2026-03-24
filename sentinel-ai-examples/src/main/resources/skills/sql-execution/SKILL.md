@@ -95,12 +95,13 @@ Write a clear, correct SQL query:
 - Always qualify column names with the alias when joining multiple tables.
 - For aggregations, use CTEs (`WITH`) to make the query readable.
 - Prefer `INNER JOIN` for required relationships, `LEFT JOIN` for optional ones.
-- For ranking (e.g. "top 5 products"), use `ORDER BY ... LIMIT 5`.
+- For ranking queries (e.g. "top 5 products"), use `ORDER BY <column> DESC LIMIT 5`.
 - Never use `SELECT *` — be explicit about which columns you return.
 - Strip all `\n`, `\t`, `\r` characters from the generated SQL string before
-  passing it to the execution tool.
+  passing it to the execution tool. The generated sql query need not be pretty-formatted. 
+  It should only be syntactically and semantically correct.
 - Use only READ-ONLY queries (SELECT). INSERT, UPDATE, DELETE, DROP, TRUNCATE
-  are not permitted unless the user explicitly requests a write operation.
+  are not permitted.
 - Apply `LIMIT 100` for queries that might return large result sets, unless the
   user explicitly asks for all rows.
 - If the question is ambiguous, make a reasonable assumption and state it clearly
@@ -119,15 +120,16 @@ Tool: sqlite-api_execute_query
 Arguments: {"sql": "<your generated SQL>"}
 ```
 
-For SELECT queries the response JSON follows this schema:
+See sample JSON document for the query result set for a SELECT query:
 
 ```json
 {
-  "rows": [
-    {"column1": value1, "column2": value2},
-    ...
+  "generatedSql": "SELECT o.order_id, u.full_name FROM orders o JOIN users u ON o.user_id = u.user_id WHERE o.status = 'pending' LIMIT 100",
+  "results": [
+    "{\"column1\": value1, \"column2\": value2}",
+    "{\"column2\": value2, \"column3\": value3}"
   ],
-  "rowCount": n
+  "executionTimeMs": 115
 }
 ```
 
@@ -156,14 +158,9 @@ mention the assumption in your explanation.
 
 ### Step 6: Format and Present Results
 
-1. Call `format_results_as_table` (local tool) on the `SqlQueryResult` to
-   produce a clean ASCII table for the CLI.
-2. Compose a final response that includes:
-   - The generated SQL in a fenced code block.
-   - The formatted ASCII table of results.
-   - A plain-English explanation of what the query found.
-   - The total row count.
-   - Any caveats (e.g. NULLs, approximate counts, timezone assumptions).
+1. Return the result as a json following schema of type (SqlQueryResult).
+2. Fill the explanation field in the json with a plain-English description of the query along with assumptions and 
+   caveats (e.g. NULLs, approximate counts, etc)
 
 ---
 
