@@ -37,7 +37,7 @@ jobs:
           cache: 'maven'
 
       - name: Run spotless checkstyle
-        run: mvn spotless:check
+        run: mvn -Plint spotless:check
 
       - name: Build (run unit + integration tests)
         env:
