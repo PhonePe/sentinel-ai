@@ -35,7 +35,9 @@ jobs:
       - name: Cache npm packages
         uses: actions/cache@v4
         with:
-          path: ~/.npm
+          path: |
+            ~/.npm
+            /usr/local/lib/node_modules
           key: ${{ runner.os }}-npm-packages
           restore-keys: |
             ${{ runner.os }}-npm-packages
