@@ -33,6 +33,7 @@ jobs:
           node-version: '22'
           package-manager-cache: false
 
+      # todo(guruprasad): Caching is not working as expected for node_modules path. Fix it later.
       - name: Cache npm packages
         uses: actions/cache@v4
         with:
