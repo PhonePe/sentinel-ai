@@ -18,13 +18,9 @@ package com.phonepe.sentinelai.session;
 
 import org.junit.jupiter.api.Test;
 
-import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
-import com.phonepe.sentinelai.core.events.EventType;
-
-import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AgentSessionExtensionSetupTest {
 
@@ -32,39 +28,28 @@ class AgentSessionExtensionSetupTest {
     void testBuilder() {
         AgentSessionExtensionSetup setup = AgentSessionExtensionSetup.builder()
                 .historicalMessageFetchSize(10)
-                .maxSummaryLength(500)
-                .autoSummarizationThresholdPercentage(50)
-                .compactionTriggeringEvents(Set.of(EventType.MESSAGE_RECEIVED))
+                .preSummarizationDisabled(true)
                 .build();
 
         assertEquals(10, setup.getHistoricalMessageFetchSize());
-        assertEquals(500, setup.getMaxSummaryLength());
-        assertEquals(50, setup.getAutoSummarizationThresholdPercentage());
-        assertEquals(Set.of(EventType.MESSAGE_RECEIVED), setup.getCompactionTriggeringEvents());
-        assertEquals(CompactionPrompts.DEFAULT, setup.getCompactionPrompts());
+        assertTrue(setup.isPreSummarizationDisabled());
     }
 
     @Test
     void testDefaultValues() {
         AgentSessionExtensionSetup setup = AgentSessionExtensionSetup.DEFAULT;
-        assertEquals(AgentSessionExtensionSetup.MAX_HISTORICAL_MESSAGES_FETCH_COUNT,
+        assertEquals(AgentSessionExtensionSetup.DEFAULT_MAX_HISTORICAL_MESSAGES_FETCH_COUNT,
                      setup.getHistoricalMessageFetchSize());
-        assertEquals(AgentSessionExtensionSetup.DEFAULT_MAX_SUMMARY_LENGTH, setup.getMaxSummaryLength());
-        assertEquals(AgentSessionExtensionSetup.DEFAULT_AUTOMATIC_SUMMARIZATION_THRESHOLD,
-                     setup.getAutoSummarizationThresholdPercentage());
-        assertEquals(CompactionPrompts.DEFAULT, setup.getCompactionPrompts());
-        assertEquals(AgentSessionExtensionSetup.DEFAULT_COMPACTION_TRIGGERING_EVENTS,
-                     setup.getCompactionTriggeringEvents());
+        assertFalse(setup.isPreSummarizationDisabled());
     }
 
     @Test
     void testWithers() {
         AgentSessionExtensionSetup setup = AgentSessionExtensionSetup.DEFAULT
-                .withMaxSummaryLength(2000)
-                .withHistoricalMessageFetchSize(20);
+                .withHistoricalMessageFetchSize(20)
+                .withPreSummarizationDisabled(true);
 
-        assertEquals(2000, setup.getMaxSummaryLength());
         assertEquals(20, setup.getHistoricalMessageFetchSize());
-        assertNotEquals(AgentSessionExtensionSetup.DEFAULT.getMaxSummaryLength(), setup.getMaxSummaryLength());
+        assertTrue(setup.isPreSummarizationDisabled());
     }
 }

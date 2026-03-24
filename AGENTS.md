@@ -62,6 +62,29 @@ If you are using `jdtls` or a similar Java LSP:
 - **Unit Tests**: Standard JUnit 5.
 - **Real Tests**: Run with `-Preal-tests` to hit live LLM endpoints (requires `.env` file).
 - **WireMock**: Used for mocking external service calls.
+- **Parallel Execution**: Tests run in parallel by default (class-level parallelism, 2 threads per core).
+  - Override thread count: `mvn test -Dtest.thread.count=N`
+  - Sequential execution: `mvn test -Dtest.thread.count=1`
+  - Real tests use sequential execution by default (safer for live endpoints)
+
+### Troubleshooting Parallel Tests
+If you encounter test failures related to parallel execution:
+1. **Flaky tests**: Run the test multiple times to verify it's not environment-specific
+   ```bash
+   for i in {1..10}; do mvn test -Dtest=YourTest || echo "FAILED on run $i"; done
+   ```
+2. **Sequential fallback**: Temporarily disable parallel execution
+   ```bash
+   mvn test -Dtest.thread.count=1
+   ```
+3. **Check thread safety**:
+   - Ensure no shared mutable state between test classes
+   - Use `@TempDir` for file system tests
+   - Verify WireMock uses dynamic ports (via `@WireMockTest`)
+4. **Module-specific testing**: Test individual modules to isolate issues
+   ```bash
+   mvn test -pl sentinel-ai-core -Dtest.thread.count=2
+   ```
 
 ## Common Tasks for AI Agents
 - **Implementing a Tool**: Create a class implementing `InternalTool` or expose methods in a `ToolBox`.

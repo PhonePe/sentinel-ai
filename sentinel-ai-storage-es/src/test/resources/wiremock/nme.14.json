@@ -1,19 +1,20 @@
 {
-  "id" : "chatcmpl-DHudkizqlyNJZRpDxKPE0RtwMAJ5V",
+  "id" : "chatcmpl-DL0NJVUXYVYR6Bp3YRUPi5gdhyyRz",
   "object" : "chat.completion",
-  "created" : 1773161672,
+  "created" : 1773898701,
   "model" : "gpt-4o-mini-2024-07-18",
+  "service_tier" : "default",
   "system_fingerprint" : "fp_eb37e061ec",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
       "tool_calls" : [ {
-        "id" : "call_bSIHs1H5pSgN2XmHUbhDyq7F",
+        "id" : "call_S4qeaSLh9R7nn85VxBFt3ohO",
         "type" : "function",
         "function" : {
-          "name" : "__output_generator__",
-          "arguments" : "{\"output\":{\"message\":\"Hello Mr. Santanu! It's great to connect with you. I hope you're having a wonderful day. Regarding your question about the weather, I recall that you live in Bangalore, which is known for its sunny weather. So, I would imagine that the weather is quite pleasant and sunny today as well. Bangalore's climate is generally mild and enjoyable, making it a lovely place to be outdoors. If you have any specific activities planned or if you're enjoying the sunshine, I'd love to hear about it!\",\"username\":\"Santanu\"},\"memoryOutput\":{\"generatedMemory\":[{\"content\":\"Santanu lives in Bangalore and the weather is sunny.\",\"name\":\"UserLocationAndWeather\",\"reusabilityScore\":10,\"scope\":\"ENTITY\",\"scopeId\":\"ss\",\"topics\":[\"weather\",\"location\",\"Bangalore\"],\"type\":\"SEMANTIC\"}]}}"
+          "name" : "simple_agent_get_salutation",
+          "arguments" : "{\"params\":{\"name\":\"Santanu\"}}"
         }
       } ],
       "annotations" : [ ]
@@ -22,8 +23,8 @@
   } ],
   "usage" : {
     "prompt_tokens" : 1629,
-    "completion_tokens" : 185,
-    "total_tokens" : 1814,
+    "completion_tokens" : 21,
+    "total_tokens" : 1650,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

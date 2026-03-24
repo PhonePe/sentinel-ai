@@ -82,4 +82,10 @@ public class AgentSetup {
      * Retry setup for model calls
      */
     RetrySetup retrySetup;
+
+    /**
+     * Auto compaction setup.
+     */
+    @Builder.Default
+    AutoCompactionSetup autoCompactionSetup = AutoCompactionSetup.DEFAULT;
 }

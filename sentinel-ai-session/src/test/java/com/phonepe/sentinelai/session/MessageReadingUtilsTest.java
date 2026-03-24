@@ -23,7 +23,6 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
-import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
 import com.phonepe.sentinelai.session.history.selectors.MessageSelector;
 
 import java.time.LocalDateTime;
@@ -147,11 +146,7 @@ class MessageReadingUtilsTest {
     @BeforeEach
     void setUp() {
         sessionStore = new InMemorySessionStore();
-        setup = new AgentSessionExtensionSetup(2,
-                                               1000,
-                                               60,
-                                               CompactionPrompts.DEFAULT,
-                                               AgentSessionExtensionSetup.DEFAULT_COMPACTION_TRIGGERING_EVENTS);
+        setup = new AgentSessionExtensionSetup(2, false);
     }
 
     @Test

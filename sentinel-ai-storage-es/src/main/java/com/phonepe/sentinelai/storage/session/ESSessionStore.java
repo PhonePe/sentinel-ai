@@ -54,7 +54,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.UnaryOperator;
 
 import static co.elastic.clients.elasticsearch._types.Refresh.True;
@@ -112,6 +111,11 @@ public class ESSessionStore implements SessionStore {
                                                    boolean skipSystemPrompt,
                                                    BiScrollable.DataPointer inPointer,
                                                    QueryDirection queryDirection) {
+        log.debug("Data pointer received for session {}: {}, queryDirection: {}, skipSystemPrompt: {}",
+                  sessionId,
+                  inPointer,
+                  queryDirection,
+                  skipSystemPrompt);
         final var olderPointerStr = AgentUtils.getIfNotNull(inPointer,
                                                             BiScrollable.DataPointer::getOlder,
                                                             null);
@@ -198,6 +202,9 @@ public class ESSessionStore implements SessionStore {
                 .sorted(Comparator.comparingLong(AgentMessage::getTimestamp)
                         .thenComparing(AgentMessage::getMessageId))
                 .toList();
+        log.debug("Returning messages for session {}, count: {}",
+                  sessionId,
+                  convertedMessages.size());
 
         return new BiScrollable<>(List.copyOf(convertedMessages), outPointer);
     }
@@ -209,16 +216,14 @@ public class ESSessionStore implements SessionStore {
                              List<AgentMessage> messages) {
         final var indexName = messagesIndexName();
         final var bulkOpBuilder = new BulkRequest.Builder();
-        final var currIndex = new AtomicInteger(0);
-        final var idPrefix = UUID.nameUUIDFromBytes((sessionId + "-" + runId)
-                .getBytes(StandardCharsets.UTF_8)).toString();
         messages.forEach(message -> {
             final var storedMessage = toStoredMessage(sessionId,
                                                       runId,
                                                       message);
+            final var id = UUID.nameUUIDFromBytes((sessionId + "-" + runId + "-" + message.getMessageId())
+                    .getBytes(StandardCharsets.UTF_8)).toString();
             bulkOpBuilder.operations(op -> op.update(idx -> idx.index(indexName)
-                    .id("%s-%04d".formatted(idPrefix,
-                                            currIndex.getAndIncrement()))
+                    .id(id)
                     .action(u -> u.doc(storedMessage).docAsUpsert(true))));
         });
         bulkOpBuilder.refresh(True);

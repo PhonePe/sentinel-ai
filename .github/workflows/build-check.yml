@@ -39,7 +39,7 @@ jobs:
       - name: Build (run unit + integration tests)
         env:
           MAVEN_OPTS: -Xmx2G
-        run: mvn -B -V -T1C clean verify
+        run: mvn -B -V -T1C clean verify -Dtest.thread.count=2
 
       - name: Upload Surefire reports
         if: always()

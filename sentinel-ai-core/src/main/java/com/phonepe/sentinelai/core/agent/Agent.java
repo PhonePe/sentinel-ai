@@ -48,6 +48,7 @@ import com.phonepe.sentinelai.core.outputvalidation.DefaultOutputValidator;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
 import com.phonepe.sentinelai.core.outputvalidation.ValidationErrorFixPrompt;
+import com.phonepe.sentinelai.core.preprocessors.AutoCompactionProcessor;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
@@ -199,6 +200,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             registerToolbox(extension);
             extension.onExtensionRegistrationCompleted(self);
         });
+        final var compactionSetup = Objects.requireNonNullElse(setup.getAutoCompactionSetup(),
+                                                               AutoCompactionSetup.DEFAULT);
+        this.agentMessagesPreProcessors.add(new AutoCompactionProcessor(compactionSetup));
     }
 
     public abstract String name();
@@ -350,6 +354,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
                                     toXmlContent(inputRequest),
+                                    false,
                                     LocalDateTime.now()));
         final var processingMode = ProcessingMode.DIRECT;
         final var modelRunContext = new ModelRunContext(name(),
@@ -512,6 +517,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
                                     toXmlContent(input),
+                                    false,
                                     LocalDateTime.now()));
         final var modelRunContext = new ModelRunContext(name(),
                                                         runId,
@@ -621,6 +627,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                   mergedAgentSetup
                                                                                           .getMapper()
                                                                                           .writeValueAsString(agentOutputData))),
+                                        false,
                                         LocalDateTime.now()));
             return AgentOutput.error(modelOutput.getNewMessages(),
                                      modelOutput.getNewMessages(),

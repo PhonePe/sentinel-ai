@@ -108,6 +108,7 @@ class OpenAICompletionsTokenCounterTest {
         UserPrompt userPrompt = new UserPrompt("s1",
                                                "r1",
                                                "User",
+                                               false,
                                                LocalDateTime.now());
 
         int expected = TokenCountingConfig.DEFAULT
@@ -216,6 +217,7 @@ class OpenAICompletionsTokenCounterTest {
         UserPrompt userPrompt = new UserPrompt("s1",
                                                "r1",
                                                content,
+                                               false,
                                                LocalDateTime.now());
 
         int expected = TokenCountingConfig.DEFAULT
