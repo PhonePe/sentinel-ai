@@ -60,7 +60,7 @@ jobs:
         env:
           MAVEN_OPTS: -Xmx2G
         run: |
-           mvn -B -V -T1C clean verify -Dtest.thread.count=1
+           mvn -B -V -T1C clean verify -Dtest.thread.count=4
 
       - name: Upload Surefire reports
         if: always()
