@@ -36,6 +36,9 @@ jobs:
           java-version: '17'
           cache: 'maven'
 
+      - name: Run spotless checkstyle
+        run: mvn spotless:check
+
       - name: Build (run unit + integration tests)
         env:
           MAVEN_OPTS: -Xmx2G
