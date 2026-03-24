@@ -36,6 +36,22 @@ jobs:
           java-version: '17'
           cache: 'maven'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Cache npm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-mcp-server-everything-2025.12.18
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Pre-warm npx cache for MCP server used in tests
+        run: npx -y @modelcontextprotocol/server-everything@2025.12.18 --help || true
+
 # Disabling spotless check for now since it is flagging way too many classes as violating the checks
 #      - name: Run spotless checkstyle
 #        run: mvn -Plint spotless:check
