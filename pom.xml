@@ -277,6 +277,7 @@
                     <threadCount>${test.thread.count}</threadCount>
                     <perCoreThreadCount>true</perCoreThreadCount>
                     <useUnlimitedThreads>false</useUnlimitedThreads>
+                    <forkCount>0</forkCount>
                 </configuration>
             </plugin>
             <plugin>
