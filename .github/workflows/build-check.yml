@@ -45,7 +45,15 @@ jobs:
       # So the installation should ideally happen only once until there are changes in the package version
       - name: Install mcp server-everything package and its dependencies
         run: |
-          npm list -g @modelcontextprotocol/server-everything@2025.12.18 || npm install --no-fund -dd -g @modelcontextprotocol/server-everything@2025.12.18
+          set +e
+          npm list -g @modelcontextprotocol/server-everything@2025.12.18
+          if [ "$?" -ne 0 ]; then
+             set -e
+             echo "Package @modelcontextprotocol/server-everything@2025.12.18 not found globally, installing it..."
+             npm install --no-fund -dd -g @modelcontextprotocol/server-everything@2025.12.18
+          else
+             echo "Package @modelcontextprotocol/server-everything@2025.12.18 is already installed globally, skipping installation."
+          fi
 
       # Disabling spotless check for now since it is flagging way too many classes as violating the checks
       #- name: Run spotless checkstyle
