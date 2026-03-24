@@ -309,7 +309,7 @@
             </activation>
         </profile>
         <profile>
-            <id>lint</id>
+            <id>spotless</id>
             <build>
                 <plugins>
                     <plugin>

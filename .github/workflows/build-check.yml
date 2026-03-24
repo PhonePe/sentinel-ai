@@ -59,7 +59,7 @@ jobs:
 
       # Disabling spotless check for now since it is flagging way too many classes as violating the checks
       #- name: Run spotless checkstyle
-      #  run: mvn -Plint spotless:check
+      #  run: mvn -Pspotless spotless:check
 
       - name: Build (run unit + integration tests)
         env:
