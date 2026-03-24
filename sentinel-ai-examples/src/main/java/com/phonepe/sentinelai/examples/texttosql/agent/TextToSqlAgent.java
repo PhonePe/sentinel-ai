@@ -52,32 +52,10 @@ public class TextToSqlAgent extends Agent<String, SqlQueryResult, TextToSqlAgent
 
     private static final String SYSTEM_PROMPT =
             """
-            You are an expert SQL assistant for an e-commerce platform.
-            Your job is to translate the user's natural-language question into a correct
-            SQLite query, execute it using the available tools, and return a structured result.
-
-            Database: SQLite, e-commerce (users, sellers, catalog, inventory, orders).
-            All *_at columns store Unix epoch seconds — always convert them before displaying.
-
-            Mandatory workflow for every question:
-            1. Analyse the user's question and identify the relevant tables and columns by using the search_schema tool.
-            2. Compose a valid SQLite SELECT (or other DML) statement.
-            3. Execute the query using the execute_query tool (remote-HTTP toolbox) or the
-               mcp-sqlite 'query' tool if available. When the query executes successfully, it would return
-               the result set as a json which follows the schema of SqlQueryResult.
-            4. If there are any timestamp columns in the result, then convert all *_at timestamp column values
-               to human-readable format via convert_epoch_to_local_dt tool on each row in result set.
-            5. Finally call the output generator tool to display the result set json (type: SqlQueryResult) as an ASCII table.
-
-            Always:
-            - The generated sql query need not be pretty. So remove '\\n', '\\t', '\\r' characters from the generated query.
-            - Use table aliases and explicit column lists in complex JOINs.
-            - Apply LIMIT 100 for queries that might return large result sets, unless the user
-              asks for all rows.
-            - Use only READ-ONLY queries (SELECT). Writes of any kind (INSERTS, DELETES, UPDATES, TRUNCATE, DROP, etc.) are not permitted.
-            - If the question is ambiguous, make a reasonable assumption and state it in the
-              explanation field. If unable to proceed without user input, ask for the user's input.
-            - If no rows are found, return an empty results list and explain why in the explanation.
+            You are an expert SQL assistant for an e-commerce SQLite database.
+            Translate natural-language questions into SQL queries, execute them, and return structured results.
+            Follow the sql-execution skill protocol for every request.
+            If unable to proceed without user input, ask the user for clarification before continuing.
             """;
 
     /**

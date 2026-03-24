@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.examples.texttosql.tools;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
@@ -28,6 +29,7 @@ import de.vandermeer.asciitable.AsciiTable;
 import de.vandermeer.asciitable.CWC_LongestLine;
 import de.vandermeer.skb.interfaces.transformers.textformat.TextAlignment;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -62,6 +64,7 @@ public class LocalSqlTools implements ToolBox {
 
     private final String dbPath;
     private final SchemaVectorStore vectorStore;
+    private final Map<String, JsonNode> schemaDescriptions;
 
     /**
      * Constructs LocalSqlTools and initialises the Lucene schema vector store.
@@ -77,6 +80,30 @@ public class LocalSqlTools implements ToolBox {
     public LocalSqlTools(String dbPath, Path dataDir) {
         this.dbPath = dbPath;
         this.vectorStore = VectorStoreInitializer.ensureInitialized(dataDir);
+        this.schemaDescriptions = loadSchemaDescriptions();
+    }
+
+    private static Map<String, JsonNode> loadSchemaDescriptions() {
+        try (InputStream is =
+                LocalSqlTools.class.getResourceAsStream("/db/schema_descriptions.json")) {
+            if (is == null) {
+                log.warn("schema_descriptions.json not found on classpath");
+                return Map.of();
+            }
+            JsonNode root = MAPPER.readTree(is);
+            JsonNode tables = root.get("tables");
+            if (tables == null || !tables.isArray()) {
+                return Map.of();
+            }
+            Map<String, JsonNode> result = new LinkedHashMap<>();
+            for (JsonNode tableNode : tables) {
+                result.put(tableNode.get("name").asText(), tableNode);
+            }
+            return result;
+        } catch (Exception e) {
+            log.warn("Failed to load schema descriptions: {}", e.getMessage());
+            return Map.of();
+        }
     }
 
     @Override
@@ -257,6 +284,95 @@ public class LocalSqlTools implements ToolBox {
             log.warn("Schema vector search failed for query '{}': {}", query, e.getMessage());
             return "Schema search failed: " + e.getMessage();
         }
+    }
+
+    /**
+     * Returns the full semantic description of one or more tables from
+     * {@code schema_descriptions.json}, including all column names, data types, nullability, and
+     * natural-language descriptions.
+     *
+     * <p>Call this after {@code search_schema} to get structured details for the tables identified
+     * as relevant to the user's question.
+     *
+     * @param tableNames list of table names to describe (e.g. ["orders", "users"])
+     * @return formatted description for each requested table with its columns
+     */
+    @Tool(
+            name = "get_table_desc",
+            value =
+                    "Get the full description of one or more tables from schema_descriptions.json. "
+                            + "Returns column names, data types, nullability, and semantic descriptions. "
+                            + "Call this after search_schema to understand the tables relevant to the query. "
+                            + "Parameters: tableNames (list of table names, e.g. [\"orders\", \"users\"]).")
+    public String getTableDescription(List<String> tableNames) {
+        StringBuilder sb = new StringBuilder();
+        for (String tableName : tableNames) {
+            JsonNode tableNode = schemaDescriptions.get(tableName);
+            if (tableNode == null) {
+                sb.append("## Table: ").append(tableName).append("\nNot found.\n\n");
+                continue;
+            }
+            sb.append("## Table: ").append(tableName).append("\n");
+            sb.append(tableNode.get("description").asText()).append("\n\n");
+
+            JsonNode pks = tableNode.get("primaryKeyColumns");
+            if (pks != null && pks.isArray()) {
+                sb.append("Primary key: ");
+                pks.forEach(pk -> sb.append(pk.asText()).append(" "));
+                sb.append("\n");
+            }
+
+            JsonNode columns = tableNode.get("columns");
+            if (columns != null && columns.isArray()) {
+                sb.append("\n**Columns:**\n");
+                for (JsonNode col : columns) {
+                    sb.append(
+                            String.format(
+                                    "- `%s` (%s%s): %s%n",
+                                    col.get("name").asText(),
+                                    col.get("dataType").asText(),
+                                    col.get("nullable").asBoolean() ? ", nullable" : ", not null",
+                                    col.get("description").asText()));
+                }
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Returns the description of a specific column from {@code schema_descriptions.json}.
+     *
+     * @param tableName name of the table containing the column
+     * @param columnName name of the column to describe
+     * @return data type, nullability, and semantic description of the column
+     */
+    @Tool(
+            name = "get_column_desc",
+            value =
+                    "Get the description of a specific column from schema_descriptions.json. "
+                            + "Returns the data type, nullability, and semantic meaning of the column. "
+                            + "Parameters: tableName (table name), columnName (column name).")
+    public String getColumnDescription(String tableName, String columnName) {
+        JsonNode tableNode = schemaDescriptions.get(tableName);
+        if (tableNode == null) {
+            return "Table not found: " + tableName;
+        }
+        JsonNode columns = tableNode.get("columns");
+        if (columns != null && columns.isArray()) {
+            for (JsonNode col : columns) {
+                if (columnName.equals(col.get("name").asText())) {
+                    return String.format(
+                            "Column `%s.%s` (%s%s): %s",
+                            tableName,
+                            columnName,
+                            col.get("dataType").asText(),
+                            col.get("nullable").asBoolean() ? ", nullable" : ", not null",
+                            col.get("description").asText());
+                }
+            }
+        }
+        return "Column not found: " + tableName + "." + columnName;
     }
 
     // -------------------------------------------------------------------------
