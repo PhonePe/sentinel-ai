@@ -35,20 +35,23 @@ jobs:
           java-version: '17'
           cache: 'maven'
 
-      - name: Set up Node.js
+      - name: Set up Node.js and cache npm packages
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
           package-manager-cache: true
 
+      - name: Install mcp server-everything package and its dependencies
+        run: npx -y @modelcontextprotocol/server-everything@2025.12.18
+
 #      - name: Cache npm packages
 #        uses: actions/cache@v4
 #        with:
 #          path: ~/.npm
-#          key: ${{ runner.os }}-npm-mcp-server-everything-2025.12.18
+#          key: ${{ runner.os }}-npm-packages
 #          restore-keys: |
-#            ${{ runner.os }}-npm-
+#            ${{ runner.os }}-npm-packages
 #
 #      - name: Pre-warm npx cache for MCP server used in tests
 #        run: npx -y @modelcontextprotocol/server-everything@2025.12.18 --help || true
