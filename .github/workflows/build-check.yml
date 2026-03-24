@@ -37,7 +37,7 @@ jobs:
         with:
           path: |
             ~/.npm
-            /usr/local/lib/node_modules
+            ~/node_modules
           key: ${{ runner.os }}-npm-packages
           restore-keys: |
             ${{ runner.os }}-npm-packages
@@ -48,11 +48,11 @@ jobs:
       - name: Install mcp server-everything package and its dependencies
         run: |
           set +e
-          npm list -g @modelcontextprotocol/server-everything@2025.12.18
+          npm list @modelcontextprotocol/server-everything@2025.12.18
           if [ "$?" -ne 0 ]; then
              set -e
              echo "Package @modelcontextprotocol/server-everything@2025.12.18 not found globally, installing it..."
-             npm install --no-fund -dd -g @modelcontextprotocol/server-everything@2025.12.18
+             npm install --no-fund -dd @modelcontextprotocol/server-everything@2025.12.18
           else
              echo "Package @modelcontextprotocol/server-everything@2025.12.18 is already installed globally, skipping installation."
           fi
