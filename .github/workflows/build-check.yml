@@ -20,14 +20,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Cache Maven local repository
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
       - name: Set up JDK 17 and cache Maven
         uses: actions/setup-java@v4
         with:
@@ -52,7 +44,8 @@ jobs:
       # All the related npm packages should be cached in the Github runner when the same CI job runs again
       # So the installation should ideally happen only once until there are changes in the package version
       - name: Install mcp server-everything package and its dependencies
-        run: npm install --no-fund -dd -g @modelcontextprotocol/server-everything@2025.12.18
+        run: |
+          npm list -g @modelcontextprotocol/server-everything@2025.12.18 || npm install --no-fund -dd -g @modelcontextprotocol/server-everything@2025.12.18
 
       # Disabling spotless check for now since it is flagging way too many classes as violating the checks
       #- name: Run spotless checkstyle
