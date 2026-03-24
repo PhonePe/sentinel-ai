@@ -32,6 +32,7 @@ import com.google.common.primitives.Primitives;
 import io.appform.signals.signals.ConsumingFireForgetSignal;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
@@ -315,6 +316,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 .getAgentSetup(), this.setup);
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input
                 .getOldMessages(), List.of()));
+        messages.removeIf(message -> message.getMessageType() == AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE);
         final var requestMetadata = Objects.requireNonNullElseGet(input
                 .getRequestMetadata(),
                                                                   AgentRequestMetadata::new);
@@ -348,8 +350,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                .error(ErrorType.SERIALIZATION_ERROR,
                                                                                       e)));
         }
-        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(AgentUtils
-                .sessionId(context), runId, finalSystemPrompt, false, null));
+        //Prepend the system prompt at the beginning of the messages so that it is the first thing the model sees
+        messages.add(0,
+                     new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(AgentUtils
+                             .sessionId(context), runId, finalSystemPrompt, false, null));
         messages.addAll(extensionMessages(inputRequest, context));
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
@@ -476,6 +480,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 .getAgentSetup(), this.setup);
         final var messages = new ArrayList<>(Objects.requireNonNullElse(input
                 .getOldMessages(), List.of()));
+        messages.removeIf(message -> message.getMessageType() == AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE);
 
         final var requestMetadata = Objects.requireNonNullElseGet(input
                 .getRequestMetadata(),
@@ -511,8 +516,14 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                .error(ErrorType.SERIALIZATION_ERROR,
                                                                                       e)));
         }
-        messages.add(new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(AgentUtils
-                .sessionId(context), runId, finalSystemPrompt, false, null));
+        messages.add(0,
+                     new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
+                                                                                         AgentUtils
+                                                                                                 .sessionId(context),
+                                                                                         runId,
+                                                                                         finalSystemPrompt,
+                                                                                         false,
+                                                                                         null));
         messages.addAll(extensionMessages(input.getRequest(), context));
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
