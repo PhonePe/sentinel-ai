@@ -105,7 +105,7 @@ public class ConfiguredAgent {
                                              error);
                 }
                 final var json = mapper.readTree(output.getData());
-                return new AgentOutput<>(json,
+                return new AgentOutput<>(List.of(json),
                                          output.getNewMessages(),
                                          output.getAllMessages(),
                                          output.getUsage(),

@@ -81,6 +81,7 @@ import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 import static java.util.stream.Collectors.toMap;
@@ -585,67 +586,81 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var context = processingContext.context();
         final var mergedAgentSetup = processingContext.agentSetup();
         final var messages = processingContext.messages();
-        try {
-            final var errorResponse = Agent.<T>handleErrorResponse(modelOutput)
-                    .orElse(null);
-            if (errorResponse != null) {
-                mergeModelOutput(processingContext, modelOutput);
-                return errorResponse;
-            }
-            //Creating an empty object here as we don't want to waste time doing null checks
-            final var data = Objects.requireNonNullElseGet(modelOutput
-                    .getData(), () -> setup.getMapper().createObjectNode());
-            final var agentOutputData = data.get(OUTPUT_VARIABLE_NAME);
-
-            if (JsonUtils.empty(agentOutputData)) {
-                logEmptyData();
-                return AgentOutput.error(modelOutput.getNewMessages(),
-                                         modelOutput.getAllMessages(),
-                                         modelOutput.getUsage(),
-                                         SentinelError.error(
-                                                             ErrorType.NO_RESPONSE));
-            }
-            final var translatedData = translateData(agentOutputData,
-                                                     mergedAgentSetup);
-            final var validationOutput = outputValidator.validate(context,
-                                                                  translatedData);
-            if (validationOutput.isSuccessful()) {
-                processExtensionData(context, messages, data);
-                return AgentOutput.success(translatedData,
-                                           modelOutput.getNewMessages(),
-                                           modelOutput.getAllMessages(),
-                                           modelOutput.getUsage());
-            }
-            final var validationErrors = Joiner.on(",")
-                    .join(validationOutput.getFailures()
-                            .stream()
-                            .map(OutputValidationResults.ValidationFailure::getMessage)
-                            .toList());
-            messages.add(new UserPrompt(AgentUtils.sessionId(context),
-                                        context.getRunId(),
-                                        toXmlContent(new ValidationErrorFixPrompt(validationErrors,
-                                                                                  mergedAgentSetup
-                                                                                          .getMapper()
-                                                                                          .writeValueAsString(agentOutputData))),
-                                        false,
-                                        LocalDateTime.now()));
-            return AgentOutput.error(modelOutput.getNewMessages(),
-                                     modelOutput.getNewMessages(),
-                                     modelOutput.getUsage(),
-                                     SentinelError.error(
-                                                         ErrorType.DATA_VALIDATION_FAILURE,
-                                                         validationErrors));
+        final var errorResponse = Agent.<T>handleErrorResponse(modelOutput)
+                .orElse(null);
+        if (errorResponse != null) {
+            mergeModelOutput(processingContext, modelOutput);
+            return errorResponse;
         }
-        catch (JsonProcessingException e) {
-            log.error("Error converting model output to agent output. Error: {}",
-                      AgentUtils.rootCause(e),
-                      e);
+        //Creating an empty object here as we don't want to waste time doing null checks
+        final var outputList = Objects.requireNonNullElseGet(modelOutput.getData(), List::<JsonNode>of);
+        if (outputList.isEmpty()) {
+            logEmptyData();
+            return AgentOutput.error(modelOutput.getNewMessages(),
+                                     modelOutput.getAllMessages(),
+                                     modelOutput.getUsage(),
+                                     SentinelError.error(ErrorType.NO_RESPONSE));
+        }
+        final var validationErrors = new ArrayList<String>();
+        final var translatedDataList = new ArrayList<T>();
+        final var jsonProcessingErrors = new ArrayList<String>();
+        outputList.stream()
+                .filter(data -> data.has(OUTPUT_VARIABLE_NAME))
+                .forEach(data -> {
+                    try {
+                        final var translatedData = translateData(data, mergedAgentSetup);
+                        final var validationOutput = outputValidator.validate(context, translatedData);
+                        if (validationOutput.isSuccessful()) {
+                            processExtensionData(context, messages, data);
+                            translatedDataList.add(translatedData);
+                        }
+                        else {
+                            validationOutput.getFailures()
+                                    .stream()
+                                    .map(OutputValidationResults.ValidationFailure::getMessage)
+                                    .forEach(validationErrors::add);
+                        }
+                    }
+                    catch (JsonProcessingException e) {
+                        final var rootCause = AgentUtils.rootCause(e);
+                        log.error("Error translating model output to agent output. Error: {}",
+                                  rootCause,
+                                  e);
+                        jsonProcessingErrors.add(AgentUtils.rootCause(e).getMessage());
+                    }
+                });
+        if (!validationErrors.isEmpty()) {
+            final var consolidatedErrors = Joiner.on(",").join(validationErrors);
+            try {
+                messages.add(new UserPrompt(AgentUtils.sessionId(context),
+                                            context.getRunId(),
+                                            toXmlContent(new ValidationErrorFixPrompt(consolidatedErrors,
+                                                                                      mergedAgentSetup
+                                                                                              .getMapper()
+                                                                                              .writeValueAsString(translatedDataList))),
+                                            false,
+                                            LocalDateTime.now()));
+            }
+            catch (JsonProcessingException e) {
+                log.error("Error serializing validation error fix prompt", e);
+            }
+            return AgentOutput.error(modelOutput.getNewMessages(),
+                                     modelOutput.getAllMessages(),
+                                     modelOutput.getUsage(),
+                                     SentinelError.error(ErrorType.DATA_VALIDATION_FAILURE, consolidatedErrors));
+        }
+        if (!jsonProcessingErrors.isEmpty()) {
+            final var errors = String.join(",", jsonProcessingErrors);
             return AgentOutput.error(modelOutput.getNewMessages(),
                                      modelOutput.getAllMessages(),
                                      modelOutput.getUsage(),
                                      SentinelError.error(ErrorType.JSON_ERROR,
-                                                         e));
+                                                         errors));
         }
+        return AgentOutput.success(translatedDataList,
+                                   modelOutput.getNewMessages(),
+                                   modelOutput.getAllMessages(),
+                                   modelOutput.getUsage());
     }
 
     @SuppressWarnings("unused")
@@ -656,8 +671,14 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         if (errorResponse != null) {
             return errorResponse;
         }
+        final var dataList = Objects.requireNonNullElseGet(modelOutput.getData(), List::<JsonNode>of)
+                .stream()
+                .filter(data -> !JsonUtils.empty(data) || data.isTextual())
+                .map(JsonNode::asText)
+                .toList();
+
         final var data = modelOutput.getData();
-        if (JsonUtils.empty(data) || !data.isTextual()) {
+        if (dataList.isEmpty()) {
             logEmptyData();
             return AgentOutput.error(modelOutput.getNewMessages(),
                                      modelOutput.getAllMessages(),
@@ -665,7 +686,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                      SentinelError.error(ErrorType.NO_RESPONSE,
                                                          "Did not get output from model"));
         }
-        return AgentOutput.success(data.asText(),
+        return AgentOutput.success(dataList,
                                    modelOutput.getNewMessages(),
                                    modelOutput.getAllMessages(),
                                    modelOutput.getUsage());

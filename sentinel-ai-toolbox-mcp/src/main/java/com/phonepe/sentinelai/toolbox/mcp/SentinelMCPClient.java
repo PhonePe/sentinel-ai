@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.toolbox.mcp;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.modelcontextprotocol.client.McpClient;
@@ -379,9 +380,15 @@ public class SentinelMCPClient implements AutoCloseable {
                              List.of())
                     .join();
 
-            final var responseNode = response.getData()
-                    .get(SAMPLING_OUTPUT_KEY);
-            if (JsonUtils.empty(responseNode)) {
+            final var responseNode = Objects.requireNonNullElseGet(response.getData(),
+                                                                   List::<JsonNode>of)
+                    .stream()
+                    .filter(node -> node.has(SAMPLING_OUTPUT_KEY))
+                    .map(node -> node.get(SAMPLING_OUTPUT_KEY))
+                    .filter(node -> !JsonUtils.empty(node))
+                    .findFirst()
+                    .orElse(null);
+            if (null == responseNode) {
                 return new McpSchema.CreateMessageResult(McpSchema.Role.ASSISTANT,
                                                          new McpSchema.TextContent("Sampling call failed. No content was generated"),
                                                          agentSetup.getModel()

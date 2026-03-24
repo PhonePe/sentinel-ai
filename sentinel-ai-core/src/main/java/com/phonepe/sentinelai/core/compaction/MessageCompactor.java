@@ -152,11 +152,15 @@ public class MessageCompactor {
                                   output.getError());
                     }
                     else {
-                        final var summaryData = output.getData().get(OUTPUT_KEY);
-                        if (JsonUtils.empty(summaryData)) {
+                        final var dataList = Objects.requireNonNullElseGet(output.getData(), List::<JsonNode>of);
+                        final var dataNode = dataList.isEmpty() ? null : dataList.get(0);
+                        if (dataNode == null
+                                || !dataNode.has(OUTPUT_KEY)
+                                || JsonUtils.empty(dataNode.get(OUTPUT_KEY))) {
                             log.debug("No summary extracted from the output");
                         }
                         else {
+                            final var summaryData = dataNode.get(OUTPUT_KEY);
                             log.debug("Extracted session summary output from summarization run: {}",
                                       summaryData);
                             try {

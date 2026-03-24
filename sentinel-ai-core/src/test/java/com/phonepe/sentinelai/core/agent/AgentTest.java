@@ -163,9 +163,9 @@ class AgentTest {
                                                                      LocalDateTime
                                                                              .now());
                             messages.add(message);
-                            return ModelOutput.success(createTextOutput(
-                                                                        "Hello " + response
-                                                                                .getResponse()),
+                            return ModelOutput.success(List.of(createTextOutput(
+                                                                                "Hello " + response
+                                                                                        .getResponse())),
                                                        List.of(message),
                                                        messages,
                                                        context.getModelUsageStats());
@@ -226,9 +226,9 @@ class AgentTest {
                                                                      LocalDateTime
                                                                              .now());
                             messages.add(message);
-                            return ModelOutput.success(createTextOutput(
-                                                                        "Hello " + response
-                                                                                .getResponse()),
+                            return ModelOutput.success(List.of(createTextOutput(
+                                                                                "Hello " + response
+                                                                                        .getResponse())),
                                                        List.of(message),
                                                        messages,
                                                        context.getModelUsageStats());
@@ -284,9 +284,9 @@ class AgentTest {
                                                                      LocalDateTime
                                                                              .now());
                             messages.add(message);
-                            return ModelOutput.success(createTextOutput(
-                                                                        "Hello " + response
-                                                                                .getResponse()),
+                            return ModelOutput.success(List.of(createTextOutput(
+                                                                                "Hello " + response
+                                                                                        .getResponse())),
                                                        List.of(message),
                                                        messages,
                                                        context.getModelUsageStats());
@@ -399,8 +399,8 @@ class AgentTest {
                                                                      LocalDateTime
                                                                              .now());
                             messages.add(message);
-                            return ModelOutput.success(createTextOutput(
-                                                                        "Tool call not approved"),
+                            return ModelOutput.success(List.of(createTextOutput(
+                                                                                "Tool call not approved")),
                                                        List.of(message),
                                                        messages,
                                                        context.getModelUsageStats());
@@ -518,9 +518,9 @@ class AgentTest {
                                                                      LocalDateTime
                                                                              .now());
                             messages.add(message);
-                            return ModelOutput.success(createTextOutput(
-                                                                        "Hello " + response
-                                                                                .getResponse()),
+                            return ModelOutput.success(List.of(createTextOutput(
+                                                                                "Hello " + response
+                                                                                        .getResponse())),
                                                        List.of(message),
                                                        messages,
                                                        context.getModelUsageStats());

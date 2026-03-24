@@ -51,8 +51,7 @@ public class NonContextualDefaultExternalToolRunner implements ToolRunner {
     @Override
     public ToolCallResponse runTool(Map<String, ExecutableTool> tools,
                                     ToolCall toolCall) {
-        final var tool = Objects.requireNonNull(tools.get(toolCall
-                .getToolName()));
+        final var tool = Objects.requireNonNull(tools.get(toolCall.getToolName()));
         return tool.accept(new ExecutableToolVisitor<ToolCallResponse>() {
             @Override
             @SneakyThrows

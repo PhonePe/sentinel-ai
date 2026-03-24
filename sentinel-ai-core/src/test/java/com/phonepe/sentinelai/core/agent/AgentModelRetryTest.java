@@ -91,17 +91,17 @@ class AgentModelRetryTest {
                                                                  JsonMapper mapper,
                                                                  TextNode output) {
         if (callCount.getAndIncrement() < 2) {
-            return CompletableFuture.completedFuture(ModelOutput.success(mapper
+            return CompletableFuture.completedFuture(ModelOutput.success(List.of(mapper
                     .createObjectNode()
                     .set(Agent.OUTPUT_VARIABLE_NAME,
-                         mapper.createObjectNode().textNode("")),
+                         mapper.createObjectNode().textNode(""))),
                                                                          List.of(),
                                                                          List.of(),
                                                                          new ModelUsageStats()));
         }
-        return CompletableFuture.completedFuture(ModelOutput.success(mapper
+        return CompletableFuture.completedFuture(ModelOutput.success(List.of(mapper
                 .createObjectNode()
-                .set(Agent.OUTPUT_VARIABLE_NAME, output),
+                .set(Agent.OUTPUT_VARIABLE_NAME, output)),
                                                                      List.of(),
                                                                      List.of(),
                                                                      new ModelUsageStats()));
@@ -111,10 +111,14 @@ class AgentModelRetryTest {
                                                                      JsonMapper mapper,
                                                                      TextNode output) {
         if (callCount.getAndIncrement() < 2) {
-            return CompletableFuture.completedFuture(ModelOutput.success(mapper
-                    .nullNode(), List.of(), List.of(), new ModelUsageStats()));
+            return CompletableFuture.completedFuture(ModelOutput.success(
+                                                                         List.of(mapper.nullNode()),
+                                                                         List.of(),
+                                                                         List.of(),
+                                                                         new ModelUsageStats()));
         }
-        return CompletableFuture.completedFuture(ModelOutput.success(output,
+        return CompletableFuture.completedFuture(ModelOutput.success(
+                                                                     List.of(output),
                                                                      List.of(),
                                                                      List.of(),
                                                                      new ModelUsageStats()));

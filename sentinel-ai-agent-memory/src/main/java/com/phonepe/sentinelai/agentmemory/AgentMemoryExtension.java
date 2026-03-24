@@ -360,14 +360,20 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
             log.error("Error extracting memory: {}", output.getError());
         }
         else {
-            final var extractedMemoryData = output.getData().get(OUTPUT_KEY);
-            if (JsonUtils.empty(extractedMemoryData)) {
-                log.debug("No memory extracted from the output");
-            }
-            else {
-                log.debug("Extracted memory output: {}", extractedMemoryData);
-                consumeAsync(messages, extractedMemoryData, data.getAgent());
-            }
+            Objects.requireNonNullElseGet(output.getData(), List::<JsonNode>of)
+                    .stream()
+                    .filter(jsonNode -> jsonNode.has(OUTPUT_KEY))
+                    .map(jsonNode -> jsonNode.get(OUTPUT_KEY))
+                    .forEach(extractedMemoryData -> {
+
+                        if (JsonUtils.empty(extractedMemoryData)) {
+                            log.debug("No memory extracted from the output");
+                        }
+                        else {
+                            log.debug("Extracted memory output: {}", extractedMemoryData);
+                            consumeAsync(messages, extractedMemoryData, data.getAgent());
+                        }
+                    });
         }
         log.info("Model usage stats for memory extraction run: {}",
                  output.getUsage());

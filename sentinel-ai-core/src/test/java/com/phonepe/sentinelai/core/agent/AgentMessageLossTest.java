@@ -99,10 +99,10 @@ class AgentMessageLossTest {
 
                                                       return CompletableFuture
                                                               .completedFuture(ModelOutput
-                                                                      .success(mapper
+                                                                      .success(List.of(mapper
                                                                               .createObjectNode()
                                                                               .set(Agent.OUTPUT_VARIABLE_NAME,
-                                                                                   output),
+                                                                                   output)),
                                                                                List.of(),
                                                                                invocation
                                                                                        .getArgument(2),
