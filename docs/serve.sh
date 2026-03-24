@@ -26,5 +26,6 @@ else
 fi
 
 echo "Starting MkDocs dev server at http://127.0.0.1:8000 ..."
-mkdocs serve
+mkdocs build --strict --theme material
+mkdocs serve --strict --livereload
 
