@@ -32,6 +32,7 @@ import io.github.sashirestela.openai.common.function.FunctionCall;
 import io.github.sashirestela.openai.common.tool.Tool;
 import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
 import io.github.sashirestela.openai.common.tool.ToolType;
+import io.github.sashirestela.openai.domain.assistant.StepDetail.ToolCallsStep.StepToolCall.CodeInterpreterToolCall.CodeInterpreterTool.Output;
 import io.github.sashirestela.openai.domain.chat.Chat;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
 import io.github.sashirestela.openai.domain.chat.ChatRequest;
@@ -331,7 +332,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                               newMessages,
                                                               oldMessages);
                         yield runToolsResponse.orElseGet(() -> {
-                            generatedOutput.add(message.getContent());
+                            if (outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
+                                generatedOutput.add(message.getContent());
+                            }
                             return processOutput(context,
                                                  generatedOutput,
                                                  oldMessages,
@@ -609,10 +612,14 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              // to cobble together the final output
                                                                              if (streamProcessingMode
                                                                                      .equals(Agent.StreamProcessingMode.TYPED)) {
+                                                                                 if (outputGenerationMode.equals(
+                                                                                                                 OutputGenerationMode.STRUCTURED_OUTPUT)) {
+                                                                                     generatedOutput.add(responseData
+                                                                                             .toString());
+                                                                                 }
 
                                                                                  yield processOutput(context,
-                                                                                                     List.of(responseData
-                                                                                                             .toString()),
+                                                                                                     generatedOutput,
                                                                                                      //We just take what we gathered return that
                                                                                                      oldMessages,
                                                                                                      stats,
@@ -656,11 +663,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                          .build(),
                                                                                                  stats,
                                                                                                  stopwatch);
-                                                                                 if (!generatedOutput.isEmpty()) {
+                                                                                 /* if (!generatedOutput.isEmpty()) {
                                                                                      //If the output generator was called, we use the generated output
                                                                                      if (streamProcessingMode
                                                                                              .equals(Agent.StreamProcessingMode.TYPED)) {
-
+                                                                                 
                                                                                          yield processOutput(context,
                                                                                                              generatedOutput,
                                                                                                              oldMessages,
@@ -670,9 +677,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                              stopwatch);
                                                                                      }
                                                                                      else
-
-                                                                 {
-
+                                                                                 
+                                                                                 {
+                                                                                 
                                                                                          yield processStreamingOutput(context,
                                                                                                                       generatedOutput,
                                                                                                                       oldMessages,
@@ -681,8 +688,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                                       newMessages,
                                                                                                                       stopwatch);
                                                                                      }
-
-                                                                                 }
+                                                                                 
+                                                                                 } */
                                                                              }
                                                                              yield null; //Continue to next chunk
                                                                          }
@@ -858,7 +865,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             if (!Strings.isNullOrEmpty(output)) {
                 generatedOutput.add(output);
             }
-            return new ExternalTool.ExternalToolResponse(output, ErrorType.SUCCESS);
+            return new ExternalTool.ExternalToolResponse("Output Processed. You can stop the session",
+                                                         ErrorType.SUCCESS);
         }
         catch (Throwable t) {
             final var rootCause = AgentUtils.rootCause(t);

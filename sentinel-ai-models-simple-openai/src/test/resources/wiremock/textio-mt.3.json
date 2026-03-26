@@ -1,0 +1,39 @@
+{
+  "id" : "chatcmpl-DNJRNqdjrhtZUxJuBPRLZlHR4xSD8",
+  "object" : "chat.completion",
+  "created" : 1774448645,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "service_tier" : "default",
+  "system_fingerprint" : "fp_eb37e061ec",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "tool_calls" : [ {
+        "id" : "call_36niHjCqIA4Zk14FJ9schQsN",
+        "type" : "function",
+        "function" : {
+          "name" : "__output_generator__",
+          "arguments" : "{\"output\":\"Hello, Santanu! Here’s a poem just for you:\\n\\nIn the garden where dreams take flight,\\nSantanu, your spirit shines so bright.\\nWith every step, you dance with grace,\\nA melody of joy in this beautiful space.\\n\\nThe sun whispers secrets, the breeze sings your name,\\nIn the tapestry of life, you’re a vibrant flame.\\nSo here’s to you, with laughter and cheer,\\nSantanu, the world is better with you near!\"}"
+        }
+      } ],
+      "annotations" : [ ]
+    },
+    "finish_reason" : "tool_calls"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 423,
+    "completion_tokens" : 119,
+    "total_tokens" : 542,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+
+

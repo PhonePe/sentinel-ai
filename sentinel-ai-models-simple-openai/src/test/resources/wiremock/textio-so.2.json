@@ -1,0 +1,375 @@
+{
+  "id" : "chatcmpl-DNJa6yvMsXOgafAOdqZIFMR5AaLcA",
+  "object" : "chat.completion",
+  "created" : 1774449186,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "service_tier" : "default",
+  "system_fingerprint" : "fp_eb37e061ec",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "{\"output\":\"Hello, Santanu! How can I assist you today?\"}",
+      "annotations" : [ ]
+    },
+    "finish_reason" : "stop"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 326,
+    "completion_tokens" : 22,
+    "total_tokens" : 348,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+} 
+[INFO] 
+[INFO] Standard error
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jacoco:0.8.14:report (report) @ sentinel-ai-models-simple-openai ---
+[INFO] Loading execution data file /home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-models-simple-openai/target/jacoco.exec
+[INFO] Analyzed bundle 'Sentinel AI OpenAI API Compliant Model Implementation' with 13 classes
+[INFO] 
+[INFO] -----------< com.phonepe.sentinel-ai:sentinel-ai-embedding >------------
+[INFO] Building Sentinel AI Embedding Models 1.1.1-alpha6                [4/13]
+[INFO]   from sentinel-ai-embedding/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- directory:1.0:highest-basedir (directories) @ sentinel-ai-embedding ---
+[INFO] Highest basedir set to: /home/santanu/Work/OSS/sentinel-ai-multi-ao
+[INFO] 
+[INFO] --- jacoco:0.8.14:prepare-agent (default) @ sentinel-ai-embedding ---
+[INFO] argLine set to -javaagent:/home/santanu/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=/home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-embedding/target/jacoco.exec
+[INFO] 
+[INFO] --- lombok:1.18.20.0:delombok (default) @ sentinel-ai-embedding ---
+[INFO] Delombok complete.
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ sentinel-ai-embedding ---
+[INFO] skip non existing resourceDirectory /home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-embedding/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.8.1:compile (default-compile) @ sentinel-ai-embedding ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- spotless:3.2.1:check (default) @ sentinel-ai-embedding ---
+[INFO] Spotless check skipped
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ sentinel-ai-embedding ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.8.1:testCompile (default-testCompile) @ sentinel-ai-embedding ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- surefire:3.3.1:test (default-test) @ sentinel-ai-embedding ---
+[INFO] 
+[INFO] --- jacoco:0.8.14:report (report) @ sentinel-ai-embedding ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] 
+[INFO] ----------< com.phonepe.sentinel-ai:sentinel-ai-toolbox-mcp >-----------
+[INFO] Building Sentinel AI ToolBox to work with MCP Servers 1.1.1-alpha6 [5/13]
+[INFO]   from sentinel-ai-toolbox-mcp/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- directory:1.0:highest-basedir (directories) @ sentinel-ai-toolbox-mcp ---
+[INFO] Highest basedir set to: /home/santanu/Work/OSS/sentinel-ai-multi-ao
+[INFO] 
+[INFO] --- jacoco:0.8.14:prepare-agent (default) @ sentinel-ai-toolbox-mcp ---
+[INFO] argLine set to -javaagent:/home/santanu/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=/home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-toolbox-mcp/target/jacoco.exec
+[INFO] 
+[INFO] --- lombok:1.18.20.0:delombok (default) @ sentinel-ai-toolbox-mcp ---
+[INFO] Delombok complete.
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ sentinel-ai-toolbox-mcp ---
+[INFO] skip non existing resourceDirectory /home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-toolbox-mcp/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.8.1:compile (default-compile) @ sentinel-ai-toolbox-mcp ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- spotless:3.2.1:check (default) @ sentinel-ai-toolbox-mcp ---
+[INFO] Spotless check skipped
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ sentinel-ai-toolbox-mcp ---
+[INFO] Copying 11 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.8.1:testCompile (default-testCompile) @ sentinel-ai-toolbox-mcp ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- surefire:3.3.1:test (default-test) @ sentinel-ai-toolbox-mcp ---
+[INFO] 
+[INFO] --- jacoco:0.8.14:report (report) @ sentinel-ai-toolbox-mcp ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] 
+[INFO] ------< com.phonepe.sentinel-ai:sentinel-ai-toolbox-remote-http >-------
+[INFO] Building Sentinel AI ToolBox to work with Remote HTTP Services 1.1.1-alpha6 [6/13]
+[INFO]   from sentinel-ai-toolbox-remote-http/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- directory:1.0:highest-basedir (directories) @ sentinel-ai-toolbox-remote-http ---
+[INFO] Highest basedir set to: /home/santanu/Work/OSS/sentinel-ai-multi-ao
+[INFO] 
+[INFO] --- jacoco:0.8.14:prepare-agent (default) @ sentinel-ai-toolbox-remote-http ---
+[INFO] argLine set to -javaagent:/home/santanu/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=/home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-toolbox-remote-http/target/jacoco.exec
+[INFO] 
+[INFO] --- lombok:1.18.20.0:delombok (default) @ sentinel-ai-toolbox-remote-http ---
+[INFO] Delombok complete.
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ sentinel-ai-toolbox-remote-http ---
+[INFO] skip non existing resourceDirectory /home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-toolbox-remote-http/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.8.1:compile (default-compile) @ sentinel-ai-toolbox-remote-http ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- spotless:3.2.1:check (default) @ sentinel-ai-toolbox-remote-http ---
+[INFO] Spotless check skipped
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ sentinel-ai-toolbox-remote-http ---
+[INFO] Copying 9 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.8.1:testCompile (default-testCompile) @ sentinel-ai-toolbox-remote-http ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- surefire:3.3.1:test (default-test) @ sentinel-ai-toolbox-remote-http ---
+[INFO] 
+[INFO] --- jacoco:0.8.14:report (report) @ sentinel-ai-toolbox-remote-http ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] 
+[INFO] ----------< com.phonepe.sentinel-ai:sentinel-ai-agent-memory >----------
+[INFO] Building Sentinel AI Agent Memory Implementation 1.1.1-alpha6     [7/13]
+[INFO]   from sentinel-ai-agent-memory/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- directory:1.0:highest-basedir (directories) @ sentinel-ai-agent-memory ---
+[INFO] Highest basedir set to: /home/santanu/Work/OSS/sentinel-ai-multi-ao
+[INFO] 
+[INFO] --- jacoco:0.8.14:prepare-agent (default) @ sentinel-ai-agent-memory ---
+[INFO] argLine set to -javaagent:/home/santanu/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=/home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-agent-memory/target/jacoco.exec
+[INFO] 
+[INFO] --- lombok:1.18.20.0:delombok (default) @ sentinel-ai-agent-memory ---
+[INFO] Delombok complete.
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ sentinel-ai-agent-memory ---
+[INFO] skip non existing resourceDirectory /home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-agent-memory/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.8.1:compile (default-compile) @ sentinel-ai-agent-memory ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- spotless:3.2.1:check (default) @ sentinel-ai-agent-memory ---
+[INFO] Spotless check skipped
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ sentinel-ai-agent-memory ---
+[INFO] Copying 22 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.8.1:testCompile (default-testCompile) @ sentinel-ai-agent-memory ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- surefire:3.3.1:test (default-test) @ sentinel-ai-agent-memory ---
+[INFO] 
+[INFO] --- jacoco:0.8.14:report (report) @ sentinel-ai-agent-memory ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] 
+[INFO] ------------< com.phonepe.sentinel-ai:sentinel-ai-session >-------------
+[INFO] Building Sentinel AI Agent Session Management 1.1.1-alpha6        [8/13]
+[INFO]   from sentinel-ai-session/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- directory:1.0:highest-basedir (directories) @ sentinel-ai-session ---
+[INFO] Highest basedir set to: /home/santanu/Work/OSS/sentinel-ai-multi-ao
+[INFO] 
+[INFO] --- jacoco:0.8.14:prepare-agent (default) @ sentinel-ai-session ---
+[INFO] argLine set to -javaagent:/home/santanu/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=/home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-session/target/jacoco.exec
+[INFO] 
+[INFO] --- lombok:1.18.20.0:delombok (default) @ sentinel-ai-session ---
+[INFO] Delombok complete.
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ sentinel-ai-session ---
+[INFO] skip non existing resourceDirectory /home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-session/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.8.1:compile (default-compile) @ sentinel-ai-session ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- spotless:3.2.1:check (default) @ sentinel-ai-session ---
+[INFO] Spotless check skipped
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ sentinel-ai-session ---
+[INFO] Copying 21 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.8.1:testCompile (default-testCompile) @ sentinel-ai-session ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- surefire:3.3.1:test (default-test) @ sentinel-ai-session ---
+[INFO] 
+[INFO] --- jacoco:0.8.14:report (report) @ sentinel-ai-session ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] 
+[INFO] -----------< com.phonepe.sentinel-ai:sentinel-ai-filesystem >-----------
+[INFO] Building Sentinel AI Agent Filesystem Based Implementations 1.1.1-alpha6 [9/13]
+[INFO]   from sentinel-ai-filesystem/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- directory:1.0:highest-basedir (directories) @ sentinel-ai-filesystem ---
+[INFO] Highest basedir set to: /home/santanu/Work/OSS/sentinel-ai-multi-ao
+[INFO] 
+[INFO] --- jacoco:0.8.14:prepare-agent (default) @ sentinel-ai-filesystem ---
+[INFO] argLine set to -javaagent:/home/santanu/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=/home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-filesystem/target/jacoco.exec
+[INFO] 
+[INFO] --- lombok:1.18.20.0:delombok (default) @ sentinel-ai-filesystem ---
+[INFO] Delombok complete.
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ sentinel-ai-filesystem ---
+[INFO] skip non existing resourceDirectory /home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-filesystem/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.8.1:compile (default-compile) @ sentinel-ai-filesystem ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- spotless:3.2.1:check (default) @ sentinel-ai-filesystem ---
+[INFO] Spotless check skipped
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ sentinel-ai-filesystem ---
+[INFO] Copying 17 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.8.1:testCompile (default-testCompile) @ sentinel-ai-filesystem ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- surefire:3.3.1:test (default-test) @ sentinel-ai-filesystem ---
+[INFO] 
+[INFO] --- jacoco:0.8.14:report (report) @ sentinel-ai-filesystem ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] 
+[INFO] -------< com.phonepe.sentinel-ai:sentinel-ai-configured-agents >--------
+[INFO] Building Sentinel AI Dynamically Configured Agents Extension 1.1.1-alpha6 [10/13]
+[INFO]   from sentinel-ai-configured-agents/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- directory:1.0:highest-basedir (directories) @ sentinel-ai-configured-agents ---
+[INFO] Highest basedir set to: /home/santanu/Work/OSS/sentinel-ai-multi-ao
+[INFO] 
+[INFO] --- jacoco:0.8.14:prepare-agent (default) @ sentinel-ai-configured-agents ---
+[INFO] argLine set to -javaagent:/home/santanu/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=/home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-configured-agents/target/jacoco.exec
+[INFO] 
+[INFO] --- lombok:1.18.20.0:delombok (default) @ sentinel-ai-configured-agents ---
+[INFO] Delombok complete.
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ sentinel-ai-configured-agents ---
+[INFO] skip non existing resourceDirectory /home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-configured-agents/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.8.1:compile (default-compile) @ sentinel-ai-configured-agents ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- spotless:3.2.1:check (default) @ sentinel-ai-configured-agents ---
+[INFO] Spotless check skipped
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ sentinel-ai-configured-agents ---
+[INFO] Copying 56 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.8.1:testCompile (default-testCompile) @ sentinel-ai-configured-agents ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- surefire:3.3.1:test (default-test) @ sentinel-ai-configured-agents ---
+[INFO] 
+[INFO] --- jacoco:0.8.14:report (report) @ sentinel-ai-configured-agents ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] 
+[INFO] -----------< com.phonepe.sentinel-ai:sentinel-ai-storage-es >-----------
+[INFO] Building Sentinel AI Elasticsearch Based Storage implementations 1.1.1-alpha6 [11/13]
+[INFO]   from sentinel-ai-storage-es/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- directory:1.0:highest-basedir (directories) @ sentinel-ai-storage-es ---
+[INFO] Highest basedir set to: /home/santanu/Work/OSS/sentinel-ai-multi-ao
+[INFO] 
+[INFO] --- jacoco:0.8.14:prepare-agent (default) @ sentinel-ai-storage-es ---
+[INFO] argLine set to -javaagent:/home/santanu/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=/home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-storage-es/target/jacoco.exec
+[INFO] 
+[INFO] --- lombok:1.18.20.0:delombok (default) @ sentinel-ai-storage-es ---
+[INFO] Delombok complete.
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ sentinel-ai-storage-es ---
+[INFO] skip non existing resourceDirectory /home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-storage-es/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.8.1:compile (default-compile) @ sentinel-ai-storage-es ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- spotless:3.2.1:check (default) @ sentinel-ai-storage-es ---
+[INFO] Spotless check skipped
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ sentinel-ai-storage-es ---
+[INFO] Copying 17 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.8.1:testCompile (default-testCompile) @ sentinel-ai-storage-es ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- surefire:3.3.1:test (default-test) @ sentinel-ai-storage-es ---
+[INFO] 
+[INFO] --- jacoco:0.8.14:report (report) @ sentinel-ai-storage-es ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] 
+[INFO] --------------< com.phonepe.sentinel-ai:sentinel-ai-bom >---------------
+[INFO] Building Sentinel AI BOM for all components 1.1.1-alpha6         [12/13]
+[INFO]   from sentinel-ai-bom/pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- directory:1.0:highest-basedir (directories) @ sentinel-ai-bom ---
+[INFO] Highest basedir set to: /home/santanu/Work/OSS/sentinel-ai-multi-ao
+[INFO] 
+[INFO] --- jacoco:0.8.14:prepare-agent (default) @ sentinel-ai-bom ---
+[INFO] argLine set to -javaagent:/home/santanu/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=/home/santanu/Work/OSS/sentinel-ai-multi-ao/sentinel-ai-bom/target/jacoco.exec
+[INFO] 
+[INFO] --- lombok:1.18.20.0:delombok (default) @ sentinel-ai-bom ---
+[WARNING] Skipping Delombok; no source to process.
+[INFO] 
+[INFO] --- flatten:1.7.0:flatten (flatten) @ sentinel-ai-bom ---
+[INFO] Generating flattened POM of project com.phonepe.sentinel-ai:sentinel-ai-bom:pom:1.1.1-alpha6...
+[INFO] 
+[INFO] --- spotless:3.2.1:check (default) @ sentinel-ai-bom ---
+[INFO] Spotless check skipped
+[INFO] 
+[INFO] --- jacoco:0.8.14:report (report) @ sentinel-ai-bom ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] 
+[INFO] -----------< com.phonepe.sentinel-ai:sentinel-ai-reporting >------------
+[INFO] Building Sentinel AI Reporting 1.1.1-alpha6                      [13/13]
+[INFO]   from sentinel-ai-reporting/pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- directory:1.0:highest-basedir (directories) @ sentinel-ai-reporting ---
+[INFO] Highest basedir set to: /home/santanu/Work/OSS/sentinel-ai-multi-ao
+[INFO] 
+[INFO] --- lombok:1.18.20.0:delombok (default) @ sentinel-ai-reporting ---
+[WARNING] Skipping Delombok; no source to process.
+[INFO] 
+[INFO] --- spotless:3.2.1:check (default) @ sentinel-ai-reporting ---
+[INFO] Spotless check skipped
+[INFO] 
+[INFO] --- jacoco:0.8.8:report (report) @ sentinel-ai-reporting ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Sentinel AI 1.1.1-alpha6:
+[INFO] 
+[INFO] Sentinel AI ........................................ SUCCESS [  0.320 s]
+[INFO] Sentinel AI Core Library ........................... SUCCESS [  2.032 s]
+[INFO] Sentinel AI OpenAI API Compliant Model Implementation SUCCESS [  7.587 s]
+[INFO] Sentinel AI Embedding Models ....................... SUCCESS [  0.129 s]
+[INFO] Sentinel AI ToolBox to work with MCP Servers ....... SUCCESS [  0.258 s]
+[INFO] Sentinel AI ToolBox to work with Remote HTTP Services SUCCESS [  0.288 s]
+[INFO] Sentinel AI Agent Memory Implementation ............ SUCCESS [  0.149 s]
+[INFO] Sentinel AI Agent Session Management ............... SUCCESS [  0.203 s]
+[INFO] Sentinel AI Agent Filesystem Based Implementations . SUCCESS [  0.257 s]
+[INFO] Sentinel AI Dynamically Configured Agents Extension  SUCCESS [  0.296 s]
+[INFO] Sentinel AI Elasticsearch Based Storage implementations SUCCESS [  0.224 s]
+[INFO] Sentinel AI BOM for all components ................. SUCCESS [  0.054 s]
+[INFO] Sentinel AI Reporting .............................. SUCCESS [  0.037 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11.980 s
+[INFO] Finished at: 2026-03-25T20:03:10+05:30
+[INFO] ------------------------------------------------------------------------

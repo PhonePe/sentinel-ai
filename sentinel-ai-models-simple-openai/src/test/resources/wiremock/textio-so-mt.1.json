@@ -1,7 +1,7 @@
 {
-  "id" : "chatcmpl-DNJSQxDOFyTVVKJNI13hvFH3ZEY3b",
+  "id" : "chatcmpl-DNLUeTcBKRRkXyGxO3WsXJsLOiUUK",
   "object" : "chat.completion",
-  "created" : 1774448710,
+  "created" : 1774456536,
   "model" : "gpt-4o-mini-2024-07-18",
   "service_tier" : "default",
   "system_fingerprint" : "fp_eb37e061ec",
@@ -9,8 +9,9 @@
     "index" : 0,
     "message" : {
       "role" : "assistant",
+      "content" : "{\"output\":\"To fulfill your request, I will take the following steps:\\n\\n1. **Get Your Name**: I will first retrieve your name using the available tool.\\n2. **Compose a Greeting**: Once I have your name, I will create a personalized greeting message that includes your name.\\n3. **Write a Poem**: Finally, I will craft a poem that incorporates your name in the greeting.\\n\\nNow, I will proceed to get your name.\"}",
       "tool_calls" : [ {
-        "id" : "call_jkdYnuEjWhWVgShEEegyLprP",
+        "id" : "call_oyX9U02vjtCXshW0zzuIRyVB",
         "type" : "function",
         "function" : {
           "name" : "test_agent_get_name",
@@ -22,9 +23,9 @@
     "finish_reason" : "tool_calls"
   } ],
   "usage" : {
-    "prompt_tokens" : 303,
-    "completion_tokens" : 13,
-    "total_tokens" : 316,
+    "prompt_tokens" : 327,
+    "completion_tokens" : 120,
+    "total_tokens" : 447,
     "completion_tokens_details" : {
       "audio_tokens" : 0,
       "reasoning_tokens" : 0

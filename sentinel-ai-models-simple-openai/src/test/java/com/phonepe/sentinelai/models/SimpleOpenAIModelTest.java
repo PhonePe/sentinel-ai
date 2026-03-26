@@ -95,7 +95,7 @@ class SimpleOpenAIModelTest {
                            Map<String, ExecutableTool> tools,
                            EarlyTerminationStrategy earlyTerminationStrategy) {
             super(OutputObject.class,
-                  "greet the user",
+                  "greet the user. look through messages to find relevant infor before making unnecessary tool calls.",
                   setup,
                   extensions,
                   tools,
@@ -416,7 +416,7 @@ class SimpleOpenAIModelTest {
 
         final var model = setupModel("gpt-4o", wiremock, objectMapper);
         final var eventBus = new EventBus();
-        eventBus.onEvent().connect(event -> {
+        /*         eventBus.onEvent().connect(event -> {
             if (log.isDebugEnabled()) {
                 try {
                     log.debug("Event: {}",
@@ -428,14 +428,15 @@ class SimpleOpenAIModelTest {
                 }
             }
         });
-
+         */
         final var agent = SimpleAgent.builder()
                 .setup(agentSetupUpdater.apply(AgentSetup.builder()
                         .mapper(objectMapper)
                         .model(model)
                         .modelSettings(ModelSettings.builder()
-                                .temperature(0.1f)
+                                // .temperature(0.1f)
                                 .seed(42)
+                                .parallelToolCalls(false)
                                 .build())
                         .eventBus(eventBus)).build())
                 .build();
@@ -476,7 +477,7 @@ class SimpleOpenAIModelTest {
         final var objectMapper = JsonUtils.createMapper();
 
         final var httpClient = new OkHttpClient.Builder().build();
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
+        final var model = new SimpleOpenAIModel<>("gpt-5-mini",
                                                   SimpleOpenAIAzure.builder()
                                                           .baseUrl(TestUtils
                                                                   .getTestProperty("AZURE_ENDPOINT",

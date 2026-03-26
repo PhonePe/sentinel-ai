@@ -82,7 +82,6 @@ import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
 import static java.util.stream.Collectors.toMap;
@@ -528,7 +527,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         messages.addAll(extensionMessages(input.getRequest(), context));
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
-                                    toXmlContent(input),
+                                    toXmlContent(input.getRequest()),
                                     false,
                                     LocalDateTime.now()));
         final var modelRunContext = new ModelRunContext(name(),
@@ -619,7 +618,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 .filter(data -> data.has(OUTPUT_VARIABLE_NAME))
                 .forEach(data -> {
                     try {
-                        final var translatedData = translateData(data, mergedAgentSetup);
+                        final var translatedData = translateData(data.get(OUTPUT_VARIABLE_NAME), mergedAgentSetup);
                         final var validationOutput = outputValidator.validate(context, translatedData);
                         if (validationOutput.isSuccessful()) {
                             processExtensionData(context, messages, data);

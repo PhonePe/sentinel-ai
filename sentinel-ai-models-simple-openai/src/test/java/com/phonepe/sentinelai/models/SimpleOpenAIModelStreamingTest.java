@@ -171,11 +171,11 @@ class SimpleOpenAIModelStreamingTest {
                 .mapper(objectMapper)
                 .modelSettings(ModelSettings.builder()
                         .parallelToolCalls(false)
-                        .temperature(0.1f)
+                        // .temperature(0.1f)
                         .seed(1)
                         .build())
                 .executorService(executor)
-                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
                 .build());
     }
 
@@ -188,14 +188,19 @@ class SimpleOpenAIModelStreamingTest {
 
         final var stats = new ModelUsageStats(); //We want to collect stats from the whole session
         final var executor = Executors.newCachedThreadPool();
-        final var httpClient = new OkHttpClient.Builder().build();
+        final var httpClient = new OkHttpClient.Builder()
+                // .readTimeout(Duration.ofSeconds(20))
+                .build();
         final var agent = setupAgent(wiremock,
                                      objectMapper,
                                      httpClient,
                                      executor);
         final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"),
                                                  true);
-        final var response = agent.executeAsyncStreaming(AgentInput
+        final var streamHandler = new TextStreamer(objectMapper,
+                                                   executor,
+                                                   data -> print(data, outputStream));
+        var input = AgentInput
                 .<String>builder()
                 .request("Hi")
                 .requestMetadata(AgentRequestMetadata.builder()
@@ -203,12 +208,8 @@ class SimpleOpenAIModelStreamingTest {
                         .userId("ss")
                         .usageStats(stats)
                         .build())
-                .build(),
-                                                         new TextStreamer(objectMapper,
-                                                                          executor,
-                                                                          data -> print(data,
-                                                                                        outputStream)))
-                .join();
+                .build();
+        final var response = agent.executeAsyncStreaming(input, streamHandler).join();
         var responseString = response.getData();
         log.info("Agent response: {}", responseString);
         assertNotNull(responseString);
@@ -219,7 +220,7 @@ class SimpleOpenAIModelStreamingTest {
         final var nameFound = new AtomicBoolean(responseString.contains(
                                                                         "Santanu"));
         assertTrue(response.getUsage().getTotalTokens() > 1); //This ensures that all chunks have been consumed
-        final var response2 = agent.executeAsyncTextStreaming(AgentInput
+        input = AgentInput
                 .<String>builder()
                 .request("How is the weather?")
                 .requestMetadata(AgentRequestMetadata.builder()
@@ -228,12 +229,8 @@ class SimpleOpenAIModelStreamingTest {
                         .usageStats(stats)
                         .build())
                 .oldMessages(response.getAllMessages())
-                .build(),
-                                                              new TextStreamer(objectMapper,
-                                                                               executor,
-                                                                               data -> print(data,
-                                                                                             outputStream)))
-                .join();
+                .build();
+        final var response2 = agent.executeAsyncTextStreaming(input, streamHandler).join();
         responseString = response2.getData();
         log.info("Agent response: {}", responseString);
         sunnyFound.compareAndSet(false, responseString.contains("sunny"));
