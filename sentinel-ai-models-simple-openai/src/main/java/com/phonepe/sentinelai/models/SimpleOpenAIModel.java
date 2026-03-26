@@ -828,42 +828,45 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                 ObjectNode schema,
                                                 UnaryOperator<String> outputGenerator,
                                                 AtomicReference<String> generatedOutput) {
-        toolsForExecution.put(Agent.OUTPUT_GENERATOR_ID,
-                              new ExternalTool(ToolDefinition.builder()
-                                      .id(Agent.OUTPUT_GENERATOR_ID)
-                                      .name(Agent.OUTPUT_GENERATOR_ID)
-                                      .description("Generates output to be used by user")
-                                      .contextAware(true)
-                                      .strictSchema(true)
-                                      .terminal(true)
-                                      .build(),
-                                               schema,
-                                               (runContext,
-                                                toolCallId,
-                                                args) -> {
-                                                   try {
-                                                       final var output = outputGenerator
-                                                               .apply(args);
-                                                       if (!Strings
-                                                               .isNullOrEmpty(output)) {
-                                                           generatedOutput.set(
-                                                                               output);
-                                                       }
-                                                       return new ExternalTool.ExternalToolResponse(output,
-                                                                                                    ErrorType.SUCCESS);
-                                                   }
-                                                   catch (Throwable t) {
-                                                       final var rootCause = AgentUtils
-                                                               .rootCause(t);
-                                                       log.error("Error generating output: " + rootCause
-                                                               .getMessage(),
-                                                                 t);
-                                                       return new ExternalTool.ExternalToolResponse("Error running tool: "
-                                                               + rootCause
-                                                                       .getMessage(),
-                                                                                                    ErrorType.TOOL_CALL_PERMANENT_FAILURE);
-                                                   }
-                                               }));
+        final var toolDefinition = ToolDefinition.builder()
+                .id(Agent.OUTPUT_GENERATOR_ID)
+                .name(Agent.OUTPUT_GENERATOR_ID)
+                .description("Generates the final output to be used by user.")
+                .contextAware(true)
+                .strictSchema(true)
+                .terminal(true)
+                .build();
+        final var tool = new ExternalTool(toolDefinition,
+                                          schema,
+                                          (runContext, toolCallId, args) -> outputGenerationTool(
+                                                                                                 outputGenerator,
+                                                                                                 args,
+                                                                                                 generatedOutput));
+        toolsForExecution.put(Agent.OUTPUT_GENERATOR_ID, tool);
+    }
+
+    private static ExternalTool.ExternalToolResponse outputGenerationTool(final UnaryOperator<String> outputGenerator,
+                                                                          final String args,
+                                                                          final AtomicReference<String> generatedOutput) {
+
+        try {
+            final var output = outputGenerator.apply(args);
+            if (!Strings.isNullOrEmpty(output)) {
+                generatedOutput.set(output);
+            }
+            return new ExternalTool.ExternalToolResponse(output, ErrorType.SUCCESS);
+        }
+        catch (Throwable t) {
+            final var rootCause = AgentUtils
+                    .rootCause(t);
+            log.error("Error generating output: " + rootCause
+                    .getMessage(),
+                      t);
+            return new ExternalTool.ExternalToolResponse("Error running tool: "
+                    + rootCause
+                            .getMessage(),
+                                                         ErrorType.TOOL_CALL_PERMANENT_FAILURE);
+        }
     }
 
     private static boolean shouldLoop(final ModelOutput output) {
