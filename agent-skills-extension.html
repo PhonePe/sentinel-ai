@@ -1,0 +1,2241 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Build modular, reusable skills for agents in Sentinel AI">
+      
+      
+      
+        <link rel="canonical" href="https://phonepe.github.io/sentinel-ai/agent-skills-extension.html">
+      
+      
+        <link rel="prev" href="calling-remote-services.html">
+      
+      
+        <link rel="next" href="agent-registry.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Agent Skills Extension - Sentinel AI Agent Framework</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+        
+        
+        
+        <link rel="stylesheet" href="assets/external/fonts.googleapis.com/css.49ea35f2.css">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/extra.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agent-skills-extension" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Sentinel AI Agent Framework" class="md-header__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sentinel AI Agent Framework
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Agent Skills Extension
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_2" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to system preference" type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required="">
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard="" data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix="">
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Sentinel AI Agent Framework" class="md-nav__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    Sentinel AI Agent Framework
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix="">
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agents.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tools.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Tools in Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="messages-session.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chat Messages and Session Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="using-mcp-servers.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="calling-remote-services.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calling Remote HTTP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Skills Extension
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="agent-skills-extension.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Skills Extension
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+      
+        <li class="md-nav__item">
+  <a href="#what-are-agent-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Are Agent Skills?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What Are Agent Skills?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skill-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skills-vs-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skills vs. Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-skills-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Skills Work
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How Skills Work">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tier-1-discovery-startup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 1: Discovery (Startup)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tier-2-loading-on-demand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2: Loading (On-Demand)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modes-of-operation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modes of Operation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Modes of Operation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-multi-skill-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Multi-Skill Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-single-skill-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Single-Skill Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-skill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a Skill
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Creating a Skill">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skill-directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Directory Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#writing-skillmd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing SKILL.md
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Writing SKILL.md">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#frontmatter-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frontmatter (YAML)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instructions-markdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instructions (Markdown)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-skill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Skill
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scripts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integration with Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-an-agent-with-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an Agent with Skills
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-skills-in-an-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Skills in an Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tools-provided-by-the-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tools Provided by the Extension
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tools Provided by the Extension">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#listskills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        listSkills()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#activateskillskillname-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        activateSkill(skillName: String)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#readskillreferenceskillname-string-referencefile-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        readSkillReference(skillName: String, referenceFile: String)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skill-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skill-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Organization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations-and-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations and Considerations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skill-not-found-during-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Not Found During Discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-file-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference File Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-resolution-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Resolution Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Use Cases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example Use Cases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#use-case-1-code-review-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Case 1: Code Review Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-case-2-multi-purpose-assistant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Case 2: Multi-Purpose Assistant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-case-3-filtered-skill-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Case 3: Filtered Skill Discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-registry.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configured Agents and Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-memory.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Memory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="observability.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability &amp; Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="errors.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error Handling &amp; Error Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+      
+        <li class="md-nav__item">
+  <a href="#what-are-agent-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Are Agent Skills?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What Are Agent Skills?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skill-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skills-vs-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skills vs. Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-skills-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Skills Work
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How Skills Work">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tier-1-discovery-startup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 1: Discovery (Startup)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tier-2-loading-on-demand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2: Loading (On-Demand)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modes-of-operation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modes of Operation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Modes of Operation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-multi-skill-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Multi-Skill Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-single-skill-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Single-Skill Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-skill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a Skill
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Creating a Skill">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skill-directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Directory Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#writing-skillmd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing SKILL.md
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Writing SKILL.md">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#frontmatter-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frontmatter (YAML)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instructions-markdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instructions (Markdown)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-skill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Skill
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scripts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integration with Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-an-agent-with-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an Agent with Skills
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-skills-in-an-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Skills in an Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tools-provided-by-the-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tools Provided by the Extension
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tools Provided by the Extension">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#listskills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        listSkills()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#activateskillskillname-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        activateSkill(skillName: String)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#readskillreferenceskillname-string-referencefile-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        readSkillReference(skillName: String, referenceFile: String)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skill-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skill-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Organization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations-and-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations and Considerations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skill-not-found-during-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Not Found During Discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-file-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference File Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-resolution-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Resolution Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Use Cases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example Use Cases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#use-case-1-code-review-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Case 1: Code Review Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-case-2-multi-purpose-assistant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Case 2: Multi-Purpose Assistant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-case-3-filtered-skill-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Case 3: Filtered Skill Discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="agent-skills-extension">Agent Skills Extension<a class="headerlink" href="#agent-skills-extension" title="Permanent link">¶</a></h1>
+<p>The <strong>Agent Skills Extension</strong> enables agents to discover, activate, and use modular skills loaded from the filesystem. Skills are self-contained, reusable capabilities that can be discovered at startup and loaded on-demand, providing agents with extensible functionality without modifying agent code.</p>
+<h2 id="what-are-agent-skills">What Are Agent Skills?<a class="headerlink" href="#what-are-agent-skills" title="Permanent link">¶</a></h2>
+<p>Agent Skills are <strong>self-contained bundles</strong> that provide specialized instructions, tools, references, and utilities to an agent. Unlike tools (which execute logic), skills provide <strong>guidance and context</strong> that helps agents understand when and how to perform specialized tasks.</p>
+<h3 id="skill-components">Skill Components<a class="headerlink" href="#skill-components" title="Permanent link">¶</a></h3>
+<p>Each skill is a directory containing:</p>
+<ul>
+<li><strong><code>SKILL.md</code></strong> (required): Contains YAML frontmatter metadata and Markdown instructions</li>
+<li><strong><code>references/</code></strong> (optional): Documentation files agents can read for deeper context</li>
+<li><strong><code>scripts/</code></strong> (optional): Executable scripts agents can invoke via tools</li>
+<li><strong><code>assets/</code></strong> (optional): Static files (images, data, configs) the agent can reference</li>
+</ul>
+<h3 id="skills-vs-tools">Skills vs. Tools<a class="headerlink" href="#skills-vs-tools" title="Permanent link">¶</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Tools</th>
+<th>Skills</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Purpose</strong></td>
+<td>Execute logic and perform actions</td>
+<td>Provide guidance and context</td>
+</tr>
+<tr>
+<td><strong>Invocation</strong></td>
+<td>Called directly by the agent</td>
+<td>Activated by the agent, then followed</td>
+</tr>
+<tr>
+<td><strong>Storage</strong></td>
+<td>Code-based (Java classes)</td>
+<td>Filesystem-based (Markdown + assets)</td>
+</tr>
+<tr>
+<td><strong>Scope</strong></td>
+<td>Task execution</td>
+<td>Task understanding and planning</td>
+</tr>
+<tr>
+<td><strong>Example</strong></td>
+<td><code>readFile()</code>, <code>callAPI()</code></td>
+<td>"How to write secure code", "Data validation guide"</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-skills-work">How Skills Work<a class="headerlink" href="#how-skills-work" title="Permanent link">¶</a></h2>
+<p>The Agent Skills Extension uses a <strong>two-tier loading mechanism</strong> for efficiency:</p>
+<h3 id="tier-1-discovery-startup">Tier 1: Discovery (Startup)<a class="headerlink" href="#tier-1-discovery-startup" title="Permanent link">¶</a></h3>
+<p>When the extension is initialized, only <strong>metadata</strong> is loaded from all skill directories:
+- Skill name and description
+- Metadata key-value pairs
+- Compatibility information</p>
+<p>This is lightweight and allows the extension to build a <strong>skills catalog</strong> without loading large instruction sets into memory.</p>
+<h3 id="tier-2-loading-on-demand">Tier 2: Loading (On-Demand)<a class="headerlink" href="#tier-2-loading-on-demand" title="Permanent link">¶</a></h3>
+<p>When the agent calls <code>activateSkill(skillName)</code>, the full skill is loaded:
+- Complete Markdown instructions
+- Reference files (mapped to paths)
+- Script files (mapped to paths)
+- Asset files (mapped to paths)</p>
+<h2 id="modes-of-operation">Modes of Operation<a class="headerlink" href="#modes-of-operation" title="Permanent link">¶</a></h2>
+<p>The Agent Skills Extension supports two modes:</p>
+<h3 id="1-multi-skill-mode">1. Multi-Skill Mode<a class="headerlink" href="#1-multi-skill-mode" title="Permanent link">¶</a></h3>
+<p>Discovery and activation of multiple skills from one or more directories.</p>
+<p><strong>Setup</strong>:
+</p><div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">extension</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentSkillsExtension</span><span class="p">.</span><span class="na">withMultipleSkills</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">baseDir</span><span class="p">(</span><span class="s">"/path/to/base"</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">skillsDirectories</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+<span class="w">        </span><span class="s">"./skills"</span><span class="p">,</span>
+<span class="w">        </span><span class="s">"/absolute/path/to/other/skills"</span>
+<span class="w">    </span><span class="p">))</span>
+<span class="w">    </span><span class="p">.</span><span class="na">skillsToLoad</span><span class="p">(</span><span class="kc">null</span><span class="p">)</span><span class="w">  </span><span class="c1">// Null = discover all; or pass specific names</span>
+<span class="w">    </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div><p></p>
+<p><strong>Tools Registered</strong>:</p>
+<ul>
+<li><code>agent_skills_extension_list_skills</code> — List all available skills</li>
+<li><code>agent_skills_extension_activate_skill</code> — Activate a specific skill</li>
+<li><code>agent_skills_extension_read_skill_reference</code> — Read reference files from loaded skills</li>
+</ul>
+<p><strong>Behavior</strong>:</p>
+<ul>
+<li>System prompt injects a skills discovery task that encourages the agent to review available skills</li>
+<li>If a skill matches the user's request, the agent activates it and follows the instructions</li>
+</ul>
+<h3 id="2-single-skill-mode">2. Single-Skill Mode<a class="headerlink" href="#2-single-skill-mode" title="Permanent link">¶</a></h3>
+<p>Load a single skill directly, with its instructions injected into the system prompt.</p>
+<p><strong>Setup</strong>:
+</p><div class="highlight"><pre><span></span><code><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">extension</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentSkillsExtension</span><span class="p">.</span><span class="na">withSingleSkill</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">baseDir</span><span class="p">(</span><span class="s">"/path/to/base"</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">singleSkill</span><span class="p">(</span><span class="s">"/path/to/skill/directory"</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</code></pre></div><p></p>
+<p><strong>Tools Registered</strong>:</p>
+<ul>
+<li><code>agent_skills_extension_read_skill_reference</code> — Only tool available for reference reading</li>
+</ul>
+<p><strong>Behavior</strong>:</p>
+<ul>
+<li>Skill instructions are directly injected into the system prompt</li>
+<li>No skill discovery or activation—the skill is always active</li>
+<li>Ideal for specialized agents that focus on a single domain</li>
+</ul>
+<h2 id="creating-a-skill">Creating a Skill<a class="headerlink" href="#creating-a-skill" title="Permanent link">¶</a></h2>
+<h3 id="skill-directory-structure">Skill Directory Structure<a class="headerlink" href="#skill-directory-structure" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code>my-skill/
+├── SKILL.md                 # Skill metadata + instructions (required)
+├── references/              # Reference documentation (optional)
+│   ├── guide.md
+│   └── examples.md
+├── scripts/                 # Executable scripts (optional)
+│   └── setup.sh
+└── assets/                  # Static assets (optional)
+    ├── config.json
+    └── template.txt
+</code></pre></div>
+<h3 id="writing-skillmd">Writing SKILL.md<a class="headerlink" href="#writing-skillmd" title="Permanent link">¶</a></h3>
+<p>The <code>SKILL.md</code> file has two parts: <strong>YAML frontmatter</strong> and <strong>Markdown instructions</strong>.</p>
+<h4 id="frontmatter-yaml">Frontmatter (YAML)<a class="headerlink" href="#frontmatter-yaml" title="Permanent link">¶</a></h4>
+<p>Required fields:</p>
+<div class="highlight"><pre><span></span><code><span class="nn">---</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-skill</span>
+<span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A brief description of what this skill does and when to use it (max 1024 chars)</span>
+<span class="nn">---</span>
+</code></pre></div>
+<p>Optional fields:</p>
+<div class="highlight"><pre><span></span><code><span class="nn">---</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-skill</span>
+<span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A skill for code review and quality assurance</span>
+<span class="nt">license</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Apache-2.0</span>
+<span class="nt">compatibility</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Requires Java 17+, no external dependencies</span>
+<span class="nt">allowed-tools</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bash-runner api-caller</span><span class="w">  </span><span class="c1"># Space-delimited list of pre-approved tools</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">author</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Your Name</span>
+<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">"1.0"</span>
+<span class="w">  </span><span class="nt">tags</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code-review</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality</span>
+<span class="nn">---</span>
+</code></pre></div>
+<p><strong>Validation</strong>:
+- <code>name</code> must match the directory name (e.g., <code>my-skill/</code> contains <code>name: my-skill</code>)
+- <code>name</code> must be 1-64 characters, lowercase alphanumeric with hyphens
+- <code>description</code> is displayed in the skills catalog and used for skill discovery</p>
+<h4 id="instructions-markdown">Instructions (Markdown)<a class="headerlink" href="#instructions-markdown" title="Permanent link">¶</a></h4>
+<p>After the closing <code>---</code>, provide detailed instructions in Markdown:</p>
+<div class="highlight"><pre><span></span><code>---
+name: code-review-skill
+<span class="gu">description: Conduct thorough code reviews and provide quality feedback</span>
+<span class="gu">---</span>
+
+<span class="gh"># Code Review Skill</span>
+
+<span class="gu">## When to Use This Skill</span>
+Use this skill when:
+<span class="k">-</span><span class="w"> </span>You need to review code for quality, security, or performance
+<span class="k">-</span><span class="w"> </span>You're checking for best practices and coding standards
+<span class="k">-</span><span class="w"> </span>You're validating error handling and edge cases
+
+<span class="gu">## Instructions</span>
+
+<span class="gu">### Step 1: Understand the Context</span>
+Before reviewing, gather:
+<span class="k">-</span><span class="w"> </span>The purpose of the code
+<span class="k">-</span><span class="w"> </span>The target audience (internal tools, public API, etc.)
+<span class="k">-</span><span class="w"> </span>Any specific standards or guidelines to follow
+
+<span class="gu">### Step 2: Conduct the Review</span>
+Examine the code for:
+<span class="k">-</span><span class="w"> </span><span class="gs">**Correctness**</span>: Does it do what it's supposed to do?
+<span class="k">-</span><span class="w"> </span><span class="gs">**Clarity**</span>: Is the code readable and maintainable?
+<span class="k">-</span><span class="w"> </span><span class="gs">**Performance**</span>: Are there obvious inefficiencies?
+<span class="k">-</span><span class="w"> </span><span class="gs">**Security**</span>: Are there potential vulnerabilities?
+<span class="k">-</span><span class="w"> </span><span class="gs">**Tests**</span>: Is the code properly tested?
+
+<span class="gu">### Step 3: Provide Feedback</span>
+Format feedback clearly:
+<span class="k">-</span><span class="w"> </span><span class="gs">**Issue**</span>: What's the problem?
+<span class="k">-</span><span class="w"> </span><span class="gs">**Severity**</span>: Critical, Major, Minor, or Suggestion
+<span class="k">-</span><span class="w"> </span><span class="gs">**Suggestion**</span>: How to fix or improve it
+
+<span class="gu">## Reference Documents</span>
+See <span class="sb">`references/security-checklist.md`</span> for a detailed security review checklist.
+</code></pre></div>
+<h3 id="example-skill">Example Skill<a class="headerlink" href="#example-skill" title="Permanent link">¶</a></h3>
+<p>Here's a complete example:</p>
+<p></p><div class="highlight"><pre><span></span><code>---
+name: data-validation-skill
+description: Validate and sanitize data according to best practices
+license: Apache-2.0
+metadata:
+  version: "1.0"
+<span class="gu">  author: data-team</span>
+<span class="gu">---</span>
+
+<span class="gh"># Data Validation Skill</span>
+
+<span class="gu">## Overview</span>
+This skill provides comprehensive guidance for validating and sanitizing data in your applications.
+
+<span class="gu">## When to Use</span>
+<span class="k">-</span><span class="w"> </span>User input validation (forms, APIs, file uploads)
+<span class="k">-</span><span class="w"> </span>Data transformation and conversion
+<span class="k">-</span><span class="w"> </span>Cross-system data synchronization
+<span class="k">-</span><span class="w"> </span>Database record validation
+
+<span class="gu">## Key Principles</span>
+
+<span class="gu">### 1. Whitelist, Don't Blacklist</span>
+Define what is <span class="gs">**allowed**</span>, not what is <span class="gs">**forbidden**</span>. This is more secure and maintainable.
+
+<span class="gu">### 2. Validate Early, Fail Fast</span>
+Validate data at the entry point. Don't propagate invalid data through your system.
+
+<span class="gu">### 3. Provide Clear Error Messages</span>
+When validation fails, tell users exactly what's wrong and how to fix it.
+
+<span class="gu">### 4. Type Safety First</span>
+Use strong typing to prevent type-related bugs.
+
+<span class="gu">## Validation Checklist</span>
+
+<span class="k">- [ ]</span> Is the data type correct?
+<span class="k">- [ ]</span> Is the value within acceptable ranges?
+<span class="k">- [ ]</span> Are required fields present?
+<span class="k">- [ ]</span> Does the data match the expected format?
+<span class="k">- [ ]</span> Are special characters properly escaped?
+<span class="k">- [ ]</span> Is the data normalized (e.g., trimmed, lowercased)?
+
+<span class="gu">## Common Patterns</span>
+
+<span class="gu">### Email Validation</span>
+</code></pre></div>
+Format: local-part@domain
+Constraints: Max 254 chars, specific characters allowed
+Always verify with a confirmation email
+<div class="highlight"><pre><span></span><code>### URL Validation
+</code></pre></div>
+Format: scheme://authority/path?query#fragment
+Constraints: Valid scheme, authority, path structure
+Always validate and sanitize query parameters
+<div class="highlight"><pre><span></span><code>## Reference Documents
+For detailed validation rules by data type, see `references/validation-rules.md`.
+For code examples, see `references/code-examples.md`.
+</code></pre></div><p></p>
+<h3 id="reference-files">Reference Files<a class="headerlink" href="#reference-files" title="Permanent link">¶</a></h3>
+<p>Reference files in the <code>references/</code> directory provide detailed information agents can read:</p>
+<div class="highlight"><pre><span></span><code><span class="gh"># references/validation-rules.md</span>
+
+<span class="gu">## Email Validation Rules</span>
+
+<span class="k">-</span><span class="w"> </span>Max length: 254 characters
+<span class="k">-</span><span class="w"> </span>Valid characters: A-Z, a-z, 0-9, !, #, $, %, &amp;, ', *, +, -, /, =, ?, ^, _, `, {, |, }, ~, .
+<span class="k">-</span><span class="w"> </span>At least one @ symbol
+<span class="k">-</span><span class="w"> </span>Domain must be valid
+
+<span class="gu">## Phone Number Rules</span>
+
+<span class="k">-</span><span class="w"> </span>Formats: +1-234-567-8900, (234) 567-8900, 234-567-8900
+<span class="k">-</span><span class="w"> </span>At least 10 digits
+<span class="k">-</span><span class="w"> </span>Country code optional but recommended
+</code></pre></div>
+<h3 id="scripts">Scripts<a class="headerlink" href="#scripts" title="Permanent link">¶</a></h3>
+<p>Scripts in the <code>scripts/</code> directory can be invoked by agents via tools:</p>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash</span>
+<span class="c1"># scripts/validate-config.sh</span>
+<span class="c1"># Validates a configuration file against a schema</span>
+
+<span class="nv">config_file</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="nv">schema_file</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="nv">$config_file</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Error: Config file not found: </span><span class="nv">$config_file</span><span class="s2">"</span>
+<span class="w">  </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="k">fi</span>
+
+<span class="c1"># Validation logic here</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">"Config validation passed"</span>
+</code></pre></div>
+<h2 id="integration-with-agents">Integration with Agents<a class="headerlink" href="#integration-with-agents" title="Permanent link">¶</a></h2>
+<h3 id="creating-an-agent-with-skills">Creating an Agent with Skills<a class="headerlink" href="#creating-an-agent-with-skills" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">MyAgent</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Agent</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">MyAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">MyAgent</span><span class="p">(</span><span class="nd">@NonNull</span><span class="w"> </span><span class="n">AgentSetup</span><span class="w"> </span><span class="n">setup</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">super</span><span class="p">(</span><span class="n">String</span><span class="p">.</span><span class="na">class</span><span class="p">,</span>
+<span class="w">              </span><span class="s">"You are a helpful assistant with access to specialized skills."</span><span class="p">,</span>
+<span class="w">              </span><span class="n">setup</span><span class="p">,</span>
+<span class="w">              </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(),</span>
+<span class="w">              </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Override</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s">"my-agent"</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Setup the extension</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">skillsExtension</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentSkillsExtension</span><span class="p">.</span><span class="na">withMultipleSkills</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">baseDir</span><span class="p">(</span><span class="n">System</span><span class="p">.</span><span class="na">getProperty</span><span class="p">(</span><span class="s">"user.home"</span><span class="p">))</span>
+<span class="w">    </span><span class="p">.</span><span class="na">skillsDirectories</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"./skills"</span><span class="p">,</span><span class="w"> </span><span class="s">"./custom-skills"</span><span class="p">))</span>
+<span class="w">    </span><span class="p">.</span><span class="na">skillsToLoad</span><span class="p">(</span><span class="kc">null</span><span class="p">)</span><span class="w">  </span><span class="c1">// Discover all skills</span>
+<span class="w">    </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="c1">// Create agent with extension</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MyAgent</span><span class="p">(</span><span class="n">agentSetup</span><span class="p">);</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentWithSkills</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">agent</span><span class="p">.</span><span class="na">registerExtension</span><span class="p">(</span><span class="n">skillsExtension</span><span class="p">);</span>
+</code></pre></div>
+<h3 id="using-skills-in-an-agent">Using Skills in an Agent<a class="headerlink" href="#using-skills-in-an-agent" title="Permanent link">¶</a></h3>
+<p>When an agent with the skills extension runs:</p>
+<ol>
+<li><strong>Discovery Task</strong>: The agent receives a secondary task to check for relevant skills</li>
+<li><strong>Skill Activation</strong>: If a skill is relevant, the agent calls <code>activateSkill(skillName)</code></li>
+<li><strong>Following Instructions</strong>: The agent reads the skill's instructions and follows them</li>
+<li><strong>Reference Lookup</strong>: The agent can call <code>readSkillReference(skillName, filePath)</code> for detailed information</li>
+</ol>
+<p>Example interaction:</p>
+<div class="highlight"><pre><span></span><code>User: "I need to write code that validates user email addresses."
+
+Agent:
+1. Checks available skills via listSkills()
+2. Sees "data-validation-skill" is available
+3. Activates the skill: activateSkill("data-validation-skill")
+4. Reads the skill instructions and best practices
+5. Optionally reads a reference: readSkillReference("data-validation-skill", "validation-rules.md")
+6. Provides the user with comprehensive guidance on email validation
+</code></pre></div>
+<h2 id="tools-provided-by-the-extension">Tools Provided by the Extension<a class="headerlink" href="#tools-provided-by-the-extension" title="Permanent link">¶</a></h2>
+<h3 id="listskills"><code>listSkills()</code><a class="headerlink" href="#listskills" title="Permanent link">¶</a></h3>
+<p><strong>Description</strong>: List all available skills with their descriptions.</p>
+<p><strong>Parameters</strong>: None</p>
+<p><strong>Returns</strong>: A formatted markdown catalog of available skills.</p>
+<p><strong>Example</strong>:
+</p><div class="highlight"><pre><span></span><code>Available Skills:
+
+- **data-validation-skill**: Validate and sanitize data according to best practices
+- **code-review-skill**: Conduct thorough code reviews and provide quality feedback
+- **api-design-skill**: Design RESTful APIs with best practices
+</code></pre></div><p></p>
+<h3 id="activateskillskillname-string"><code>activateSkill(skillName: String)</code><a class="headerlink" href="#activateskillskillname-string" title="Permanent link">¶</a></h3>
+<p><strong>Description</strong>: Activate a skill and get its full instructions.</p>
+<p><strong>Parameters</strong>:
+- <code>skillName</code> (String): The name of the skill to activate (e.g., "data-validation-skill")</p>
+<p><strong>Returns</strong>: 
+- Full skill instructions (Markdown)
+- List of available reference files
+- List of available scripts
+- List of available assets</p>
+<p><strong>Example Response</strong>:
+</p><div class="highlight"><pre><span></span><code># Skill Activated: data-validation-skill
+
+[Full markdown instructions...]
+
+## Available Reference Files
+- validation-rules.md
+- code-examples.md
+
+## Available Scripts
+- validate-config.sh
+
+## Available Assets
+- schema.json
+</code></pre></div><p></p>
+<h3 id="readskillreferenceskillname-string-referencefile-string"><code>readSkillReference(skillName: String, referenceFile: String)</code><a class="headerlink" href="#readskillreferenceskillname-string-referencefile-string" title="Permanent link">¶</a></h3>
+<p><strong>Description</strong>: Read a reference file from an activated skill.</p>
+<p><strong>Parameters</strong>:
+- <code>skillName</code> (String): The name of the skill
+- <code>referenceFile</code> (String): Path relative to the <code>references/</code> directory</p>
+<p><strong>Returns</strong>: Content of the reference file as plain text.</p>
+<p><strong>Example</strong>:
+</p><div class="highlight"><pre><span></span><code><span class="c1">// After activating the skill, read a reference</span>
+<span class="n">readSkillReference</span><span class="p">(</span><span class="s">"data-validation-skill"</span><span class="p">,</span><span class="w"> </span><span class="s">"validation-rules.md"</span><span class="p">)</span>
+</code></pre></div><p></p>
+<p><strong>Notes</strong>:
+- The skill must be activated before you can read its references
+- Use forward slashes for nested paths: <code>subdir/file.md</code>
+- Returns error if the skill or reference file doesn't exist</p>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">¶</a></h2>
+<h3 id="skill-design">Skill Design<a class="headerlink" href="#skill-design" title="Permanent link">¶</a></h3>
+<ol>
+<li>
+<p><strong>Clear, Specific Purpose</strong>: Each skill should have one clear purpose. Don't mix unrelated capabilities.</p>
+</li>
+<li>
+<p><strong>Comprehensive Instructions</strong>: Provide step-by-step guidance that doesn't assume deep knowledge.</p>
+</li>
+<li>
+<p><strong>Use References for Depth</strong>: Put detailed reference material in <code>references/</code> to keep the main instructions concise.</p>
+</li>
+<li>
+<p><strong>Versioning</strong>: Include a version in metadata and document breaking changes.</p>
+</li>
+<li>
+<p><strong>Examples</strong>: Use markdown code blocks to provide concrete examples.</p>
+</li>
+</ol>
+<h3 id="skill-organization">Skill Organization<a class="headerlink" href="#skill-organization" title="Permanent link">¶</a></h3>
+<ol>
+<li>
+<p><strong>Descriptive Names</strong>: Use kebab-case names that describe the skill's purpose (e.g., <code>security-audit-skill</code>, not <code>util</code>).</p>
+</li>
+<li>
+<p><strong>Consistent Metadata</strong>: Always include name, description, and author in frontmatter.</p>
+</li>
+<li>
+<p><strong>Reference Organization</strong>: Group related references in subdirectories if there are many.</p>
+</li>
+</ol>
+<h3 id="agent-configuration">Agent Configuration<a class="headerlink" href="#agent-configuration" title="Permanent link">¶</a></h3>
+<ol>
+<li>
+<p><strong>Multi-Skill for General Agents</strong>: Use multi-skill mode for general-purpose agents that handle diverse tasks.</p>
+</li>
+<li>
+<p><strong>Single-Skill for Specialized Agents</strong>: Use single-skill mode for domain-specific agents (e.g., a code-review agent).</p>
+</li>
+<li>
+<p><strong>Filtered Discovery</strong>: Use <code>skillsToLoad</code> to limit discovery to only relevant skills, improving prompt efficiency.</p>
+</li>
+</ol>
+<h2 id="limitations-and-considerations">Limitations and Considerations<a class="headerlink" href="#limitations-and-considerations" title="Permanent link">¶</a></h2>
+<ol>
+<li>
+<p><strong>Filesystem-Based</strong>: Skills must be stored on the filesystem. Distributed skill loading (e.g., from S3) would require custom implementation.</p>
+</li>
+<li>
+<p><strong>Directory Validation</strong>: The skill directory name must match the <code>name</code> field in the YAML frontmatter. This is validated at discovery time.</p>
+</li>
+<li>
+<p><strong>Reference Size</strong>: Large reference files increase prompt context when read. Keep references focused and practical.</p>
+</li>
+<li>
+<p><strong>No Nesting</strong>: Skills must be direct children of skill directories. Nested skill directories are not discovered.</p>
+</li>
+<li>
+<p><strong>Lazy Loading</strong>: Skills are loaded on-demand, so there's no validation of reference file integrity until the skill is activated.</p>
+</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">¶</a></h2>
+<h3 id="skill-not-found-during-discovery">Skill Not Found During Discovery<a class="headerlink" href="#skill-not-found-during-discovery" title="Permanent link">¶</a></h3>
+<p><strong>Symptom</strong>: Skill doesn't appear in <code>listSkills()</code> output.</p>
+<p><strong>Cause</strong>: 
+- Directory doesn't exist at the specified path
+- <code>SKILL.md</code> is missing or malformed
+- Skill name doesn't match directory name</p>
+<p><strong>Solution</strong>:
+</p><div class="highlight"><pre><span></span><code><span class="c1"># Verify directory exists</span>
+ls<span class="w"> </span>-la<span class="w"> </span>/path/to/skills/my-skill/
+
+<span class="c1"># Verify SKILL.md exists and is valid</span>
+cat<span class="w"> </span>/path/to/skills/my-skill/SKILL.md
+
+<span class="c1"># Ensure name in frontmatter matches directory</span>
+grep<span class="w"> </span><span class="s2">"^name:"</span><span class="w"> </span>/path/to/skills/my-skill/SKILL.md
+</code></pre></div><p></p>
+<h3 id="reference-file-not-found">Reference File Not Found<a class="headerlink" href="#reference-file-not-found" title="Permanent link">¶</a></h3>
+<p><strong>Symptom</strong>: <code>readSkillReference()</code> returns an error.</p>
+<p><strong>Cause</strong>:
+- Skill hasn't been activated yet
+- Reference file path is incorrect
+- File doesn't exist in the <code>references/</code> directory</p>
+<p><strong>Solution</strong>:
+1. Call <code>activateSkill()</code> first
+2. Check available references in the activation response
+3. Use exact filename/path from the references list</p>
+<h3 id="path-resolution-issues">Path Resolution Issues<a class="headerlink" href="#path-resolution-issues" title="Permanent link">¶</a></h3>
+<p><strong>Symptom</strong>: "Skills directory does not exist" error.</p>
+<p><strong>Cause</strong>: The path resolution order is:
+1. Path as-is (if it's an existing directory)
+2. Relative to <code>baseDir</code>
+3. Relative to current working directory</p>
+<p><strong>Solution</strong>: Use absolute paths or ensure relative paths are correct from the agent's working directory.</p>
+<h2 id="example-use-cases">Example Use Cases<a class="headerlink" href="#example-use-cases" title="Permanent link">¶</a></h2>
+<h3 id="use-case-1-code-review-agent">Use Case 1: Code Review Agent<a class="headerlink" href="#use-case-1-code-review-agent" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// Single-skill mode: focus on code review</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">extension</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentSkillsExtension</span><span class="p">.</span><span class="na">withSingleSkill</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">baseDir</span><span class="p">(</span><span class="s">"/path/to/skills"</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">singleSkill</span><span class="p">(</span><span class="s">"/path/to/skills/code-review-skill"</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">CodeReviewAgent</span><span class="p">(</span><span class="n">setup</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">registerExtension</span><span class="p">(</span><span class="n">extension</span><span class="p">);</span>
+</code></pre></div>
+<h3 id="use-case-2-multi-purpose-assistant">Use Case 2: Multi-Purpose Assistant<a class="headerlink" href="#use-case-2-multi-purpose-assistant" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// Multi-skill mode: discover multiple skills</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">extension</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentSkillsExtension</span><span class="p">.</span><span class="na">withMultipleSkills</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">baseDir</span><span class="p">(</span><span class="n">System</span><span class="p">.</span><span class="na">getProperty</span><span class="p">(</span><span class="s">"user.dir"</span><span class="p">))</span>
+<span class="w">    </span><span class="p">.</span><span class="na">skillsDirectories</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+<span class="w">        </span><span class="s">"./company-skills"</span><span class="p">,</span>
+<span class="w">        </span><span class="s">"./open-source-skills"</span>
+<span class="w">    </span><span class="p">))</span>
+<span class="w">    </span><span class="p">.</span><span class="na">skillsToLoad</span><span class="p">(</span><span class="kc">null</span><span class="p">)</span><span class="w">  </span><span class="c1">// Discover all</span>
+<span class="w">    </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">GeneralAssistant</span><span class="p">(</span><span class="n">setup</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">registerExtension</span><span class="p">(</span><span class="n">extension</span><span class="p">);</span>
+</code></pre></div>
+<h3 id="use-case-3-filtered-skill-discovery">Use Case 3: Filtered Skill Discovery<a class="headerlink" href="#use-case-3-filtered-skill-discovery" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// Discover only specific skills to reduce prompt context</span>
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">extension</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentSkillsExtension</span><span class="p">.</span><span class="na">withMultipleSkills</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">baseDir</span><span class="p">(</span><span class="s">"/skills"</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">skillsDirectories</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"./database-skills"</span><span class="p">))</span>
+<span class="w">    </span><span class="p">.</span><span class="na">skillsToLoad</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+<span class="w">        </span><span class="s">"schema-design-skill"</span><span class="p">,</span>
+<span class="w">        </span><span class="s">"query-optimization-skill"</span>
+<span class="w">    </span><span class="p">))</span>
+<span class="w">    </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">DatabaseArchitectAgent</span><span class="p">(</span><span class="n">setup</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">registerExtension</span><span class="p">(</span><span class="n">extension</span><span class="p">);</span>
+</code></pre></div>
+<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">¶</a></h2>
+<ul>
+<li><a href="agent-memory.html">Agent Memory Extension</a> — For persistent knowledge across sessions</li>
+<li><a href="tools.html">Using Tools</a> — For executable tools (different from skills)</li>
+<li><a href="agents.html">Agents</a> — Core agent implementation</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden="">
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2025  PhonePe Private Limited
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tracking", "navigation.path", "navigation.sections", "content.code.copy", "content.code.annotate", "navigation.expand", "toc.follow", "navigation.top", "search.suggest", "search.highlight", "search.share"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  
+<script id="init-glightbox">document.querySelectorAll('.glightbox').forEach(function(element) {
+    try {
+        var img = element.querySelector('img');
+        if (img && img.src) {
+            element.setAttribute('href', img.src);
+        } else {
+            console.log('No img element with src attribute found');
+        }
+    } catch (error) {
+        console.log('Error:', error);
+    }
+});
+const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>
