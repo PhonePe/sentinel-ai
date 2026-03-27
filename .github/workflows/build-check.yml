@@ -52,7 +52,7 @@ jobs:
           if [ "$?" -ne 0 ]; then
              set -e
              echo "Package @modelcontextprotocol/server-everything@2025.12.18 not found globally, installing it..."
-             npm install --no-fund -dd @modelcontextprotocol/server-everything@2025.12.18
+             npm install --ignore-scripts --no-fund -dd @modelcontextprotocol/server-everything@2025.12.18
           else
              echo "Package @modelcontextprotocol/server-everything@2025.12.18 is already installed globally, skipping installation."
           fi
