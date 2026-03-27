@@ -28,6 +28,36 @@ jobs:
           key: ${{ runner.os }}-sonar-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-sonar-
+      - name: Set up Node.js and cache npm packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Cache npm packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/node_modules
+          key: ${{ runner.os }}-npm-packages
+          restore-keys: |
+            ${{ runner.os }}-npm-packages
+
+      # Installing modelcontextprotocol/server-everything package and its dependencies prior to execution of JUnit tests to prevent timeout errors in tests
+      # All the related npm packages should be cached in the Github runner when the same CI job runs again
+      # So the installation should ideally happen only once until there are changes in the package version
+      - name: Install mcp server-everything package and its dependencies
+        run: |
+          set +e
+          npm list @modelcontextprotocol/server-everything@2025.12.18
+          if [ "$?" -ne 0 ]; then
+             set -e
+             echo "Package @modelcontextprotocol/server-everything@2025.12.18 not found globally, installing it..."
+             npm install --ignore-scripts --no-fund -dd @modelcontextprotocol/server-everything@2025.12.18
+          else
+             echo "Package @modelcontextprotocol/server-everything@2025.12.18 is already installed globally, skipping installation."
+          fi
+
       - name: Cache Maven repository
         uses: actions/cache@v4
         with:
