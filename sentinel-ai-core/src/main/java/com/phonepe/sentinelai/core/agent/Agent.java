@@ -933,7 +933,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
 
 
     @SneakyThrows
-    public <U> String toXmlContent(U object) {
+    private <U> String toXmlContent(U object) {
         final var xml = xmlMapper.writerWithDefaultPrettyPrinter()
                 .withRootName("user_input")
                 .writeValueAsString(toXmlNode(object));
