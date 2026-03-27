@@ -46,3 +46,5 @@ out
 deps
 docs/site
 test_output.log
+site/
+docs/site/
