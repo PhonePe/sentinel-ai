@@ -53,6 +53,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -76,26 +77,8 @@ class EventUtilsTest {
     private ModelRunContext modelRunContext;
     private ModelUsageStats usageStats;
 
-    @BeforeEach
-    void setUp() {
-        agentSetup = AgentSetup.builder()
-                .mapper(JsonUtils.createMapper())
-                .eventBus(eventBus)
-                .build();
-
-        usageStats = new ModelUsageStats();
-
-        modelRunContext = new ModelRunContext(AGENT_NAME,
-                                              RUN_ID,
-                                              SESSION_ID,
-                                              USER_ID,
-                                              agentSetup,
-                                              usageStats,
-                                              null);
-    }
-
     @Test
-    void testRaiseCompactionCompletedEvent_success_notifiesCorrectEvent() {
+    void raiseCompactionCompletedEventSuccessNotifiesCorrectEvent() {
         final var stopwatch = Stopwatch.createStarted();
         final var summary = ExtractedSummary.builder()
                 .summary("Compact summary")
@@ -125,10 +108,9 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseCompactionCompletedEvent_swallowsException() {
+    void raiseCompactionCompletedEventSwallowsException() {
         doThrow(new RuntimeException("bus failure")).when(eventBus).notify(any());
 
-        // Should not throw
         EventUtils.raiseCompactionCompletedEvent(modelRunContext,
                                                  SESSION_ID,
                                                  ErrorType.SUCCESS,
@@ -141,7 +123,7 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseCompactionCompletedEvent_withError_notifiesCorrectEvent() {
+    void raiseCompactionCompletedEventWithErrorNotifiesCorrectEvent() {
         final var stopwatch = Stopwatch.createStarted();
 
         EventUtils.raiseCompactionCompletedEvent(modelRunContext,
@@ -161,7 +143,7 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseCompactionStartedEvent_notifiesCorrectEvent() {
+    void raiseCompactionStartedEventNotifiesCorrectEvent() {
         EventUtils.raiseCompactionStartedEvent(modelRunContext, SESSION_ID);
 
         final var captor = ArgumentCaptor.forClass(AgentEvent.class);
@@ -175,17 +157,16 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseCompactionStartedEvent_swallowsException() {
+    void raiseCompactionStartedEventSwallowsException() {
         doThrow(new RuntimeException("bus failure")).when(eventBus).notify(any());
 
-        // Should not throw
         EventUtils.raiseCompactionStartedEvent(modelRunContext, SESSION_ID);
 
         verify(eventBus).notify(any());
     }
 
     @Test
-    void testRaiseInputReceivedEvent_notifiesCorrectEvent() {
+    void raiseInputReceivedEventNotifiesCorrectEvent() {
         final var runContext = new AgentRunContext<>("run-input-1",
                                                      "Hello agent",
                                                      AgentRequestMetadata.builder()
@@ -209,7 +190,7 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseInputReceivedEvent_nullMetadata_sessionIdIsNull() {
+    void raiseInputReceivedEventNullMetadataSessionIdIsNull() {
         final var runContext = new AgentRunContext<>("run-input-2",
                                                      "Hello agent",
                                                      null,
@@ -228,8 +209,7 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseInputReceivedEvent_swallowsSerializationException() {
-        // Use an object that the default mapper cannot serialize (anonymous class with no properties)
+    void raiseInputReceivedEventSwallowsSerializationException() {
         final var runContext = new AgentRunContext<>("run-input-3",
                                                      "hello",
                                                      AgentRequestMetadata.builder()
@@ -240,17 +220,19 @@ class EventUtilsTest {
                                                      usageStats,
                                                      null);
 
-        // Mock mapper failure via an EventBus that throws on notify
         doThrow(new RuntimeException("serialize failure")).when(eventBus).notify(any());
 
-        // Should not throw
-        EventUtils.raiseInputReceivedEvent(AGENT_NAME, runContext, "hello", agentSetup);
+        try {
+            EventUtils.raiseInputReceivedEvent(AGENT_NAME, runContext, "hello", agentSetup);
+        }
+        catch (Exception e) {
+            fail("Exception should have been swallowed, but was thrown: " + e.getMessage());
+        }
     }
 
     @Test
-    void testRaiseMessageReceivedEvent_withExplicitArgs_notifiesCorrectEvent() {
+    void raiseMessageReceivedEventWithExplicitArgsNotifiesCorrectEvent() {
         final var stopwatch = Stopwatch.createStarted();
-
         final var msg = new UserPrompt(SESSION_ID, RUN_ID, "hello", LocalDateTime.now());
 
         EventUtils.raiseMessageReceivedEvent(AGENT_NAME,
@@ -272,9 +254,8 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseMessageReceivedEvent_withModelRunContext_notifiesCorrectEvent() {
+    void raiseMessageReceivedEventWithModelRunContextNotifiesCorrectEvent() {
         final var stopwatch = Stopwatch.createStarted();
-
         final var msg1 = new UserPrompt(SESSION_ID, RUN_ID, "msg1", LocalDateTime.now());
         final var msg2 = new UserPrompt(SESSION_ID, RUN_ID, "msg2", LocalDateTime.now());
         final List<AgentMessage> allMessages = List.of(msg1, msg2);
@@ -296,11 +277,9 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseMessageSentEvent_allMessagesAreNew_raisesEventWithAll() {
+    void raiseMessageSentEventAllMessagesAreNewRaisesEventWithAll() {
         final var msg1 = new UserPrompt(SESSION_ID, RUN_ID, "first", LocalDateTime.now());
         final var msg2 = new UserPrompt(SESSION_ID, RUN_ID, "second", LocalDateTime.now());
-
-        // prevMessages is empty -> all messages are "new"
         final List<AgentMessage> prevMessages = List.of();
         final List<AgentMessage> currentAllMessages = List.of(msg1, msg2);
 
@@ -314,43 +293,31 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseMessageSentEvent_filtersOutNonRequestMessages() {
-        // Text (LLM response) is NOT an AgentRequest — should be filtered out
+    void raiseMessageSentEventFiltersOutNonRequestMessages() {
+        // Text is a model response, not an AgentRequest — it must be excluded from sent-message events
         final var textMsg = new Text(SESSION_ID, RUN_ID, "llm response", usageStats, 100L);
-
-        final List<AgentMessage> prevMessages = List.of();
         final List<AgentMessage> currentAllMessages = List.of(textMsg);
 
-        EventUtils.raiseMessageSentEvent(modelRunContext, prevMessages, currentAllMessages);
+        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(), currentAllMessages);
 
-        // No new AgentRequest messages, so no event should be raised
         verify(eventBus, never()).notify(any());
     }
 
     @Test
-    void testRaiseMessageSentEvent_noNewMessages_doesNotNotify() {
-        // prevMessages contains msg1; currentAllMessages has the same messages (no new ones)
+    void raiseMessageSentEventNoNewMessagesDoesNotNotify() {
         final var msg1 = new UserPrompt(SESSION_ID, RUN_ID, "old message", LocalDateTime.now());
 
-        final List<AgentMessage> prevMessages = List.of(msg1);
-        final List<AgentMessage> currentAllMessages = List.of(msg1);
-
-        EventUtils.raiseMessageSentEvent(modelRunContext, prevMessages, currentAllMessages);
+        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(msg1), List.of(msg1));
 
         verify(eventBus, never()).notify(any());
     }
 
     @Test
-    void testRaiseMessageSentEvent_sendsOnlyNewRequestMessages() {
-        // prevMessages contains msg1 (a UserPrompt/AgentRequest)
-        // currentAllMessages contains msg1 + msg2 (both UserPrompts)
+    void raiseMessageSentEventSendsOnlyNewRequestMessages() {
         final var msg1 = new UserPrompt(SESSION_ID, RUN_ID, null, null, "old message", false, LocalDateTime.now());
         final var msg2 = new UserPrompt(SESSION_ID, RUN_ID, null, null, "new message", false, LocalDateTime.now());
 
-        final List<AgentMessage> prevMessages = List.of(msg1);
-        final List<AgentMessage> currentAllMessages = List.of(msg1, msg2);
-
-        EventUtils.raiseMessageSentEvent(modelRunContext, prevMessages, currentAllMessages);
+        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(msg1), List.of(msg1, msg2));
 
         final var captor = ArgumentCaptor.forClass(AgentEvent.class);
         verify(eventBus).notify(captor.capture());
@@ -362,7 +329,7 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseOutputEvent_error_raisesOutputErrorEvent() {
+    void raiseOutputEventErrorRaisesOutputErrorEvent() {
         final var stopwatch = Stopwatch.createStarted();
         final var error = SentinelError.error(ErrorType.GENERIC_MODEL_CALL_FAILURE, "LLM error");
         final var output = ModelOutput.error(List.of(), usageStats, error);
@@ -380,28 +347,10 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseOutputEvent_successWithNullError_raisesOutputGeneratedEvent() throws Exception {
-        final var stopwatch = Stopwatch.createStarted();
-        final var mapper = JsonUtils.createMapper();
-        final var data = mapper.readTree("{\"value\":42}");
-
-        // ModelOutput with null error field (treated as success branch)
-        final var output = new ModelOutput(data, List.of(), List.of(), usageStats, null);
-
-        EventUtils.raiseOutputEvent(modelRunContext, output, stopwatch);
-
-        final var captor = ArgumentCaptor.forClass(AgentEvent.class);
-        verify(eventBus).notify(captor.capture());
-
-        assertInstanceOf(OutputGeneratedAgentEvent.class, captor.getValue());
-    }
-
-    @Test
-    void testRaiseOutputEvent_success_raisesOutputGeneratedEvent() throws Exception {
+    void raiseOutputEventSuccessRaisesOutputGeneratedEvent() throws Exception {
         final var stopwatch = Stopwatch.createStarted();
         final var mapper = JsonUtils.createMapper();
         final var data = mapper.readTree("{\"result\":\"ok\"}");
-
         final var output = ModelOutput.success(data, List.of(), List.of(), usageStats);
 
         EventUtils.raiseOutputEvent(modelRunContext, output, stopwatch);
@@ -419,18 +368,50 @@ class EventUtilsTest {
     }
 
     @Test
-    void testRaiseOutputEvent_swallowsException() throws Exception {
+    void raiseOutputEventSuccessWithNullErrorRaisesOutputGeneratedEvent() throws Exception {
+        final var stopwatch = Stopwatch.createStarted();
+        final var mapper = JsonUtils.createMapper();
+        final var data = mapper.readTree("{\"value\":42}");
+        // null error field is treated as the success branch in raiseOutputEvent
+        final var output = new ModelOutput(data, List.of(), List.of(), usageStats, null);
+
+        EventUtils.raiseOutputEvent(modelRunContext, output, stopwatch);
+
+        final var captor = ArgumentCaptor.forClass(AgentEvent.class);
+        verify(eventBus).notify(captor.capture());
+
+        assertInstanceOf(OutputGeneratedAgentEvent.class, captor.getValue());
+    }
+
+    @Test
+    void raiseOutputEventSwallowsException() throws Exception {
         final var stopwatch = Stopwatch.createStarted();
         final var mapper = JsonUtils.createMapper();
         final var data = mapper.readTree("{\"result\":\"ok\"}");
         final var output = ModelOutput.success(data, List.of(), List.of(), usageStats);
 
-        // Force eventBus.notify() to throw so the catch block is exercised
         doThrow(new RuntimeException("event bus failure")).when(eventBus).notify(any());
 
-        // Should not throw despite the exception in notify()
         EventUtils.raiseOutputEvent(modelRunContext, output, stopwatch);
 
         verify(eventBus).notify(any());
+    }
+
+    @BeforeEach
+    void setUp() {
+        agentSetup = AgentSetup.builder()
+                .mapper(JsonUtils.createMapper())
+                .eventBus(eventBus)
+                .build();
+
+        usageStats = new ModelUsageStats();
+
+        modelRunContext = new ModelRunContext(AGENT_NAME,
+                                              RUN_ID,
+                                              SESSION_ID,
+                                              USER_ID,
+                                              agentSetup,
+                                              usageStats,
+                                              null);
     }
 }
