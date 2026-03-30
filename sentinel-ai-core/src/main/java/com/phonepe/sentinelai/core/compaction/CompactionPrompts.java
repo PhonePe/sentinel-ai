@@ -51,112 +51,112 @@ public class CompactionPrompts {
     public static final String DEFAULT_PROMPT_SCHEMA = """
             {
                 "type": "object",
-                    "description": "Schema for a compact summary envelope used in prompt/response compaction workflows.",
-                    "additionalProperties": false,
-                    "required": [ "title", "keywords", "summary", "key_points", "key_facts", "action_items",
-                    "citations", "sentiment", "confidence", "metadata", "goal", "discoveries", "accomplishments", "relevant_files" ],
-                    "strict": true,
-                    "properties": {
-                        "title": {
+                "description": "Schema for a compact summary envelope used in prompt/response compaction workflows.",
+                "additionalProperties": false,
+                "required": [ "title", "keywords", "summary", "key_points", "key_facts", "action_items",
+                "citations", "sentiment", "confidence", "metadata", "goal", "discoveries", "accomplishments", "relevant_files" ],
+                "strict": true,
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Short, human-readable heading that captures the core essence of the user query. Aim for 3–10 words, sentence case, no trailing period."
+                    },
+                    "keywords": {
+                        "type": "array",
+                        "description": "Relevant one-word keywords or topics discussed. Keep the count to maximum 3 and minimum 1.",
+                        "items": {
                             "type": "string",
-                            "description": "Short, human-readable heading that captures the core essence of the user query. Aim for 3–10 words, sentence case, no trailing period."
-                        },
-                        "keywords": {
-                            "type": "array",
-                            "description": "Relevant one-word keywords or topics discussed. Keep the count to maximum 3 and minimum 1.",
-                            "items": {
-                                "type": "string",
-                                "description": "A single keyword or topic."
-                            }
-                        },
-                        "summary": {
+                            "description": "A single keyword or topic."
+                        }
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "Concise narrative capturing the essence, context, and important outcomes. Prefer 2–5 sentences, neutral tone, no speculation, no metadata."
+                    },
+                    "key_points": {
+                        "type": "array",
+                        "description": "Distilled major points or takeaways, ordered by importance or chronology, non-redundant.",
+                        "items": {
                             "type": "string",
-                            "description": "Concise narrative capturing the essence, context, and important outcomes. Prefer 2–5 sentences, neutral tone, no speculation, no metadata."
+                            "description": "A single, clear point (one idea per item)."
+                        }
+                    },
+                    "key_facts": {
+                        "type": "array",
+                        "description": "Objective, verifiable facts extracted from the source (names, dates, numbers, direct quotes). Favor extractive phrasing and include units where relevant.",
+                        "items": {
+                            "type": "string",
+                            "description": "One factual statement or exact quote; include measurements, counts, or timestamps when applicable."
+                        }
+                    },
+                    "action_items": {
+                        "type": "array",
+                        "description": "Concrete next steps or decisions. Use imperative phrasing; optionally include owner and due date.",
+                        "items": {
+                            "type": "string",
+                            "description": "One actionable task (e.g., 'Draft proposal by Friday', 'Alice to review PR #123')."
+                        }
+                    },
+                    "goal": {
+                        "type": "string",
+                        "description": "The primary objective of the current session."
+                    },
+                    "discoveries": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
                         },
-                        "key_points": {
-                            "type": "array",
-                            "description": "Distilled major points or takeaways, ordered by importance or chronology, non-redundant.",
-                            "items": {
-                                "type": "string",
-                                "description": "A single, clear point (one idea per item)."
-                            }
+                        "description": "Technical findings, bug insights, or environmental observations."
+                    },
+                    "accomplishments": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
                         },
-                        "key_facts": {
-                            "type": "array",
-                            "description": "Objective, verifiable facts extracted from the source (names, dates, numbers, direct quotes). Favor extractive phrasing and include units where relevant.",
-                            "items": {
-                                "type": "string",
-                                "description": "One factual statement or exact quote; include measurements, counts, or timestamps when applicable."
-                            }
+                        "description": "A list of tasks or milestones successfully completed."
+                    },
+                    "relevant_files": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
                         },
-                        "action_items": {
-                            "type": "array",
-                            "description": "Concrete next steps or decisions. Use imperative phrasing; optionally include owner and due date.",
-                            "items": {
-                                "type": "string",
-                                "description": "One actionable task (e.g., 'Draft proposal by Friday', 'Alice to review PR #123')."
-                            }
-                        },
-                            "goal": {
-                                "type": "string",
-                                "description": "The primary objective of the current session."
-                            },
-                            "discoveries": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
+                        "description": "Paths to files that have been modified or are critical to the current task."
+                    },
+                    "citations": {
+                        "type": "array",
+                        "description": "Source references supporting facts or quotes. Useful for traceability and verification.",
+                        "items": {
+                            "type": "object",
+                            "description": "A single citation entry linking content to its source.",
+                            "additionalProperties": false,
+                            "required": [ "source", "quote" ],
+                            "properties": {
+                                "source": {
+                                    "type": "string",
+                                    "description": "Stable identifier for the source (e.g., URL, document title, repo path, message ID)."
                                 },
-                                "description": "Technical findings, bug insights, or environmental observations."
-                            },
-                            "accomplishments": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                },
-                                "description": "A list of tasks or milestones successfully completed."
-                            },
-                            "relevant_files": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                },
-                                "description": "Paths to files that have been modified or are critical to the current task."
-                            },
-                         "citations": {
-                            "type": "array",
-                            "description": "Source references supporting facts or quotes. Useful for traceability and verification.",
-                            "items": {
-                                "type": "object",
-                                "description": "A single citation entry linking content to its source.",
-                                "additionalProperties": false,
-                                "required": [ "source", "quote" ],
-                                "properties": {
-                                    "source": {
-                                        "type": "string",
-                                        "description": "Stable identifier for the source (e.g., URL, document title, repo path, message ID)."
-                                    },
-                                    "quote": {
-                                        "type": "string",
-                                        "description": "Optional exact excerpt or snippet from the source to support verification."
-                                    }
+                                "quote": {
+                                    "type": "string",
+                                    "description": "Optional exact excerpt or snippet from the source to support verification."
                                 }
                             }
-                        },
-                        "sentiment": {
-                            "type": "string",
-                            "description": "Overall tone of the content or outcome.",
-                            "enum": [ "positive", "neutral", "negative" ]
-                        },
-                        "confidence": {
-                            "type": "number",
-                            "description": "Model-assessed confidence (0–10) in the accuracy and completeness of the summary. Heuristic, not statistically calibrated.",
-                            "minimum": 0,
-                            "maximum": 10
-                        },
-                        "metadata": {
-                            "type": "string",
-                            "description": "Free-form auxiliary details (e.g., model name/version, timestamp, prompt hash, processing notes). Content should not duplicate other fields."
                         }
+                    },
+                    "sentiment": {
+                        "type": "string",
+                        "description": "Overall tone of the content or outcome.",
+                        "enum": [ "positive", "neutral", "negative" ]
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "description": "Model-assessed confidence (0–10) in the accuracy and completeness of the summary. Heuristic, not statistically calibrated.",
+                        "minimum": 0,
+                        "maximum": 10
+                    },
+                    "metadata": {
+                        "type": "string",
+                        "description": "Free-form auxiliary details (e.g., model name/version, timestamp, prompt hash, processing notes). Content should not duplicate other fields."
+                    }
                 }
             }
                                             """;

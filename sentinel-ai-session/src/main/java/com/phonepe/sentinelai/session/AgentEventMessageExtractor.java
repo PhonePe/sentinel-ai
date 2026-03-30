@@ -18,6 +18,8 @@ package com.phonepe.sentinelai.session;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.events.AgentEventVisitor;
+import com.phonepe.sentinelai.core.events.CompactionCompletedEvent;
+import com.phonepe.sentinelai.core.events.CompactionStartedEvent;
 import com.phonepe.sentinelai.core.events.InputReceivedAgentEvent;
 import com.phonepe.sentinelai.core.events.MessageReceivedAgentEvent;
 import com.phonepe.sentinelai.core.events.MessageSentAgentEvent;
@@ -38,6 +40,16 @@ public class AgentEventMessageExtractor implements
     public static class ExtractedData {
         List<AgentMessage> newMessages;
         List<AgentMessage> allMessages;
+    }
+
+    @Override
+    public Optional<ExtractedData> visit(CompactionCompletedEvent compactionCompleted) {
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<ExtractedData> visit(CompactionStartedEvent compactionStarted) {
+        return Optional.empty();
     }
 
     @Override

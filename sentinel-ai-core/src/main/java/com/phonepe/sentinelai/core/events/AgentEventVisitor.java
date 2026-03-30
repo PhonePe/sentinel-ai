@@ -20,6 +20,10 @@ package com.phonepe.sentinelai.core.events;
  * Interface for visiting agent event subclasses to implement type specific behaviour
  */
 public interface AgentEventVisitor<T> {
+    T visit(CompactionCompletedEvent compactionCompleted);
+
+    T visit(CompactionStartedEvent compactionStarted);
+
     T visit(InputReceivedAgentEvent inputReceived);
 
     T visit(MessageReceivedAgentEvent messageReceived);
@@ -35,5 +39,4 @@ public interface AgentEventVisitor<T> {
     T visit(ToolCallCompletedAgentEvent toolCallCompleted);
 
     T visit(ToolCalledAgentEvent toolCalled);
-
 }
