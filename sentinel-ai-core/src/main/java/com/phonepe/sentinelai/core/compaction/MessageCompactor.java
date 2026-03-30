@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Stopwatch;
 
 import org.apache.commons.text.StringSubstitutor;
 
@@ -42,10 +43,12 @@ import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.NonContextualDefaultExternalToolRunner;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.core.utils.EventUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 
 import lombok.SneakyThrows;
@@ -71,7 +74,7 @@ public class MessageCompactor {
 
     @SneakyThrows
     public static CompletableFuture<Optional<ExtractedSummary>> compactMessages(final String agentName,
-                                                                                final String sessionId,
+                                                                                final String inSessionId,
                                                                                 final String userId,
                                                                                 final AgentSetup agentSetup,
                                                                                 final ObjectMapper mapper,
@@ -81,11 +84,10 @@ public class MessageCompactor {
                                                                                 final int tokenBudget) {
         final var compactMessages = toCompactMessage(messages, mapper);
         final var messagesForCompaction = new ArrayList<AgentMessage>();
-        final var runId = "run-for-" + COMPACTION_SESSION_PREFIX + Objects.requireNonNullElseGet(
-                                                                                                 sessionId,
-                                                                                                 () -> UUID
-                                                                                                         .randomUUID()
-                                                                                                         .toString());
+        final var sessionId = Objects.requireNonNullElseGet(inSessionId,
+                                                            () -> "temp-" + UUID.randomUUID().toString());
+        final var compactionSessionId = COMPACTION_SESSION_PREFIX + sessionId;
+        final var runId = "run-for-" + compactionSessionId;
         final var valueMap = Map.<String, Object>of("tokenBudget",
                                                     tokenBudget,
                                                     "sessionMessages",
@@ -119,16 +121,19 @@ public class MessageCompactor {
                 .build());
         final var usageStats = Objects.requireNonNullElseGet(stats,
                                                              ModelUsageStats::new);
+        final var settingsForCompaction = agentSetup
+                .withModelSettings(agentSetup
+                        .getModelSettings()
+                        .withParallelToolCalls(false));
         final var modelRunContext = new ModelRunContext(agentName,
                                                         runId,
-                                                        COMPACTION_SESSION_PREFIX + sessionId,
+                                                        compactionSessionId,
                                                         userId,
-                                                        agentSetup
-                                                                .withModelSettings(agentSetup
-                                                                        .getModelSettings()
-                                                                        .withParallelToolCalls(false)),
+                                                        settingsForCompaction,
                                                         usageStats,
                                                         ProcessingMode.DIRECT);
+        EventUtils.raiseCompactionStartedEvent(modelRunContext, sessionId);
+        final var stopwatch = Stopwatch.createStarted();
         return agentSetup.getModel()
                 .compute(modelRunContext,
                          List.of(ModelOutputDefinition.builder()
@@ -144,12 +149,12 @@ public class MessageCompactor {
                          new NeverTerminateEarlyStrategy(),
                          List.of())
                 .thenApply(output -> {
+                    var extractedSummary = Optional.<ExtractedSummary>empty();
+                    final var error = Objects.requireNonNullElse(output.getError(),
+                                                                 SentinelError.error(ErrorType.NO_RESPONSE));
                     log.debug("Summarization usage: {}", usageStats);
-                    if (output.getError() != null && !output.getError()
-                            .getErrorType()
-                            .equals(ErrorType.SUCCESS)) {
-                        log.error("Error extracting session summary: {}",
-                                  output.getError());
+                    if (!error.getErrorType().equals(ErrorType.SUCCESS)) {
+                        log.error("Error extracting session summary: {}", error);
                     }
                     else {
                         final var summaryData = output.getData().get(OUTPUT_KEY);
@@ -170,15 +175,21 @@ public class MessageCompactor {
                                         .rawData(summaryData)
                                         .build();
 
-                                return Optional.of(summary);
+                                extractedSummary = Optional.of(summary);
                             }
                             catch (Exception e) {
-                                log.error("Error extracting summary: %s"
-                                        .formatted(e.getMessage()), e);
+                                log.error("Error extracting summary: %s".formatted(e.getMessage()), e);
                             }
                         }
                     }
-                    return Optional.<ExtractedSummary>empty();
+                    EventUtils.raiseCompactionCompletedEvent(modelRunContext,
+                                                             sessionId,
+                                                             error.getErrorType(),
+                                                             error.getMessage(),
+                                                             usageStats,
+                                                             extractedSummary.orElse(null),
+                                                             stopwatch);
+                    return extractedSummary;
                 });
     }
 
