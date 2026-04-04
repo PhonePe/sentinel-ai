@@ -126,7 +126,8 @@ public class AskUserTool implements ToolBox {
                             Returns the label of the selected option (1-based index).
                             For example, if there are three choices for a question, then
                             1. <First choice>; 2. <Second choice>; 3. <Third choice>
-                            Note that because ';' (semi-colon) is used as a choice delimiter, it can't be used in the choice descriptions
+                            You may highlight the recommended choice by adding "(Recommended)" at the end of the choice.
+                            **IMPORTANT**: Because ';' (semi-colon) is used as a choice delimiter, it can't be used in the choice descriptions
                     """)
     public String askUserToChoose(
             @JsonPropertyDescription("The question to ask the user")

@@ -111,13 +111,16 @@ Write a clear, correct SQL query:
 
 ---
 
-### Step 4: Display the generated SQL to the user and ask for their confirmation to proceed before executing the query
+### Step 4: Display the generated SQL to the user and seek their confirmation
 
 - Ask the user to confirm if they want to execute the generated SQL query against the database. 
   This is a crucial step to ensure that the user is aware of the exact query being run.
 - Only if the user confirms, then proceed to executing the query.
 - If the user does not confirm, return a message indicating that the query execution has been cancelled.
 - You may use the ask_user_tool_ask_user_to_choose tool for this purpose.
+- When printing the SQL query to be executed, print it on a separate line and make it structured & pretty so it is readable.
+
+---
 
 ### Step 5: Execute the Query
 
