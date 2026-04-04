@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
+import com.phonepe.sentinelai.examples.texttosql.tools.LocalTools;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import lombok.Builder;
 import lombok.NonNull;
@@ -41,7 +42,7 @@ import lombok.Singular;
  * <ol>
  *   <li><b>Local tools</b> — registered via {@code registerTools()} after construction; these
  *       include timestamp conversion, schema inspection, and result formatting ({@link
- *       com.phonepe.sentinelai.examples.texttosql.tools.LocalSqlTools}).
+ *       LocalTools}).
  *   <li><b>Remote-HTTP toolbox</b> — registered via {@code registerToolbox()} after construction;
  *       these call the embedded Dropwizard SQLite REST server.
  *   <li><b>Skills extension</b> — injected via {@code extensions} at construction time; provides

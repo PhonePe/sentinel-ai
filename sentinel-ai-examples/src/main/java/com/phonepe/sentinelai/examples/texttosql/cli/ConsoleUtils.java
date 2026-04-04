@@ -19,13 +19,14 @@ package com.phonepe.sentinelai.examples.texttosql.cli;
 import com.github.vertical_blank.sqlformatter.SqlFormatter;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
-import com.phonepe.sentinelai.examples.texttosql.tools.LocalSqlTools;
+import com.phonepe.sentinelai.examples.texttosql.tools.LocalTools;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,6 +55,33 @@ public class ConsoleUtils {
     private static final String BRIGHT_GREEN = "\u001B[92m";
     private static final String BRIGHT_YELLOW = "\u001B[93m";
     private static final String BRIGHT_CYAN = "\u001B[96m";
+
+    // -------------------------------------------------------------------------
+    // Spinner state
+    // -------------------------------------------------------------------------
+
+    /**
+     * Global toggle for the progress spinner. {@code true} (the default) means the spinner may be
+     * displayed; {@code false} suppresses all spinner output — used while an {@code AskUserTool}
+     * interaction is in progress so that the user's terminal is not polluted with spinner lines
+     * while they are typing a response.
+     */
+    private static final AtomicBoolean SPINNER_ENABLED = new AtomicBoolean(true);
+
+    /**
+     * Disables the progress spinner globally. Spinner output will be suppressed until {@link
+     * #enableSpinner()} is called.
+     */
+    public static void disableSpinner() {
+        SPINNER_ENABLED.set(false);
+    }
+
+    /**
+     * Re-enables the progress spinner globally after a previous call to {@link #disableSpinner()}.
+     */
+    public static void enableSpinner() {
+        SPINNER_ENABLED.set(true);
+    }
 
     // -------------------------------------------------------------------------
     // Spinner vocabulary
@@ -114,14 +142,14 @@ public class ConsoleUtils {
         while (true) {
             try {
                 final T result = future.get(5, TimeUnit.SECONDS);
-                if (showSpinner) {
+                if (showSpinner && SPINNER_ENABLED.get()) {
                     // Erase the spinner line before the caller prints the result.
                     System.out.print("\r" + " ".repeat(80) + "\r");
                     System.out.flush();
                 }
                 return result;
             } catch (TimeoutException ignored) {
-                if (showSpinner) {
+                if (showSpinner && SPINNER_ENABLED.get()) {
                     final String verb =
                             PROCESSING_VERBS.get(
                                     ThreadLocalRandom.current().nextInt(PROCESSING_VERBS.size()));
@@ -231,7 +259,7 @@ public class ConsoleUtils {
 
         // ── Result rows ───────────────────────────────────────────────────
         System.out.println(BOLD + BRIGHT_YELLOW + "── Query Result " + "─".repeat(55) + RESET);
-        System.out.println(LocalSqlTools.formatResultsAsTable(result));
+        System.out.println(LocalTools.formatResultsAsTable(result));
     }
 
     // -------------------------------------------------------------------------

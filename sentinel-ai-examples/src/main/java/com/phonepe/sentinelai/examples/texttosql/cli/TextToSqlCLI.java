@@ -31,8 +31,9 @@ import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.examples.texttosql.agent.TextToSqlAgent;
 import com.phonepe.sentinelai.examples.texttosql.mcp.SqliteMcpServer;
 import com.phonepe.sentinelai.examples.texttosql.server.SqliteRestServer;
+import com.phonepe.sentinelai.examples.texttosql.tools.AskUserTool;
 import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
-import com.phonepe.sentinelai.examples.texttosql.tools.LocalSqlTools;
+import com.phonepe.sentinelai.examples.texttosql.tools.LocalTools;
 import com.phonepe.sentinelai.filesystem.skills.AgentSkillsExtension;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
@@ -217,6 +218,7 @@ public class TextToSqlCLI implements Callable<Integer> {
         final TextToSqlAgent agent = buildAgent(agentSetup, skillsExtension);
 
         registerLocalTools(agent, dbPath);
+        registerAskUserTool(agent);
 
         if (toolboxMode == ToolboxMode.MCP) {
             if (mcpServerMode == McpServerMode.SSE) {
@@ -429,17 +431,31 @@ public class TextToSqlCLI implements Callable<Integer> {
     }
 
     /**
+     * Registers the {@link AskUserTool} with the agent.
+     *
+     * <p>This tool enables the LLM to pause and ask the human operator for clarification whenever
+     * the user's prompt is ambiguous, incomplete, or admits multiple valid interpretations. The
+     * agent can either ask a free-form question ({@code ask_user_question}) or present a numbered
+     * list of choices ({@code ask_user_to_choose}).
+     */
+    private static void registerAskUserTool(TextToSqlAgent agent) {
+        log.info("Registering ask-user tool");
+        agent.registerToolbox(new AskUserTool());
+        log.info("Ask-user tool registered successfully");
+    }
+
+    /**
      * Registers the local SQL tools (timezone conversion, schema introspection, result formatting,
      * and hybrid schema search) with the agent.
      *
-     * <p>The {@link LocalSqlTools} constructor also initialises the Lucene schema vector store
+     * <p>The {@link LocalTools} constructor also initialises the Lucene schema vector store
      * under {@code {dataDir}/lucene-schema-index/}, building the index on first run.
      */
     @SneakyThrows
     private static void registerLocalTools(TextToSqlAgent agent, Path dbPath) {
         final Path dataDir = dbPath.getParent();
         log.info("Registering local SQL tools for database: {} (dataDir: {})", dbPath, dataDir);
-        agent.registerTools(ToolUtils.readTools(new LocalSqlTools(dbPath.toString(), dataDir)));
+        agent.registerTools(ToolUtils.readTools(new LocalTools(dbPath.toString(), dataDir)));
         log.info("Local SQL tools registered successfully");
     }
 

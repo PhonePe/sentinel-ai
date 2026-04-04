@@ -111,7 +111,15 @@ Write a clear, correct SQL query:
 
 ---
 
-### Step 4: Execute the Query
+### Step 4: Display the generated SQL to the user and ask for their confirmation to proceed before executing the query
+
+- Ask the user to confirm if they want to execute the generated SQL query against the database. 
+  This is a crucial step to ensure that the user is aware of the exact query being run.
+- Only if the user confirms, then proceed to executing the query.
+- If the user does not confirm, return a message indicating that the query execution has been cancelled.
+- You may use the ask_user_tool_ask_user_to_choose tool for this purpose.
+
+### Step 5: Execute the Query
 
 Use the `sqlite-api_execute_query` tool to run the SQL against the database.
 
@@ -141,7 +149,7 @@ columns before writing the query, you can use:
 
 ---
 
-### Step 5: Process Timestamps
+### Step 6: Process Timestamps
 
 After receiving query results, inspect every value whose column name ends in
 `_at`. Convert each such value using the `convert_epoch_to_local_dt` local tool:
@@ -156,7 +164,7 @@ mention the assumption in your explanation.
 
 ---
 
-### Step 6: Format and Present Results
+### Step 7: Format and Present Results
 
 1. Return the result as a json following schema of type (SqlQueryResult).
 2. Fill the explanation field in the json with a plain-English description of the query along with assumptions and 

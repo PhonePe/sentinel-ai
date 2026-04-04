@@ -58,7 +58,7 @@ import lombok.extern.slf4j.Slf4j;
  * passed to {@code Agent.registerTools()}.
  */
 @Slf4j
-public class LocalSqlTools implements ToolBox {
+public class LocalTools implements ToolBox {
     private static final DateTimeFormatter DISPLAY_FORMAT =
             DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -78,33 +78,10 @@ public class LocalSqlTools implements ToolBox {
      *     directory that also contains the SQLite file)
      */
     @SneakyThrows
-    public LocalSqlTools(String dbPath, Path dataDir) {
+    public LocalTools(String dbPath, Path dataDir) {
         this.dbPath = dbPath;
         this.vectorStore = VectorStoreInitializer.ensureInitialized(dataDir);
         this.schemaDescriptions = loadSchemaDescriptions();
-    }
-
-    private static Map<String, JsonNode> loadSchemaDescriptions() {
-        try (InputStream is =
-                LocalSqlTools.class.getResourceAsStream("/db/schema_descriptions.json")) {
-            if (is == null) {
-                log.warn("schema_descriptions.json not found on classpath");
-                return Map.of();
-            }
-            JsonNode root = MAPPER.readTree(is);
-            JsonNode tables = root.get("tables");
-            if (tables == null || !tables.isArray()) {
-                return Map.of();
-            }
-            Map<String, JsonNode> result = new LinkedHashMap<>();
-            for (JsonNode tableNode : tables) {
-                result.put(tableNode.get("name").asText(), tableNode);
-            }
-            return result;
-        } catch (Exception e) {
-            log.warn("Failed to load schema descriptions: {}", e.getMessage());
-            return Map.of();
-        }
     }
 
     @Override
@@ -477,5 +454,28 @@ public class LocalSqlTools implements ToolBox {
             }
         }
         return tables;
+    }
+
+    private static Map<String, JsonNode> loadSchemaDescriptions() {
+        try (InputStream is =
+                     LocalTools.class.getResourceAsStream("/db/schema_descriptions.json")) {
+            if (is == null) {
+                log.warn("schema_descriptions.json not found on classpath");
+                return Map.of();
+            }
+            JsonNode root = MAPPER.readTree(is);
+            JsonNode tables = root.get("tables");
+            if (tables == null || !tables.isArray()) {
+                return Map.of();
+            }
+            Map<String, JsonNode> result = new LinkedHashMap<>();
+            for (JsonNode tableNode : tables) {
+                result.put(tableNode.get("name").asText(), tableNode);
+            }
+            return result;
+        } catch (Exception e) {
+            log.warn("Failed to load schema descriptions: {}", e.getMessage());
+            return Map.of();
+        }
     }
 }
