@@ -172,27 +172,6 @@ mention the assumption in your explanation.
 
 ---
 
-## Reference: Tool Inventory
-
-| Tool | Type | Purpose                                                       |
-|---|---|---------------------------------------------------------------|
-| `search_schema` | Local | Hybrid keyword+semantic search to find relevant tables/columns |
-| `get_table_desc` | Local | Full description (columns, types, semantics) for a list of tables |
-| `get_column_desc` | Local | Description of a specific column in a table                   |
-| `get_table_row_counts` | Local | Row counts per table                                          |
-| `get_current_dt` | Local | Current epoch time in a given IANA timezone                   |
-| `convert_epoch_to_local_dt` | Local | Epoch seconds → `yyyy/MM/dd HH:mm:ss`                         |
-| `format_results_as_table` | Local | Render a `SqlQueryResult` as an ASCII table                   |
-| `sqlite-api_execute_query` | Remote-HTTP | Execute arbitrary SQL (primary execution path)      |
-| `sqlite-api_list_tables` | Remote-HTTP | List all tables in the database                     |
-| `sqlite-api_get_table_schema` | Remote-HTTP | Column definitions for a named table                |
-| `sqlite-api_get_database_info` | Remote-HTTP | High-level database metadata                        |
-| `sqlite-api_read_records` | Remote-HTTP | Read rows with simple equality filters              |
-| `sqlite-api_insert_record` | Remote-HTTP | Insert a new record into a table                    |
-| `sqlite-api_update_records` | Remote-HTTP | Update rows matching given conditions               |
-
----
-
 ## Common Query Patterns
 
 ### Top sellers by order volume
