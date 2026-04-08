@@ -798,24 +798,30 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                      mergedAgentSetup,
                                                      toolRunApprovalSeeker,
                                                      context);
+        final var model = mergedAgentSetup.getModel();
+        final var safeRunner = new SafeToolRunner(toolRunner,
+                                                  mergedAgentSetup,
+                                                  model,
+                                                  AgentUtils.sessionId(context),
+                                                  context.getRunId());
         try {
             if (isTextStreaming) {
-                modelFuture = mergedAgentSetup.getModel()
+                modelFuture = model
                         .streamText(modelRunContext,
                                     messages,
                                     knownTools,
-                                    toolRunner,
+                                    safeRunner,
                                     earlyTerminationStrategy,
                                     streamHandler,
                                     agentMessagesPreProcessors);
             }
             else {
-                modelFuture = mergedAgentSetup.getModel()
+                modelFuture = model
                         .stream(modelRunContext,
                                 outputDefinitions,
                                 messages,
                                 knownTools,
-                                toolRunner,
+                                safeRunner,
                                 earlyTerminationStrategy,
                                 streamHandler,
                                 agentMessagesPreProcessors);

@@ -184,6 +184,27 @@ class SafeToolRunnerTest {
     }
 
     @Test
+    void tokenCountUnknownSkipsGuardAndReturnsResponse() {
+        final var delegateResponse = successResponse("call-8", "myTool", "some large response");
+        final var delegate = (ToolRunner) (tools, tc) -> delegateResponse;
+        final var model = mock(Model.class);
+        when(model.estimateTokenCount(anyList(), any(AgentSetup.class))).thenReturn(Model.TOKEN_COUNT_UNKNOWN);
+
+        final var setup = AgentSetup.builder()
+                .mapper(JsonUtils.createMapper())
+                .build();
+
+        final var runner = new SafeToolRunner(delegate, setup, model, SESSION_ID, RUN_ID);
+        final var result = runner.runTool(Map.of(), toolCall("call-8", "myTool"));
+
+        // When token count is unknown, the guard is skipped and the original response is returned
+        assertEquals(ErrorType.SUCCESS, result.getErrorType());
+        assertEquals("call-8", result.getToolCallId());
+        assertEquals("myTool", result.getToolName());
+        assertEquals("some large response", result.getResponse());
+    }
+
+    @Test
     void toolMapAndToolCallPassedToDelegate() {
         final var capturedTools = new AtomicReference<Map<String, ExecutableTool>>();
         final var capturedToolCall = new AtomicReference<ToolCall>();

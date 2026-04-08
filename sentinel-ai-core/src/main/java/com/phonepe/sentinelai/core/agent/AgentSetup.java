@@ -91,6 +91,15 @@ public class AgentSetup {
     @Builder.Default
     AutoCompactionSetup autoCompactionSetup = AutoCompactionSetup.DEFAULT;
 
+    /**
+     * Maximum number of tokens allowed in a single tool response. If the tool response exceeds this limit, it will be
+     * replaced with an error message instructing the model to reduce the output size. The token count is estimated
+     * using the model's {@code estimateTokenCount} implementation; if the model does not support token estimation,
+     * the guard is skipped and a warning is logged.
+     * <p>
+     * Setting this to {@code 0} or a negative value falls back to the default of
+     * {@link #MAX_TOOL_RESPONSE_TOKENS} (10 000 tokens).
+     */
     @Builder.Default
     int maxToolResponseTokens = MAX_TOOL_RESPONSE_TOKENS;
 }

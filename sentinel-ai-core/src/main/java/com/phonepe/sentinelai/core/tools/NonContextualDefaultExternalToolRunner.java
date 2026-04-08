@@ -18,8 +18,6 @@ package com.phonepe.sentinelai.core.tools;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.apache.commons.lang3.NotImplementedException;
-
 import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
@@ -75,7 +73,13 @@ public class NonContextualDefaultExternalToolRunner implements ToolRunner {
 
                 @Override
                 public ToolCallResponse visit(InternalTool internalTool) {
-                    throw new NotImplementedException();
+                    return new ToolCallResponse(sessionId,
+                                                runId,
+                                                toolCall.getToolCallId(),
+                                                toolCall.getToolName(),
+                                                ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                                "Internal tools are not supported in this context.",
+                                                LocalDateTime.now());
                 }
             });
         }

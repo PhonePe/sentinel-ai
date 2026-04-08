@@ -110,7 +110,7 @@ class NonContextualDefaultExternalToolRunnerTest {
     }
 
     @Test
-    void internalToolReturnsTemporaryFailure() {
+    void internalToolReturnsPermanentFailure() {
         final var internalTool = new InternalTool(toolDefinition("internalTool"),
                                                   new ToolMethodInfo(List.of(), null, Void.class),
                                                   new Object());
@@ -118,9 +118,10 @@ class NonContextualDefaultExternalToolRunnerTest {
 
         final var result = RUNNER.runTool(Map.of("internalTool", internalTool), tc);
 
-        assertEquals(ErrorType.TOOL_CALL_TEMPORARY_FAILURE, result.getErrorType());
+        assertEquals(ErrorType.TOOL_CALL_PERMANENT_FAILURE, result.getErrorType());
         assertEquals("call-4", result.getToolCallId());
         assertEquals("internalTool", result.getToolName());
+        assertTrue(result.getResponse().contains("not supported"));
         assertFalse(result.isSuccess());
     }
 

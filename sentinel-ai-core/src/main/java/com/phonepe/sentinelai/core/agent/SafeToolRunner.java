@@ -25,10 +25,12 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class SafeToolRunner implements ToolRunner {
 
     private final ToolRunner delegate;
@@ -56,10 +58,21 @@ public class SafeToolRunner implements ToolRunner {
                 ? AgentSetup.MAX_TOOL_RESPONSE_TOKENS
                 : agentSetup.getMaxToolResponseTokens();
         final var responseTokenCount = model.estimateTokenCount(List.<AgentMessage>of(response), agentSetup);
+        if (responseTokenCount == Model.TOKEN_COUNT_UNKNOWN) {
+            log.warn("Token count estimation is not supported by the current model. "
+                    + "Tool response size guard is disabled for tool: {} (callId: {}).",
+                     response.getToolName(),
+                     response.getToolCallId());
+            return response;
+        }
         if (responseTokenCount > maxAllowedToolResponseTokens) {
             final var responseMessage = "Tool response too large. Max allowed : %d. Actual: %d tokens. Modify the request to reduce output size."
                     .formatted(maxAllowedToolResponseTokens, responseTokenCount);
-
+            log.warn("Tool response for tool {} (callId: {}) exceeded token limit. Max: {}, Actual: {}. Replacing with error response.",
+                     response.getToolName(),
+                     response.getToolCallId(),
+                     maxAllowedToolResponseTokens,
+                     responseTokenCount);
             return ToolCallResponse.builder()
                     .sessionId(sessionId)
                     .runId(runId)
