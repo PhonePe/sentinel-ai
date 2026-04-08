@@ -62,6 +62,7 @@ public class LocalTools implements ToolBox {
     private static final DateTimeFormatter DISPLAY_FORMAT =
             DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final String FIELD_DESCRIPTION = "description";
 
     private final String dbPath;
     private final SchemaVectorStore vectorStore;
@@ -246,37 +247,41 @@ public class LocalTools implements ToolBox {
             return "No results. No table names provided in input";
         }
         for (String tableName : tableNames) {
-            JsonNode tableNode = schemaDescriptions.get(tableName);
-            if (tableNode == null) {
-                sb.append("## Table: ").append(tableName).append("\nNot found.\n\n");
-                continue;
-            }
-            sb.append("## Table: ").append(tableName).append("\n");
-            sb.append(tableNode.get("description").asText()).append("\n\n");
-
-            JsonNode pks = tableNode.get("primaryKeyColumns");
-            if (pks != null && pks.isArray()) {
-                sb.append("Primary key: ");
-                pks.forEach(pk -> sb.append(pk.asText()).append(" "));
-                sb.append("\n");
-            }
-
-            JsonNode columns = tableNode.get("columns");
-            if (columns != null && columns.isArray()) {
-                sb.append("\n**Columns:**\n");
-                for (JsonNode col : columns) {
-                    sb.append(
-                            String.format(
-                                    "- `%s` (%s%s): %s%n",
-                                    col.get("name").asText(),
-                                    col.get("dataType").asText(),
-                                    col.get("nullable").asBoolean() ? ", nullable" : ", not null",
-                                    col.get("description").asText()));
-                }
-            }
-            sb.append("\n");
+            appendTableDescription(sb, tableName);
         }
         return sb.toString();
+    }
+
+    private void appendTableDescription(StringBuilder sb, String tableName) {
+        JsonNode tableNode = schemaDescriptions.get(tableName);
+        if (tableNode == null) {
+            sb.append("## Table: ").append(tableName).append("\nNot found.\n\n");
+            return;
+        }
+        sb.append("## Table: ").append(tableName).append("\n");
+        sb.append(tableNode.get(FIELD_DESCRIPTION).asText()).append("\n\n");
+
+        JsonNode pks = tableNode.get("primaryKeyColumns");
+        if (pks != null && pks.isArray()) {
+            sb.append("Primary key: ");
+            pks.forEach(pk -> sb.append(pk.asText()).append(" "));
+            sb.append("\n");
+        }
+
+        JsonNode columns = tableNode.get("columns");
+        if (columns != null && columns.isArray()) {
+            sb.append("\n**Columns:**\n");
+            for (JsonNode col : columns) {
+                sb.append(
+                        String.format(
+                                "- `%s` (%s%s): %s%n",
+                                col.get("name").asText(),
+                                col.get("dataType").asText(),
+                                col.get("nullable").asBoolean() ? ", nullable" : ", not null",
+                                col.get(FIELD_DESCRIPTION).asText()));
+            }
+        }
+        sb.append("\n");
     }
 
     /**
@@ -307,7 +312,7 @@ public class LocalTools implements ToolBox {
                             columnName,
                             col.get("dataType").asText(),
                             col.get("nullable").asBoolean() ? ", nullable" : ", not null",
-                            col.get("description").asText());
+                            col.get(FIELD_DESCRIPTION).asText());
                 }
             }
         }

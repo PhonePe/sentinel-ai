@@ -102,28 +102,32 @@ public class DatabaseInitializer {
         final List<String> tokens = new ArrayList<>();
         final StringBuilder current = new StringBuilder();
         boolean inQuotes = false;
-        for (int i = 0; i < line.length(); i++) {
+        int i = 0;
+        while (i < line.length()) {
             final char c = line.charAt(i);
             if (inQuotes) {
-                if (c == '"') {
-                    // Peek ahead — doubled quote means literal quote character
-                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
-                        current.append('"');
-                        i++; // skip second quote
-                    } else {
-                        inQuotes = false; // closing quote
-                    }
+                if (c == '"' && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    // Doubled quote inside quoted field — emit a literal quote, skip both chars
+                    current.append('"');
+                    i += 2;
+                } else if (c == '"') {
+                    inQuotes = false; // closing quote
+                    i++;
                 } else {
                     current.append(c);
+                    i++;
                 }
             } else {
                 if (c == '"') {
                     inQuotes = true;
+                    i++;
                 } else if (c == ',') {
                     tokens.add(current.toString());
                     current.setLength(0);
+                    i++;
                 } else {
                     current.append(c);
+                    i++;
                 }
             }
         }

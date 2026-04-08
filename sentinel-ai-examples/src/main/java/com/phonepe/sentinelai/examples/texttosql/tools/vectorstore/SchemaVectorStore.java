@@ -35,6 +35,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.queryparser.classic.QueryParserBase;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.FSDirectory;
@@ -99,7 +100,7 @@ public class SchemaVectorStore implements AutoCloseable {
                 for (Map<String, String> entry : documents) {
                     Document doc = new Document();
 
-                    String content = entry.get("content");
+                    String content = entry.get(FIELD_CONTENT);
                     float[] vector = embedder.embed(content);
 
                     doc.add(new StringField(FIELD_DOC_ID, entry.get("docId"), Field.Store.YES));
@@ -149,7 +150,7 @@ public class SchemaVectorStore implements AutoCloseable {
             try (StandardAnalyzer analyzer = new StandardAnalyzer()) {
                 QueryParser parser = new QueryParser(FIELD_CONTENT, analyzer);
                 try {
-                    bm25Query = parser.parse(QueryParser.escape(query));
+                    bm25Query = parser.parse(QueryParserBase.escape(query));
                 } catch (ParseException e) {
                     log.debug("BM25 query parse failed for '{}': {}", query, e.getMessage());
                     bm25Query = new MatchAllDocsQuery();
@@ -160,7 +161,6 @@ public class SchemaVectorStore implements AutoCloseable {
             return collectResults(searcher, topDocs);
         }
     }
-
     /**
      * Runs a pure KNN semantic search against the {@code vector} field using cosine similarity.
      *
@@ -218,7 +218,7 @@ public class SchemaVectorStore implements AutoCloseable {
                 QueryParser parser = new QueryParser(FIELD_CONTENT, analyzer);
                 Query bm25Query;
                 try {
-                    bm25Query = parser.parse(QueryParser.escape(query));
+                    bm25Query = parser.parse(QueryParserBase.escape(query));
                 } catch (ParseException e) {
                     log.debug("BM25 query parse failed for '{}', using match-all: {}", query, e.getMessage());
                     bm25Query = new MatchAllDocsQuery();
@@ -244,14 +244,16 @@ public class SchemaVectorStore implements AutoCloseable {
             float maxKnn = knnScores.values().stream().max(Float::compareTo).orElse(1.0f);
 
             Map<Integer, Float> combinedScores = new HashMap<>();
-            for (int docId : bm25Scores.keySet()) {
-                float normBm25 = bm25Scores.get(docId) / maxBm25;
+            for (Map.Entry<Integer, Float> bm25Entry : bm25Scores.entrySet()) {
+                int docId = bm25Entry.getKey();
+                float normBm25 = bm25Entry.getValue() / maxBm25;
                 float normKnn = knnScores.getOrDefault(docId, 0.0f) / maxKnn;
                 combinedScores.put(docId, BM25_WEIGHT * normBm25 + (1 - BM25_WEIGHT) * normKnn);
             }
-            for (int docId : knnScores.keySet()) {
+            for (Map.Entry<Integer, Float> knnEntry : knnScores.entrySet()) {
+                int docId = knnEntry.getKey();
                 if (!combinedScores.containsKey(docId)) {
-                    float normKnn = knnScores.get(docId) / maxKnn;
+                    float normKnn = knnEntry.getValue() / maxKnn;
                     combinedScores.put(docId, (1 - BM25_WEIGHT) * normKnn);
                 }
             }

@@ -890,7 +890,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 This usually indicates a response deserialization failure or a malformed response from the server""";
         if (completionResponse.getChoices() == null) {
             log.warn(errorMessage);
-            throw new RuntimeException(errorMessage);
+            throw new IllegalStateException(errorMessage);
         }
         return completionResponse.getChoices()
                 .stream()

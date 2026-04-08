@@ -101,10 +101,9 @@ public class VectorStoreInitializer {
      */
     private static void buildIndex(Path indexPath) throws IOException {
         List<Map<String, String>> documents = loadDocuments();
-        SchemaVectorStore store = new SchemaVectorStore(indexPath);
-        store.buildIndex(documents);
-        // store.close() is intentionally not called here — the caller receives ownership
-        // via ensureInitialized, so the store stays open after writing.
+        try (SchemaVectorStore store = new SchemaVectorStore(indexPath)) {
+            store.buildIndex(documents);
+        }
     }
 
     /**
@@ -152,7 +151,6 @@ public class VectorStoreInitializer {
                 for (JsonNode colNode : columns) {
                     String columnName = colNode.get("name").asText();
                     String columnDescription = colNode.get("description").asText();
-                    //String dataType = colNode.get("dataType").asText();
 
                     String content =
                             tableName

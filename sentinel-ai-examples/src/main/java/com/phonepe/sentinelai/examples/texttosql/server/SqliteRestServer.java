@@ -98,7 +98,7 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
                             try {
                                 server.run(args);
                             } catch (Exception e) {
-                                throw new RuntimeException(
+                                throw new IllegalStateException(
                                         "Failed to start embedded SQLite REST server", e);
                             }
                         });
@@ -106,6 +106,9 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
         // Give the server up to 30 seconds to start
         try {
             startFuture.get(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Interrupted while waiting for server start: {}", e.getMessage());
         } catch (TimeoutException e) {
             // Timeout is expected — Dropwizard's run() blocks serving requests,
             // so we just wait briefly for the port to become available instead.
@@ -160,23 +163,25 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
 
     /** Polls {@code host:port} until a TCP connection succeeds or the timeout elapses. */
     @SneakyThrows
-    private static void waitForPort(String host, int port, long timeoutMs) {
+    private static void waitForPort(String host, int port, long timeoutMs)
+            throws InterruptedException {
         final long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
             try (var socket = new Socket()) {
                 socket.connect(new InetSocketAddress(host, port), 500);
                 return; // connected — server is ready
             } catch (Exception ignored) {
-                Thread.sleep(200);
+                // Not yet available; retry after a short delay
             }
+            Thread.sleep(200);
         }
-        throw new RuntimeException("SQLite REST server did not start within " + timeoutMs + "ms");
+        throw new IllegalStateException(
+                "SQLite REST server did not start within " + timeoutMs + "ms");
     }
 
     @Override
     public void initialize(Bootstrap<SqliteRestConfig> bootstrap) {
         // Use the caller-supplied ObjectMapper so serialisation is consistent.
-        // bootstrap.setObjectMapper(objectMapper);
     }
 
     @Override

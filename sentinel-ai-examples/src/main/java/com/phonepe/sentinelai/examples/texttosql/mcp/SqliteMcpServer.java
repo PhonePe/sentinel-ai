@@ -47,6 +47,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.Server;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -508,7 +509,7 @@ public class SqliteMcpServer implements Callable<Integer> {
     private static void redirectLoggingToStderr() {
         final LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         final ch.qos.logback.classic.Logger root =
-                context.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+                context.getLogger(Logger.ROOT_LOGGER_NAME);
         root.detachAndStopAllAppenders();
 
         final PatternLayoutEncoder encoder = new PatternLayoutEncoder();

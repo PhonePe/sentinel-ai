@@ -53,16 +53,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -291,38 +286,16 @@ public class TextToSqlCLI implements Callable<Integer> {
     }
 
     /**
-     * Builds an {@link OkHttpClientAdapter} backed by a trust-all SSL context and interceptors that
-     * inject the OpenAI authorization header on every outgoing request.
+     * Builds an {@link OkHttpClientAdapter} backed by the system default SSL context and
+     * interceptors that inject the OpenAI authorization header on every outgoing request.
      */
     @SneakyThrows
     private static OkHttpClientAdapter buildTrustedHttpClient(CliConfig config) {
-        log.info("Building HTTP client with trust-all SSL configuration");
-
-        final TrustManager[] trustAllCerts =
-                new TrustManager[] {
-                    new X509TrustManager() {
-                        @Override
-                        public void checkClientTrusted(X509Certificate[] chain, String authType) {}
-
-                        @Override
-                        public void checkServerTrusted(X509Certificate[] chain, String authType) {}
-
-                        @Override
-                        public X509Certificate[] getAcceptedIssuers() {
-                            return new X509Certificate[] {};
-                        }
-                    }
-                };
-
-        final SSLContext sslContext = SSLContext.getInstance("SSL");
-        sslContext.init(null, trustAllCerts, new SecureRandom());
+        log.info("Building HTTP client");
 
         final String apiKey = config.getOpenai().getApiKey();
         final OkHttpClient httpClient =
                 new OkHttpClient.Builder()
-                        .sslSocketFactory(
-                                sslContext.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
-                        .hostnameVerifier((hostname, session) -> true)
                         .addInterceptor(
                                 new Interceptor() {
                                     @Override
@@ -576,20 +549,22 @@ public class TextToSqlCLI implements Callable<Integer> {
      * Used to wait for the MCP SSE subprocess to bind its listening socket before the client
      * attempts to connect.
      *
-     * @throws RuntimeException if the port does not become reachable within {@code timeoutMs}
+     * @throws IllegalStateException if the port does not become reachable within {@code timeoutMs}
      */
     @SneakyThrows
-    private static void waitForMcpSseServer(String host, int port, long timeoutMs) {
+    private static void waitForMcpSseServer(String host, int port, long timeoutMs)
+            throws InterruptedException {
         final long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
             try (var socket = new Socket()) {
                 socket.connect(new InetSocketAddress(host, port), 500);
                 return; // connected - server is ready
-            } catch (Exception ignored) {
-                Thread.sleep(200);
+            } catch (IOException ignored) {
+                // Connection not yet available; wait and retry
             }
+            Thread.sleep(200);
         }
-        throw new RuntimeException(
+        throw new IllegalStateException(
                 "MCP SSE server did not start on port " + port + " within " + timeoutMs + " ms");
     }
 

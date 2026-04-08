@@ -38,6 +38,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -71,6 +72,19 @@ public class SqliteRestResource {
     private final String dbPath;
     private final ObjectMapper mapper;
 
+    private static final String AFFECTED_ROWS = "affectedRows";
+    private static final String COL_EQUALS_PLACEHOLDER = "\" = ?";
+    private static final String AND_SEPARATOR = " AND ";
+
+    /** Only allow identifiers that are alphanumeric plus underscores to prevent SQL injection. */
+    private static final Pattern SAFE_IDENTIFIER = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]*$");
+
+    private static void validateIdentifier(String name, String label) {
+        if (!SAFE_IDENTIFIER.matcher(name).matches()) {
+            throw new IllegalArgumentException("Invalid " + label + ": " + name);
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Query endpoint — executes arbitrary SQL
     // -------------------------------------------------------------------------
@@ -89,7 +103,9 @@ public class SqliteRestResource {
             return error(400, "Field 'data' (non-empty object) is required");
         }
 
+        validateIdentifier(table, "table name");
         final var cols = new ArrayList<>(data.keySet());
+        cols.forEach(col -> validateIdentifier(col, "column name"));
         final var placeholders = cols.stream().map(c -> "?").toList();
         final String sql =
                 "INSERT INTO \""
@@ -103,7 +119,7 @@ public class SqliteRestResource {
 
         try (Connection conn = connect()) {
             final int affected = executeDml(conn, sql, params);
-            return ok(Map.of("affectedRows", affected));
+            return ok(Map.of(AFFECTED_ROWS, affected));
         } catch (Exception e) {
             return error(500, "Failed to create record: " + e.getMessage());
         }
@@ -128,20 +144,22 @@ public class SqliteRestResource {
                     400, "Field 'conditions' is required (to avoid accidental full-table deletes)");
         }
 
+        validateIdentifier(table, "table name");
         final var params = new ArrayList<Object>();
         final var whereClauses = new ArrayList<String>();
         conditions.forEach(
                 (k, v) -> {
-                    whereClauses.add("\"" + k + "\" = ?");
+                    validateIdentifier(k, "column name");
+                    whereClauses.add("\"" + k + COL_EQUALS_PLACEHOLDER);
                     params.add(v);
                 });
 
         final String sql =
-                "DELETE FROM \"" + table + "\" WHERE " + String.join(" AND ", whereClauses);
+                "DELETE FROM \"" + table + "\" WHERE " + String.join(AND_SEPARATOR, whereClauses);
 
         try (Connection conn = connect()) {
             final int affected = executeDml(conn, sql, params);
-            return ok(Map.of("affectedRows", affected));
+            return ok(Map.of(AFFECTED_ROWS, affected));
         } catch (Exception e) {
             return error(500, "Failed to delete records: " + e.getMessage());
         }
@@ -237,14 +255,12 @@ public class SqliteRestResource {
             final var pageSize = executeSelect(conn, "PRAGMA page_size", List.of());
             final var pageCount = executeSelect(conn, "PRAGMA page_count", List.of());
 
-            final long ps =
-                    tables.isEmpty()
-                            ? 0
-                            : Long.parseLong(
-                                    String.valueOf(
-                                            pageSize.isEmpty()
-                                                    ? 0
-                                                    : pageSize.get(0).get("page_size")));
+            final long ps;
+            if (pageSize.isEmpty()) {
+                ps = 0L;
+            } else {
+                ps = Long.parseLong(String.valueOf(pageSize.get(0).get("page_size")));
+            }
             final long pc =
                     pageCount.isEmpty()
                             ? 0
@@ -315,6 +331,7 @@ public class SqliteRestResource {
             @QueryParam("offset") Integer offset,
             @QueryParam("conditions") String conditionsJson) {
 
+        validateIdentifier(table, "table name");
         try (Connection conn = connect()) {
             final var sb = new StringBuilder("SELECT * FROM \"").append(table).append("\"");
             final List<Object> params = new ArrayList<>();
@@ -327,10 +344,11 @@ public class SqliteRestResource {
                     final var clauses = new ArrayList<String>();
                     conditions.forEach(
                             (k, v) -> {
-                                clauses.add("\"" + k + "\" = ?");
+                                validateIdentifier(k, "column name");
+                                clauses.add("\"" + k + COL_EQUALS_PLACEHOLDER);
                                 params.add(v);
                             });
-                    sb.append(String.join(" AND ", clauses));
+                    sb.append(String.join(AND_SEPARATOR, clauses));
                 }
             }
 
@@ -365,17 +383,20 @@ public class SqliteRestResource {
                     400, "Field 'conditions' is required (to avoid accidental full-table updates)");
         }
 
+        validateIdentifier(table, "table name");
         final var params = new ArrayList<Object>();
         final var setClauses = new ArrayList<String>();
         data.forEach(
                 (k, v) -> {
-                    setClauses.add("\"" + k + "\" = ?");
+                    validateIdentifier(k, "column name");
+                    setClauses.add("\"" + k + COL_EQUALS_PLACEHOLDER);
                     params.add(v);
                 });
         final var whereClauses = new ArrayList<String>();
         conditions.forEach(
                 (k, v) -> {
-                    whereClauses.add("\"" + k + "\" = ?");
+                    validateIdentifier(k, "column name");
+                    whereClauses.add("\"" + k + COL_EQUALS_PLACEHOLDER);
                     params.add(v);
                 });
 
@@ -385,11 +406,11 @@ public class SqliteRestResource {
                         + "\" SET "
                         + String.join(", ", setClauses)
                         + " WHERE "
-                        + String.join(" AND ", whereClauses);
+                        + String.join(AND_SEPARATOR, whereClauses);
 
         try (Connection conn = connect()) {
             final int affected = executeDml(conn, sql, params);
-            return ok(Map.of("affectedRows", affected));
+            return ok(Map.of(AFFECTED_ROWS, affected));
         } catch (Exception e) {
             return error(500, "Failed to update records: " + e.getMessage());
         }
