@@ -61,6 +61,8 @@ public class SafeToolRunner implements ToolRunner {
                     .formatted(maxAllowedToolResponseTokens, responseTokenCount);
 
             return ToolCallResponse.builder()
+                    .sessionId(sessionId)
+                    .runId(runId)
                     .toolCallId(response.getToolCallId())
                     .toolName(response.getToolName())
                     .response(responseMessage)
