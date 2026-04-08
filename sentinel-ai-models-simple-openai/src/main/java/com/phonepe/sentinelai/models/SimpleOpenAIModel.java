@@ -257,20 +257,13 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 }
 
                 generatedOutput.set(null);
-                final var builder = createChatRequestBuilder(openAiMessages);
-                applyModelSettings(modelSettings, builder, toolsForExecution);
-                addToolList(toolsForExecution, builder);
-                if (outputGenerationMode.equals(
-                                                OutputGenerationMode.STRUCTURED_OUTPUT)) {
-                    builder.responseFormat(ResponseFormat.jsonSchema(
-                                                                     ResponseFormat.JsonSchema
-                                                                             .builder()
-                                                                             .name("model_output")
-                                                                             .schema(schema)
-                                                                             .strict(true)
-                                                                             .build()));
+                final var builder = setupChatRequestBuilder(openAiMessages,
+                                                            modelSettings,
+                                                            toolsForExecution,
+                                                            outputGenerationMode);
+                if (outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
+                    builder.responseFormat(jsonSchema(schema));
                 }
-                addToolChoice(toolsForExecution, builder, outputGenerationMode);
                 raiseMessageSentEvent(context, prevMessages, allMessages);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
@@ -481,22 +474,15 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     output = error;
                     break;
                 }
-
-                final var builder = createChatRequestBuilder(openAiMessages);
-                applyModelSettings(modelSettings, builder, toolsForExecution);
-                addToolList(toolsForExecution, builder);
+                final var builder = setupChatRequestBuilder(openAiMessages,
+                                                            modelSettings,
+                                                            toolsForExecution,
+                                                            outputGenerationMode);
                 if (streamProcessingMode.equals(
                                                 Agent.StreamProcessingMode.TYPED) && outputGenerationMode
                                                         .equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
-                    builder.responseFormat(ResponseFormat.jsonSchema(
-                                                                     ResponseFormat.JsonSchema
-                                                                             .builder()
-                                                                             .name("model_output")
-                                                                             .schema(schema)
-                                                                             .strict(true)
-                                                                             .build()));
+                    builder.responseFormat(jsonSchema(schema));
                 }
-                addToolChoice(toolsForExecution, builder, outputGenerationMode);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
 
@@ -822,42 +808,45 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                 ObjectNode schema,
                                                 UnaryOperator<String> outputGenerator,
                                                 AtomicReference<String> generatedOutput) {
-        toolsForExecution.put(Agent.OUTPUT_GENERATOR_ID,
-                              new ExternalTool(ToolDefinition.builder()
-                                      .id(Agent.OUTPUT_GENERATOR_ID)
-                                      .name(Agent.OUTPUT_GENERATOR_ID)
-                                      .description("Generates output to be used by user")
-                                      .contextAware(true)
-                                      .strictSchema(true)
-                                      .terminal(true)
-                                      .build(),
-                                               schema,
-                                               (runContext,
-                                                toolCallId,
-                                                args) -> {
-                                                   try {
-                                                       final var output = outputGenerator
-                                                               .apply(args);
-                                                       if (!Strings
-                                                               .isNullOrEmpty(output)) {
-                                                           generatedOutput.set(
-                                                                               output);
-                                                       }
-                                                       return new ExternalTool.ExternalToolResponse(output,
-                                                                                                    ErrorType.SUCCESS);
-                                                   }
-                                                   catch (Throwable t) {
-                                                       final var rootCause = AgentUtils
-                                                               .rootCause(t);
-                                                       log.error("Error generating output: " + rootCause
-                                                               .getMessage(),
-                                                                 t);
-                                                       return new ExternalTool.ExternalToolResponse("Error running tool: "
-                                                               + rootCause
-                                                                       .getMessage(),
-                                                                                                    ErrorType.TOOL_CALL_PERMANENT_FAILURE);
-                                                   }
-                                               }));
+        final var toolDefinition = ToolDefinition.builder()
+                .id(Agent.OUTPUT_GENERATOR_ID)
+                .name(Agent.OUTPUT_GENERATOR_ID)
+                .description("Generates the final output to be used by user.")
+                .contextAware(true)
+                .strictSchema(true)
+                .terminal(true)
+                .build();
+        final var tool = new ExternalTool(toolDefinition,
+                                          schema,
+                                          (runContext, toolCallId, args) -> outputGenerationTool(
+                                                                                                 outputGenerator,
+                                                                                                 args,
+                                                                                                 generatedOutput));
+        toolsForExecution.put(Agent.OUTPUT_GENERATOR_ID, tool);
+    }
+
+    private static ExternalTool.ExternalToolResponse outputGenerationTool(final UnaryOperator<String> outputGenerator,
+                                                                          final String args,
+                                                                          final AtomicReference<String> generatedOutput) {
+
+        try {
+            final var output = outputGenerator.apply(args);
+            if (!Strings.isNullOrEmpty(output)) {
+                generatedOutput.set(output);
+            }
+            return new ExternalTool.ExternalToolResponse(output, ErrorType.SUCCESS);
+        }
+        catch (Throwable t) {
+            final var rootCause = AgentUtils
+                    .rootCause(t);
+            log.error("Error generating output: " + rootCause
+                    .getMessage(),
+                      t);
+            return new ExternalTool.ExternalToolResponse("Error running tool: "
+                    + rootCause
+                            .getMessage(),
+                                                         ErrorType.TOOL_CALL_PERMANENT_FAILURE);
+        }
     }
 
     private static boolean shouldLoop(final ModelOutput output) {
@@ -1018,11 +1007,28 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                  SentinelError.error(ErrorType.NO_RESPONSE));
     }
 
-    private ChatRequest.ChatRequestBuilder createChatRequestBuilder(List<ChatMessage> openAiMessages) {
-        return ChatRequest.builder()
+    private ChatRequest.ChatRequestBuilder setupChatRequestBuilder(
+                                                                   List<ChatMessage> openAiMessages,
+                                                                   final ModelSettings modelSettings,
+                                                                   Map<String, ExecutableTool> toolsForExecution,
+                                                                   OutputGenerationMode outputGenerationMode) {
+        final var builder = ChatRequest.builder()
                 .messages(openAiMessages)
                 .model(modelName)
                 .n(1);
+        applyModelSettings(modelSettings, builder, toolsForExecution);
+        addToolList(toolsForExecution, builder);
+        addToolChoice(toolsForExecution, builder, outputGenerationMode);
+        return builder;
+    }
+
+    private static ResponseFormat jsonSchema(ObjectNode schema) {
+        return ResponseFormat.jsonSchema(ResponseFormat.JsonSchema
+                .builder()
+                .name("model_output")
+                .schema(schema)
+                .strict(true)
+                .build());
     }
 
     private void addToolList(Map<String, ExecutableTool> tools,
@@ -1347,6 +1353,13 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                      final List<AgentMessage> allMessages,
                                                      final List<AgentMessage> newMessages,
                                                      final List<ChatMessage> openAiMessages) {
+        final var systemPrompt = allMessages.stream()
+                .filter(msg -> msg.getMessageType() == AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)
+                .findFirst()
+                .orElse(null);
+        if (null == systemPrompt) {
+            log.error("System prompt message is missing in the messages.");
+        }
         try {
             final var preProcessorsOutput = runPreProcessors(messagesPreProcessors,
                                                              context,
@@ -1361,8 +1374,16 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
                 allMessages.addAll(processedAgentMessages.allMessages);
                 newMessages.addAll(processedAgentMessages.newMessages);
-                final var openAIMessages = convertToOpenAIMessages(processedAgentMessages.allMessages);
-                openAiMessages.addAll(openAIMessages);
+                //Add system prompt back if it was missing in the pre-processor output
+                if (null != systemPrompt && allMessages.stream()
+                        .noneMatch(msg -> msg.getMessageType() == AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)) {
+                    allMessages.add(0, systemPrompt);
+                }
+                if (null != systemPrompt && newMessages.stream()
+                        .noneMatch(msg -> msg.getMessageType() == AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)) {
+                    newMessages.add(0, systemPrompt);
+                }
+                openAiMessages.addAll(convertToOpenAIMessages(allMessages));
             });
         }
         catch (InvalidAgentMessagesException ie) {

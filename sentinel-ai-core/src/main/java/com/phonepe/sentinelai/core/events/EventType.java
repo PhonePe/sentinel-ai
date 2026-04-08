@@ -36,7 +36,9 @@ public enum EventType {
     // User level messages
     INPUT_RECEIVED(Values.INPUT_RECEIVED),
     OUTPUT_GENERATED(Values.OUTPUT_GENERATED),
-    OUTPUT_ERROR(Values.OUTPUT_ERROR);
+    OUTPUT_ERROR(Values.OUTPUT_ERROR),
+    COMPACTION_STARTED(Values.COMPACTION_STARTED),
+    COMPACTION_COMPLETED(Values.COMPACTION_COMPLETED);
 
     @UtilityClass
     public static final class Values {
@@ -48,6 +50,8 @@ public enum EventType {
         public static final String INPUT_RECEIVED = "INPUT_RECEIVED";
         public static final String OUTPUT_GENERATED = "OUTPUT_GENERATED";
         public static final String OUTPUT_ERROR = "OUTPUT_ERROR";
+        public static final String COMPACTION_STARTED = "COMPACTION_STARTED";
+        public static final String COMPACTION_COMPLETED = "COMPACTION_COMPLETED";
     }
 
     private final String type;

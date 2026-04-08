@@ -38,7 +38,9 @@ import java.util.UUID;
         @JsonSubTypes.Type(name = EventType.Values.TOOL_CALL_COMPLETED, value = ToolCallCompletedAgentEvent.class),
         @JsonSubTypes.Type(name = EventType.Values.INPUT_RECEIVED, value = InputReceivedAgentEvent.class),
         @JsonSubTypes.Type(name = EventType.Values.OUTPUT_GENERATED, value = OutputGeneratedAgentEvent.class),
-        @JsonSubTypes.Type(name = EventType.Values.OUTPUT_ERROR, value = OutputErrorAgentEvent.class)
+        @JsonSubTypes.Type(name = EventType.Values.OUTPUT_ERROR, value = OutputErrorAgentEvent.class),
+        @JsonSubTypes.Type(name = EventType.Values.COMPACTION_STARTED, value = CompactionStartedEvent.class),
+        @JsonSubTypes.Type(name = EventType.Values.COMPACTION_COMPLETED, value = CompactionCompletedEvent.class),
 })
 @Data
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)

@@ -45,6 +45,7 @@ import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.outputvalidation.DefaultOutputValidator;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
@@ -871,18 +872,22 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 .toList();
         final var knowledge = new ArrayList<>(knowledgeFromExtensions);
         knowledge.addAll(Objects.requireNonNullElseGet(facts, List::of));
+        var primaryPrompt = "Your main job is to answer the user query as provided in user prompt in the `user_input` tag. ";
+        primaryPrompt += !context.getOldMessages().isEmpty()
+                ? "Use the provided old messages for extra context and information. "
+                : "";
+        primaryPrompt += (!secondaryTasks.isEmpty())
+                ? "Perform the provided secondary tasks as well and populate the output in "
+                        + "designated output field for the task. "
+                : "";
+        primaryPrompt += (!knowledge.isEmpty())
+                ? "Use the provided knowledge and facts to enrich your responses."
+                : "";
+        if (context.getAgentSetup().getOutputGenerationMode() == OutputGenerationMode.TOOL_BASED) {
+            primaryPrompt += "You must provide your entire response in a single tool call. Once the tool is called, the task is complete. DO NOT USE THE TOOL FOR INTERMEDIATE STEPS OR MULTIPLE ITERATIONS.";
+        }
         final var prompt = new SystemPrompt().setName(name())
-                .setCoreInstructions("Your main job is to answer the user query as provided in user prompt in the `user_input` tag. "
-                        + (!context
-                                .getOldMessages()
-                                .isEmpty()
-                                        ? "Use the provided old messages for extra context and information. "
-                                        : "") + ((!secondaryTasks.isEmpty())
-                                                ? "Perform the provided secondary tasks as well and populate the output in "
-                                                        + "designated output field for the task. "
-                                                : "") + ((!knowledge.isEmpty())
-                                                        ? "Use the provided knowledge and facts to enrich your responses."
-                                                        : ""))
+                .setCoreInstructions(primaryPrompt)
                 .setPrimaryTask(SystemPrompt.Task.builder()
                         .objective(systemPrompt)
                         .tool(this.knownTools.values()

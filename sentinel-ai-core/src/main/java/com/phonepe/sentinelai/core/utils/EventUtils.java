@@ -25,8 +25,11 @@ import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
+import com.phonepe.sentinelai.core.compaction.ExtractedSummary;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.events.AgentEvent;
+import com.phonepe.sentinelai.core.events.CompactionCompletedEvent;
+import com.phonepe.sentinelai.core.events.CompactionStartedEvent;
 import com.phonepe.sentinelai.core.events.InputReceivedAgentEvent;
 import com.phonepe.sentinelai.core.events.MessageReceivedAgentEvent;
 import com.phonepe.sentinelai.core.events.MessageSentAgentEvent;
@@ -34,6 +37,7 @@ import com.phonepe.sentinelai.core.events.OutputErrorAgentEvent;
 import com.phonepe.sentinelai.core.events.OutputGeneratedAgentEvent;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +53,54 @@ import java.util.stream.Collectors;
 @UtilityClass
 @Slf4j
 public class EventUtils {
+
+    public static void raiseCompactionCompletedEvent(ModelRunContext context,
+                                                     String sessionId,
+                                                     ErrorType errorType,
+                                                     String errorMessage,
+                                                     ModelUsageStats usageStats,
+                                                     ExtractedSummary extractedSummary,
+                                                     Stopwatch stopwatch) {
+        try {
+            context.getAgentSetup()
+                    .getEventBus()
+                    .notify(new CompactionCompletedEvent(context.getAgentName(),
+                                                         context.getRunId(),
+                                                         sessionId,
+                                                         context.getUserId(),
+                                                         errorType,
+                                                         errorMessage,
+                                                         stopwatch.elapsed(TimeUnit.MILLISECONDS),
+                                                         usageStats,
+                                                         extractedSummary));
+        }
+        catch (Exception e) {
+            log.error("Error while raising compaction completed event for agent: {}, runId: {}",
+                      context.getAgentName(),
+                      context.getRunId(),
+                      AgentUtils.rootCause(e).getMessage());
+        }
+
+    }
+
+    public static void raiseCompactionStartedEvent(ModelRunContext context,
+                                                   String sessionId) {
+        try {
+            context.getAgentSetup()
+                    .getEventBus()
+                    .notify(new CompactionStartedEvent(context.getAgentName(),
+                                                       context.getRunId(),
+                                                       sessionId,
+                                                       context.getUserId()));
+        }
+        catch (Exception e) {
+            log.error("Error while raising compaction started event for agent: {}, runId: {}",
+                      context.getAgentName(),
+                      context.getRunId(),
+                      AgentUtils.rootCause(e).getMessage());
+        }
+
+    }
 
     public static void raiseInputReceivedEvent(String agentName,
                                                AgentRunContext<?> context,
@@ -180,5 +232,4 @@ public class EventUtils {
                       AgentUtils.rootCause(e).getMessage());
         }
     }
-
 }
