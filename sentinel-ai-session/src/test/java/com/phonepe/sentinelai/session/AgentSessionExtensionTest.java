@@ -63,6 +63,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -140,10 +141,9 @@ class AgentSessionExtensionTest {
                                                        BiScrollable.DataPointer pointer,
                                                        QueryDirection queryDirection) {
             var messages = messageData.getOrDefault(sessionId, List.of());
-            if (queryDirection == QueryDirection.OLDER) {
-                // Return newest first (reverse chronological) to match ESSessionStore
-                messages = com.google.common.collect.Lists.reverse(messages);
-            }
+            // For OLDER direction: return the most recent 'count' messages in chronological order
+            // (oldest-to-newest), matching the contract expected by readMessagesSinceId which
+            // iterates pages from newest to oldest but expects each page's items in chronological order.
             return new BiScrollable<>(AgentUtils.lastN(messages, count),
                                       new BiScrollable.DataPointer(null, null));
         }
@@ -591,6 +591,121 @@ class AgentSessionExtensionTest {
         assertTrue(result.isEmpty());
     }
 
+    /**
+     * Verifies that forceCompaction() sets lastSummarizedMessageId to the last message ID in the
+     * compacted slice, so that subsequent session resumes only load messages after that boundary
+     * instead of reloading all history from the beginning.
+     */
+    @Test
+    @SneakyThrows
+    void testForceCompactionSetsLastSummarizedMessageId(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(8, "summarize", getClass());
+        final var objectMapper = JsonUtils.createMapper();
+        final var toolbox = new TestToolBox("Santanu");
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
+                                                                  .build()))
+                                                          .build(),
+                                                  objectMapper);
+
+        final var sessionStore = new InMemorySessionStore();
+        final var agentSessionExtension = AgentSessionExtension
+                .<UserInput, String, SimpleAgent>builder()
+                .mapper(objectMapper)
+                .sessionStore(sessionStore)
+                .setup(AgentSessionExtensionSetup.DEFAULT)
+                .build();
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                        .mapper(objectMapper)
+                        .model(model)
+                        .modelSettings(ModelSettings.builder()
+                                .temperature(0.1f)
+                                .seed(1)
+                                .build())
+                        .autoCompactionSetup(AutoCompactionSetup.DEFAULT.withCompactionTriggerThresholdPercentage(3))
+                        .build())
+                .extensions(List.of(agentSessionExtension))
+                .build()
+                .registerToolbox(toolbox);
+
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
+
+        // First turn
+        agent.execute(AgentInput.<UserInput>builder()
+                .request(new UserInput("Hi"))
+                .requestMetadata(requestMetadata)
+                .build());
+
+        // Wait for first-time summarization to complete (lastSummarizedMessageId should be null)
+        Awaitility.await()
+                .pollDelay(Duration.ofSeconds(1))
+                .atMost(Duration.ofMinutes(1))
+                .until(() -> sessionStore.session("s1").isPresent());
+        assertNull(sessionStore.session("s1").orElseThrow().getLastSummarizedMessageId(),
+                   "First-time summarization must leave lastSummarizedMessageId null");
+
+        // Second turn
+        agent.executeAsync(AgentInput.<UserInput>builder()
+                .request(new UserInput("How is the weather at user's location?"))
+                .requestMetadata(requestMetadata)
+                .build()).get();
+
+        // Capture IDs of all messages saved so far
+        final var allMessagesBefore = sessionStore.readMessages("s1",
+                                                                Integer.MAX_VALUE,
+                                                                false,
+                                                                null,
+                                                                QueryDirection.OLDER)
+                .getItems();
+        assertFalse(allMessagesBefore.isEmpty());
+        final var expectedLastId = allMessagesBefore.stream()
+                .max(Comparator.comparing(AgentMessage::getTimestamp))
+                .orElseThrow()
+                .getMessageId();
+
+        // Force compaction
+        final var summaryAfterCompaction = agentSessionExtension.forceCompaction("s1").get().orElseThrow();
+
+        // lastSummarizedMessageId must now be set (not null) so subsequent resumes don't reload everything
+        assertNotNull(summaryAfterCompaction.getLastSummarizedMessageId(),
+                      "forceCompaction() must set lastSummarizedMessageId to avoid reloading all history on resume");
+        assertEquals(expectedLastId,
+                     summaryAfterCompaction.getLastSummarizedMessageId(),
+                     "lastSummarizedMessageId must equal the last message ID in the compacted slice");
+
+        // Verify messages() would now return an empty (or reduced) set since all stored messages
+        // are at or before the new lastSummarizedMessageId boundary
+        final var requestMetadataResume = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
+        final var resumeContext = new AgentRunContext<>(
+                                                        "run-resume",
+                                                        new UserInput("resume"),
+                                                        requestMetadataResume,
+                                                        null,
+                                                        List.of(),
+                                                        null,
+                                                        ProcessingMode.DIRECT
+        );
+        final var messagesOnResume = agentSessionExtension.messages(resumeContext, agent, new UserInput("resume"));
+        assertTrue(messagesOnResume.isEmpty(),
+                   "After force compaction all stored messages are behind the boundary; messages() should return empty");
+    }
+
     @Test
     @SneakyThrows
     void testHistoryMode(final WireMockRuntimeInfo wiremock) {
@@ -870,6 +985,85 @@ class AgentSessionExtensionTest {
 
         final var signal = extension.onSessionSummarized();
         assertNotNull(signal);
+    }
+
+    /**
+     * Verifies that the onSessionSummarized signal is dispatched exactly once after a successful
+     * first-time summarization, and that the dispatched SessionSummary has a non-null title.
+     */
+    @Test
+    @SneakyThrows
+    void testOnSessionSummarizedSignalDispatched(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(7, "se", getClass());
+        final var objectMapper = JsonUtils.createMapper();
+        final var toolbox = new TestToolBox("Santanu");
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils
+                                                                  .getTestProperty("AZURE_ENDPOINT",
+                                                                                   wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils
+                                                                  .getTestProperty("AZURE_API_KEY",
+                                                                                   "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
+                                                                  .build()))
+                                                          .build(),
+                                                  objectMapper);
+
+        final var sessionStore = new InMemorySessionStore();
+        final var agentSessionExtension = AgentSessionExtension
+                .<UserInput, String, SimpleAgent>builder()
+                .mapper(objectMapper)
+                .sessionStore(sessionStore)
+                .setup(AgentSessionExtensionSetup.DEFAULT)
+                .build();
+
+        // Subscribe to the signal before the agent runs
+        final var dispatchedSummaries = new java.util.concurrent.CopyOnWriteArrayList<SessionSummary>();
+        agentSessionExtension.onSessionSummarized().connect(dispatchedSummaries::add);
+
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                        .mapper(objectMapper)
+                        .model(model)
+                        .modelSettings(ModelSettings.builder()
+                                .temperature(0.1f)
+                                .seed(1)
+                                .build())
+                        .build())
+                .extensions(List.of(agentSessionExtension))
+                .build()
+                .registerToolbox(toolbox);
+
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
+
+        // Run one turn to trigger first-time summarization
+        agent.execute(AgentInput.<UserInput>builder()
+                .request(new UserInput("Hi"))
+                .requestMetadata(requestMetadata)
+                .build());
+
+        // Wait for the async summarization and signal dispatch to complete
+        Awaitility.await()
+                .pollDelay(Duration.ofSeconds(1))
+                .atMost(Duration.ofMinutes(1))
+                .until(() -> !dispatchedSummaries.isEmpty());
+
+        assertEquals(1,
+                     dispatchedSummaries.size(),
+                     "onSessionSummarized signal must fire exactly once after first-time summarization");
+        final var dispatched = dispatchedSummaries.get(0);
+        assertNotNull(dispatched.getTitle(), "Dispatched summary must have a non-null title");
+        assertNotNull(dispatched.getSummary(), "Dispatched summary must have a non-null summary");
+        assertEquals("s1", dispatched.getSessionId(), "Dispatched summary must carry the correct sessionId");
+        // First-time summarization leaves lastSummarizedMessageId null (by design)
+        assertNull(dispatched.getLastSummarizedMessageId(),
+                   "First-time summarization must leave lastSummarizedMessageId null");
     }
 
     /**

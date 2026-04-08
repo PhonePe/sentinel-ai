@@ -203,7 +203,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                                 false,
                                                                 messageSelectors);
                 log.info("Read {} messages for summarization for session: {}", sessionMessages.size(), sessionId);
-                summarizeConversation(sessionId, agentSetup, sessionMessages);
+                final var newLastSummarizedId = sessionMessages.isEmpty()
+                        ? null
+                        : sessionMessages.get(sessionMessages.size() - 1).getMessageId();
+                summarizeConversation(sessionId, agentSetup, sessionMessages, newLastSummarizedId);
                 return sessionStore.session(sessionId);
             }
             catch (InterruptedException e) {
@@ -336,7 +339,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 }
                 log.info("Starting first summarization for session: {}", sessionId);
                 try {
-                    summarizeConversation(sessionId, agent.getSetup(), List.of(userPrompt));
+                    summarizeConversation(sessionId, agent.getSetup(), List.of(userPrompt), null);
                 }
                 catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -438,7 +441,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     @SneakyThrows
     private void summarizeConversation(String sessionId,
                                        AgentSetup agentSetup,
-                                       List<AgentMessage> sessionMessages)
+                                       List<AgentMessage> sessionMessages,
+                                       String lastSummarizedMessageId)
             throws InterruptedException, ExecutionException {
         final var stats = new ModelUsageStats();
         final var compactionSetup = agentSetup.getAutoCompactionSetup();
@@ -468,13 +472,16 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                     .summary(summary.getSummary())
                     .keywords(summary.getKeywords())
                     .raw(mapper.writeValueAsString(summary.getRawData()))
-                    .lastSummarizedMessageId(null)
+                    .lastSummarizedMessageId(lastSummarizedMessageId)
                     .updatedAt(AgentUtils.epochMicro())
                     .build());
             updated.ifPresentOrElse(
-                                    savedSummary -> log.info("Summary saved successfully for session: {}. Title: {}",
-                                                             sessionId,
-                                                             savedSummary.getTitle()),
+                                    savedSummary -> {
+                                        log.info("Summary saved successfully for session: {}. Title: {}",
+                                                 sessionId,
+                                                 savedSummary.getTitle());
+                                        onSessionSummarized.dispatch(savedSummary);
+                                    },
                                     () -> log.error("Failed to save summary for session: {}", sessionId));
         }
     }
