@@ -141,6 +141,17 @@
     </dependencies>
 
     <build>
+        <!-- Make src/main/resources available on the test classpath so that
+             DatabaseInitializer can load /db/schema.sql and /db/data/*.csv
+             regardless of build-phase ordering (e.g. parallel module builds in CI). -->
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+            <testResource>
+                <directory>src/main/resources</directory>
+            </testResource>
+        </testResources>
         <plugins>
             <!-- JaCoCo code coverage -->
             <plugin>
