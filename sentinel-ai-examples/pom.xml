@@ -142,6 +142,71 @@
 
     <build>
         <plugins>
+            <!-- JaCoCo code coverage -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <configuration>
+                    <!--
+                        Exclude classes that are impractical to unit-test without a running process:
+                        - TextToSqlCLI         : PicoCLI entry point + interactive REPL
+                        - SqliteMcpServer      : standalone MCP subprocess (stdio/SSE)
+                        - SqliteRestServer     : embedded Dropwizard server lifecycle
+                        - SqliteRestConfig     : trivial Dropwizard config subclass
+                        - AskUserTool          : blocks on System.in for interactive input
+                        - TextToSqlAgent       : wires together LLM + toolboxes (live endpoint)
+                        - TextToSqlCLI$*       : inner enum/anonymous classes of the CLI
+                    -->
+                    <excludes>
+                        <exclude>com/phonepe/sentinelai/examples/texttosql/cli/TextToSqlCLI.class</exclude>
+                        <exclude>com/phonepe/sentinelai/examples/texttosql/cli/TextToSqlCLI$*.class</exclude>
+                        <exclude>com/phonepe/sentinelai/examples/texttosql/mcp/SqliteMcpServer.class</exclude>
+                        <exclude>com/phonepe/sentinelai/examples/texttosql/mcp/SqliteMcpServer$*.class</exclude>
+                        <exclude>com/phonepe/sentinelai/examples/texttosql/server/SqliteRestServer.class</exclude>
+                        <exclude>com/phonepe/sentinelai/examples/texttosql/server/SqliteRestConfig.class</exclude>
+                        <exclude>com/phonepe/sentinelai/examples/texttosql/tools/AskUserTool.class</exclude>
+                        <exclude>com/phonepe/sentinelai/examples/texttosql/agent/TextToSqlAgent.class</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <!-- Fat JAR so the CLI can be run with: java -jar sentinel-ai-examples-cli.jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
