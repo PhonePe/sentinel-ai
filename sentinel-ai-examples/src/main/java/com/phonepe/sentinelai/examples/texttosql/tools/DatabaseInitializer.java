@@ -135,6 +135,24 @@ public class DatabaseInitializer {
         return tokens;
     }
 
+    /**
+     * Opens a resource stream by path, trying the thread context classloader first (so that
+     * test-classpath resources in {@code target/test-classes} are found even when this class is
+     * loaded from a cached JAR), then falling back to the class's own classloader.
+     */
+    private static java.io.InputStream openResource(String path) {
+        final var tccl = Thread.currentThread().getContextClassLoader();
+        // Strip the leading '/' that getResourceAsStream expects but ClassLoader does not
+        final String stripped = path.startsWith("/") ? path.substring(1) : path;
+        if (tccl != null) {
+            final var stream = tccl.getResourceAsStream(stripped);
+            if (stream != null) {
+                return stream;
+            }
+        }
+        return DatabaseInitializer.class.getResourceAsStream(path);
+    }
+
     @SneakyThrows
     private static Connection connect(Path dbPath) {
         return DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath());
@@ -142,7 +160,7 @@ public class DatabaseInitializer {
 
     @SneakyThrows
     private static void createSchema(Connection conn) {
-        final var schemaStream = DatabaseInitializer.class.getResourceAsStream("/db/schema.sql");
+        final var schemaStream = openResource("/db/schema.sql");
         Objects.requireNonNull(schemaStream, "Bundled schema.sql not found on classpath");
 
         final String schemaSql = new String(schemaStream.readAllBytes(), StandardCharsets.UTF_8);
@@ -179,7 +197,7 @@ public class DatabaseInitializer {
     @SneakyThrows
     private static void loadCsvData(Connection conn, String table) {
         final String resource = "/db/data/" + table + ".csv";
-        final var stream = DatabaseInitializer.class.getResourceAsStream(resource);
+        final var stream = openResource(resource);
         if (stream == null) {
             throw new IllegalStateException(
                     "No CSV file found for table '" + table + "' at " + resource);
