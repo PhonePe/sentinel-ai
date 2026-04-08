@@ -410,11 +410,11 @@ creates it, applies the bundled DDL, and seeds all five tables from CSV files:
 
 ```
 resources/db/schema.sql       — CREATE TABLE statements with inline column comments
-resources/db/data/users.csv
-resources/db/data/sellers.csv
-resources/db/data/catalog.csv
-resources/db/data/inventory.csv
-resources/db/data/orders.csv
+resources/db/ecommerce-data/users.csv
+resources/db/ecommerce-data/sellers.csv
+resources/db/ecommerce-data/catalog.csv
+resources/db/ecommerce-data/inventory.csv
+resources/db/ecommerce-data/orders.csv
 ```
 
 Subsequent runs detect that the file already contains tables and skip the step.

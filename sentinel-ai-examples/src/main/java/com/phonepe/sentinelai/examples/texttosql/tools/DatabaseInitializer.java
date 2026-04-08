@@ -41,7 +41,7 @@ import lombok.val;
  * <ol>
  *   <li>Creates the database file at the specified path.
  *   <li>Executes the bundled {@code schema.sql} DDL to create all tables and indexes.
- *   <li>Loads CSV data from the bundled {@code db/data/*.csv} files into each table, using a plain
+ *   <li>Loads CSV data from the bundled {@code db/ecommercdata/*.csv} files into each table, using a plain
  *       {@link BufferedReader} (no extra dependencies).
  * </ol>
  *
@@ -196,7 +196,7 @@ public class DatabaseInitializer {
 
     @SneakyThrows
     private static void loadCsvData(Connection conn, String table) {
-        final String resource = "/db/data/" + table + ".csv";
+        final String resource = "/db/ecommerce-data/" + table + ".csv";
         final var stream = openResource(resource);
         if (stream == null) {
             throw new IllegalStateException(

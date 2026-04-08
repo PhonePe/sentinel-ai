@@ -142,7 +142,7 @@
 
     <build>
         <!-- Make src/main/resources available on the test classpath so that
-             DatabaseInitializer can load /db/schema.sql and /db/data/*.csv
+             DatabaseInitializer can load /db/schema.sql and /db/ecommerce-data/*.csv
              regardless of build-phase ordering (e.g. parallel module builds in CI). -->
         <testResources>
             <testResource>
