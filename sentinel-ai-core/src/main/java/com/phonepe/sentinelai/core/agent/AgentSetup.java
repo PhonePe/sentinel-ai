@@ -40,6 +40,8 @@ import java.util.function.UnaryOperator;
 @Builder
 @With
 public class AgentSetup {
+    public static final int MAX_TOOL_RESPONSE_TOKENS = 10000;
+
     /**
      * The object mapper to use for serialization/deserialization. If not provided, a default one will be created.
      */
@@ -88,4 +90,7 @@ public class AgentSetup {
      */
     @Builder.Default
     AutoCompactionSetup autoCompactionSetup = AutoCompactionSetup.DEFAULT;
+
+    @Builder.Default
+    int maxToolResponseTokens = MAX_TOOL_RESPONSE_TOKENS;
 }

@@ -28,6 +28,7 @@ import com.phonepe.sentinelai.core.agent.Fact;
 import com.phonepe.sentinelai.core.agent.FactList;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
+import com.phonepe.sentinelai.core.agent.SafeToolRunner;
 import com.phonepe.sentinelai.core.agent.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
@@ -334,23 +335,29 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                                     false,
                                     LocalDateTime.now()));
         final var runId = "mem-extraction-" + UUID.randomUUID();
+        final var agentSetup = data.getAgentSetup();
         final var modelRunContext = new ModelRunContext(agent.name(),
                                                         runId,
                                                         sessionId,
                                                         AgentUtils.userId(
                                                                           context),
-                                                        data.getAgentSetup(),
+                                                        agentSetup,
                                                         context.getModelUsageStats(),
                                                         ProcessingMode.DIRECT);
-        final var output = data.getAgentSetup()
-                .getModel()
+        final var model = agentSetup.getModel();
+        final var toolRunner = new SafeToolRunner(new NonContextualDefaultExternalToolRunner(sessionId,
+                                                                                             runId,
+                                                                                             objectMapper),
+                                                  agentSetup,
+                                                  model,
+                                                  sessionId,
+                                                  runId);
+        final var output = model
                 .compute(modelRunContext,
                          List.of(memorySchema()),
                          messages,
                          Map.of(),
-                         new NonContextualDefaultExternalToolRunner(sessionId,
-                                                                    runId,
-                                                                    objectMapper),
+                         toolRunner,
                          new NeverTerminateEarlyStrategy(),
                          List.of())
                 .join();

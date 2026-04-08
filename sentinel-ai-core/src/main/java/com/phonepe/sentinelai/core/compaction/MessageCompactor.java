@@ -28,6 +28,7 @@ import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
+import com.phonepe.sentinelai.core.agent.SafeToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageVisitor;
@@ -133,8 +134,16 @@ public class MessageCompactor {
                                                         usageStats,
                                                         ProcessingMode.DIRECT);
         EventUtils.raiseCompactionStartedEvent(modelRunContext, sessionId);
+        final var model = agentSetup.getModel();
+        final var toolRunner = new SafeToolRunner(new NonContextualDefaultExternalToolRunner(sessionId,
+                                                                                             runId,
+                                                                                             mapper),
+                                                  agentSetup,
+                                                  model,
+                                                  sessionId,
+                                                  runId);
         final var stopwatch = Stopwatch.createStarted();
-        return agentSetup.getModel()
+        return model
                 .compute(modelRunContext,
                          List.of(ModelOutputDefinition.builder()
                                  .name(OUTPUT_KEY)
@@ -143,9 +152,7 @@ public class MessageCompactor {
                                  .build()),
                          messagesForCompaction,
                          Map.of(),
-                         new NonContextualDefaultExternalToolRunner(sessionId,
-                                                                    runId,
-                                                                    mapper),
+                         toolRunner,
                          new NeverTerminateEarlyStrategy(),
                          List.of())
                 .thenApply(output -> {

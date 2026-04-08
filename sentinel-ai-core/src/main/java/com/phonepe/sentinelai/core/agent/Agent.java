@@ -740,15 +740,22 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         ModelOutput modelOutput;
         final var stopwatch = Stopwatch.createStarted();
         try {
-            modelOutput = mergedAgentSetup.getModel()
+            final var toolRunner = new AgentToolRunner<>(self,
+                                                         mergedAgentSetup,
+                                                         toolRunApprovalSeeker,
+                                                         context);
+            final var model = mergedAgentSetup.getModel();
+            final var safeRunner = new SafeToolRunner(toolRunner,
+                                                      mergedAgentSetup,
+                                                      model,
+                                                      AgentUtils.sessionId(context),
+                                                      context.getRunId());
+            modelOutput = model
                     .compute(modelRunContext,
                              outputDefinitions,
                              messages,
                              knownTools,
-                             new AgentToolRunner<>(self,
-                                                   mergedAgentSetup,
-                                                   toolRunApprovalSeeker,
-                                                   context),
+                             safeRunner,
                              earlyTerminationStrategy,
                              agentMessagesPreProcessors)
                     .get();

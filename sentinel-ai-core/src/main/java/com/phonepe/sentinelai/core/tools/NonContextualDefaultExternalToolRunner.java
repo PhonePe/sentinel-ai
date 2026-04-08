@@ -24,6 +24,7 @@ import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.utils.ToolUtils;
 
 import lombok.SneakyThrows;
 
@@ -53,28 +54,33 @@ public class NonContextualDefaultExternalToolRunner implements ToolRunner {
                                     ToolCall toolCall) {
         final var tool = Objects.requireNonNull(tools.get(toolCall
                 .getToolName()));
-        return tool.accept(new ExecutableToolVisitor<ToolCallResponse>() {
-            @Override
-            @SneakyThrows
-            public ToolCallResponse visit(ExternalTool externalTool) {
-                final var response = externalTool.getCallable()
-                        .apply(null,
-                               toolCall.getToolCallId(),
-                               toolCall.getArguments());
-                return new ToolCallResponse(sessionId,
-                                            runId,
-                                            toolCall.getToolCallId(),
-                                            toolCall.getToolName(),
-                                            ErrorType.SUCCESS,
-                                            mapper.writeValueAsString(response
-                                                    .response()),
-                                            LocalDateTime.now());
-            }
+        try {
+            return tool.accept(new ExecutableToolVisitor<ToolCallResponse>() {
+                @Override
+                @SneakyThrows
+                public ToolCallResponse visit(ExternalTool externalTool) {
+                    final var response = externalTool.getCallable()
+                            .apply(null,
+                                   toolCall.getToolCallId(),
+                                   toolCall.getArguments());
+                    return new ToolCallResponse(sessionId,
+                                                runId,
+                                                toolCall.getToolCallId(),
+                                                toolCall.getToolName(),
+                                                ErrorType.SUCCESS,
+                                                mapper.writeValueAsString(response
+                                                        .response()),
+                                                LocalDateTime.now());
+                }
 
-            @Override
-            public ToolCallResponse visit(InternalTool internalTool) {
-                throw new NotImplementedException();
-            }
-        });
+                @Override
+                public ToolCallResponse visit(InternalTool internalTool) {
+                    throw new NotImplementedException();
+                }
+            });
+        }
+        catch (Exception e) {
+            return ToolUtils.processUnhandledException(sessionId, runId, toolCall, e);
+        }
     }
 }
