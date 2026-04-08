@@ -181,8 +181,8 @@ public class DatabaseInitializer {
         final String resource = "/db/data/" + table + ".csv";
         final var stream = DatabaseInitializer.class.getResourceAsStream(resource);
         if (stream == null) {
-            log.warn("No CSV file found for table '{}' at {}", table, resource);
-            return;
+            throw new IllegalStateException(
+                    "No CSV file found for table '" + table + "' at " + resource);
         }
 
         try (var reader =
