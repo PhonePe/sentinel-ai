@@ -22,6 +22,8 @@ import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.Model;
+import com.phonepe.sentinelai.core.model.ModelAttributes;
+import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 
@@ -67,20 +69,27 @@ class SafeToolRunnerTest {
         final var delegateResponse = successResponse("call-6", "tool", "large response");
         final var delegate = (ToolRunner) (tools, tc) -> delegateResponse;
         final var model = mock(Model.class);
-        final int customLimit = 50;
-        when(model.estimateTokenCount(anyList(), any(AgentSetup.class))).thenReturn(customLimit + 1);
+        final int contextWindow = 1000;
+        final int customPct = 10;       // ceiling = 1000 * 10 / 100 = 100 tokens
+        final int exceedingCount = 101; // just over the ceiling
+        when(model.estimateTokenCount(anyList(), any(AgentSetup.class))).thenReturn(exceedingCount);
 
         final var setup = AgentSetup.builder()
                 .mapper(JsonUtils.createMapper())
-                .maxToolResponseTokens(customLimit)
+                .maxToolResponsePercentage(customPct)
+                .modelSettings(ModelSettings.builder()
+                        .modelAttributes(ModelAttributes.builder()
+                                .contextWindowSize(contextWindow)
+                                .build())
+                        .build())
                 .build();
 
         final var runner = new SafeToolRunner(delegate, setup, model, SESSION_ID, RUN_ID);
         final var result = runner.runTool(Map.of(), toolCall("call-6", "tool"));
 
         assertEquals(ErrorType.TOOL_CALL_PERMANENT_FAILURE, result.getErrorType());
-        assertTrue(result.getResponse().contains(String.valueOf(customLimit)));
-        assertTrue(result.getResponse().contains(String.valueOf(customLimit + 1)));
+        assertTrue(result.getResponse().contains(String.valueOf(100)));       // ceiling = 100
+        assertTrue(result.getResponse().contains(String.valueOf(exceedingCount)));
     }
 
     @Test
@@ -92,7 +101,7 @@ class SafeToolRunnerTest {
 
         final var setup = AgentSetup.builder()
                 .mapper(JsonUtils.createMapper())
-                .maxToolResponseTokens(-5)
+                .maxToolResponsePercentage(-5)
                 .build();
 
         final var runner = new SafeToolRunner(delegate, setup, model, SESSION_ID, RUN_ID);
@@ -110,7 +119,7 @@ class SafeToolRunnerTest {
 
         final var setup = AgentSetup.builder()
                 .mapper(JsonUtils.createMapper())
-                .maxToolResponseTokens(0)
+                .maxToolResponsePercentage(0)
                 .build();
 
         final var runner = new SafeToolRunner(delegate, setup, model, SESSION_ID, RUN_ID);
@@ -164,7 +173,10 @@ class SafeToolRunnerTest {
         final var delegateResponse = successResponse("call-2", "bigTool", "very large response content");
         final var delegate = (ToolRunner) (tools, tc) -> delegateResponse;
         final var model = mock(Model.class);
-        final int exceedingTokenCount = AgentSetup.MAX_TOOL_RESPONSE_TOKENS + 1;
+        // Default ceiling: DEFAULT_WINDOW_SIZE(128_000) * DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE(10) / 100 = 12_800
+        final int defaultCeiling = (ModelAttributes.DEFAULT_WINDOW_SIZE
+                * AgentSetup.DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE) / 100;
+        final int exceedingTokenCount = defaultCeiling + 1;
         when(model.estimateTokenCount(anyList(), any(AgentSetup.class))).thenReturn(exceedingTokenCount);
 
         final var setup = AgentSetup.builder()
@@ -178,7 +190,7 @@ class SafeToolRunnerTest {
         assertEquals("call-2", result.getToolCallId());
         assertEquals("bigTool", result.getToolName());
         assertTrue(result.getResponse().contains("Tool response too large"));
-        assertTrue(result.getResponse().contains(String.valueOf(AgentSetup.MAX_TOOL_RESPONSE_TOKENS)));
+        assertTrue(result.getResponse().contains(String.valueOf(defaultCeiling)));
         assertTrue(result.getResponse().contains(String.valueOf(exceedingTokenCount)));
         assertFalse(result.isSuccess());
     }

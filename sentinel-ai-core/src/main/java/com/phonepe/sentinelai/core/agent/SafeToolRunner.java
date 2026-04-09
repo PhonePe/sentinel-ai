@@ -21,7 +21,10 @@ import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.Model;
+import com.phonepe.sentinelai.core.model.ModelAttributes;
+import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
+import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 
 import lombok.NonNull;
@@ -54,9 +57,16 @@ public class SafeToolRunner implements ToolRunner {
     @Override
     public ToolCallResponse runTool(Map<String, ExecutableTool> tools, ToolCall toolCall) {
         final var response = runToolInternal(tools, toolCall);
-        final var maxAllowedToolResponseTokens = agentSetup.getMaxToolResponseTokens() <= 0
-                ? AgentSetup.MAX_TOOL_RESPONSE_TOKENS
-                : agentSetup.getMaxToolResponseTokens();
+        // Resolve effective percentage; fall back to default if invalid (<= 0)
+        final int effectivePct = agentSetup.getMaxToolResponsePercentage() <= 0
+                ? AgentSetup.DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE
+                : agentSetup.getMaxToolResponsePercentage();
+        // Derive context window size from ModelSettings → ModelAttributes
+        final var modelAttributes = AgentUtils.getIfNotNull(
+                                                            agentSetup.getModelSettings(),
+                                                            ModelSettings::getModelAttributes,
+                                                            ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
+        final int maxAllowedToolResponseTokens = (modelAttributes.getContextWindowSize() * effectivePct) / 100;
         final var responseTokenCount = model.estimateTokenCount(List.<AgentMessage>of(response), agentSetup);
         if (responseTokenCount == Model.TOKEN_COUNT_UNKNOWN) {
             log.warn("Token count estimation is not supported by the current model. "
