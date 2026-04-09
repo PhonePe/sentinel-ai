@@ -40,6 +40,9 @@ import java.util.function.UnaryOperator;
 @Builder
 @With
 public class AgentSetup {
+    /** Default maximum tool response size as a percentage of the model context window (10 %). */
+    public static final int DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE = 10;
+
     /**
      * The object mapper to use for serialization/deserialization. If not provided, a default one will be created.
      */
@@ -88,4 +91,15 @@ public class AgentSetup {
      */
     @Builder.Default
     AutoCompactionSetup autoCompactionSetup = AutoCompactionSetup.DEFAULT;
+
+    /**
+     * Maximum tool response size expressed as a percentage (1–100) of the model's context window.
+     * The effective token ceiling is computed at runtime as:
+     * <pre>contextWindowSize * maxToolResponsePercentage / 100</pre>
+     * Setting this to {@code 0} or a negative value falls back to the default of
+     * {@link #DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE} (10 %).
+     * Values greater than 100 are accepted but are semantically equivalent to 100.
+     */
+    @Builder.Default
+    int maxToolResponsePercentage = DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE;
 }

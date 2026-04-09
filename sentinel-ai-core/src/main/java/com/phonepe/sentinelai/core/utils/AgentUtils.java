@@ -174,6 +174,11 @@ public class AgentUtils {
                                                                       rhs,
                                                                       AgentSetup::getAutoCompactionSetup),
                                                                 AutoCompactionSetup.DEFAULT))
+                .maxToolResponsePercentage(Objects.requireNonNullElse(
+                                                                      value(lhs,
+                                                                            rhs,
+                                                                            AgentSetup::getMaxToolResponsePercentage),
+                                                                      AgentSetup.DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE))
 
                 .build();
     }

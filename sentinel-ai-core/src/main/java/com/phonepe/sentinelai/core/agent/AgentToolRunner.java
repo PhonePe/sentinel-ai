@@ -76,13 +76,6 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
 
     AgentRunContext<R> context;
 
-    private static void printToolCallError(ToolCall toolCall, Object error) {
-        log.error("Error calling external tool {} -> {}: {}",
-                  toolCall.getToolCallId(),
-                  toolCall.getToolName(),
-                  error);
-    }
-
     /**
      * This returns a temporary failure for unhandled exceptions. Can be used to retry if needed.
      *
@@ -93,25 +86,15 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
     private static ToolCallResponse processUnhandledException(AgentRunContext<?> context,
                                                               ToolCall toolCall,
                                                               Exception e) {
-        final var errorMessage = AgentUtils.rootCause(e).getMessage();
-        printToolCallError(toolCall, errorMessage);
-        if (log.isDebugEnabled()) {
-            log.error("Error stacktrace for %s".formatted(toolCall
-                    .getToolCallId()), e);
-        }
-        return new ToolCallResponse(AgentUtils.sessionId(context),
-                                    context.getRunId(),
-                                    toolCall.getToolCallId(),
-                                    toolCall.getToolName(),
-                                    ErrorType.TOOL_CALL_TEMPORARY_FAILURE,
-                                    "Error running tool: %s".formatted(
-                                                                       errorMessage),
-                                    LocalDateTime.now());
+        return ToolUtils.processUnhandledException(AgentUtils.sessionId(context),
+                                                   context.getRunId(),
+                                                   toolCall,
+                                                   e);
     }
 
-    private static <R> ToolCallResponse runExternalTool(ExternalTool externalTool,
-                                                        ToolCall toolCall,
-                                                        AgentRunContext<R> context) {
+    private static <R> ToolCallResponse runExternalTool(AgentRunContext<R> context,
+                                                        ExternalTool externalTool,
+                                                        ToolCall toolCall) {
         try {
             log.debug("Calling external tool: {} [{}] Arguments: {}",
                       toolCall.getToolCallId(),
@@ -124,7 +107,7 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
             log.debug("Tool response: {}", response);
             final var error = response.error();
             if (!error.equals(ErrorType.SUCCESS)) {
-                printToolCallError(toolCall, response.response());
+                ToolUtils.printToolCallError(toolCall, response.response());
                 return new ToolCallResponse(AgentUtils.sessionId(context),
                                             context.getRunId(),
                                             toolCall.getToolCallId(),
@@ -233,8 +216,9 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
     }
 
     @SuppressWarnings("java:S3011")
-    private ToolCallResponse runInternalTool(InternalTool internalTool,
-                                             AgentRunContext<R> context,
+    @SneakyThrows
+    private ToolCallResponse runInternalTool(AgentRunContext<R> context,
+                                             InternalTool internalTool,
                                              ToolCall toolCall) {
         try {
             final var args = new ArrayList<>();
@@ -261,8 +245,7 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                         LocalDateTime.now());
         }
         catch (InvocationTargetException e) {
-            log.error("Local error making tool call " + toolCall
-                    .getToolCallId(), e);
+            log.error("Local error making tool call " + toolCall.getToolCallId(), e);
             final var rootCause = AgentUtils.rootCause(e);
             return new ToolCallResponse(AgentUtils.sessionId(context),
                                         context.getRunId(),
@@ -273,9 +256,6 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                                                                 rootCause
                                                                                         .getMessage()),
                                         LocalDateTime.now());
-        }
-        catch (Exception e) {
-            return processUnhandledException(context, toolCall, e);
         }
     }
 
@@ -327,22 +307,25 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
 
         try {
             return Failsafe.with(policies)
-                    .get(() -> tool.accept(new ExecutableToolVisitor<>() {
-                        @Override
-                        public ToolCallResponse visit(ExternalTool externalTool) {
-                            return runExternalTool(externalTool,
-                                                   toolCall,
-                                                   context);
-                        }
+                    .get(() -> {
+                        try {
+                            return tool.accept(new ExecutableToolVisitor<>() {
+                                @Override
+                                public ToolCallResponse visit(ExternalTool externalTool) {
+                                    return runExternalTool(context, externalTool, toolCall);
+                                }
 
-                        @Override
-                        public ToolCallResponse visit(InternalTool internalTool) {
-                            return runInternalTool(internalTool,
-                                                   context,
-                                                   toolCall);
+                                @Override
+                                public ToolCallResponse visit(InternalTool internalTool) {
+                                    return runInternalTool(context, internalTool, toolCall);
 
+                                }
+                            });
                         }
-                    }));
+                        catch (Exception e) {
+                            return processUnhandledException(context, toolCall, e);
+                        }
+                    });
         }
         catch (TimeoutExceededException e) {
             log.error("Tool call {} -> {} timed out after {} seconds",
