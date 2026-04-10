@@ -292,7 +292,8 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
         }
 
         try {
-            return Files.readString(skill.getReferenceFiles().get(referenceFile));
+            final var content = Files.readString(skill.getReferenceFiles().get(referenceFile));
+            return SkillContentSanitizer.sanitize(content);
         }
         catch (Exception e) {
             log.error("Failed to read reference file {}: {}", referenceFile, e.getMessage());

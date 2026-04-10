@@ -302,6 +302,37 @@ class AgentSkillsExtensionTest {
     }
 
     @Test
+    void testReadSkillReferenceSanitizesComments() throws IOException {
+        createTestSkillWithReferenceFile("my-skill",
+                                         "A skill",
+                                         "guide.md",
+                                         """
+                                                 <!-- hidden -->
+                                                 Keep this line
+                                                 // remove this line
+
+                                                 ```bash
+                                                 // keep this code comment
+                                                 echo hi
+                                                 ```
+                                                 """);
+
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        extension.activateSkill("my-skill");
+        final var result = extension.readSkillReference("my-skill", "guide.md");
+
+        assertFalse(result.contains("hidden"));
+        assertFalse(result.contains("remove this line"));
+        assertTrue(result.contains("Keep this line"));
+        assertTrue(result.contains("// keep this code comment"));
+    }
+
+    @Test
     void testReadSkillReferenceSkillNotLoaded() throws IOException {
         createTestSkill("my-skill", "A skill");
 

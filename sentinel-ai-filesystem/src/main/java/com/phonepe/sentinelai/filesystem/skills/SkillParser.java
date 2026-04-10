@@ -67,7 +67,7 @@ public class SkillParser {
 
         return AgentSkill.builder()
                 .metadata(metadata)
-                .instructions(parsed[1])
+                .instructions(SkillContentSanitizer.sanitize(parsed[1]))
                 .skillDirectory(skillDirectory)
                 .referenceFiles(scanSubdirectory(skillDirectory, "references"))
                 .scriptFiles(scanSubdirectory(skillDirectory, "scripts"))
