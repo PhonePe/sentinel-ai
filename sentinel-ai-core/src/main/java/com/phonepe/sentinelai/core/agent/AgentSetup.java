@@ -96,9 +96,8 @@ public class AgentSetup {
      * Maximum tool response size expressed as a percentage (1–100) of the model's context window.
      * The effective token ceiling is computed at runtime as:
      * <pre>contextWindowSize * maxToolResponsePercentage / 100</pre>
-     * Setting this to {@code 0} or a negative value falls back to the default of
+     * Any value that is {@code <= 0} or {@code > 100} is treated as invalid and falls back to
      * {@link #DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE} (10 %).
-     * Values greater than 100 are accepted but are semantically equivalent to 100.
      */
     @Builder.Default
     int maxToolResponsePercentage = DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE;

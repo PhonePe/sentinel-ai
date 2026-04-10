@@ -57,10 +57,11 @@ public class SafeToolRunner implements ToolRunner {
     @Override
     public ToolCallResponse runTool(Map<String, ExecutableTool> tools, ToolCall toolCall) {
         final var response = runToolInternal(tools, toolCall);
-        // Resolve effective percentage; fall back to default if invalid (<= 0)
-        final int effectivePct = agentSetup.getMaxToolResponsePercentage() <= 0
+        // Resolve effective percentage; fall back to default if out of valid range (<=0 or >100)
+        final int configuredPct = agentSetup.getMaxToolResponsePercentage();
+        final int effectivePct = (configuredPct <= 0 || configuredPct > 100)
                 ? AgentSetup.DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE
-                : agentSetup.getMaxToolResponsePercentage();
+                : configuredPct;
         // Derive context window size from ModelSettings → ModelAttributes
         final var modelAttributes = AgentUtils.getIfNotNull(
                                                             agentSetup.getModelSettings(),
