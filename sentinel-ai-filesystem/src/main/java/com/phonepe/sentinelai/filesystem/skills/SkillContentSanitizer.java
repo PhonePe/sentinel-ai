@@ -16,12 +16,12 @@
 
 package com.phonepe.sentinelai.filesystem.skills;
 
-import java.util.regex.Pattern;
-
 import com.google.common.base.StandardSystemProperty;
 import com.google.common.base.Strings;
 
 import lombok.experimental.UtilityClass;
+
+import java.util.regex.Pattern;
 
 @UtilityClass
 public final class SkillContentSanitizer {
