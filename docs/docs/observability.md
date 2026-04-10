@@ -38,7 +38,19 @@ agent.getEventBus().connect(event -> {
             System.out.println("Model usage: " + event.getUsage());
             return null;
         }
-        
+
+        @Override
+        public Void visit(CompactionStartedEvent event) {
+            System.out.println("Compaction started for session: " + event.getSessionId());
+            return null;
+        }
+
+        @Override
+        public Void visit(CompactionCompletedEvent event) {
+            System.out.println("Compaction completed in " + event.getElapsedTimeMs() + "ms");
+            return null;
+        }
+
         // ... handle other events
     });
 });
@@ -51,13 +63,15 @@ Sentinel AI broadcasts the following events during an agent's execution:
 | Event Type | Description |
 |------------|-------------|
 | `INPUT_RECEIVED` | Broadcasted when a new request is received by the agent. |
+| `MESSAGE_SENT` | Broadcasted when a message is sent to the model. |
 | `MESSAGE_RECEIVED` | Broadcasted when a response is received from the model. |
 | `TOOL_CALLED` | Broadcasted before a tool is executed. Contains tool name and arguments. |
 | `TOOL_CALL_COMPLETED` | Broadcasted after a tool execution finishes. Contains the result or error. |
 | `TOOL_CALL_APPROVAL_DENIED` | Broadcasted if a tool execution was rejected by a `ToolRunApprovalSeeker`. |
 | `OUTPUT_GENERATED` | Broadcasted when the final response is generated. Contains token usage and the response object. |
 | `OUTPUT_ERROR` | Broadcasted if an error occurs during processing. |
-| `MESSAGE_SENT` | Broadcasted when a message is sent to the model. |
+| `COMPACTION_STARTED` | Broadcasted when context window compaction begins for a session. |
+| `COMPACTION_COMPLETED` | Broadcasted when compaction finishes. Contains elapsed time, token usage stats, the extracted summary, and any error details. |
 
 ## Model Usage Stats
 
