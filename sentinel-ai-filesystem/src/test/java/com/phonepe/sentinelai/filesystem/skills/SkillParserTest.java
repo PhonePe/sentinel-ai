@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -138,6 +139,39 @@ class SkillParserTest {
     @Test
     void testParseNotADirectory() {
         assertThrows(IllegalArgumentException.class, () -> parser.parse(tempDir.resolve("nonexistent")));
+    }
+
+    @Test
+    void testParseSanitizesInstructionsAndPreservesCodeFence() throws IOException {
+        final var skillDir = tempDir.resolve("test-skill");
+        Files.createDirectory(skillDir);
+
+        final var skillContent = """
+                ---
+                name: test-skill
+                description: Skill with comments in instructions
+                ---
+
+                <!-- hidden comment -->
+                # Keep this heading
+                // remove this line comment
+                Keep this line
+
+                ```java
+                // keep this code comment
+                System.out.println("hello");
+                ```
+                """;
+
+        Files.writeString(skillDir.resolve("SKILL.md"), skillContent);
+
+        final var skill = parser.parse(skillDir);
+
+        assertFalse(skill.getInstructions().contains("hidden comment"));
+        assertFalse(skill.getInstructions().contains("remove this line comment"));
+        assertTrue(skill.getInstructions().contains("# Keep this heading"));
+        assertTrue(skill.getInstructions().contains("Keep this line"));
+        assertTrue(skill.getInstructions().contains("// keep this code comment"));
     }
 
     @Test

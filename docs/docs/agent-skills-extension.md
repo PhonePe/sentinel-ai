@@ -49,6 +49,11 @@ When the agent calls `activateSkill(skillName)`, the full skill is loaded:
 - Script files (mapped to paths)
 - Asset files (mapped to paths)
 
+Before instructions or reference content are injected into prompts, comment-only content is sanitized:
+- HTML comments (`<!-- ... -->`) are removed
+- Standalone `//` comment lines are removed
+- Fenced code block content is preserved as-is
+
 ## Modes of Operation
 
 The Agent Skills Extension supports two modes:
