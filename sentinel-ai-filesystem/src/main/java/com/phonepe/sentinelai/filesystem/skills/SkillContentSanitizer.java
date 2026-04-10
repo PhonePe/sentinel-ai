@@ -18,23 +18,27 @@ package com.phonepe.sentinelai.filesystem.skills;
 
 import java.util.regex.Pattern;
 
+import com.google.common.base.StandardSystemProperty;
+import com.google.common.base.Strings;
+
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class SkillContentSanitizer {
 
     private static final Pattern MARKDOWN_FENCE_PATTERN = Pattern.compile("^\\s*(```|~~~).*$");
     private static final Pattern DOUBLE_SLASH_COMMENT_LINE = Pattern.compile("^\\s*//.*$");
 
-    private SkillContentSanitizer() {
-    }
-
+    @SuppressWarnings("java:S135")
     public static String sanitize(final String content) {
-        if (content == null || content.isBlank()) {
+        if (Strings.isNullOrEmpty(content)) {
             return content;
         }
 
-        final var lines = content.split("\\n", -1);
+        final var lines = content.lines().toList();
         final var output = new StringBuilder();
-        boolean inCodeFence = false;
-        boolean inHtmlComment = false;
+        var inCodeFence = false;
+        var inHtmlComment = false;
 
         for (final var line : lines) {
             if (MARKDOWN_FENCE_PATTERN.matcher(line).matches()) {
@@ -52,11 +56,8 @@ public final class SkillContentSanitizer {
             inHtmlComment = stripped.inHtmlComment();
             final var sanitizedLine = stripped.line();
 
-            if (sanitizedLine == null || sanitizedLine.isBlank()) {
-                continue;
-            }
-
-            if (DOUBLE_SLASH_COMMENT_LINE.matcher(sanitizedLine).matches()) {
+            if (Strings.isNullOrEmpty(sanitizedLine)
+                    || DOUBLE_SLASH_COMMENT_LINE.matcher(sanitizedLine).matches()) {
                 continue;
             }
 
@@ -67,16 +68,17 @@ public final class SkillContentSanitizer {
     }
 
     private static void appendLine(final StringBuilder output, final String line) {
-        if (output.length() > 0) {
-            output.append('\n');
+        if (!output.isEmpty()) {
+            output.append(StandardSystemProperty.LINE_SEPARATOR.value());
         }
         output.append(line);
     }
 
+    @SuppressWarnings("java:S135")
     private static StrippedLine stripHtmlComments(final String line, final boolean inHtmlComment) {
         final var output = new StringBuilder();
-        boolean commentOpen = inHtmlComment;
-        int index = 0;
+        var commentOpen = inHtmlComment;
+        var index = 0;
 
         while (index < line.length()) {
             if (commentOpen) {
