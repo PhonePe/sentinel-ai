@@ -266,6 +266,16 @@ class SqliteRestResourceTest {
         }
 
         @Test
+        @DisplayName("empty conditions JSON object returns all rows (no WHERE clause)")
+        void emptyConditionsJsonReturnsAllRows() {
+            // An empty JSON object {} means conditions.isEmpty() is true → no WHERE clause appended
+            Response resp = resource.readRecords("users", 2, 0, "{}");
+            assertEquals(200, resp.getStatus());
+            String body = (String) resp.getEntity();
+            assertTrue(body.contains("rows"));
+        }
+
+        @Test
         @DisplayName("conditions JSON filter works")
         void conditionsFilterWorks() {
             // Use an id that is very unlikely to exist to get 0 rows
@@ -488,6 +498,85 @@ class SqliteRestResourceTest {
             Response resp = resource.getTableSchema("valid_table_name");
             assertTrue(resp.getStatus() == 200 || resp.getStatus() == 404,
                     "Valid identifier should not throw an exception");
+        }
+    }
+
+    // =========================================================================
+    // Error paths — broken DB to trigger catch blocks
+    // =========================================================================
+
+    /**
+     * Uses a deliberately broken (non-existent directory) DB path so that
+     * {@code connect()} fails and each endpoint's {@code catch(Exception e)} branch is covered.
+     */
+    @Nested
+    @DisplayName("error paths with broken DB")
+    class BrokenDbTests {
+
+        private final SqliteRestResource broken =
+                new SqliteRestResource("/nonexistent/path/to/broken.db", new ObjectMapper());
+
+        @Test
+        @DisplayName("listTables returns 500 when DB path is invalid")
+        void listTablesReturns500() {
+            Response resp = broken.listTables();
+            assertEquals(500, resp.getStatus());
+        }
+
+        @Test
+        @DisplayName("getDatabaseInfo returns 500 when DB path is invalid")
+        void getDatabaseInfoReturns500() {
+            Response resp = broken.getDatabaseInfo();
+            assertEquals(500, resp.getStatus());
+        }
+
+        @Test
+        @DisplayName("getTableSchema returns 500 when DB path is invalid")
+        void getTableSchemaReturns500() {
+            Response resp = broken.getTableSchema("users");
+            assertEquals(500, resp.getStatus());
+        }
+
+        @Test
+        @DisplayName("executeQuery returns 500 when DB path is invalid")
+        void executeQueryReturns500() {
+            Response resp = broken.executeQuery(Map.of("sql", "SELECT 1"));
+            assertEquals(500, resp.getStatus());
+        }
+
+        @Test
+        @DisplayName("readRecords returns 500 when DB path is invalid")
+        void readRecordsReturns500() {
+            Response resp = broken.readRecords("users", null, null, null);
+            assertEquals(500, resp.getStatus());
+        }
+
+        @Test
+        @DisplayName("createRecord returns 500 when DB path is invalid")
+        void createRecordReturns500() {
+            Map<String, Object> body = new HashMap<>();
+            body.put("data", Map.of("seller_name", "test"));
+            Response resp = broken.createRecord("sellers", body);
+            assertEquals(500, resp.getStatus());
+        }
+
+        @Test
+        @DisplayName("updateRecords returns 500 when DB path is invalid")
+        void updateRecordsReturns500() {
+            Map<String, Object> body = new HashMap<>();
+            body.put("data", Map.of("city", "Mumbai"));
+            body.put("conditions", Map.of("user_id", "1"));
+            Response resp = broken.updateRecords("users", body);
+            assertEquals(500, resp.getStatus());
+        }
+
+        @Test
+        @DisplayName("deleteRecords returns 500 when DB path is invalid")
+        void deleteRecordsReturns500() {
+            Map<String, Object> body = new HashMap<>();
+            body.put("conditions", Map.of("user_id", "1"));
+            Response resp = broken.deleteRecords("users", body);
+            assertEquals(500, resp.getStatus());
         }
     }
 }
