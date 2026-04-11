@@ -670,6 +670,10 @@ public class TextToSqlCLI implements Callable<Integer> {
                         "Empty result from agent, something has gone wrong. Nothing to display");
             }
             ConsoleUtils.printUsageStats(output.getUsage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            ConsoleUtils.printError("Query interrupted");
+            log.warn("Agent execution interrupted for query: {}", question, e);
         } catch (Exception e) {
             ConsoleUtils.printError(e.getMessage());
             log.error("Agent execution failed for query: {}", question, e);
