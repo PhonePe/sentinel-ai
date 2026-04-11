@@ -195,6 +195,10 @@ public class DatabaseInitializer {
     }
 
     @SneakyThrows
+    // java:S2077 — both `table` (from hardcoded TABLE_ORDER) and `headers` (from bundled classpath
+    // CSV files) are fully internal and never derived from user input. Values are bound via
+    // PreparedStatement parameters; only identifiers (table/column names) are interpolated.
+    @SuppressWarnings("java:S2077")
     private static void loadCsvData(Connection conn, String table) {
         final String resource = "/db/ecommerce-data/" + table + ".csv";
         final var stream = openResource(resource);

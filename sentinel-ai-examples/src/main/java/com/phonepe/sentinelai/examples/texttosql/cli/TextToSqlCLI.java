@@ -53,6 +53,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -670,6 +671,10 @@ public class TextToSqlCLI implements Callable<Integer> {
                         "Empty result from agent, something has gone wrong. Nothing to display");
             }
             ConsoleUtils.printUsageStats(output.getUsage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            ConsoleUtils.printError("Query interrupted");
+            log.warn("Agent execution interrupted for query: {}", question, e);
         } catch (Exception e) {
             ConsoleUtils.printError(e.getMessage());
             log.error("Agent execution failed for query: {}", question, e);
@@ -743,7 +748,12 @@ public class TextToSqlCLI implements Callable<Integer> {
         }
 
         log.info("No skills directory provided — extracting bundled skill to a temp directory");
-        final Path tempSkillsDir = Files.createTempDirectory("sentinel-ai-skills-");
+        // java:S5443 — temp dir created with owner-only permissions (rwx------) to prevent
+        // race conditions on filenames in publicly writable directories.
+        final var ownerOnly =
+                PosixFilePermissions.asFileAttribute(
+                        PosixFilePermissions.fromString("rwx------"));
+        final Path tempSkillsDir = Files.createTempDirectory(null, ownerOnly);
         tempSkillsDir.toFile().deleteOnExit();
 
         final Path skillDir = tempSkillsDir.resolve("sql-execution");

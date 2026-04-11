@@ -432,6 +432,13 @@ public class SqliteRestResource {
                 .build();
     }
 
+    // javasecurity:S3649 — The SQL passed to these helpers is either:
+    //   (a) built internally from validated identifiers (CRUD endpoints), or
+    //   (b) the /query endpoint which intentionally executes LLM-generated SELECT
+    //       statements — that is the core purpose of this text-to-SQL demo tool.
+    // All caller-supplied values are bound via PreparedStatement parameters, never
+    // concatenated into the query string.
+    @SuppressWarnings("javasecurity:S3649")
     @SneakyThrows
     private int executeDml(Connection conn, String sql, List<Object> params) {
         try (final var stmt = conn.prepareStatement(sql)) {
@@ -442,6 +449,7 @@ public class SqliteRestResource {
         }
     }
 
+    @SuppressWarnings("javasecurity:S3649")
     @SneakyThrows
     private List<Map<String, Object>> executeSelect(
             Connection conn, String sql, List<Object> params) {

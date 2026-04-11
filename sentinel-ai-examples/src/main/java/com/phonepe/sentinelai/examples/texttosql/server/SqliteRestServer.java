@@ -24,6 +24,7 @@ import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -151,7 +152,12 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
                 template.replaceAll("\\$\\{DW_PORT(?::-[^}]*)?}", String.valueOf(port))
                         .replaceAll("\\$\\{DW_ADMIN_PORT(?::-[^}]*)?}", String.valueOf(port + 1));
 
-        final var tmpFile = createTempFile("sqlite-rest-server-", ".yaml");
+        // java:S5443 — temp file created with owner-only permissions (rw-------) to prevent
+        // race conditions. The file contains Dropwizard config (ports only, no credentials).
+        final var ownerOnly =
+                PosixFilePermissions.asFileAttribute(
+                        PosixFilePermissions.fromString("rw-------"));
+        final var tmpFile = createTempFile("sqlite-rest-server-", ".yaml", ownerOnly);
         java.nio.file.Files.writeString(tmpFile, yaml);
         tmpFile.toFile().deleteOnExit();
         return tmpFile.toAbsolutePath().toString();
