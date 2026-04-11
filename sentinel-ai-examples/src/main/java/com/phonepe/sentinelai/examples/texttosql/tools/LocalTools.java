@@ -335,6 +335,8 @@ public class LocalTools implements ToolBox {
                     "Get the row count for every table in the e-commerce database. "
                             + "Use this to understand data volume before running complex aggregation queries.")
     @SneakyThrows
+    // java:S2077 — table names are read from sqlite_master (database-internal), not from user input.
+    @SuppressWarnings("java:S2077")
     public String getTableRowCounts() {
         try (Connection conn = connect()) {
             final var sb = new StringBuilder("## Row counts per table\n\n");
@@ -411,6 +413,9 @@ public class LocalTools implements ToolBox {
     // -------------------------------------------------------------------------
 
     @SneakyThrows
+    // java:S2077 — table names are read from sqlite_master (database-internal), not from user input.
+    // The SELECT and PRAGMA queries use double-quoted identifiers which are safe in SQLite.
+    @SuppressWarnings("java:S2077")
     private void appendTableDdl(Connection conn, String table, StringBuilder sb) {
         // Get CREATE TABLE statement for the full annotated DDL
         try (var stmt = conn.createStatement();

@@ -152,6 +152,9 @@ public class ConsoleUtils {
                 if (showSpinner && SPINNER_ENABLED.get()) {
                     final String verb =
                             PROCESSING_VERBS.get(
+                                    // java:S2245 — ThreadLocalRandom is intentional here; this picks
+                                    // a display verb for a CLI spinner animation and has no security
+                                    // or cryptographic purpose whatsoever.
                                     ThreadLocalRandom.current().nextInt(PROCESSING_VERBS.size()));
                     System.out.print("\r" + BOLD + YELLOW + verb + "..." + RESET);
                     System.out.flush();
