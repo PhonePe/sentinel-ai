@@ -388,14 +388,16 @@ class ConsoleUtilsTest {
     @Execution(ExecutionMode.SAME_THREAD)
     class AwaitWithSpinnerDelayedTests {
 
+        static {
+            System.setProperty("default.future.timeout.ms", "10");
+        }
+
         @Test
         @DisplayName("spinner path: resolves future that completes after a short delay")
         void spinnerPathWithShortDelay() throws Exception {
-            // Complete the future after ~6.5 s so at least one 5-s timeout fires, exercising
-            // the TimeoutException branch (lines 151-162 in ConsoleUtils).
             ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
             CompletableFuture<String> future = new CompletableFuture<>();
-            scheduler.schedule(() -> future.complete("delayed"), 6500, TimeUnit.MILLISECONDS);
+            scheduler.schedule(() -> future.complete("delayed"), 50, TimeUnit.MILLISECONDS);
             try {
                 String result = ConsoleUtils.awaitWithSpinner(future, true);
                 assertEquals("delayed", result);
@@ -410,7 +412,7 @@ class ConsoleUtilsTest {
             ConsoleUtils.disableSpinner();
             ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
             CompletableFuture<String> future = new CompletableFuture<>();
-            scheduler.schedule(() -> future.complete("ok"), 6500, TimeUnit.MILLISECONDS);
+            scheduler.schedule(() -> future.complete("ok"), 50, TimeUnit.MILLISECONDS);
             try {
                 String result = ConsoleUtils.awaitWithSpinner(future, true);
                 assertEquals("ok", result);

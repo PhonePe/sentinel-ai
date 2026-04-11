@@ -68,6 +68,9 @@ public class ConsoleUtils {
      */
     private static final AtomicBoolean SPINNER_ENABLED = new AtomicBoolean(true);
 
+    private static final long DEFAULT_FUTURE_TIMEOUT = Long.parseLong(
+            System.getProperty("default.future.timeout.ms", "5000"));
+
     /**
      * Disables the progress spinner globally. Spinner output will be suppressed until {@link
      * #enableSpinner()} is called.
@@ -141,7 +144,7 @@ public class ConsoleUtils {
             throws InterruptedException, ExecutionException {
         while (true) {
             try {
-                final T result = future.get(5, TimeUnit.SECONDS);
+                final T result = future.get(DEFAULT_FUTURE_TIMEOUT, TimeUnit.MILLISECONDS);
                 if (showSpinner && SPINNER_ENABLED.get()) {
                     // Erase the spinner line before the caller prints the result.
                     System.out.print("\r" + " ".repeat(80) + "\r");
