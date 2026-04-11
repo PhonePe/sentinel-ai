@@ -1,0 +1,38 @@
+<configuration>
+    <!-- Suppress the very verbose Dropwizard/Jetty/Jersey startup and operational logs.
+         Only show WARN+ for third-party libs; INFO for our own package. -->
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Our own code — INFO level so startup messages are visible -->
+    <logger name="com.phonepe.sentinelai" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Dropwizard / Jetty / Jersey — suppress noisy startup chatter -->
+    <logger name="io.dropwizard" level="WARN"/>
+    <logger name="org.eclipse.jetty" level="WARN"/>
+    <logger name="org.glassfish.jersey" level="WARN"/>
+    <logger name="org.glassfish.hk2" level="WARN"/>
+    <logger name="com.sun.jersey" level="WARN"/>
+
+    <!-- OkHttp — suppress per-request logging -->
+    <logger name="okhttp3" level="WARN"/>
+    <logger name="okio" level="WARN"/>
+
+    <!-- Simple-OpenAI / clever-client -->
+    <logger name="io.github.sashirestela" level="WARN"/>
+
+    <!-- SQLite JDBC -->
+    <logger name="org.sqlite" level="WARN"/>
+
+    <!-- Root logger — WARN for everything else -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

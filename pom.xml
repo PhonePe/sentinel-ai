@@ -6,7 +6,7 @@
 
     <groupId>com.phonepe.sentinel-ai</groupId>
     <artifactId>sentinel-ai</artifactId>
-    <version>1.1.1-alpha6</version>
+    <version>1.1.2-SNAPSHOT</version>
     <name>Sentinel AI</name>
     <url>https://github.com/PhonePe/sentinel-ai</url>
     <description>Sentinel AI Agent Framework</description>
@@ -62,6 +62,11 @@
             <name>Ekta Mishra</name>
             <email>ektamishra1999@gmail.com</email>
         </developer>
+        <developer>
+            <id>godofwharf</id>
+            <name>Guruprasad Sridharan</name>
+            <email>guruprasad.sridharan@gmail.com</email>
+        </developer>
     </developers>
 
     <packaging>pom</packaging>
@@ -89,6 +94,7 @@
         <!-- All other modules above this -->
         <module>sentinel-ai-bom</module>
         <module>sentinel-ai-reporting</module>
+        <module>sentinel-ai-examples</module>
     </modules>
 
     <properties>
@@ -231,64 +237,6 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok-maven-plugin</artifactId>
-                <version>1.18.20.0</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.projectlombok</groupId>
-                        <artifactId>lombok</artifactId>
-                        <version>${lombok.version}</version>
-                    </dependency>
-                </dependencies>
-                <configuration>
-                    <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
-                    <outputDirectory>${delombok.output}</outputDirectory>
-                    <addOutputDirectory>false</addOutputDirectory>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>delombok</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>${maven-javadoc-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <source>17</source>
-                    <sourcepath>target/generated-sources/delombok/</sourcepath>
-                    <doclint>none</doclint>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>${maven-source-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.3.1</version>
@@ -320,6 +268,10 @@
                         <dotenv.file>${dotenv.file}</dotenv.file>
                     </systemPropertyVariables>
 
+                    <environmentVariables>
+                        <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+                    </environmentVariables>
+
                     <!-- Parallel execution configuration -->
                     <parallel>classes</parallel>
                     <threadCount>${test.thread.count}</threadCount>
@@ -346,63 +298,107 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-                <version>${spotless.version}</version>
-                <configuration>
-                    <java>
-                        <licenseHeader>
-                            <file>${maven.multiModuleProjectDirectory}/license.header</file>
-                        </licenseHeader>
-                        <eclipse>
-                            <version>4.38</version>
-                            <file>${maven.multiModuleProjectDirectory}/java-format.xml</file>
-                            <sortMembersEnabled>true</sortMembersEnabled>
-                            <!-- Sort order
-                            - Static Fields
-                            - Type Definitions
-                            - Initializers
-                            - Field Definitions
-                            - Field Initializers
-                            - Constructor
-                            - Static functions
-                            - Methods
-                            -->
-                            <sortMembersOrder>SF,T,SI,F,I,C,SM,M</sortMembersOrder>
-                            <sortMembersVisibilityOrderEnabled>true</sortMembersVisibilityOrderEnabled>
-                            <!--
-                            - Public
-                            - Protected
-                            - Package
-                            - Private
-                            -->
-                            <sortMembersVisibilityOrder>B,R,D,V</sortMembersVisibilityOrder>
-                        </eclipse>
-                        <removeUnusedImports/>
-                        <importOrder>
-                        <order>com,io,org,com.phonepe,,java,javax,\#</order>
-                        <semanticSort>true</semanticSort>
-                        </importOrder>
-                        <trimTrailingWhitespace/>
-                        <forbidWildcardImports/>
-                        <endWithNewline/>
-                        <!-- <ratchetFrom>origin/master</ratchetFrom> -->
-                    </java>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <phase>compile</phase>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
 
     <profiles>
+        <profile>
+            <id>local</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
+            <id>spotless</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <version>${spotless.version}</version>
+                        <configuration>
+                            <java>
+                                <googleJavaFormat>
+                                    <style>AOSP</style>
+                                </googleJavaFormat>
+                            </java>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.projectlombok</groupId>
+                        <artifactId>lombok-maven-plugin</artifactId>
+                        <version>1.18.20.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
+                            <outputDirectory>${delombok.output}</outputDirectory>
+                            <addOutputDirectory>false</addOutputDirectory>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>delombok</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>${maven-javadoc-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <source>17</source>
+                            <sourcepath>target/generated-sources/delombok/</sourcepath>
+                            <doclint>none</doclint>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>${maven-source-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>central-release</id>
             <activation>

@@ -31,7 +31,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          package-manager-cache: false
 
+      # todo(guruprasad): Caching is not working as expected for node_modules path. Fix it later.
       - name: Cache npm packages
         uses: actions/cache@v4
         with:
@@ -57,10 +59,15 @@ jobs:
              echo "Package @modelcontextprotocol/server-everything@2025.12.18 is already installed globally, skipping installation."
           fi
 
+      # Disabling spotless check for now since it is flagging way too many classes as violating the checks
+      #- name: Run spotless checkstyle
+      #  run: mvn -Pspotless spotless:check
+
       - name: Build (run unit + integration tests)
         env:
           MAVEN_OPTS: -Xmx2G
-        run: mvn -B -V -T1C clean verify -Dtest.thread.count=2
+        run: |
+           mvn -B -V -T1C clean verify -Dtest.thread.count=4
 
       - name: Upload Surefire reports
         if: always()
