@@ -21,6 +21,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
+import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.tools.Tool;
@@ -33,6 +36,7 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -65,6 +69,39 @@ public class ToolUtils {
         return readTools(instance);
     }
 
+    public static void printToolCallError(ToolCall toolCall, Object error) {
+        log.error("Error calling external tool {} -> {}: {}",
+                  toolCall.getToolCallId(),
+                  toolCall.getToolName(),
+                  error);
+    }
+
+
+    public static ToolCallResponse processUnhandledException(String sessionId,
+                                                             String runId,
+                                                             ToolCall toolCall,
+                                                             Exception e) {
+        final var errorMessage = AgentUtils.rootCause(e).getMessage();
+        if (log.isDebugEnabled()) {
+            log.error("Error stacktrace for %s".formatted(toolCall.getToolCallId()), e);
+        }
+        return processUnhandledException(sessionId, runId, toolCall, errorMessage);
+    }
+
+    public static ToolCallResponse processUnhandledException(String sessionId,
+                                                             String runId,
+                                                             ToolCall toolCall,
+                                                             String errorMessage) {
+        printToolCallError(toolCall, errorMessage);
+        return new ToolCallResponse(sessionId,
+                                    runId,
+                                    toolCall.getToolCallId(),
+                                    toolCall.getToolName(),
+                                    ErrorType.TOOL_CALL_TEMPORARY_FAILURE,
+                                    "Error running tool: %s".formatted(errorMessage),
+                                    LocalDateTime.now());
+    }
+
     public static Map<String, ExecutableTool> readTools(Object instance) {
         Class<?> type = instance.getClass();
         final var tools = new HashMap<String, ExecutableTool>();
@@ -87,7 +124,6 @@ public class ToolUtils {
         }
         return tools;
     }
-
 
     public static Pair<ToolDefinition, ToolMethodInfo> toolMetadata(String prefix,
                                                                     Method method) {

@@ -122,6 +122,7 @@ Here are all available settings for the `AgentSetup` class:
 | `outputGenerationTool` | `UnaryOperator<String>` | A function that the model can use to generate the JSON string output. If not provided (recommended), Sentinel AI will use it's built in tool if the `outputGenerationMode` is set to `TOOL_BASED`  |
 | `retrySetup`           | [`RetrySetup`](#retry-setup)            | Retry setup to use for model calls. If not provided, default setup will be added.                                |
 | `autoCompactionSetup`  | [`AutoCompactionSetup`](#auto-compaction-setup) | Configuration for automatic message history compaction. If not provided, default setup will be used. |
+| `maxToolResponsePercentage` | `int`                          | Maximum tool response size as a percentage of the model's context window. Responses exceeding this limit are blocked and replaced with an error. Defaults to `10` (10 %). Set to `0` or negative to use the default. Values above `100` are used as-is (no clamping). See [Large Response Blocking](tools.md#large-response-blocking). |
 
 !!!danger "Required parameters"
     - The `model`, and `modelSettings` are required parameters. If not provided, an error will be thrown. However, it is

@@ -32,6 +32,7 @@ import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
+import com.phonepe.sentinelai.core.agent.SafeToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
@@ -364,7 +365,10 @@ public class SentinelMCPClient implements AutoCloseable {
                                                         new ModelUsageStats(),
                                                         ProcessingMode.DIRECT);
         try {
-            final var response = agentSetup.getModel()
+            final var model = agentSetup.getModel();
+            final var coreRunner = new NonContextualDefaultExternalToolRunner(null, runId, mapper);
+            final var toolRunner = new SafeToolRunner(coreRunner, agentSetup, model, null, runId);
+            final var response = model
                     .compute(modelRunContext,
                              List.of(new ModelOutputDefinition(SAMPLING_OUTPUT_KEY,
                                                                "Response to sampling calls",
@@ -372,9 +376,7 @@ public class SentinelMCPClient implements AutoCloseable {
                                                                                 String.class))),
                              messages,
                              Map.of(),
-                             new NonContextualDefaultExternalToolRunner(null,
-                                                                        runId,
-                                                                        mapper),
+                             toolRunner,
                              new NeverTerminateEarlyStrategy(),
                              List.of())
                     .join();

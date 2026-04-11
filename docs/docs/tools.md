@@ -212,3 +212,66 @@ final var agent = new TestAgent(agentSetup)
 
 !!!tip
     We recommend combining related functionality into toolboxes and making libraries out of them to be used across agent.
+
+## Large Response Blocking
+
+When a tool returns a very large response, it can consume a significant portion of the model's context window, leaving
+little room for the conversation history and the model's own reasoning. To guard against this, Sentinel AI
+automatically intercepts every tool response and checks its estimated token count before adding it to the message
+history.
+
+### How It Works
+
+After a tool executes, the `SafeToolRunner` wraps the result and performs the following steps:
+
+1. **Estimate tokens**: Calls `Model.estimateTokenCount()` on the tool response message.
+2. **Compute the ceiling**: Derives the maximum allowed tokens as
+   `contextWindowSize × maxToolResponsePercentage / 100`.
+3. **Allow or block**:
+    - If the response is within the ceiling it is passed through unchanged.
+    - If the response exceeds the ceiling it is **replaced** with a `TOOL_CALL_PERMANENT_FAILURE` error that
+      instructs the LLM to retry the call with a narrower query:
+      `"Tool response too large. Max allowed: N. Actual: M tokens. Modify the request to reduce output size."`
+4. **Unsupported models**: If the active model does not support token estimation
+   (`Model.TOKEN_COUNT_UNKNOWN`), the guard is skipped and a warning is logged.
+
+### Configuring the Limit
+
+The limit is controlled by the `maxToolResponsePercentage` field in `AgentSetup`:
+
+```java
+final var agentSetup = AgentSetup.builder()
+        .model(model)
+        .modelSettings(modelSettings)
+        .maxToolResponsePercentage(15) // (1)!
+        .build();
+```
+
+1. Allow tool responses up to **15 %** of the model's context window. The default is **10 %**.
+
+The effective token ceiling is computed as:
+
+```
+maxAllowedTokens = contextWindowSize × maxToolResponsePercentage / 100
+```
+
+The context window size is taken from `ModelSettings.modelAttributes.contextWindowSize`. If not explicitly set, it
+defaults to `128 000` tokens.
+
+| **Value**    | **Behaviour**                                        |
+|--------------|------------------------------------------------------|
+| `1` – `100`  | Used as-is to derive the token ceiling.              |
+| `<= 0`       | Falls back to the default value of **10 %**.         |
+| `> 100`      | Falls back to the default value of **10 %**.         |
+
+!!!warning "Permanent failure — no automatic retry"
+    When a tool response is blocked, the error type is `TOOL_CALL_PERMANENT_FAILURE`. This means Sentinel AI will
+    **not** automatically retry the tool call. The LLM is expected to adapt its next tool invocation to fetch a
+    smaller result set.
+
+!!!tip "Tuning the limit"
+    Start with the default of 10 % and increase cautiously. A higher percentage allows richer tool responses but
+    reduces the space available for conversation history and model reasoning. For tools that are expected to return
+    large payloads (e.g. file contents, search results), consider adding pagination or filtering parameters so the
+    LLM can request smaller chunks.
+

@@ -323,8 +323,10 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
         }
 
         try {
-            return Files.readString(skill.getReferenceFiles().get(referenceFile));
-        } catch (Exception e) {
+            final var content = Files.readString(skill.getReferenceFiles().get(referenceFile));
+            return SkillContentSanitizer.sanitize(content);
+        }
+        catch (Exception e) {
             log.error("Failed to read reference file {}: {}", referenceFile, e.getMessage());
             return "Error reading reference file: " + e.getMessage();
         }
