@@ -20,7 +20,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.TableDescRequest;
+import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -368,6 +371,67 @@ class LocalToolsTest {
             assertTrue(
                     table.startsWith("Could not format results"),
                     "Malformed JSON should produce an error message");
+        }
+    }
+
+    // =========================================================================
+    // appendTableDdl (private method — covered via reflection)
+    // =========================================================================
+
+    @Nested
+    @DisplayName("appendTableDdl")
+    class AppendTableDdlTests {
+
+        @Test
+        @DisplayName("appends DDL and column info for an existing table")
+        void appendsDdlForExistingTable() throws Exception {
+            Method method =
+                    LocalTools.class.getDeclaredMethod(
+                            "appendTableDdl", Connection.class, String.class, StringBuilder.class);
+            method.setAccessible(true);
+
+            try (Connection conn =
+                    DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath())) {
+                StringBuilder sb = new StringBuilder();
+                method.invoke(localTools, conn, "users", sb);
+                String result = sb.toString();
+                assertNotNull(result);
+                assertFalse(result.isBlank(), "appendTableDdl should produce non-empty output");
+                assertTrue(result.contains("Columns"), "Output should contain Columns section");
+            }
+        }
+
+        @Test
+        @DisplayName("appends column info for orders table")
+        void appendsDdlForOrdersTable() throws Exception {
+            Method method =
+                    LocalTools.class.getDeclaredMethod(
+                            "appendTableDdl", Connection.class, String.class, StringBuilder.class);
+            method.setAccessible(true);
+
+            try (Connection conn =
+                    DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath())) {
+                StringBuilder sb = new StringBuilder();
+                method.invoke(localTools, conn, "orders", sb);
+                String result = sb.toString();
+                assertFalse(result.isBlank(), "orders table DDL should be non-empty");
+            }
+        }
+
+        @Test
+        @DisplayName("handles non-existent table gracefully")
+        void handlesNonExistentTable() throws Exception {
+            Method method =
+                    LocalTools.class.getDeclaredMethod(
+                            "appendTableDdl", Connection.class, String.class, StringBuilder.class);
+            method.setAccessible(true);
+
+            try (Connection conn =
+                    DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath())) {
+                StringBuilder sb = new StringBuilder();
+                // Should not throw for a non-existent table; just produces partial output
+                assertDoesNotThrow(() -> method.invoke(localTools, conn, "nonexistent_xyz", sb));
+            }
         }
     }
 }
