@@ -26,6 +26,9 @@
         <dropwizard.version>5.0.1</dropwizard.version>
         <sqlite-jdbc.version>3.47.1.0</sqlite-jdbc.version>
         <maven.deploy.skip>true</maven.deploy.skip>
+        <lucene-core.version>9.11.1</lucene-core.version>
+        <asciitable.version>0.3.2</asciitable.version>
+        <sql-formatter.version>2.0.5</sql-formatter.version>
     </properties>
 
     <dependencies>
@@ -77,6 +80,23 @@
             <version>${sqlite-jdbc.version}</version>
         </dependency>
 
+        <!-- ─── Lucene (schema vector store + hybrid search) ────────────── -->
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-core</artifactId>
+            <version>${lucene-core.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-analysis-common</artifactId>
+            <version>${lucene-core.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-queryparser</artifactId>
+            <version>${lucene-core.version}</version>
+        </dependency>
+
         <!-- ─── YAML config loading ──────────────────────────────────────── -->
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
@@ -100,14 +120,14 @@
         <dependency>
             <groupId>de.vandermeer</groupId>
             <artifactId>asciitable</artifactId>
-            <version>0.3.2</version>
+            <version>${asciitable.version}</version>
         </dependency>
 
         <!-- ─── SQL Formatter (pretty-print generated SQL queries) ──────── -->
         <dependency>
             <groupId>com.github.vertical-blank</groupId>
             <artifactId>sql-formatter</artifactId>
-            <version>2.0.5</version>
+            <version>${sql-formatter.version}</version>
         </dependency>
 
         <!-- ─── JUnit 5 ──────────────────────────────────────────────────── -->
@@ -142,23 +162,6 @@
             <artifactId>wiremock-standalone</artifactId>
             <version>${wiremock.version}</version>
             <scope>test</scope>
-        </dependency>
-
-        <!-- ─── Lucene (schema vector store + hybrid search) ────────────── -->
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-core</artifactId>
-            <version>9.11.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-analysis-common</artifactId>
-            <version>9.11.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-queryparser</artifactId>
-            <version>9.11.1</version>
         </dependency>
     </dependencies>
 
