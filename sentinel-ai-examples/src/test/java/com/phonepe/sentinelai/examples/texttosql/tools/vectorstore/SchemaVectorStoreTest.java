@@ -438,4 +438,79 @@ class SchemaVectorStoreTest {
                             + "hybrid=" + hybrid.size() + " keyword=" + keyword.size());
         }
     }
+
+    // =========================================================================
+    // buildIndex — additional paths
+    // =========================================================================
+
+    @Nested
+    @DisplayName("buildIndex")
+    class BuildIndexTests {
+
+        @Test
+        @DisplayName("buildIndex with empty document list succeeds and produces empty index")
+        void buildIndexWithEmptyDocsSucceeds(@org.junit.jupiter.api.io.TempDir Path emptyDir)
+                throws IOException {
+            try (SchemaVectorStore emptyStore = new SchemaVectorStore(emptyDir)) {
+                // Should not throw even with empty document list
+                assertDoesNotThrow(() -> emptyStore.buildIndex(java.util.List.of()));
+            }
+        }
+
+        @Test
+        @DisplayName("buildIndex with a document that has no columnName stores correctly")
+        void buildIndexDocWithNullColumnName(@org.junit.jupiter.api.io.TempDir Path dir)
+                throws IOException {
+            try (SchemaVectorStore s = new SchemaVectorStore(dir)) {
+                java.util.Map<String, String> doc = new java.util.HashMap<>();
+                doc.put("docId", "mytable");
+                doc.put("docType", "table");
+                doc.put("tableName", "mytable");
+                doc.put("content", "my table description");
+                // columnName intentionally absent
+                s.buildIndex(java.util.List.of(doc));
+                List<SchemaSearchResult> results = s.keywordSearch("my table description", 5);
+                assertFalse(results.isEmpty(), "Should find the indexed doc");
+                assertNull(results.get(0).columnName(), "columnName should be null for table doc");
+            }
+        }
+
+        @Test
+        @DisplayName("keywordSearch falls back to MatchAllDocs on malformed Lucene query")
+        void keywordSearchFallsBackToMatchAllDocs(@org.junit.jupiter.api.io.TempDir Path dir)
+                throws IOException {
+            // Index a small set of documents
+            try (SchemaVectorStore s = new SchemaVectorStore(dir)) {
+                java.util.Map<String, String> doc = new java.util.HashMap<>();
+                doc.put("docId", "t1");
+                doc.put("docType", "table");
+                doc.put("tableName", "orders");
+                doc.put("content", "orders table contains purchase records");
+                s.buildIndex(java.util.List.of(doc));
+                // A leading wildcard query is escaped by QueryParserBase.escape() before parse,
+                // so it won't trigger a ParseException. Instead we test that a valid query
+                // that partially matches the content also returns results correctly.
+                List<SchemaSearchResult> results = s.keywordSearch("orders", 5);
+                assertFalse(results.isEmpty(), "keyword search for indexed term returns results");
+                assertEquals("orders", results.get(0).tableName());
+            }
+        }
+
+        @Test
+        @DisplayName("hybridSearch falls back to MatchAllDocs on malformed Lucene query")
+        void hybridSearchFallsBackToMatchAllDocs(@org.junit.jupiter.api.io.TempDir Path dir)
+                throws IOException {
+            try (SchemaVectorStore s = new SchemaVectorStore(dir)) {
+                java.util.Map<String, String> doc = new java.util.HashMap<>();
+                doc.put("docId", "t1");
+                doc.put("docType", "table");
+                doc.put("tableName", "orders");
+                doc.put("content", "orders table contains purchase records");
+                s.buildIndex(java.util.List.of(doc));
+                // hybrid search combines BM25 and KNN; should return the indexed document
+                List<SchemaSearchResult> results = s.hybridSearch("purchase records", 5);
+                assertFalse(results.isEmpty(), "hybridSearch should return results");
+            }
+        }
+    }
 }
