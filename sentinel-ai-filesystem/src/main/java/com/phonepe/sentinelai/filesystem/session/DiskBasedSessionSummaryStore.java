@@ -95,18 +95,7 @@ public class DiskBasedSessionSummaryStore {
     public Optional<FileSystemMessageStorage> getMessageStorage(String sessionId) {
         final var stamp = cacheLock.writeLock();
         try {
-            final var sessionContainer = cache.compute(sessionId, (id, existing) -> {
-                final var session = Objects.requireNonNullElseGet(existing, SessionContainer::new);
-                if (session.getMessageStorage() == null) {
-                    final var messagePath = sessionRoot.resolve(id)
-                            .toAbsolutePath()
-                            .normalize()
-                            .toString();
-                    log.debug("Initializing message storage for session: {}, path: {}", id, messagePath);
-                    session.setMessageStorage(new FileSystemMessageStorage(messagePath, objectMapper));
-                }
-                return session;
-            });
+            final var sessionContainer = cache.computeIfAbsent(sessionId, this::loadSession);
             return Optional.ofNullable(AgentUtils.getIfNotNull(sessionContainer,
                                                                SessionContainer::getMessageStorage,
                                                                null));
@@ -140,9 +129,14 @@ public class DiskBasedSessionSummaryStore {
         final var writeLock = cacheLock.writeLock();
         try {
             final var updated = cache.compute(sessionId,
-                                              (id, existing) -> writeSession(sessionFilePath,
-                                                                             existing,
-                                                                             sessionSummary));
+                                              (id, existing) -> {
+                                                  if (existing == null) {
+                                                      existing = loadSession(sessionId);
+                                                  }
+                                                  return writeSession(sessionFilePath,
+                                                                      existing,
+                                                                      sessionSummary);
+                                              });
             final var session = AgentUtils.getIfNotNull(updated, SessionContainer::getSessionSummary, null);
             return session != null
                     && session.getSessionId().equals(sessionId)
@@ -166,8 +160,22 @@ public class DiskBasedSessionSummaryStore {
         }
     }
 
+    private SessionContainer loadSession(final String sessionId) {
+        final var container = new SessionContainer();
+        final var sessionSummary = readSession(sessionId);
+        container.setSessionSummary(sessionSummary != null ? sessionSummary.getSessionSummary() : null);
+        final var messagePath = sessionRoot.resolve(sessionId)
+                .toAbsolutePath()
+                .normalize()
+                .toString();
+
+        log.debug("Initializing message storage for session: {}, path: {}", sessionId, messagePath);
+        container.setMessageStorage(new FileSystemMessageStorage(messagePath, objectMapper));
+        return container;
+    }
+
     private Optional<SessionContainer> loadSessionContainerUnsafe(final String sessionId) {
-        return Optional.ofNullable(cache.computeIfAbsent(sessionId, this::readSession));
+        return Optional.ofNullable(cache.computeIfAbsent(sessionId, this::loadSession));
     }
 
     @SneakyThrows
@@ -185,12 +193,13 @@ public class DiskBasedSessionSummaryStore {
     private SessionContainer writeSession(final Path sessionFilePath,
                                           final SessionContainer existing,
                                           final SessionSummary sessionSummary) {
-
-        final var session = Objects.requireNonNullElseGet(existing, SessionContainer::new);
+        if (existing == null) {
+            throw new IllegalStateException("State should not be null");
+        }
         if (FileUtils.write(sessionFilePath,
                             objectMapper.writeValueAsBytes(sessionSummary),
                             false)) {
-            return session.setSessionSummary(sessionSummary);
+            return existing.setSessionSummary(sessionSummary);
         }
         throw new IllegalStateException("Failed to write session summary to disk for session: %s"
                 .formatted(sessionSummary.getSessionId()));
