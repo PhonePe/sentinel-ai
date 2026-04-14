@@ -97,7 +97,7 @@ Write a clear, correct SQL query:
 - Prefer `INNER JOIN` for required relationships, `LEFT JOIN` for optional ones.
 - For ranking queries (e.g. "top 5 products"), use `ORDER BY <column> DESC LIMIT 5`.
 - Never use `SELECT *` — be explicit about which columns you return.
-- Strip all `\n`, `\t`, `\r` characters from the generated SQL string before
+- **IMPORTANT**: Always strip all `\n`, `\t`, `\r` characters from the generated SQL string before
   passing it to the execution tool. The generated sql query need not be pretty-formatted. 
   It should only be syntactically and semantically correct.
 - Use only READ-ONLY queries (SELECT). INSERT, UPDATE, DELETE, DROP, TRUNCATE

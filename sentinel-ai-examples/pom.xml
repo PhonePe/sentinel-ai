@@ -33,30 +33,37 @@
 
     <dependencies>
         <!-- ─── Sentinel AI modules ─────────────────────────────────────── -->
+        <!-- Import the BOM to manage versions of all Sentinel AI components -->
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-bom</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+        </dependency>
+        <!-- Core framework -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-core</artifactId>
-            <version>${project.version}</version>
         </dependency>
+        <!-- For using LLMs that follow the OpenAI API standards -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-models-simple-openai</artifactId>
-            <version>${project.version}</version>
         </dependency>
+        <!-- For using MCP servers -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-toolbox-mcp</artifactId>
-            <version>${project.version}</version>
         </dependency>
+        <!-- For using the remote HTTP toolbox -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-toolbox-remote-http</artifactId>
-            <version>${project.version}</version>
         </dependency>
+        <!-- For using the skills extension -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-filesystem</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <!-- ─── PicoCLI ─────────────────────────────────────────────────── -->
