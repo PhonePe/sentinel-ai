@@ -31,15 +31,21 @@
         <sql-formatter.version>2.0.5</sql-formatter.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- Import the BOM to manage versions of all Sentinel AI components -->
+            <dependency>
+                <groupId>com.phonepe.sentinel-ai</groupId>
+                <artifactId>sentinel-ai-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- ─── Sentinel AI modules ─────────────────────────────────────── -->
-        <!-- Import the BOM to manage versions of all Sentinel AI components -->
-        <dependency>
-            <groupId>com.phonepe.sentinel-ai</groupId>
-            <artifactId>sentinel-ai-bom</artifactId>
-            <version>${project.version}</version>
-            <type>pom</type>
-        </dependency>
         <!-- Core framework -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
