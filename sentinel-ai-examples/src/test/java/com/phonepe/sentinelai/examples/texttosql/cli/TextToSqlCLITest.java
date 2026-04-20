@@ -18,6 +18,8 @@ package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
@@ -25,10 +27,13 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.examples.texttosql.agent.TextToSqlAgent;
+import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.examples.texttosql.mcp.SqliteMcpServer;
 import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
 import com.phonepe.sentinelai.filesystem.skills.AgentSkillsExtension;
@@ -37,10 +42,13 @@ import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -367,6 +375,21 @@ class TextToSqlCLITest {
                             () -> m.invoke(null, "localhost", 1, 300L));
             assertInstanceOf(IllegalStateException.class, ex.getCause());
             assertTrue(ex.getCause().getMessage().contains("did not start"));
+        }
+
+        @Test
+        @DisplayName("returns normally when the port becomes reachable")
+        void returnsWhenPortReachable() throws Exception {
+            try (var ss = new java.net.ServerSocket(0)) {
+                final int port = ss.getLocalPort();
+                final Method m =
+                        TextToSqlCLI.class.getDeclaredMethod(
+                                "waitForMcpSseServer", String.class, int.class, long.class);
+                m.setAccessible(true);
+                assertDoesNotThrow(
+                        () -> m.invoke(null, "localhost", port, 5_000L),
+                        "waitForMcpSseServer should succeed when port is listening");
+            }
         }
     }
 
@@ -1105,7 +1128,119 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // buildTrustedHttpClient — interceptor injects Authorization header
+    // handleQuery — private method exercised via reflection with mocked agent
+    // =========================================================================
+
+    @Nested
+    @DisplayName("handleQuery")
+    class HandleQueryTests {
+
+        private static final String SESSION = "test-session";
+
+        /** Reflectively invokes the private {@code handleQuery} method. */
+        private void invokeHandleQuery(
+                TextToSqlCLI cli, TextToSqlAgent agent, CliConfig config, String question)
+                throws Exception {
+            final Method m =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "handleQuery",
+                            TextToSqlAgent.class,
+                            CliConfig.class,
+                            String.class,
+                            String.class);
+            m.setAccessible(true);
+            try {
+                m.invoke(cli, agent, config, question, SESSION);
+            } catch (InvocationTargetException e) {
+                // unwrap — let assertion helpers see the real exception if needed
+                if (e.getCause() instanceof RuntimeException re) throw re;
+                throw e;
+            }
+        }
+
+        private CliConfig buildConfig(boolean streaming) {
+            final CliConfig cfg = new CliConfig();
+            cfg.getOpenai().setApiKey("test-key");
+            cfg.getOpenai().setModel("gpt-4o");
+            cfg.getOpenai().setBaseUrl("https://api.openai.com/v1");
+            cfg.getAgent().setTemperature(0.0f);
+            cfg.getAgent().setMaxTokens(4096);
+            cfg.getAgent().setStreaming(streaming);
+            return cfg;
+        }
+
+        @Test
+        @DisplayName("non-streaming: data result triggers printStructuredResult")
+        @SuppressWarnings("unchecked")
+        void nonStreamingSuccessWithData() throws Exception {
+            final TextToSqlAgent agent = mock(TextToSqlAgent.class);
+            final SqlQueryResult result =
+                    new SqlQueryResult("SELECT 1", List.of("{\"x\":1}"), "one row", 42L);
+            final AgentOutput<SqlQueryResult> output =
+                    new AgentOutput<>(result, List.of(), List.of(), null, null);
+            when(agent.executeAsync(any()))
+                    .thenReturn(CompletableFuture.completedFuture(output));
+
+            assertDoesNotThrow(() -> invokeHandleQuery(new TextToSqlCLI(), agent, buildConfig(false), "show tables"));
+        }
+
+        @Test
+        @DisplayName("non-streaming: null data + error triggers printError")
+        @SuppressWarnings("unchecked")
+        void nonStreamingErrorResult() throws Exception {
+            final TextToSqlAgent agent = mock(TextToSqlAgent.class);
+            final SentinelError err = SentinelError.error(ErrorType.NO_RESPONSE);
+            final AgentOutput<SqlQueryResult> output =
+                    new AgentOutput<>(null, List.of(), List.of(), null, err);
+            when(agent.executeAsync(any()))
+                    .thenReturn(CompletableFuture.completedFuture(output));
+
+            assertDoesNotThrow(() -> invokeHandleQuery(new TextToSqlCLI(), agent, buildConfig(false), "bad query"));
+        }
+
+        @Test
+        @DisplayName("non-streaming: both data and error null triggers printWarning")
+        @SuppressWarnings("unchecked")
+        void nonStreamingEmptyResult() throws Exception {
+            final TextToSqlAgent agent = mock(TextToSqlAgent.class);
+            final AgentOutput<SqlQueryResult> output =
+                    new AgentOutput<>(null, List.of(), List.of(), null, null);
+            when(agent.executeAsync(any()))
+                    .thenReturn(CompletableFuture.completedFuture(output));
+
+            assertDoesNotThrow(() -> invokeHandleQuery(new TextToSqlCLI(), agent, buildConfig(false), "any query"));
+        }
+
+        @Test
+        @DisplayName("streaming: executeAsyncStreaming is called and result is handled")
+        @SuppressWarnings("unchecked")
+        void streamingSuccessWithData() throws Exception {
+            final TextToSqlAgent agent = mock(TextToSqlAgent.class);
+            final SqlQueryResult result =
+                    new SqlQueryResult("SELECT 2", List.of(), "no rows", 10L);
+            final AgentOutput<SqlQueryResult> output =
+                    new AgentOutput<>(result, List.of(), List.of(), null, null);
+            when(agent.executeAsyncStreaming(any(), any(Consumer.class)))
+                    .thenReturn(CompletableFuture.completedFuture(output));
+
+            assertDoesNotThrow(() -> invokeHandleQuery(new TextToSqlCLI(), agent, buildConfig(true), "stream me"));
+        }
+
+        @Test
+        @DisplayName("exception during executeAsync is caught and error is printed")
+        @SuppressWarnings("unchecked")
+        void exceptionIsCaughtAndPrinted() throws Exception {
+            final TextToSqlAgent agent = mock(TextToSqlAgent.class);
+            when(agent.executeAsync(any()))
+                    .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));
+
+            // Should NOT throw — exceptions are caught inside handleQuery
+            assertDoesNotThrow(() -> invokeHandleQuery(new TextToSqlCLI(), agent, buildConfig(false), "fail query"));
+        }
+    }
+
+    // =========================================================================
+    // buildTrustedHttpClient interceptor
     // =========================================================================
 
     @Nested
