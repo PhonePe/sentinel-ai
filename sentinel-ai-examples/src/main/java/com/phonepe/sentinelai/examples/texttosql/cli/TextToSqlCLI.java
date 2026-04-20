@@ -249,7 +249,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * Resolves the effective session ID, generating a random UUID when the caller did not supply
      * one.
      */
-    private static String resolveSessionId(String sessionId) {
+    static String resolveSessionId(String sessionId) {
         final String resolved =
                 (sessionId == null || sessionId.isBlank())
                         ? UUID.randomUUID().toString()
@@ -264,7 +264,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * @return absolute path to the database file
      */
     @SneakyThrows
-    private static Path initializeDatabase(CliConfig config) {
+    static Path initializeDatabase(CliConfig config) {
         final Path dbPath = Paths.get(config.getDatabase().getPath()).toAbsolutePath();
         log.info("Initialising database at {}", dbPath);
         DatabaseInitializer.ensureInitialised(dbPath);
@@ -278,7 +278,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * @return the base URL of the running server (e.g. {@code http://localhost:12345})
      */
     @SneakyThrows
-    private static String startRestServer(Path dbPath, ObjectMapper mapper) {
+    static String startRestServer(Path dbPath, ObjectMapper mapper) {
         log.info("Starting embedded SQLite REST server for database {}", dbPath);
         final int port = SqliteRestServer.findFreePort();
         final String baseUrl = SqliteRestServer.startEmbedded(dbPath.toString(), port, mapper);
@@ -291,7 +291,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * interceptors that inject the OpenAI authorization header on every outgoing request.
      */
     @SneakyThrows
-    private static OkHttpClientAdapter buildTrustedHttpClient(CliConfig config) {
+    static OkHttpClientAdapter buildTrustedHttpClient(CliConfig config) {
         log.info("Building HTTP client");
 
         final String apiKey = config.getOpenai().getApiKey();
@@ -332,8 +332,7 @@ public class TextToSqlCLI implements Callable<Integer> {
         return new OkHttpClientAdapter(httpClient);
     }
 
-    /** Constructs the {@link SimpleOpenAIModel} wired to the configured model name and base URL. */
-    private static SimpleOpenAIModel<?> buildOpenAIModel(
+    static SimpleOpenAIModel<?> buildOpenAIModel(
             CliConfig config, OkHttpClientAdapter clientAdapter, ObjectMapper mapper) {
         log.info(
                 "Building OpenAI model [name={}, baseUrl={}]",
@@ -354,7 +353,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * Creates the {@link AgentSetup} that controls model behaviour (temperature, max tokens, output
      * mode).
      */
-    private static AgentSetup buildAgentSetup(
+    static AgentSetup buildAgentSetup(
             CliConfig config, SimpleOpenAIModel<?> model, ObjectMapper mapper) {
         log.info(
                 "Configuring agent setup [temperature={}, maxTokens={}, streaming={}]",
@@ -379,7 +378,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * temporary directory when no explicit skills directory was supplied.
      */
     @SneakyThrows
-    private AgentSkillsExtension<String, SqlQueryResult, TextToSqlAgent> buildSkillsExtension() {
+    AgentSkillsExtension<String, SqlQueryResult, TextToSqlAgent> buildSkillsExtension() {
         final String resolvedSkillsDir = resolveSkillsDir();
         log.info("Building skills extension from directory: {}", resolvedSkillsDir);
         return AgentSkillsExtension.<String, SqlQueryResult, TextToSqlAgent>withMultipleSkills()
@@ -389,7 +388,7 @@ public class TextToSqlCLI implements Callable<Integer> {
     }
 
     /** Instantiates the {@link TextToSqlAgent} with the provided setup and skills extension. */
-    private static TextToSqlAgent buildAgent(
+    static TextToSqlAgent buildAgent(
             AgentSetup agentSetup,
             AgentSkillsExtension<String, SqlQueryResult, TextToSqlAgent> skillsExtension) {
         log.info("Building Text-to-SQL agent");
@@ -412,7 +411,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * agent can either ask a free-form question ({@code ask_user_question}) or present a numbered
      * list of choices ({@code ask_user_to_choose}).
      */
-    private static void registerAskUserTool(TextToSqlAgent agent) {
+    static void registerAskUserTool(TextToSqlAgent agent) {
         log.info("Registering ask-user tool");
         agent.registerToolbox(new AskUserTool());
         log.info("Ask-user tool registered successfully");
@@ -426,7 +425,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * under {@code {dataDir}/lucene-schema-index/}, building the index on first run.
      */
     @SneakyThrows
-    private static void registerLocalTools(TextToSqlAgent agent, Path dbPath) {
+    static void registerLocalTools(TextToSqlAgent agent, Path dbPath) {
         final Path dataDir = dbPath.getParent();
         log.info("Registering local SQL tools for database: {} (dataDir: {})", dbPath, dataDir);
         agent.registerTools(ToolUtils.readTools(new LocalTools(dbPath.toString(), dataDir)));
@@ -438,7 +437,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * embedded Dropwizard server.
      */
     @SneakyThrows
-    private static void registerHttpToolbox(
+    static void registerHttpToolbox(
             TextToSqlAgent agent, String baseUrl, ObjectMapper mapper) {
         log.info("Registering HTTP toolbox at base URL: {}", baseUrl);
         final var toolSource = new InMemoryHttpToolSource();
@@ -465,7 +464,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * <p>The subprocess is started using the current JVM executable and the running classpath, so
      * no separate JAR distribution is required.
      */
-    private static void registerMcpToolbox(TextToSqlAgent agent, Path dbPath, ObjectMapper mapper) {
+    static void registerMcpToolbox(TextToSqlAgent agent, Path dbPath, ObjectMapper mapper) {
         final String javaCmd = ProcessHandle.current().info().command().orElse("java");
         final String classpath = System.getProperty("java.class.path");
         log.info("Registering MCP toolbox [javaCmd={}, dbPath={}]", javaCmd, dbPath);
@@ -502,7 +501,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * ready before registering the toolbox.
      */
     @SneakyThrows
-    private static void registerMcpToolboxSse(
+    static void registerMcpToolboxSse(
             TextToSqlAgent agent, Path dbPath, ObjectMapper mapper, int port) {
         final String javaCmd = ProcessHandle.current().info().command().orElse("java");
         final String classpath = System.getProperty("java.class.path");
@@ -553,7 +552,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * @throws IllegalStateException if the port does not become reachable within {@code timeoutMs}
      */
     @SneakyThrows
-    private static void waitForMcpSseServer(String host, int port, long timeoutMs)
+    static void waitForMcpSseServer(String host, int port, long timeoutMs)
             throws InterruptedException {
         final long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
@@ -711,7 +710,7 @@ public class TextToSqlCLI implements Callable<Integer> {
     // -------------------------------------------------------------------------
 
     @SneakyThrows
-    private static CliConfig loadConfig(String configPath) {
+    static CliConfig loadConfig(String configPath) {
         final Path path = Paths.get(configPath);
         if (!Files.exists(path)) {
             System.err.println("Config file not found: " + path.toAbsolutePath());
@@ -726,7 +725,7 @@ public class TextToSqlCLI implements Callable<Integer> {
         return yamlMapper.readValue(path.toFile(), CliConfig.class);
     }
 
-    private static void validateConfig(CliConfig config) {
+    static void validateConfig(CliConfig config) {
         if (config.getOpenai().getApiKey() == null || config.getOpenai().getApiKey().isBlank()) {
             System.err.println("Error: openai.apiKey must be set in the credentials file.");
             System.exit(1);
@@ -741,7 +740,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * can discover it on the filesystem.
      */
     @SneakyThrows
-    private String resolveSkillsDir() {
+    String resolveSkillsDir() {
         if (skillsDir != null && !skillsDir.isBlank()) {
             log.info("Using explicitly provided skills directory: {}", skillsDir);
             return skillsDir;
