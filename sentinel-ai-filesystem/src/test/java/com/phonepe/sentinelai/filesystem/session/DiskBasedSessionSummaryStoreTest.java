@@ -119,4 +119,27 @@ class DiskBasedSessionSummaryStoreTest {
         assertEquals("Test Summary", retrieved.get().getSummary());
         assertEquals(1000L, retrieved.get().getUpdatedAt());
     }
+
+    @Test
+    @SneakyThrows
+    void testSaveMessageBeforeSummaryAndGetSummary() {
+        final var sessionId = "session3";
+        final var summary = SessionSummary.builder()
+                .sessionId(sessionId)
+                .summary("Test Summary")
+                .updatedAt(1000L)
+                .build();
+
+        assertTrue(summaryStore.saveSummary(summary));
+
+        final var summaryStore2 = new DiskBasedSessionSummaryStore(tempDir.toString(), objectMapper, 10);
+        summaryStore2.getMessageStorage(sessionId);
+
+        final var retrieved = summaryStore.sessionSummary(sessionId);
+        assertTrue(retrieved.isPresent());
+        assertEquals("Test Summary", retrieved.get().getSummary());
+        assertEquals(1000L, retrieved.get().getUpdatedAt());
+    }
+
+
 }
