@@ -137,7 +137,7 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
      * placeholders, and returns the absolute path of that temp file so Dropwizard can parse it.
      */
     @SneakyThrows
-    private static String buildInlineConfig(int port) {
+    static String buildInlineConfig(int port) {
         final String template;
         try (var stream =
                 SqliteRestServer.class.getClassLoader().getResourceAsStream("dw/config.yml")) {
@@ -169,7 +169,7 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
 
     /** Polls {@code host:port} until a TCP connection succeeds or the timeout elapses. */
     @SneakyThrows
-    private static void waitForPort(String host, int port, long timeoutMs)
+    static void waitForPort(String host, int port, long timeoutMs)
             throws InterruptedException {
         final long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {

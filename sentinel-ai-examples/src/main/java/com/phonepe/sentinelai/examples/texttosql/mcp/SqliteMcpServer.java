@@ -31,15 +31,8 @@ import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportPro
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.nio.file.Paths;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import lombok.SneakyThrows;
@@ -137,9 +130,10 @@ public class SqliteMcpServer implements Callable<Integer> {
     public Integer call() {
         DatabaseInitializer.ensureInitialised(Paths.get(dbPath).toAbsolutePath());
         log.info("SQLite MCP server starting [transport={}, dbPath={}]", transport, dbPath);
+        final SqliteQueryEngine engine = new SqliteQueryEngine(dbPath);
         return switch (transport) {
-            case STDIO -> runStdioMode();
-            case SSE -> runSseMode();
+            case STDIO -> runStdioMode(engine);
+            case SSE -> runSseMode(engine);
         };
     }
 
@@ -153,7 +147,7 @@ public class SqliteMcpServer implements Callable<Integer> {
      * <p>Blocks the main thread until the parent process closes the pipe.
      */
     @SneakyThrows
-    private Integer runStdioMode() {
+    private Integer runStdioMode(SqliteQueryEngine engine) {
         final ObjectMapper mapper = JsonUtils.createMapper();
         final var jsonMapper = new JacksonMcpJsonMapper(mapper);
 
@@ -166,16 +160,18 @@ public class SqliteMcpServer implements Callable<Integer> {
                         .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
                         .toolCall(
                                 executeQueryTool(jsonMapper),
-                                (exchange, args) -> handleExecuteQuery(args.arguments(), mapper))
+                                (exchange, args) ->
+                                        engine.executeQuery(args.arguments(), mapper))
                         .toolCall(
                                 listTablesTool(jsonMapper),
-                                (exchange, args) -> handleListTables(mapper))
+                                (exchange, args) -> engine.listTables(mapper))
                         .toolCall(
                                 getTableSchemaTool(jsonMapper),
-                                (exchange, args) -> handleGetTableSchema(args.arguments(), mapper))
+                                (exchange, args) ->
+                                        engine.getTableSchema(args.arguments(), mapper))
                         .toolCall(
                                 getDatabaseInfoTool(jsonMapper),
-                                (exchange, args) -> handleGetDatabaseInfo(mapper))
+                                (exchange, args) -> engine.getDatabaseInfo(mapper))
                         .build();
 
         log.info("SQLite MCP server started in STDIO mode. Database: {}", dbPath);
@@ -193,7 +189,7 @@ public class SqliteMcpServer implements Callable<Integer> {
      * <p>Starts an embedded Jetty server on {@link #port} and blocks until the server is stopped.
      */
     @SneakyThrows
-    private Integer runSseMode() {
+    private Integer runSseMode(SqliteQueryEngine engine) {
         final ObjectMapper mapper = JsonUtils.createMapper();
         final var jsonMapper = new JacksonMcpJsonMapper(mapper);
 
@@ -210,16 +206,16 @@ public class SqliteMcpServer implements Callable<Integer> {
                         .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
                         .tool(
                                 executeQueryTool(jsonMapper),
-                                (exchange, args) -> handleExecuteQuery(args, mapper))
+                                (exchange, args) -> engine.executeQuery(args, mapper))
                         .tool(
                                 listTablesTool(jsonMapper),
-                                (exchange, args) -> handleListTables(mapper))
+                                (exchange, args) -> engine.listTables(mapper))
                         .tool(
                                 getTableSchemaTool(jsonMapper),
-                                (exchange, args) -> handleGetTableSchema(args, mapper))
+                                (exchange, args) -> engine.getTableSchema(args, mapper))
                         .tool(
                                 getDatabaseInfoTool(jsonMapper),
-                                (exchange, args) -> handleGetDatabaseInfo(mapper))
+                                (exchange, args) -> engine.getDatabaseInfo(mapper))
                         .build();
 
         // Embed the SSE transport provider in a Jetty 12 (ee10) server
@@ -326,173 +322,27 @@ public class SqliteMcpServer implements Callable<Integer> {
     }
 
     // -------------------------------------------------------------------------
-    // Tool handlers
+    // Legacy private delegates — kept so that existing reflection-based tests
+    // in SqliteMcpServerTest continue to compile and pass.  All logic lives in
+    // SqliteQueryEngine; these wrappers simply forward the call.
     // -------------------------------------------------------------------------
 
-    @SneakyThrows
     private McpSchema.CallToolResult handleExecuteQuery(
             Map<String, Object> args, ObjectMapper mapper) {
-        final String sql = (String) args.get("sql");
-        if (sql == null || sql.isBlank()) {
-            return error("Field 'sql' is required");
-        }
-
-        final String upper = sql.trim().toUpperCase();
-        final Set<String> writePrefixes =
-                Set.of(
-                        "INSERT",
-                        "UPDATE",
-                        "DELETE",
-                        "DROP",
-                        "ALTER",
-                        "CREATE",
-                        "REPLACE",
-                        "TRUNCATE",
-                        "MERGE");
-        for (final String prefix : writePrefixes) {
-            if (upper.startsWith(prefix)) {
-                return error(
-                        "Write DML statements are not allowed via this endpoint. "
-                                + "Statement starts with: "
-                                + prefix);
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        final List<Object> values =
-                args.containsKey("values") ? (List<Object>) args.get("values") : List.of();
-
-        log.info("Executing SQL: {}", sql);
-        final long startMs = System.currentTimeMillis();
-        try (Connection conn = connect()) {
-            final List<Map<String, Object>> rows = executeSelect(conn, sql, values);
-            final long elapsed = System.currentTimeMillis() - startMs;
-
-            final List<String> jsonRows = new ArrayList<>(rows.size());
-            for (final Map<String, Object> row : rows) {
-                jsonRows.add(mapper.writeValueAsString(row));
-            }
-
-            final Map<String, Object> result = new LinkedHashMap<>();
-            result.put("sql", sql);
-            result.put("rows", jsonRows);
-            result.put("rowCount", rows.size());
-            result.put("executionTimeMs", elapsed);
-            return success(mapper.writeValueAsString(result));
-        } catch (Exception e) {
-            log.error("SQL execution error: {}", e.getMessage());
-            return error("SQL execution failed: " + e.getMessage());
-        }
+        return new SqliteQueryEngine(dbPath).executeQuery(args, mapper);
     }
 
-    @SneakyThrows
     private McpSchema.CallToolResult handleListTables(ObjectMapper mapper) {
-        try (Connection conn = connect()) {
-            final List<Map<String, Object>> rows =
-                    executeSelect(
-                            conn,
-                            "SELECT name FROM sqlite_master WHERE type='table' "
-                                    + "AND name NOT LIKE 'sqlite_%' ORDER BY name",
-                            List.of());
-            final List<String> tables = rows.stream().map(r -> (String) r.get("name")).toList();
-            return success(mapper.writeValueAsString(Map.of("tables", tables)));
-        } catch (Exception e) {
-            return error("Failed to list tables: " + e.getMessage());
-        }
+        return new SqliteQueryEngine(dbPath).listTables(mapper);
     }
 
-    @SneakyThrows
     private McpSchema.CallToolResult handleGetTableSchema(
             Map<String, Object> args, ObjectMapper mapper) {
-        final String tableName = (String) args.get("tableName");
-        if (tableName == null || tableName.isBlank()) {
-            return error("Field 'tableName' is required");
-        }
-        try (Connection conn = connect()) {
-            final List<Map<String, Object>> columns =
-                    executeSelect(conn, "PRAGMA table_info(\"" + tableName + "\")", List.of());
-            if (columns.isEmpty()) {
-                return error("Table not found: " + tableName);
-            }
-            return success(
-                    mapper.writeValueAsString(Map.of("tableName", tableName, "columns", columns)));
-        } catch (Exception e) {
-            return error("Failed to get schema for table '" + tableName + "': " + e.getMessage());
-        }
+        return new SqliteQueryEngine(dbPath).getTableSchema(args, mapper);
     }
 
-    @SneakyThrows
     private McpSchema.CallToolResult handleGetDatabaseInfo(ObjectMapper mapper) {
-        try (Connection conn = connect()) {
-            final List<Map<String, Object>> tables =
-                    executeSelect(
-                            conn,
-                            "SELECT name FROM sqlite_master WHERE type='table' "
-                                    + "AND name NOT LIKE 'sqlite_%'",
-                            List.of());
-            final List<Map<String, Object>> pageSize =
-                    executeSelect(conn, "PRAGMA page_size", List.of());
-            final List<Map<String, Object>> pageCount =
-                    executeSelect(conn, "PRAGMA page_count", List.of());
-
-            final long ps =
-                    pageSize.isEmpty()
-                            ? 0L
-                            : Long.parseLong(String.valueOf(pageSize.get(0).get("page_size")));
-            final long pc =
-                    pageCount.isEmpty()
-                            ? 0L
-                            : Long.parseLong(String.valueOf(pageCount.get(0).get("page_count")));
-
-            final Map<String, Object> info = new LinkedHashMap<>();
-            info.put("databasePath", dbPath);
-            info.put("tableCount", tables.size());
-            info.put("tables", tables.stream().map(r -> r.get("name")).toList());
-            info.put("approximateSizeBytes", ps * pc);
-            return success(mapper.writeValueAsString(info));
-        } catch (Exception e) {
-            return error("Failed to get database info: " + e.getMessage());
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // JDBC helpers
-    // -------------------------------------------------------------------------
-
-    @SneakyThrows
-    private Connection connect() {
-        return DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-    }
-
-    @SneakyThrows
-    private List<Map<String, Object>> executeSelect(
-            Connection conn, String sql, List<Object> params) {
-        try (final var stmt = conn.prepareStatement(sql)) {
-            for (int i = 0; i < params.size(); i++) {
-                stmt.setObject(i + 1, params.get(i));
-            }
-            try (ResultSet rs = stmt.executeQuery()) {
-                final ResultSetMetaData meta = rs.getMetaData();
-                final int cols = meta.getColumnCount();
-                final List<Map<String, Object>> rows = new ArrayList<>();
-                while (rs.next()) {
-                    final Map<String, Object> row = new LinkedHashMap<>();
-                    for (int c = 1; c <= cols; c++) {
-                        row.put(meta.getColumnName(c), rs.getObject(c));
-                    }
-                    rows.add(row);
-                }
-                return rows;
-            }
-        }
-    }
-
-    private McpSchema.CallToolResult success(String text) {
-        return new McpSchema.CallToolResult(text, false);
-    }
-
-    private McpSchema.CallToolResult error(String message) {
-        return new McpSchema.CallToolResult(message, true);
+        return new SqliteQueryEngine(dbPath).getDatabaseInfo(mapper);
     }
 
     // -------------------------------------------------------------------------
