@@ -1,0 +1,183 @@
+# =============================================================================
+# Remote-HTTP Toolbox — SQLite REST API Tool Definitions
+# =============================================================================
+# These tools are registered with the HttpToolBox and made available to the
+# TextToSqlAgent as an alternative/fallback path for SQLite operations,
+# complementing the mcp-sqlite MCP server tools.
+#
+# The base URL (http://localhost:<port>) is set at runtime by the CLI when
+# the embedded Dropwizard server starts.
+#
+# Template syntax:
+#   TEXT          — plain string, no substitution
+#   TEXT_SUBSTITUTOR — Apache Commons ${variable} interpolation
+# =============================================================================
+
+sqlite-api:
+  tools:
+    # ─── Query ───────────────────────────────────────────────────────────────
+    - metadata:
+        name: execute_query
+        description: >
+          Execute a raw SQL query against the SQLite e-commerce database.
+          Use this as a fallback when the MCP SQLite query tool is unavailable,
+          or to cross-validate results. Returns rows for SELECT statements
+          or affectedRows for INSERT/UPDATE/DELETE. Always prefer parameterised
+          queries; put the SQL in the 'sql' field.
+          It returns a JSON object with the following schema (for SELECT queries)
+          {
+            "rows": [  // Only for SELECT queries
+              {
+                "column1": value1, // where column1 is the name of first column and value1 is the corresponding value.
+                "column2": value2, // valueN can have any permissible json type
+                ...
+              },
+              ...
+            ],
+            "rowCount": n  // where n is an int representing the number of rows in result set
+          }
+          Example:
+          {
+            "rows": [
+              {"id":1,"name":"Alice"},
+              {"id":2,"name":"Bob"}
+            ]
+          }
+        parameters:
+          sql:
+            description: The complete SQL statement to execute (e.g. SELECT * FROM orders WHERE status = 'pending')
+            type: STRING
+      definition:
+        method: POST
+        path:
+          type: TEXT
+          content: /api/sqlite/query
+        body:
+          type: TEXT_SUBSTITUTOR
+          content: |
+            {"sql": "${sql}"}
+        contentType: application/json
+
+    # ─── Table listing ───────────────────────────────────────────────────────
+    - metadata:
+        name: list_tables
+        description: >
+          List all tables in the SQLite e-commerce database.
+          Returns a JSON array of table names: users, sellers, catalog,
+          inventory, orders. Use this before generating SQL to confirm
+          available tables.
+      definition:
+        method: GET
+        path:
+          type: TEXT
+          content: /api/sqlite/tables
+
+    # ─── Schema inspection ───────────────────────────────────────────────────
+    - metadata:
+        name: get_table_schema
+        description: >
+          Get the column definitions (name, type, constraints, default value)
+          for a specific table in the SQLite database. Call this for each
+          table referenced in a query to understand the exact column names
+          and types before generating SQL.
+        parameters:
+          tableName:
+            description: Name of the table whose schema to retrieve (e.g. orders, users, catalog)
+            type: STRING
+      definition:
+        method: GET
+        path:
+          type: TEXT_SUBSTITUTOR
+          content: /api/sqlite/schema/${tableName}
+
+    # ─── Database info ────────────────────────────────────────────────────────
+    - metadata:
+        name: get_database_info
+        description: >
+          Get high-level metadata about the SQLite database: file path,
+          number of tables, approximate file size. Useful for understanding
+          the database before issuing queries.
+      definition:
+        method: GET
+        path:
+          type: TEXT
+          content: /api/sqlite/info
+
+    # ─── Read records (simple CRUD) ──────────────────────────────────────────
+    - metadata:
+        name: read_records
+        description: >
+          Read records from a table using simple equality filters.
+          For complex queries with joins, aggregations, or subqueries
+          use executeQuery instead. Supports optional JSON conditions
+          for filtering (e.g. {"status":"pending"}).
+        parameters:
+          tableName:
+            description: Name of the table to read from
+            type: STRING
+          conditions:
+            description: >
+              Optional JSON object with column=value equality filters,
+              e.g. {"status":"delivered","seller_id":1}.
+              Pass empty string or omit to return all rows.
+            type: STRING
+      definition:
+        method: GET
+        path:
+          type: TEXT_SUBSTITUTOR
+          content: /api/sqlite/records/${tableName}?conditions=${urlEncode:conditions}
+
+    # ─── Insert record ────────────────────────────────────────────────────────
+    - metadata:
+        name: insert_record
+        description: >
+          Insert a new record into the specified table.
+          The data parameter must be a JSON object mapping column names to values,
+          e.g. {"status":"confirmed","quantity":2}.
+        parameters:
+          tableName:
+            description: Name of the table to insert into
+            type: STRING
+          data:
+            description: >
+              JSON object with column names as keys and the values to insert,
+              e.g. {"product_id":1,"quantity":2,"status":"pending"}
+            type: STRING
+      definition:
+        method: POST
+        path:
+          type: TEXT_SUBSTITUTOR
+          content: /api/sqlite/records/${tableName}
+        body:
+          type: TEXT_SUBSTITUTOR
+          content: |
+            {"data": ${data}}
+        contentType: application/json
+
+    # ─── Update records ───────────────────────────────────────────────────────
+    - metadata:
+        name: update_records
+        description: >
+          Update records in a table that match the given conditions.
+          Both 'data' (fields to update) and 'conditions' (filter) are required
+          to prevent accidental full-table updates.
+        parameters:
+          tableName:
+            description: Name of the table to update
+            type: STRING
+          data:
+            description: JSON object with column names and new values to set
+            type: STRING
+          conditions:
+            description: JSON object with column=value equality conditions identifying which rows to update
+            type: STRING
+      definition:
+        method: PUT
+        path:
+          type: TEXT_SUBSTITUTOR
+          content: /api/sqlite/records/${tableName}
+        body:
+          type: TEXT_SUBSTITUTOR
+          content: |
+            {"data": ${data}, "conditions": ${conditions}}
+        contentType: application/json

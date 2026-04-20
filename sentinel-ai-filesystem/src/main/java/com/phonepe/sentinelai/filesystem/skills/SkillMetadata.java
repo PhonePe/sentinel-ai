@@ -17,66 +17,43 @@
 package com.phonepe.sentinelai.filesystem.skills;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import java.util.Map;
+import javax.annotation.Nullable;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
-import java.util.Map;
-
-import javax.annotation.Nullable;
-
-/**
- * Represents the YAML frontmatter metadata in a SKILL.md file
- */
+/** Represents the YAML frontmatter metadata in a SKILL.md file */
 @Value
 @Builder
 @Jacksonized
 public class SkillMetadata {
 
-    /**
-     * Required: skill name (1-64 chars, lowercase, numbers, hyphens)
-     */
+    /** Required: skill name (1-64 chars, lowercase, numbers, hyphens) */
     String name;
 
-    /**
-     * Required: description of what the skill does and when to use it (max 1024 chars)
-     */
+    /** Required: description of what the skill does and when to use it (max 1024 chars) */
     String description;
 
-    /**
-     * Optional: license identifier or reference
-     */
-    @Nullable
-    String license;
+    /** Optional: license identifier or reference */
+    @Nullable String license;
 
-    /**
-     * Optional: compatibility requirements (max 500 chars)
-     */
-    @Nullable
-    String compatibility;
+    /** Optional: compatibility requirements (max 500 chars) */
+    @Nullable String compatibility;
 
-    /**
-     * Optional: additional metadata key-value pairs
-     */
-    @Nullable
-    Map<String, Object> metadata;
+    /** Optional: additional metadata key-value pairs */
+    @Nullable Map<String, Object> metadata;
 
-    /**
-     * Optional: space-delimited list of pre-approved tools
-     */
+    /** Optional: space-delimited list of pre-approved tools */
     @Nullable
     @JsonProperty("allowed-tools")
     String allowedTools;
 
-    /**
-     * Validate that name matches the parent directory name
-     */
+    /** Validate that name matches the parent directory name */
     public void validateName(String directoryName) {
         if (!name.equals(directoryName)) {
             throw new IllegalArgumentException(
-                                               "Skill name '" + name + "' must match directory name '" + directoryName
-                                                       + "'");
+                    "Skill name '" + name + "' must match directory name '" + directoryName + "'");
         }
     }
 }

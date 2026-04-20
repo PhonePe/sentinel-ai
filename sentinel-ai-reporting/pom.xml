@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.phonepe.sentinel-ai</groupId>
         <artifactId>sentinel-ai</artifactId>
-        <version>1.1.1-alpha7</version>
+        <version>1.1.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>sentinel-ai-reporting</artifactId>
@@ -74,6 +74,13 @@
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-storage-es</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- examples -->
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-examples</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
