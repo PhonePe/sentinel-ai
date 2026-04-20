@@ -93,8 +93,8 @@
 
         <!-- All other modules above this -->
         <module>sentinel-ai-bom</module>
-        <module>sentinel-ai-reporting</module>
         <module>sentinel-ai-examples</module>
+        <module>sentinel-ai-reporting</module>
     </modules>
 
     <properties>
