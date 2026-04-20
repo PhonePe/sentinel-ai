@@ -16,9 +16,12 @@
 
 package com.phonepe.sentinelai.examples.texttosql.cli;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
@@ -39,6 +42,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.function.UnaryOperator;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -786,6 +791,370 @@ class TextToSqlCLITest {
                             "buildAgent", AgentSetup.class, AgentSkillsExtension.class);
             buildAgentMethod.setAccessible(true);
             return (TextToSqlAgent) buildAgentMethod.invoke(null, agentSetup, skillsExtension);
+        }
+    }
+
+    // =========================================================================
+    // registerHttpToolbox (via reflection)
+    // =========================================================================
+
+    @Nested
+    @DisplayName("registerHttpToolbox")
+    class RegisterHttpToolboxTests {
+
+        @Test
+        @DisplayName("registers HTTP toolbox without throwing")
+        void registersWithoutThrowing() throws Exception {
+            final CliConfig config = buildConfig();
+            final ObjectMapper mapper = JsonUtils.createMapper();
+            final TextToSqlAgent agent = buildAgent(config, mapper);
+
+            final Method m =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "registerHttpToolbox",
+                            TextToSqlAgent.class,
+                            String.class,
+                            ObjectMapper.class);
+            m.setAccessible(true);
+            assertDoesNotThrow(() -> m.invoke(null, agent, "http://localhost:19999", mapper));
+        }
+
+        private CliConfig buildConfig() {
+            final CliConfig config = new CliConfig();
+            config.getOpenai().setApiKey("test-api-key");
+            config.getOpenai().setModel("gpt-4o");
+            config.getOpenai().setBaseUrl("https://api.openai.com/v1");
+            config.getAgent().setTemperature(0.0f);
+            config.getAgent().setMaxTokens(4096);
+            config.getAgent().setStreaming(false);
+            return config;
+        }
+
+        private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
+            final Method buildClient =
+                    TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
+            buildClient.setAccessible(true);
+            final OkHttpClientAdapter adapter =
+                    (OkHttpClientAdapter) buildClient.invoke(null, config);
+
+            final Method buildModel =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "buildOpenAIModel",
+                            CliConfig.class,
+                            OkHttpClientAdapter.class,
+                            ObjectMapper.class);
+            buildModel.setAccessible(true);
+            final SimpleOpenAIModel<?> model =
+                    (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+
+            final Method buildSetup =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "buildAgentSetup",
+                            CliConfig.class,
+                            SimpleOpenAIModel.class,
+                            ObjectMapper.class);
+            buildSetup.setAccessible(true);
+            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+
+            final TextToSqlCLI cli = new TextToSqlCLI();
+            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
+            buildSkills.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            final AgentSkillsExtension<String, ?, TextToSqlAgent> ext =
+                    (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills.invoke(cli);
+
+            final Method buildAgentM =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "buildAgent", AgentSetup.class, AgentSkillsExtension.class);
+            buildAgentM.setAccessible(true);
+            return (TextToSqlAgent) buildAgentM.invoke(null, agentSetup, ext);
+        }
+    }
+
+    // =========================================================================
+    // runInteractiveLoop (via reflection) — exit and EOF paths
+    // =========================================================================
+
+    @Nested
+    @DisplayName("runInteractiveLoop")
+    class RunInteractiveLoopTests {
+
+        @Test
+        @DisplayName("returns 0 immediately when first input is 'exit'")
+        void returnsZeroOnExitCommand() throws Exception {
+            final CliConfig config = buildConfig();
+            final ObjectMapper mapper = JsonUtils.createMapper();
+            final TextToSqlAgent agent = buildAgent(config, mapper);
+
+            final Method m =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "runInteractiveLoop",
+                            TextToSqlAgent.class,
+                            CliConfig.class,
+                            String.class,
+                            ObjectMapper.class);
+            m.setAccessible(true);
+
+            final java.io.InputStream original = System.in;
+            try {
+                System.setIn(
+                        new java.io.ByteArrayInputStream("exit\n".getBytes(StandardCharsets.UTF_8)));
+                final int result =
+                        (int)
+                                m.invoke(
+                                        new TextToSqlCLI(),
+                                        agent,
+                                        config,
+                                        "test-session",
+                                        mapper);
+                assertEquals(0, result);
+            } finally {
+                System.setIn(original);
+            }
+        }
+
+        @Test
+        @DisplayName("returns 0 immediately when first input is 'quit'")
+        void returnsZeroOnQuitCommand() throws Exception {
+            final CliConfig config = buildConfig();
+            final ObjectMapper mapper = JsonUtils.createMapper();
+            final TextToSqlAgent agent = buildAgent(config, mapper);
+
+            final Method m =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "runInteractiveLoop",
+                            TextToSqlAgent.class,
+                            CliConfig.class,
+                            String.class,
+                            ObjectMapper.class);
+            m.setAccessible(true);
+
+            final java.io.InputStream original = System.in;
+            try {
+                System.setIn(
+                        new java.io.ByteArrayInputStream("quit\n".getBytes(StandardCharsets.UTF_8)));
+                final int result =
+                        (int)
+                                m.invoke(
+                                        new TextToSqlCLI(),
+                                        agent,
+                                        config,
+                                        "test-session",
+                                        mapper);
+                assertEquals(0, result);
+            } finally {
+                System.setIn(original);
+            }
+        }
+
+        @Test
+        @DisplayName("skips empty lines and exits when 'exit' is entered after blank line")
+        void skipsEmptyLinesThenExits() throws Exception {
+            final CliConfig config = buildConfig();
+            final ObjectMapper mapper = JsonUtils.createMapper();
+            final TextToSqlAgent agent = buildAgent(config, mapper);
+
+            final Method m =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "runInteractiveLoop",
+                            TextToSqlAgent.class,
+                            CliConfig.class,
+                            String.class,
+                            ObjectMapper.class);
+            m.setAccessible(true);
+
+            final java.io.InputStream original = System.in;
+            try {
+                // Empty line → warning → continue; then "exit"
+                System.setIn(
+                        new java.io.ByteArrayInputStream(
+                                "\nexit\n".getBytes(StandardCharsets.UTF_8)));
+                final int result =
+                        (int)
+                                m.invoke(
+                                        new TextToSqlCLI(),
+                                        agent,
+                                        config,
+                                        "test-session",
+                                        mapper);
+                assertEquals(0, result);
+            } finally {
+                System.setIn(original);
+            }
+        }
+
+        @Test
+        @DisplayName("returns 0 on EOF (null readLine) — prints EOF message and exits")
+        void returnsZeroOnEof() throws Exception {
+            final CliConfig config = buildConfig();
+            final ObjectMapper mapper = JsonUtils.createMapper();
+            final TextToSqlAgent agent = buildAgent(config, mapper);
+
+            final Method m =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "runInteractiveLoop",
+                            TextToSqlAgent.class,
+                            CliConfig.class,
+                            String.class,
+                            ObjectMapper.class);
+            m.setAccessible(true);
+
+            final java.io.InputStream original = System.in;
+            try {
+                // Empty stream → readLine() returns null immediately
+                System.setIn(new java.io.ByteArrayInputStream(new byte[0]));
+                final int result =
+                        (int)
+                                m.invoke(
+                                        new TextToSqlCLI(),
+                                        agent,
+                                        config,
+                                        "test-session",
+                                        mapper);
+                assertEquals(0, result);
+            } finally {
+                System.setIn(original);
+            }
+        }
+
+        @Test
+        @DisplayName("/dumpMessages with no prior output prints a warning and continues to exit")
+        void dumpMessagesBeforeAnyQueryPrintsWarning() throws Exception {
+            final CliConfig config = buildConfig();
+            final ObjectMapper mapper = JsonUtils.createMapper();
+            final TextToSqlAgent agent = buildAgent(config, mapper);
+
+            final Method m =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "runInteractiveLoop",
+                            TextToSqlAgent.class,
+                            CliConfig.class,
+                            String.class,
+                            ObjectMapper.class);
+            m.setAccessible(true);
+
+            final java.io.InputStream original = System.in;
+            try {
+                System.setIn(
+                        new java.io.ByteArrayInputStream(
+                                "/dumpMessages\nexit\n".getBytes(StandardCharsets.UTF_8)));
+                final int result =
+                        (int)
+                                m.invoke(
+                                        new TextToSqlCLI(),
+                                        agent,
+                                        config,
+                                        "test-session",
+                                        mapper);
+                assertEquals(0, result);
+            } finally {
+                System.setIn(original);
+            }
+        }
+
+        private CliConfig buildConfig() {
+            final CliConfig config = new CliConfig();
+            config.getOpenai().setApiKey("test-api-key");
+            config.getOpenai().setModel("gpt-4o");
+            config.getOpenai().setBaseUrl("https://api.openai.com/v1");
+            config.getAgent().setTemperature(0.0f);
+            config.getAgent().setMaxTokens(4096);
+            config.getAgent().setStreaming(false);
+            return config;
+        }
+
+        private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
+            final Method buildClient =
+                    TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
+            buildClient.setAccessible(true);
+            final OkHttpClientAdapter adapter =
+                    (OkHttpClientAdapter) buildClient.invoke(null, config);
+
+            final Method buildModel =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "buildOpenAIModel",
+                            CliConfig.class,
+                            OkHttpClientAdapter.class,
+                            ObjectMapper.class);
+            buildModel.setAccessible(true);
+            final SimpleOpenAIModel<?> model =
+                    (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+
+            final Method buildSetup =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "buildAgentSetup",
+                            CliConfig.class,
+                            SimpleOpenAIModel.class,
+                            ObjectMapper.class);
+            buildSetup.setAccessible(true);
+            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+
+            final TextToSqlCLI cli = new TextToSqlCLI();
+            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
+            buildSkills.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            final AgentSkillsExtension<String, ?, TextToSqlAgent> ext =
+                    (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills.invoke(cli);
+
+            final Method buildAgentM =
+                    TextToSqlCLI.class.getDeclaredMethod(
+                            "buildAgent", AgentSetup.class, AgentSkillsExtension.class);
+            buildAgentM.setAccessible(true);
+            return (TextToSqlAgent) buildAgentM.invoke(null, agentSetup, ext);
+        }
+    }
+
+    // =========================================================================
+    // buildTrustedHttpClient — interceptor injects Authorization header
+    // =========================================================================
+
+    @Nested
+    @DisplayName("buildTrustedHttpClient interceptor")
+    @WireMockTest
+    class BuildTrustedHttpClientInterceptorTests {
+
+        @Test
+        @DisplayName("interceptor replaces the Authorization header with the configured bearer token")
+        void interceptorInjectsBearerToken(WireMockRuntimeInfo wmInfo) throws Exception {
+            // Arrange: stub WireMock to accept any GET and return 200
+            stubFor(get(anyUrl()).willReturn(aResponse().withStatus(200).withBody("ok")));
+
+            final CliConfig config = new CliConfig();
+            config.getOpenai().setApiKey("secret-key");
+            config.getOpenai().setModel("gpt-4o");
+            config.getOpenai().setBaseUrl("http://localhost:" + wmInfo.getHttpPort());
+
+            // Build the adapter via reflection (static method)
+            final Method buildClient =
+                    TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
+            buildClient.setAccessible(true);
+            final OkHttpClientAdapter adapter =
+                    (OkHttpClientAdapter) buildClient.invoke(null, config);
+
+            // Extract the private OkHttpClient from the adapter via reflection
+            final Field okHttpClientField =
+                    OkHttpClientAdapter.class.getDeclaredField("okHttpClient");
+            okHttpClientField.setAccessible(true);
+            final OkHttpClient okHttpClient = (OkHttpClient) okHttpClientField.get(adapter);
+
+            // Make a real HTTP call to WireMock — this triggers the interceptor
+            final Request request =
+                    new Request.Builder()
+                            .url("http://localhost:" + wmInfo.getHttpPort() + "/test")
+                            .addHeader("Authorization", "old-value")
+                            .build();
+            try (var response = okHttpClient.newCall(request).execute()) {
+                assertEquals(200, response.code());
+            }
+
+            // Verify WireMock received the rewritten Authorization header
+            verify(
+                    getRequestedFor(urlEqualTo("/test"))
+                            .withHeader(
+                                    "Authorization",
+                                    equalTo(
+                                            config.getOpenai().getBearerPrefix()
+                                                    + "secret-key")));
         }
     }
 }

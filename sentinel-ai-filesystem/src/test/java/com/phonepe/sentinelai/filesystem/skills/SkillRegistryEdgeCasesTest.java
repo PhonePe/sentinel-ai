@@ -227,6 +227,31 @@ class SkillRegistryEdgeCasesTest {
     }
 
     // =========================================================================
+    // AgentSkill.formatCatalogEntry
+    // =========================================================================
+
+    @Nested
+    @DisplayName("AgentSkill.formatCatalogEntry")
+    class AgentSkillFormatCatalogEntryTests {
+
+        @Test
+        @DisplayName("returns markdown formatted name and description")
+        void returnsMarkdownFormattedEntry() {
+            final SkillMetadata meta =
+                    SkillMetadata.builder().name("my-skill").description("Does something").build();
+            final AgentSkill skill =
+                    AgentSkill.builder()
+                            .metadata(meta)
+                            .instructions("# Instructions")
+                            .skillDirectory(tempDir)
+                            .build();
+
+            final String entry = skill.formatCatalogEntry();
+            assertEquals("- **my-skill**: Does something", entry);
+        }
+    }
+
+    // =========================================================================
     // helpers
     // =========================================================================
 
