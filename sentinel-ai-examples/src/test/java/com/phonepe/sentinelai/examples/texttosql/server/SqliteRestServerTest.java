@@ -17,9 +17,13 @@
 package com.phonepe.sentinelai.examples.texttosql.server;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
+import io.dropwizard.core.setup.Bootstrap;
+import io.dropwizard.core.setup.Environment;
+import io.dropwizard.jersey.setup.JerseyEnvironment;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -102,6 +106,41 @@ class SqliteRestServerTest {
     // startEmbedded — smoke test (disabled: Dropwizard calls System.exit on shutdown,
     // which terminates the JVM and crashes Surefire in unit test mode)
     // =========================================================================
+
+    // =========================================================================
+    // initialize & run — Dropwizard lifecycle hooks (via Mockito)
+    // =========================================================================
+
+    @Nested
+    @DisplayName("initialize and run")
+    class InitializeAndRunTests {
+
+        @Test
+        @DisplayName("initialize does not throw and ignores the bootstrap argument")
+        @SuppressWarnings("unchecked")
+        void initializeDoesNotThrow() {
+            final SqliteRestServer server =
+                    new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
+            final Bootstrap<SqliteRestConfig> bootstrap = mock(Bootstrap.class);
+            // initialize() is a no-op — just confirm it doesn't throw
+            assertDoesNotThrow(() -> server.initialize(bootstrap));
+        }
+
+        @Test
+        @DisplayName("run registers the SqliteRestResource with jersey environment")
+        void runRegistersResource() throws Exception {
+            final SqliteRestServer server =
+                    new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
+            final Environment environment = mock(Environment.class);
+            final JerseyEnvironment jersey = mock(JerseyEnvironment.class);
+            when(environment.jersey()).thenReturn(jersey);
+
+            final SqliteRestConfig config = new SqliteRestConfig();
+            server.run(config, environment);
+
+            verify(jersey, times(1)).register(any(SqliteRestResource.class));
+        }
+    }
 
     @Nested
     @DisplayName("startEmbedded")
