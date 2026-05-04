@@ -7,6 +7,8 @@ description: Evaluate Sentinel AI agents with datasets, expectations, and report
 
 `sentinel-evals` provides a lightweight way to run repeatable evaluation suites against Sentinel AI agents.
 
+`EvalEngine` is generic and supports any request type: `Agent<R, T, A>`.
+
 Use it to:
 
 - validate functional behavior before deployments,
@@ -27,8 +29,8 @@ If you already use the Sentinel BOM, add:
 
 ## Core concepts
 
-- `Dataset`: named collection of test cases.
-- `TestCase`: input + expectations (+ optional timeout).
+- `Dataset<R, T>`: named collection of test cases.
+- `TestCase<R, T>`: input + expectations (+ optional timeout).
 - `Expectation`: predicate evaluated against agent output and run context.
 - `EvalEngine`: executes a dataset against an agent.
 - `EvalRunConfig`: controls sampling, fail-fast, and default timeout.
@@ -74,7 +76,13 @@ From `com.phonepe.sentinelai.evals.tests.Expectations`:
 You can also implement custom expectations by implementing:
 
 ```java
-Expectation<R, T, A extends Agent<R, T, A>>
+Expectation<R, T>
+```
+
+and overriding:
+
+```java
+boolean evaluate(R result, EvalExpectationContext<T> context)
 ```
 
 ## Runtime configuration
@@ -147,4 +155,6 @@ assertEquals(0, report.getFailedTestCases());
 - `sentinel-evals/src/main/java/com/phonepe/sentinelai/evals/tests/Expectations.java`
 - `sentinel-evals/src/test/java/com/phonepe/sentinelai/evals/EvalEngineTest.java`
 - `sentinel-evals/src/test/java/com/phonepe/sentinelai/evals/PartialOutputEvalTest.java`
+
+
 

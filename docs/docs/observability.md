@@ -107,3 +107,11 @@ By default, Sentinel AI uses SLF4J for logging. You can enable debug logging for
 # Example logback or log4j config
 logging.level.com.phonepe.sentinelai=DEBUG
 ```
+
+## OpenTelemetry
+
+For distributed traces using GenAI semantic-convention span names (`invoke_agent`, `execute_tool`),
+use the `OpenTelemetryAgentExtension` from `sentinel-instrumentation`.
+
+See [OpenTelemetry Instrumentation](opentelemetry.md) for setup and attribute details.
+

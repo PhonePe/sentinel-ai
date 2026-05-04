@@ -39,6 +39,7 @@ final var tracingExtension = OpenTelemetryAgentExtension
                        .providerName("openai")
                        .captureToolCallArguments(false)
                        .captureToolCallResult(false)
+                       .maxActiveSpanDuration(Duration.ofMinutes(10))
                        .build())
         .build();
 
@@ -68,5 +69,6 @@ Optional attributes:
 
 - Tool argument/result capture may include sensitive data. Keep it disabled unless needed.
 - The extension is event-driven and works with both streaming and non-streaming execution paths.
+- If terminal lifecycle events are missed, stale run/tool spans are force-closed after `maxActiveSpanDuration` with `error.type` set to `run_incomplete` / `tool_call_incomplete`.
 - Session storage (`SessionStore`) remains independent; only `sessionId` is used for trace correlation.
 

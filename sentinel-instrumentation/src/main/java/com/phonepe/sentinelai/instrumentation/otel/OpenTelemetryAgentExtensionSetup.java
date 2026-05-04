@@ -17,9 +17,12 @@
 package com.phonepe.sentinelai.instrumentation.otel;
 
 import io.opentelemetry.api.trace.Tracer;
+
 import lombok.Builder;
 import lombok.Value;
 import lombok.With;
+
+import java.time.Duration;
 
 /**
  * Setup for OpenTelemetry agent extension.
@@ -53,5 +56,10 @@ public class OpenTelemetryAgentExtensionSetup {
      */
     @Builder.Default
     boolean captureToolCallResult = false;
-}
 
+    /**
+     * Maximum time a run/tool span can stay active before being force-closed as incomplete.
+     */
+    @Builder.Default
+    Duration maxActiveSpanDuration = Duration.ofMinutes(10);
+}
