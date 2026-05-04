@@ -32,10 +32,8 @@ import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
 import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.ApproveAllToolRuns;
-import com.phonepe.sentinelai.core.agent.ProcessingMode;
 import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
@@ -121,70 +119,6 @@ class OpenTelemetryAgentExtensionTest {
         this.openTelemetrySdk = OpenTelemetrySdk.builder()
                 .setTracerProvider(tracerProvider)
                 .build();
-    }
-
-    @Test
-    void shouldCloseDanglingToolSpanWhenRunCompletesWithoutTerminalToolEvent() {
-        final var model = mock(Model.class);
-        when(model.compute(any(), anyCollection(), anyList(), anyMap(), any(ToolRunner.class), any(), anyList()))
-                .thenAnswer(orphanToolFlow());
-        final var agent = createAgent(model,
-                                      Map.of(),
-                                      OpenTelemetryAgentExtensionSetup.builder()
-                                              .tracer(openTelemetrySdk.getTracer("sentinel.test"))
-                                              .build(),
-                                      new ApproveAllToolRuns<>());
-
-        agent.execute(agentInput("run-6", "session-6"));
-
-        final var toolSpan = waitForSpanByName("execute_tool dangling-tool");
-        assertNotNull(toolSpan);
-        assertEquals("tool_call_incomplete", toolSpan.getAttributes().get(ATTR_ERROR_TYPE));
-    }
-
-    @Test
-    void shouldCloseRunSpanViaOnRequestCompletedWhenOutputEventsAreMissing() {
-        final var extension = OpenTelemetryAgentExtension.<String, String, DummyAgent>builder()
-                .setup(OpenTelemetryAgentExtensionSetup.builder()
-                        .tracer(openTelemetrySdk.getTracer("sentinel.test"))
-                        .build())
-                .build();
-        final var agent = createAgent(mock(Model.class),
-                                      Map.of(),
-                                      OpenTelemetryAgentExtensionSetup.builder()
-                                              .tracer(openTelemetrySdk.getTracer("sentinel.test"))
-                                              .build(),
-                                      new ApproveAllToolRuns<>());
-
-        extension.onExtensionRegistrationCompleted(agent);
-        extension.consumeEvent(new InputReceivedAgentEvent("dummy",
-                                                           "run-request-completed",
-                                                           "session",
-                                                           "user",
-                                                           "hello"));
-        assertEquals(0, finishedSpans().size());
-
-        final var context = new AgentRunContext<>("run-request-completed",
-                                                  "hello",
-                                                  AgentRequestMetadata.builder()
-                                                          .runId("run-request-completed")
-                                                          .sessionId("session")
-                                                          .userId("user")
-                                                          .build(),
-                                                  agent.getSetup(),
-                                                  new java.util.ArrayList<>(),
-                                                  new ModelUsageStats(),
-                                                  ProcessingMode.DIRECT);
-        agent.onRequestCompleted()
-                .dispatch(new Agent.ProcessingCompletedData<>(agent,
-                                                              agent.getSetup(),
-                                                              context,
-                                                              null,
-                                                              null,
-                                                              ProcessingMode.DIRECT));
-
-        final var runSpan = waitForSpanByName("invoke_agent dummy");
-        assertNotNull(runSpan);
     }
 
     @Test

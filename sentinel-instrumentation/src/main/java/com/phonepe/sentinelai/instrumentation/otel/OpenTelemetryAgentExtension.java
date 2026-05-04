@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.instrumentation.otel;
 
-import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
@@ -54,96 +53,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
+
 /**
  * OpenTelemetry tracing extension for Sentinel AI agents.
  */
 @Slf4j
 public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
 
-    private static final String OPERATION_INVOKE_AGENT = "invoke_agent";
-
-    private static final String OPERATION_EXECUTE_TOOL = "execute_tool";
-    private static final AttributeKey<String> ATTR_OPERATION_NAME = AttributeKey.stringKey("gen_ai.operation.name");
-
-    private static final AttributeKey<String> ATTR_PROVIDER_NAME = AttributeKey.stringKey("gen_ai.provider.name");
-    private static final AttributeKey<String> ATTR_AGENT_NAME = AttributeKey.stringKey("gen_ai.agent.name");
-    private static final AttributeKey<String> ATTR_CONVERSATION_ID = AttributeKey.stringKey("gen_ai.conversation.id");
-    private static final AttributeKey<Long> ATTR_USAGE_INPUT_TOKENS = AttributeKey.longKey("gen_ai.usage.input_tokens");
-    private static final AttributeKey<Long> ATTR_USAGE_OUTPUT_TOKENS = AttributeKey.longKey(
-                                                                                            "gen_ai.usage.output_tokens");
-    private static final AttributeKey<String> ATTR_TOOL_NAME = AttributeKey.stringKey("gen_ai.tool.name");
-
-    private static final AttributeKey<String> ATTR_TOOL_CALL_ID = AttributeKey.stringKey("gen_ai.tool.call.id");
-    private static final AttributeKey<String> ATTR_TOOL_CALL_ARGUMENTS = AttributeKey.stringKey(
-                                                                                                "gen_ai.tool.call.arguments");
-    private static final AttributeKey<String> ATTR_TOOL_CALL_RESULT = AttributeKey.stringKey("gen_ai.tool.call.result");
-    private static final AttributeKey<String> ATTR_ERROR_TYPE = AttributeKey.stringKey("error.type");
-
-    private static final String TOOL_APPROVAL_DENIED_ERROR = "tool_call_approval_denied";
-
-    private static final String TOOL_INCOMPLETE_ERROR = "tool_call_incomplete";
-    private static final String RUN_INCOMPLETE_ERROR = "run_incomplete";
     private final OpenTelemetryAgentExtensionSetup setup;
 
     private final ConcurrentMap<String, ActiveSpan> runSpans = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ActiveSpan> toolSpans = new ConcurrentHashMap<>();
-    private final AgentEventVisitor<Void> eventVisitor = new AgentEventVisitor<>() {
-        @Override
-        public Void visit(CompactionCompletedEvent compactionCompleted) {
-            return null;
-        }
-
-        @Override
-        public Void visit(CompactionStartedEvent compactionStarted) {
-            return null;
-        }
-
-        @Override
-        public Void visit(InputReceivedAgentEvent inputReceived) {
-            onInputReceived(inputReceived);
-            return null;
-        }
-
-        @Override
-        public Void visit(MessageReceivedAgentEvent messageReceived) {
-            return null;
-        }
-
-        @Override
-        public Void visit(MessageSentAgentEvent messageSent) {
-            return null;
-        }
-
-        @Override
-        public Void visit(OutputErrorAgentEvent outputErrorAgentEvent) {
-            onOutputError(outputErrorAgentEvent);
-            return null;
-        }
-
-        @Override
-        public Void visit(OutputGeneratedAgentEvent outputGeneratedAgentEvent) {
-            onOutputGenerated(outputGeneratedAgentEvent);
-            return null;
-        }
-
-        @Override
-        public Void visit(ToolCallApprovalDeniedAgentEvent toolCallApprovalDenied) {
-            onToolCallApprovalDenied(toolCallApprovalDenied);
-            return null;
-        }
-
-        @Override
-        public Void visit(ToolCallCompletedAgentEvent toolCallCompleted) {
-            onToolCallCompleted(toolCallCompleted);
-            return null;
-        }
-
-        @Override
-        public Void visit(ToolCalledAgentEvent toolCalled) {
-            onToolCalled(toolCalled);
-            return null;
-        }
-    };
 
     @Builder
     public OpenTelemetryAgentExtension(OpenTelemetryAgentExtensionSetup setup) {
@@ -188,14 +108,7 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
     @Override
     public void onExtensionRegistrationCompleted(A agent) {
         agent.getSetup().getEventBus().onEvent().connect(this::consumeEvent);
-        agent.onRequestCompleted().connect(data -> {
-            final var runId = data.getContext().getRunId();
-            final var span = runSpans.remove(runId);
-            if (span != null) {
-                span.span().end();
-            }
-            closeDanglingToolSpans(runId);
-        });
+
     }
 
     @Override
@@ -206,7 +119,63 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
     void consumeEvent(AgentEvent event) {
         try {
             closeStaleSpans();
-            event.accept(eventVisitor);
+            event.accept(new AgentEventVisitor<>() {
+                @Override
+                public Void visit(CompactionCompletedEvent compactionCompleted) {
+                    return null;
+                }
+
+                @Override
+                public Void visit(CompactionStartedEvent compactionStarted) {
+                    return null;
+                }
+
+                @Override
+                public Void visit(InputReceivedAgentEvent inputReceived) {
+                    onInputReceived(inputReceived);
+                    return null;
+                }
+
+                @Override
+                public Void visit(MessageReceivedAgentEvent messageReceived) {
+                    return null;
+                }
+
+                @Override
+                public Void visit(MessageSentAgentEvent messageSent) {
+                    return null;
+                }
+
+                @Override
+                public Void visit(OutputErrorAgentEvent outputErrorAgentEvent) {
+                    onOutputError(outputErrorAgentEvent);
+                    return null;
+                }
+
+                @Override
+                public Void visit(OutputGeneratedAgentEvent outputGeneratedAgentEvent) {
+                    onOutputGenerated(outputGeneratedAgentEvent);
+                    return null;
+                }
+
+                @Override
+                public Void visit(ToolCallApprovalDeniedAgentEvent toolCallApprovalDenied) {
+                    onToolCallApprovalDenied(toolCallApprovalDenied);
+                    return null;
+                }
+
+                @Override
+                public Void visit(ToolCallCompletedAgentEvent toolCallCompleted) {
+                    onToolCallCompleted(toolCallCompleted);
+                    return null;
+                }
+
+                @Override
+                public Void visit(ToolCalledAgentEvent toolCalled) {
+                    onToolCalled(toolCalled);
+                    return null;
+                }
+            });
         }
         catch (Exception e) {
             log.warn("Error while emitting OpenTelemetry spans for event {}: {}", event.getType(), e.getMessage());
@@ -229,7 +198,7 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
                 return;
             }
             activeSpan.span().setStatus(StatusCode.ERROR, "Tool call did not finish before run completed");
-            activeSpan.span().setAttribute(ATTR_ERROR_TYPE, TOOL_INCOMPLETE_ERROR);
+            activeSpan.span().setAttribute(Constants.ATTR_ERROR_TYPE, Constants.TOOL_INCOMPLETE_ERROR);
             activeSpan.span().end();
         });
     }
@@ -244,7 +213,7 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
                 return;
             }
             activeSpan.span().setStatus(StatusCode.ERROR, "Run did not finish before span timeout");
-            activeSpan.span().setAttribute(ATTR_ERROR_TYPE, RUN_INCOMPLETE_ERROR);
+            activeSpan.span().setAttribute(Constants.ATTR_ERROR_TYPE, Constants.RUN_INCOMPLETE_ERROR);
             activeSpan.span().end();
             closeDanglingToolSpans(runId);
         });
@@ -257,7 +226,7 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
                 return;
             }
             activeSpan.span().setStatus(StatusCode.ERROR, "Tool call did not finish before span timeout");
-            activeSpan.span().setAttribute(ATTR_ERROR_TYPE, TOOL_INCOMPLETE_ERROR);
+            activeSpan.span().setAttribute(Constants.ATTR_ERROR_TYPE, Constants.TOOL_INCOMPLETE_ERROR);
             activeSpan.span().end();
         });
     }
@@ -273,14 +242,14 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
     }
 
     private void onInputReceived(InputReceivedAgentEvent event) {
-        final var spanBuilder = tracer().spanBuilder(spanName(OPERATION_INVOKE_AGENT, event.getAgentName()))
+        final var spanBuilder = tracer().spanBuilder(spanName(Constants.OPERATION_INVOKE_AGENT, event.getAgentName()))
                 .setStartTimestamp(toEpochMillis(event), TimeUnit.MILLISECONDS)
-                .setAttribute(ATTR_OPERATION_NAME, OPERATION_INVOKE_AGENT)
-                .setAttribute(ATTR_PROVIDER_NAME, providerName())
-                .setAttribute(ATTR_AGENT_NAME, event.getAgentName());
+                .setAttribute(Constants.ATTR_OPERATION_NAME, Constants.OPERATION_INVOKE_AGENT)
+                .setAttribute(Constants.ATTR_PROVIDER_NAME, providerName())
+                .setAttribute(Constants.ATTR_AGENT_NAME, event.getAgentName());
 
         if (event.getSessionId() != null) {
-            spanBuilder.setAttribute(ATTR_CONVERSATION_ID, event.getSessionId());
+            spanBuilder.setAttribute(Constants.ATTR_CONVERSATION_ID, event.getSessionId());
         }
 
         final var span = spanBuilder.startSpan();
@@ -298,8 +267,8 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
         final var span = activeSpan.span();
         setError(span, event.getErrorType());
         if (event.getUsage() != null) {
-            span.setAttribute(ATTR_USAGE_INPUT_TOKENS, (long) event.getUsage().getRequestTokens());
-            span.setAttribute(ATTR_USAGE_OUTPUT_TOKENS, (long) event.getUsage().getResponseTokens());
+            span.setAttribute(Constants.ATTR_USAGE_INPUT_TOKENS, (long) event.getUsage().getRequestTokens());
+            span.setAttribute(Constants.ATTR_USAGE_OUTPUT_TOKENS, (long) event.getUsage().getResponseTokens());
         }
         span.end(toEpochMillis(event), TimeUnit.MILLISECONDS);
     }
@@ -311,8 +280,8 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
         }
         final var span = activeSpan.span();
         if (event.getUsage() != null) {
-            span.setAttribute(ATTR_USAGE_INPUT_TOKENS, (long) event.getUsage().getRequestTokens());
-            span.setAttribute(ATTR_USAGE_OUTPUT_TOKENS, (long) event.getUsage().getResponseTokens());
+            span.setAttribute(Constants.ATTR_USAGE_INPUT_TOKENS, (long) event.getUsage().getRequestTokens());
+            span.setAttribute(Constants.ATTR_USAGE_OUTPUT_TOKENS, (long) event.getUsage().getResponseTokens());
         }
         span.end(toEpochMillis(event), TimeUnit.MILLISECONDS);
     }
@@ -324,7 +293,7 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
         }
         final var span = activeSpan.span();
         span.setStatus(StatusCode.ERROR, "Tool call approval denied");
-        span.setAttribute(ATTR_ERROR_TYPE, TOOL_APPROVAL_DENIED_ERROR);
+        span.setAttribute(Constants.ATTR_ERROR_TYPE, Constants.TOOL_APPROVAL_DENIED_ERROR);
         span.end(toEpochMillis(event), TimeUnit.MILLISECONDS);
     }
 
@@ -338,17 +307,18 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
             setError(span, event.getErrorType());
         }
         else if (setup != null && setup.isCaptureToolCallResult() && event.getContent() != null) {
-            span.setAttribute(ATTR_TOOL_CALL_RESULT, event.getContent());
+            span.setAttribute(Constants.ATTR_TOOL_CALL_RESULT, event.getContent());
         }
         span.end(toEpochMillis(event), TimeUnit.MILLISECONDS);
     }
 
     private void onToolCalled(ToolCalledAgentEvent event) {
-        final var spanBuilder = tracer().spanBuilder(spanName(OPERATION_EXECUTE_TOOL, event.getToolCallName()))
+        final var spanBuilder = tracer().spanBuilder(spanName(Constants.OPERATION_EXECUTE_TOOL,
+                                                              event.getToolCallName()))
                 .setStartTimestamp(toEpochMillis(event), TimeUnit.MILLISECONDS)
-                .setAttribute(ATTR_OPERATION_NAME, OPERATION_EXECUTE_TOOL)
-                .setAttribute(ATTR_TOOL_NAME, event.getToolCallName())
-                .setAttribute(ATTR_TOOL_CALL_ID, event.getToolCallId());
+                .setAttribute(Constants.ATTR_OPERATION_NAME, Constants.OPERATION_EXECUTE_TOOL)
+                .setAttribute(Constants.ATTR_TOOL_NAME, event.getToolCallName())
+                .setAttribute(Constants.ATTR_TOOL_CALL_ID, event.getToolCallId());
 
         final var runSpan = runSpans.get(event.getRunId());
         if (runSpan != null) {
@@ -356,7 +326,7 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
         }
 
         if (setup != null && setup.isCaptureToolCallArguments() && event.getArguments() != null) {
-            spanBuilder.setAttribute(ATTR_TOOL_CALL_ARGUMENTS, event.getArguments());
+            spanBuilder.setAttribute(Constants.ATTR_TOOL_CALL_ARGUMENTS, event.getArguments());
         }
 
         final var span = spanBuilder.startSpan();
@@ -377,7 +347,7 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
     private void setError(Span span, ErrorType errorType) {
         final var type = errorType == null ? ErrorType.UNKNOWN : errorType;
         span.setStatus(StatusCode.ERROR, type.getMessage());
-        span.setAttribute(ATTR_ERROR_TYPE, type.name());
+        span.setAttribute(Constants.ATTR_ERROR_TYPE, type.name());
     }
 
     private Tracer tracer() {
