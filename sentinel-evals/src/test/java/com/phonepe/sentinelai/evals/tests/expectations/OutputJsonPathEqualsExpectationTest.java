@@ -16,12 +16,12 @@
 
 package com.phonepe.sentinelai.evals.tests.expectations;
 
-import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
-import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
+import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
+import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 
 import lombok.Value;
 
@@ -48,8 +48,8 @@ class OutputJsonPathEqualsExpectationTest {
     @Test
     void testFailsWhenFieldValueDiffers() {
         final var expectation = new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>("$.status",
-                                                                       Operator.EQ,
-                                                                       "FAILED");
+                                                                                                                                Operator.EQ,
+                                                                                                                                "FAILED");
 
         assertFalse(expectation.evaluate(
                                          new Decision("SUCCESS", "Everything is fine"),
@@ -70,8 +70,8 @@ class OutputJsonPathEqualsExpectationTest {
     @Test
     void testMatchesFieldUsingJsonPath() {
         final var expectation = new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>("$.status",
-                                                                       Operator.EQ,
-                                                                       "SUCCESS");
+                                                                                                                                Operator.EQ,
+                                                                                                                                "SUCCESS");
 
         assertTrue(expectation.evaluate(
                                         new Decision("SUCCESS", "Everything is fine"),
