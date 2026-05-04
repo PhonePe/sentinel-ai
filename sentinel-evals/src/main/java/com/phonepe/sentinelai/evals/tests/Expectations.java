@@ -16,12 +16,15 @@
 
 package com.phonepe.sentinelai.evals.tests;
 
+import com.phonepe.sentinelai.core.model.Model;
+import com.phonepe.sentinelai.embedding.EmbeddingModel;
 import com.phonepe.sentinelai.evals.tests.expectations.OrderedExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputContainsExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputEqualsExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.ToolCalledExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
+import com.phonepe.sentinelai.evals.tests.metrics.MetricExpectation;
 
 import lombok.experimental.UtilityClass;
 
@@ -86,6 +89,18 @@ public class Expectations {
         }
     }
 
+
+    public static <T> Expectation<String, T> answerRelevance(Model evaluatorModel,
+                                                             String promptTemplate,
+                                                             double threshold) {
+        return new MetricExpectation<>(Metrics.answerRelevance(evaluatorModel, promptTemplate), threshold);
+    }
+
+    public static <T> Expectation<String, T> answerRelevance(Model evaluatorModel,
+                                                             double threshold) {
+        return answerRelevance(evaluatorModel, null, threshold);
+    }
+
     public static <R, T> JsonPathExpectationBuilder<R, T> at(String jsonPath) {
         return where(jsonPath);
     }
@@ -114,18 +129,29 @@ public class Expectations {
         return new OutputEqualsExpectation<>(expected);
     }
 
-    public static <R, T> Expectation<R, T> toolCalled(String toolName) {
+    public static <T> Expectation<String, T> outputSimilarity(EmbeddingModel embeddingModel,
+                                                              String referenceText) {
+        return new MetricExpectation<>(Metrics.outputSimilarity(embeddingModel, referenceText));
+    }
+
+    public static <T> Expectation<String, T> outputSimilarity(EmbeddingModel embeddingModel,
+                                                              String referenceText,
+                                                              double threshold) {
+        return new MetricExpectation<>(Metrics.outputSimilarity(embeddingModel, referenceText), threshold);
+    }
+
+    public static <R, T> MessageExpectation<R, T> toolCalled(String toolName) {
         return new ToolCalledExpectation<>(toolName);
     }
 
-    public static <R, T> Expectation<R, T> toolCalled(String toolName,
-                                                      int times) {
+    public static <R, T> MessageExpectation<R, T> toolCalled(String toolName,
+                                                             int times) {
         return new ToolCalledExpectation<>(toolName, times, null);
     }
 
-    public static <R, T> Expectation<R, T> toolCalled(String toolName,
-                                                      int times,
-                                                      Map<String, Object> expectedParams) {
+    public static <R, T> MessageExpectation<R, T> toolCalled(String toolName,
+                                                             int times,
+                                                             Map<String, Object> expectedParams) {
         return new ToolCalledExpectation<>(toolName, times, expectedParams);
     }
 

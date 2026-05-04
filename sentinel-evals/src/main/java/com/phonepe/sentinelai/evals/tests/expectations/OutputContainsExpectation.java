@@ -36,10 +36,7 @@ public class OutputContainsExpectation<T> implements Expectation<String, T> {
     @Override
     public boolean evaluate(String result, EvalExpectationContext<T> context) {
         if (result == null) {
-            if (Strings.isNullOrEmpty(containsSubstring)) {
-                return true;
-            }
-            return false;
+            return Strings.isNullOrEmpty(containsSubstring);
         }
         return result.toLowerCase(Locale.ROOT).contains(containsSubstring.toLowerCase(Locale.ROOT));
     }

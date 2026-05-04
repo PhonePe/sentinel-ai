@@ -134,6 +134,7 @@ class EvalEngineTest {
         }
     }
 
+    @SuppressWarnings("java:S2925")
     static class TestModel implements Model {
         private final String output;
         private final long delayMs;

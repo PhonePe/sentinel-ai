@@ -46,11 +46,27 @@ class OutputJsonPathCompareExpectationTest {
     }
 
     @Test
+    void testEquals() {
+        final var expectation = Expectations.<Decision, Object>at("status").eq("SUCCESS");
+
+        assertTrue(expectation.evaluate(new Decision("SUCCESS", 91, "IN"), emptyContext()));
+        assertFalse(expectation.evaluate(new Decision("FAILED", 91, "IN"), emptyContext()));
+    }
+
+    @Test
     void testGreaterThan() {
         final var expectation = Expectations.<Decision, Object>where("score").gt(80);
 
         assertTrue(expectation.evaluate(new Decision("SUCCESS", 91, "IN"), emptyContext()));
         assertFalse(expectation.evaluate(new Decision("SUCCESS", 50, "IN"), emptyContext()));
+    }
+
+    @Test
+    void testGreaterThanOrEquals() {
+        final var expectation = Expectations.<Decision, Object>where("score").gte(80);
+
+        assertTrue(expectation.evaluate(new Decision("SUCCESS", 80, "IN"), emptyContext()));
+        assertFalse(expectation.evaluate(new Decision("SUCCESS", 79, "IN"), emptyContext()));
     }
 
     @Test
@@ -70,10 +86,26 @@ class OutputJsonPathCompareExpectationTest {
     }
 
     @Test
+    void testLessThanOrEquals() {
+        final var expectation = Expectations.<Decision, Object>where("score").lte(30);
+
+        assertTrue(expectation.evaluate(new Decision("SUCCESS", 30, "IN"), emptyContext()));
+        assertFalse(expectation.evaluate(new Decision("SUCCESS", 31, "IN"), emptyContext()));
+    }
+
+    @Test
     void testNotEquals() {
         final var expectation = Expectations.<Decision, Object>at("status").ne("FAILED");
 
         assertTrue(expectation.evaluate(new Decision("SUCCESS", 91, "IN"), emptyContext()));
         assertFalse(expectation.evaluate(new Decision("FAILED", 91, "IN"), emptyContext()));
+    }
+
+    @Test
+    void testNotInList() {
+        final var expectation = Expectations.<Decision, Object>where("region").notIn(List.of("DE", "FR"));
+
+        assertTrue(expectation.evaluate(new Decision("SUCCESS", 91, "IN"), emptyContext()));
+        assertFalse(expectation.evaluate(new Decision("SUCCESS", 91, "DE"), emptyContext()));
     }
 }

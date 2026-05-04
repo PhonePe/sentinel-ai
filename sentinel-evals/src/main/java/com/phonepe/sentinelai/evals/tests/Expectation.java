@@ -16,6 +16,15 @@
 
 package com.phonepe.sentinelai.evals.tests;
 
+import com.phonepe.sentinelai.evals.ExpectationReport;
+
 public interface Expectation<R, T> {
     boolean evaluate(R result, EvalExpectationContext<T> context);
+
+    default ExpectationReport evaluateWithReport(R result, EvalExpectationContext<T> context) {
+        final boolean passes = evaluate(result, context);
+        return ExpectationReport.passFail(toString(),
+                                          passes,
+                                          passes ? "Expectation passed" : "Expectation failed");
+    }
 }

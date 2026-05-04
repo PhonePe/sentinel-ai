@@ -52,7 +52,7 @@ public class EvalEngine {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTimeNanos);
     }
 
-
+    @SuppressWarnings("java:S2245")
     private static <R, T> List<TestCase<R, T>> sampleTestCases(List<TestCase<R, T>> allCases,
                                                                EvalRunConfig config) {
         if (allCases.isEmpty()) {
@@ -145,19 +145,11 @@ public class EvalEngine {
                     ? List.of()
                     : testCase.getExpectations();
             for (Expectation<T, R> expectation : expectations) {
-                final boolean passes = expectation.evaluate(output.getData(), context);
-                final var expectationName = expectation.toString();
-                if (passes) {
-                    expectationReports.add(new ExpectationReport(expectationName,
-                                                                 EvalStatus.PASSED,
-                                                                 "Expectation passed"));
-                }
-                else {
-                    expectationReports.add(new ExpectationReport(expectationName,
-                                                                 EvalStatus.FAILED,
-                                                                 "Expectation failed"));
+                final var report = expectation.evaluateWithReport(output.getData(), context);
+                expectationReports.add(report);
+                if (report.getStatus() != EvalStatus.PASSED) {
                     status = EvalStatus.FAILED;
-                    details = "Expectation failed: " + expectationName;
+                    details = "Expectation failed: " + report.getExpectation();
                     break;
                 }
             }
@@ -181,6 +173,15 @@ public class EvalEngine {
                                       null,
                                       List.of(),
                                       "Timed out after " + timeout,
+                                      elapsedMs(startTime));
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new TestCaseReport(testCase.getInput(),
+                                      EvalStatus.SKIPPED,
+                                      null,
+                                      List.of(),
+                                      "Test case execution interrupted",
                                       elapsedMs(startTime));
         }
         catch (Exception e) {

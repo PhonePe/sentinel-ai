@@ -171,7 +171,7 @@ class OpenTelemetryAgentExtensionTest {
 
         agent.execute(agentInput("run-2", "session-2"));
 
-        final var spans = finishedSpans();
+        final var spans = waitForSpans(2);
         assertEquals(2, spans.size());
 
         final var span = spanByName("execute_tool lookup-order");
@@ -205,7 +205,7 @@ class OpenTelemetryAgentExtensionTest {
 
         agent.execute(agentInput("run-3", "session-3"));
 
-        final var spans = finishedSpans();
+        final var spans = waitForSpans(2);
         assertEquals(2, spans.size());
         final var toolSpan = spanByName("execute_tool get-weather");
         assertNotNull(toolSpan);
@@ -293,7 +293,7 @@ class OpenTelemetryAgentExtensionTest {
         final var model = mock(Model.class);
         when(model.compute(any(), anyCollection(), anyList(), anyMap(), any(ToolRunner.class), any(), anyList()))
                 .thenAnswer(
-                            failedOutput(ErrorType.LENGTH_EXCEEDED));
+                            failedOutput());
         final var agent = createAgent(model,
                                       Map.of(),
                                       OpenTelemetryAgentExtensionSetup.builder()
@@ -303,7 +303,7 @@ class OpenTelemetryAgentExtensionTest {
 
         agent.execute(agentInput("run-5", "session-5"));
 
-        final var spans = finishedSpans();
+        final var spans = waitForSpans(1);
         assertEquals(1, spans.size());
         assertEquals("LENGTH_EXCEEDED", spans.get(0).getAttributes().get(ATTR_ERROR_TYPE));
     }
@@ -397,12 +397,12 @@ class OpenTelemetryAgentExtensionTest {
                                 (context, name, arguments) -> response);
     }
 
-    private Answer<CompletableFuture<ModelOutput>> failedOutput(ErrorType errorType) {
+    private Answer<CompletableFuture<ModelOutput>> failedOutput() {
         return invocation -> {
             final List<AgentMessage> messages = invocation.getArgument(2);
             return CompletableFuture.completedFuture(ModelOutput.error(messages,
                                                                        new ModelUsageStats(),
-                                                                       SentinelError.error(errorType)));
+                                                                       SentinelError.error(ErrorType.LENGTH_EXCEEDED)));
         };
     }
 
@@ -410,23 +410,6 @@ class OpenTelemetryAgentExtensionTest {
         return spanExporter.getFinishedSpanItems();
     }
 
-    private Answer<CompletableFuture<ModelOutput>> orphanToolFlow() {
-        return invocation -> {
-            final var context = invocation.getArgument(0, com.phonepe.sentinelai.core.model.ModelRunContext.class);
-            context.getAgentSetup().getEventBus().notify(new ToolCalledAgentEvent("dummy",
-                                                                                  context.getRunId(),
-                                                                                  context.getSessionId(),
-                                                                                  context.getUserId(),
-                                                                                  "call-6",
-                                                                                  "dangling-tool",
-                                                                                  "{}"));
-            final List<AgentMessage> messages = invocation.getArgument(2);
-            return CompletableFuture.completedFuture(ModelOutput.success(outputData("ok"),
-                                                                         List.of(),
-                                                                         messages,
-                                                                         new ModelUsageStats()));
-        };
-    }
 
     private com.fasterxml.jackson.databind.JsonNode outputData(String value) {
         final var node = JsonUtils.createMapper().createObjectNode();
@@ -434,6 +417,7 @@ class OpenTelemetryAgentExtensionTest {
         return node;
     }
 
+    @SuppressWarnings("unchecked")
     private Answer<CompletableFuture<ModelOutput>> runWithTool(String toolName,
                                                                String toolCallId,
                                                                String arguments) {
@@ -477,6 +461,9 @@ class OpenTelemetryAgentExtensionTest {
         };
     }
 
+    @SuppressWarnings({
+            "BusyWait", "java:S2925"
+    })
     private SpanData waitForSpanByName(String name) {
         final var deadline = System.currentTimeMillis() + 1_000;
         while (System.currentTimeMillis() < deadline) {
@@ -493,5 +480,26 @@ class OpenTelemetryAgentExtensionTest {
             }
         }
         return spanByName(name);
+    }
+
+    @SuppressWarnings({
+            "BusyWait", "java:S2925"
+    })
+    private List<SpanData> waitForSpans(int expectedCount) {
+        final var deadline = System.currentTimeMillis() + 1_000;
+        while (System.currentTimeMillis() < deadline) {
+            final var spans = finishedSpans();
+            if (spans.size() >= expectedCount) {
+                return spans;
+            }
+            try {
+                Thread.sleep(10);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return finishedSpans();
+            }
+        }
+        return finishedSpans();
     }
 }
