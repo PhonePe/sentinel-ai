@@ -89,6 +89,8 @@
         <!-- All other modules above this -->
         <module>sentinel-ai-bom</module>
         <module>sentinel-ai-reporting</module>
+        <module>sentinel-evals</module>
+        <module>sentinel-instrumentation-otel</module>
     </modules>
 
     <properties>
