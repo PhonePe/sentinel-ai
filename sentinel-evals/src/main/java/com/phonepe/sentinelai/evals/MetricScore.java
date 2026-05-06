@@ -19,22 +19,14 @@ package com.phonepe.sentinelai.evals;
 import lombok.Builder;
 import lombok.Value;
 
-import java.util.List;
-
+/**
+ * Raw metric score recorded during evaluation.
+ *
+ * Records a single metric computation result without aggregation.
+ */
 @Value
 @Builder
-public class EvalReport {
-    String datasetName;
-    int totalTestCases;
-    int sampledTestCases;
-    int executedTestCases;
-    int passedTestCases;
-    int failedTestCases;
-    int skippedTestCases;
-    long durationMs;
-    boolean completedAllSampledCases;
-    List<TestCaseReport> testCaseReports;
-    @Builder.Default
-    List<MetricScore> metricScores = List.of();
-
+public class MetricScore {
+    String metricName;
+    double score;
 }

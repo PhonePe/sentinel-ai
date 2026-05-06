@@ -17,7 +17,7 @@ Evals give you a repeatable, versioned safety net — run them on every pull req
 
 ## Getting started
 
-Add the dependency (version managed via the Sentinel BOM):
+Add dependency (version managed via the Sentinel BOM):
 
 ```xml
 <dependency>
@@ -26,7 +26,7 @@ Add the dependency (version managed via the Sentinel BOM):
 </dependency>
 ```
 
-Create a dataset, attach expectations, run it against your agent, and assert on the report:
+Create a dataset, attach expectations, and run it against your agent to generate a report:
 
 ```java
 import com.phonepe.sentinelai.evals.EvalEngine;
@@ -44,7 +44,8 @@ var dataset = new Dataset<>("smoke",
             ))));
 
 var report = new EvalEngine().run(dataset, agent);
-assertEquals(0, report.getFailedTestCases());
+System.out.printf("Passed=%d Failed=%d Skipped=%d%n",
+    report.getPassedTestCases(), report.getFailedTestCases(), report.getSkippedTestCases());
 ```
 
 ## Available evals
@@ -114,12 +115,12 @@ Use `Expectations.*` for one-step expectation wiring, or `Metrics.*` to get a ra
 
 LLM-judged metrics delegate scoring to a judge model that receives the original request and the agent answer, then returns a structured `{"score": 0.0–1.0, "reason": "..."}` payload. They are the most capable evaluators but require a live model call per test case.
 
-Use `Expectations.answerRelevance(...)` for one-step wiring, or `Metrics.answerRelevance(...)` to get the raw metric.
+Use `Expectations.answerRelevance(...)` for one-step wiring, or `Metrics.answerRelevance(...)` to get the raw metric. The judge model is injected through `DefaultMetricExecutorFactory`.
 
 | Expectation helper | Metric class | What it measures |
 |---|---|---|
-| `answerRelevance(judgeModel [, promptTemplate] [, threshold])` | `OutputRelevanceMetric` | LLM-judged relevance of the answer to the request |
-| `Metrics.answerRelevance(judgeModel [, promptTemplate])` | `OutputRelevanceMetric` | Raw metric — wire your own threshold via `MetricExpectation` |
+| `answerRelevance([promptTemplate] [, threshold])` | `OutputRelevanceMetric` | LLM-judged relevance of the answer to the request |
+| `Metrics.answerRelevance([promptTemplate])` | `OutputRelevanceMetric` | Raw metric — wire your own threshold via `MetricExpectation` |
 
 The default judge prompt evaluates three dimensions:
 
@@ -129,67 +130,14 @@ The default judge prompt evaluates three dimensions:
 
 Custom judge prompts must contain `{request}` and `{answer}` placeholders, which are validated at construction time.
 
-#### Writing a custom LLM-judged metric
-
-Extend `AbstractLlmJudgeMetric<T>` to define your own judge metric (e.g. groundedness, toxicity, style), then add a matching executor. The metric class now carries only configuration; execution lives in a corresponding `MetricExecutor`.
-
 ```java
-public class AnswerGroundednessMetric<T> extends AbstractLlmJudgeMetric<T> {
-    private static final String TEMPLATE = """
-            Does the answer contain only facts grounded in the provided context?
-            Return: {"score": 0.0-1.0, "reason": "..."}
-            Context: {request}
-            Answer: {answer}
-            """;
+Model judgeModel = ...;
 
-    public AnswerGroundednessMetric(Model judgeModel) {
-        super(judgeModel, TEMPLATE, List.of("{request}", "{answer}"));
-    }
+var expectation = Expectations.answerRelevance(0.85);
 
-    @Override
-    public String metricName() { return "AnswerGroundedness"; }
-}
-
-public class AnswerGroundednessMetricExecutor<T>
-        extends AbstractLlmJudgeMetricExecutor<AnswerGroundednessMetric<T>, T> {
-
-    public AnswerGroundednessMetricExecutor(AnswerGroundednessMetric<T> metric) {
-        super(metric);
-    }
-
-    @Override
-    protected double parseScore(ModelOutput output) {
-        final var node = readModelOutputPayload(output);
-        if (node == null || !node.has("score")) return 0.0;
-        final var score = node.get("score").doubleValue();
-        return (score >= 0.0 && score <= 1.0) ? score : 0.0;
-    }
-
-    @Override
-    protected String renderPrompt(String request, String answer) {
-        return metric.getPromptTemplate().replace("{request}", request).replace("{answer}", answer);
-    }
-}
-```
-
-Register the custom metric in your `MetricExecutorFactory`, then use it via `MetricExpectation`:
-
-```java
-MetricExecutorFactory metricExecutorFactory = new DefaultMetricExecutorFactory() {
-    @Override
-    public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric) {
-        if (metric instanceof AnswerGroundednessMetric<?> groundednessMetric) {
-            @SuppressWarnings("unchecked")
-            var typedMetric = (AnswerGroundednessMetric<T>) groundednessMetric;
-            return (MetricExecutor<R, T>) new AnswerGroundednessMetricExecutor<>(typedMetric);
-        }
-        return super.create(metric);
-    }
-};
-
-var expectation = new MetricExpectation<>(new AnswerGroundednessMetric<>(judgeModel), 0.85);
-var evalEngine = new EvalEngine(mapper,
-        new DefaultExpectationExecutorFactory(metricExecutorFactory));
+var metricExecutorFactory = new DefaultMetricExecutorFactory(judgeModel);
+var expectationExecutorFactory = new DefaultExpectationExecutorFactory(metricExecutorFactory);
+var evalEngine = new EvalEngine(mapper, expectationExecutorFactory);
 ```
 
 ---
@@ -208,7 +156,7 @@ System.out.printf("Passed=%d Failed=%d Skipped=%d%n",
 
 ### In CI
 
-Wrap the run inside a JUnit test and assert on the report. The test will fail the build when any eval fails.
+Wrap the run inside a JUnit test and inspect the generated report. The test can fail the build when eval failures are detected.
 
 ```java
 @Test
@@ -220,20 +168,41 @@ void agentSmokeEvals() {
             .defaultTestCaseTimeout(Duration.ofSeconds(15))
             .build());
 
-    assertEquals(0, report.getFailedTestCases(),
-        "Eval failures:\n" + report.getTestCaseReports().stream()
-            .filter(r -> r.getStatus() == EvalStatus.FAILED)
-            .map(r -> r.getInput() + " → " + r.getDetails())
-            .collect(Collectors.joining("\n")));
+    System.out.printf("Passed=%d Failed=%d Skipped=%d%n",
+        report.getPassedTestCases(), report.getFailedTestCases(), report.getSkippedTestCases());
 }
 ```
 
 Use `samplePercentage` to keep PR builds fast while running the full suite on merges to main.
 
+## JUnit 5 integration (optional)
+
+If you want rich assertion diagnostics in JUnit 5 tests, add the helper module:
+
+```xml
+<dependency>
+    <groupId>com.phonepe.sentinel-ai</groupId>
+    <artifactId>sentinel-evals-junit5</artifactId>
+    <scope>test</scope>
+</dependency>
+```
+
+Use `EvalReportAssertions` to fail with expectation-level diagnostics:
+
+```java
+import com.phonepe.sentinelai.evals.junit.assertions.EvalReportAssertions;
+
+@Test
+void agentSmokeEvals() {
+    var report = new EvalEngine().run(dataset, agent);
+    EvalReportAssertions.assertNoFailures(report);
+}
+```
+
 ## Real agent integration example
 
 For end-to-end validation with a live model (no model mocking), see
-`sentinel-evals/src/test/java/com/phonepe/sentinelai/evals/RealNicknameAgentExpectationsIntegrationTest.java`.
+`sentinel-evals/src/test/java/com/phonepe/sentinelai/evals/integration/RealNicknameAgentExpectationsIntegrationTest.java`.
 
 This test demonstrates:
 
@@ -243,4 +212,3 @@ This test demonstrates:
 - metric expectations (`outputSimilarity`, `answerRelevance`)
 
 The test is gated to run only when real endpoints are enabled (for example with `-Preal-tests`).
-

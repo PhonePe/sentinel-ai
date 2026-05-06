@@ -73,6 +73,18 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!-- evals -->
+            <dependency>
+                <groupId>com.phonepe.sentinel-ai</groupId>
+                <artifactId>sentinel-evals</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.phonepe.sentinel-ai</groupId>
+                <artifactId>sentinel-evals-junit5</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- storage -->
             <dependency>
                 <groupId>com.phonepe.sentinel-ai</groupId>

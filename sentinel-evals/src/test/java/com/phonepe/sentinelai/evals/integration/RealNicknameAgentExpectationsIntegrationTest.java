@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.evals;
+package com.phonepe.sentinelai.evals.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -32,6 +32,7 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.EnvLoader;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.embedding.EmbeddingModel;
+import com.phonepe.sentinelai.evals.EvalEngine;
 import com.phonepe.sentinelai.evals.junit.assertions.EvalReportAssertions;
 import com.phonepe.sentinelai.evals.tests.Dataset;
 import com.phonepe.sentinelai.evals.tests.DefaultExpectationExecutorFactory;

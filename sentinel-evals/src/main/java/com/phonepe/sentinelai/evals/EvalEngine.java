@@ -69,6 +69,21 @@ public class EvalEngine {
     }
 
 
+    private static List<MetricScore> collectRawMetricScores(List<TestCaseReport> reports) {
+        final List<MetricScore> scores = new ArrayList<>();
+        for (TestCaseReport report : reports) {
+            for (ExpectationReport expectation : report.getExpectationReports()) {
+                if (expectation.getScore().isPresent()) {
+                    scores.add(MetricScore.builder()
+                            .metricName(expectation.getExpectation())
+                            .score(expectation.getScore().get())
+                            .build());
+                }
+            }
+        }
+        return scores;
+    }
+
     private static long elapsedMs(long startTimeNanos) {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTimeNanos);
     }
@@ -124,6 +139,7 @@ public class EvalEngine {
         }
 
         final var executedCount = reports.size();
+        final var rawMetricScores = collectRawMetricScores(reports);
 
         return EvalReport.builder()
                 .datasetName(dataset.getName())
@@ -136,6 +152,7 @@ public class EvalEngine {
                 .durationMs(elapsedMs(startTime))
                 .completedAllSampledCases(executedCount == sampledCases.size())
                 .testCaseReports(List.copyOf(reports))
+                .metricScores(rawMetricScores)
                 .build();
     }
 

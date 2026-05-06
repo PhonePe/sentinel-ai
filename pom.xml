@@ -90,6 +90,7 @@
         <module>sentinel-ai-bom</module>
         <module>sentinel-ai-reporting</module>
         <module>sentinel-evals</module>
+        <module>sentinel-evals-junit5</module>
         <module>sentinel-instrumentation-otel</module>
     </modules>
 
