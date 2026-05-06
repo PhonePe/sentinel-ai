@@ -39,6 +39,7 @@ public class SkillMetadata {
      */
     String name;
 
+    @Nullable
     String title;
 
     /**

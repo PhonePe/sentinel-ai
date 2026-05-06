@@ -148,9 +148,27 @@ public class FileSystemMessageStorage {
         if (!Strings.isNullOrEmpty(relevantPointer)) {
             actualPointer = objectMapper.readValue(Base64.getDecoder().decode(relevantPointer), MessageMeta.class);
         }
-        final var stamp = lock.readLock();
+        var stamp = lock.readLock();
         try {
-            loadPreviousMessagesIfNeededUnsafe();
+            if (!previousMessagesRead.get()) {
+                // Upgrade to write lock to safely load previous messages from disk
+                long ws = lock.tryConvertToWriteLock(stamp);
+                if (ws != 0) {
+                    stamp = ws;
+                }
+                else {
+                    // Other readers present — release read lock and acquire write lock
+                    lock.unlockRead(stamp);
+                    stamp = lock.writeLock();
+                }
+                // Double-checked: another thread may have loaded while we were waiting
+                if (!previousMessagesRead.get()) {
+                    loadPreviousMessages();
+                    previousMessagesRead.set(true);
+                }
+                // Downgrade back to read lock for the rest of the method
+                stamp = lock.tryConvertToReadLock(stamp);
+            }
             final var messages = switch (queryDirection) {
                 case NEWER -> {
                     final var subMap = actualPointer == null
@@ -212,19 +230,15 @@ public class FileSystemMessageStorage {
                     .build();
         }
         finally {
-            lock.unlockRead(stamp);
+            lock.unlock(stamp);
         }
     }
 
-    private void loadPreviousMessagesIfNeededUnsafe() {
-        if (!previousMessagesRead.get()) {
-            // Load existing messages from file into cache
-            readMessagesFromFile(sessionDir, objectMapper, msg -> {
-                final var meta = new MessageMeta(msg.getMessageId(), msg.getTimestamp());
-                messageCache.put(meta, msg);
-            });
-            previousMessagesRead.set(true);
-        }
+    private void loadPreviousMessages() {
+        readMessagesFromFile(sessionDir, objectMapper, msg -> {
+            final var meta = new MessageMeta(msg.getMessageId(), msg.getTimestamp());
+            messageCache.put(meta, msg);
+        });
     }
 
     @SneakyThrows
@@ -286,8 +300,7 @@ public class FileSystemMessageStorage {
             });
         }
         catch (Exception e) {
-            log.error("Error reading messages from file: %s".formatted(filePath.toAbsolutePath()),
-                      AgentUtils.rootCause(e).getMessage());
+            log.error("Error reading messages from file: {}", filePath.toAbsolutePath(), e);
         }
     }
 
