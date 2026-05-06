@@ -150,54 +150,8 @@ public class FileSystemMessageStorage {
         }
         var stamp = lock.readLock();
         try {
-            if (!previousMessagesRead.get()) {
-                // Upgrade to write lock to safely load previous messages from disk
-                long ws = lock.tryConvertToWriteLock(stamp);
-                if (ws != 0) {
-                    stamp = ws;
-                }
-                else {
-                    // Other readers present — release read lock and acquire write lock
-                    lock.unlockRead(stamp);
-                    stamp = lock.writeLock();
-                }
-                // Double-checked: another thread may have loaded while we were waiting
-                if (!previousMessagesRead.get()) {
-                    loadPreviousMessages();
-                    previousMessagesRead.set(true);
-                }
-                // Downgrade back to read lock for the rest of the method
-                stamp = lock.tryConvertToReadLock(stamp);
-            }
-            final var messages = switch (queryDirection) {
-                case NEWER -> {
-                    final var subMap = actualPointer == null
-                            ? messageCache
-                            : messageCache.tailMap(actualPointer, false);
-                    yield subMap.values()
-                            .stream()
-                            .filter(msg -> !skipSystemPrompt
-                                    || msg.getMessageType() != AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)
-                            .limit(count)
-                            .toList();
-                }
-                case OLDER -> {
-                    final var subMap = actualPointer == null
-                            ? messageCache
-                            : messageCache.headMap(actualPointer, false);
-                    final var list = subMap.descendingMap()
-                            .values()
-                            .stream()
-                            .filter(msg -> !skipSystemPrompt
-                                    || msg.getMessageType() != AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)
-                            .limit(count)
-                            .toList();
-                    yield list.stream()
-                            .sorted(Comparator.comparing(AgentMessage::getTimestamp)
-                                    .thenComparing(AgentMessage::getMessageId))
-                            .toList();
-                }
-            };
+            stamp = ensurePreviousMessagesLoadedUnsafe(stamp);
+            final var messages = readFromLoadedMessagesUnsafe(queryDirection, actualPointer, skipSystemPrompt, count);
             final var firstMsg = messages.isEmpty() ? null : messages.get(0);
             final var lastMsg = messages.isEmpty() ? null : messages.get(messages.size() - 1);
             final var outPtr = switch (queryDirection) {
@@ -234,13 +188,6 @@ public class FileSystemMessageStorage {
         }
     }
 
-    private void loadPreviousMessages() {
-        readMessagesFromFile(sessionDir, objectMapper, msg -> {
-            final var meta = new MessageMeta(msg.getMessageId(), msg.getTimestamp());
-            messageCache.put(meta, msg);
-        });
-    }
-
     @SneakyThrows
     public boolean purgeMessages(String sessionId) {
         final var stamp = lock.writeLock();
@@ -275,6 +222,77 @@ public class FileSystemMessageStorage {
             throw new IllegalArgumentException("messages.jsonl file is not writable");
         }
         return filePath;
+    }
+
+    private List<AgentMessage> readFromLoadedMessagesUnsafe(final QueryDirection queryDirection,
+                                                            final MessageMeta actualPointer,
+                                                            boolean skipSystemPrompt,
+                                                            int count) {
+        return switch (queryDirection) {
+            case NEWER -> {
+                final var subMap = actualPointer == null
+                        ? messageCache
+                        : messageCache.tailMap(actualPointer, false);
+                yield subMap.values()
+                        .stream()
+                        .filter(msg -> !skipSystemPrompt
+                                || msg.getMessageType() != AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)
+                        .limit(count)
+                        .toList();
+            }
+            case OLDER -> {
+                final var subMap = actualPointer == null
+                        ? messageCache
+                        : messageCache.headMap(actualPointer, false);
+                final var list = subMap.descendingMap()
+                        .values()
+                        .stream()
+                        .filter(msg -> !skipSystemPrompt
+                                || msg.getMessageType() != AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)
+                        .limit(count)
+                        .toList();
+                yield list.stream()
+                        .sorted(Comparator.comparing(AgentMessage::getTimestamp)
+                                .thenComparing(AgentMessage::getMessageId))
+                        .toList();
+            }
+        };
+
+    }
+
+    private long ensurePreviousMessagesLoadedUnsafe(long originalStamp) {
+        var stamp = originalStamp;
+        if (!previousMessagesRead.get()) {
+            // Upgrade to write lock to safely load previous messages from disk
+            long ws = lock.tryConvertToWriteLock(stamp);
+            if (ws != 0) {
+                stamp = ws;
+            }
+            else {
+                // Other readers present — release read lock and acquire write lock
+                lock.unlockRead(stamp);
+                stamp = lock.writeLock();
+            }
+            // Double-checked: another thread may have loaded while we were waiting
+            if (!previousMessagesRead.get()) {
+                readMessagesFromFile(sessionDir, objectMapper, msg -> {
+                    final var meta = new MessageMeta(msg.getMessageId(), msg.getTimestamp());
+                    messageCache.put(meta, msg);
+                });
+                previousMessagesRead.set(true);
+            }
+            // Downgrade back to read lock for the rest of the method
+            final var rs = lock.tryConvertToReadLock(stamp);
+            if (rs == 0) {
+                // Conversion failed (e.g. other threads waiting for write lock); release and re-acquire read lock
+                lock.unlockWrite(stamp);
+                stamp = lock.readLock();
+            }
+            else {
+                stamp = rs;
+            }
+        }
+        return stamp;
     }
 
     @SneakyThrows
