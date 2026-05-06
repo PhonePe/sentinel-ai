@@ -18,24 +18,10 @@ package com.phonepe.sentinelai.evals.tests;
 
 import org.junit.jupiter.api.Test;
 
-import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
-import com.phonepe.sentinelai.core.agent.ToolRunner;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
-import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
-import com.phonepe.sentinelai.core.model.Model;
-import com.phonepe.sentinelai.core.model.ModelOutput;
-import com.phonepe.sentinelai.core.model.ModelRunContext;
-import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.embedding.EmbeddingModel;
 import com.phonepe.sentinelai.evals.tests.metrics.OutputRelevanceBySimilarityMetric;
 import com.phonepe.sentinelai.evals.tests.metrics.OutputRelevanceMetric;
 import com.phonepe.sentinelai.evals.tests.metrics.OutputSimilarityMetric;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -61,19 +47,6 @@ class MetricsTest {
         }
     }
 
-    private static class StubModel implements Model {
-        @Override
-        public CompletableFuture<ModelOutput> compute(ModelRunContext context,
-                                                      Collection<ModelOutputDefinition> outputDefinitions,
-                                                      List<AgentMessage> oldMessages,
-                                                      Map<String, ExecutableTool> tools,
-                                                      ToolRunner toolRunner,
-                                                      EarlyTerminationStrategy earlyTerminationStrategy,
-                                                      List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
-            throw new UnsupportedOperationException("Not used in factory tests");
-        }
-    }
-
     @SuppressWarnings("java:S2201")
     private static void expectIllegalArgument(Runnable action) {
         assertThrows(IllegalArgumentException.class, action::run);
@@ -81,18 +54,15 @@ class MetricsTest {
 
     @Test
     void answerRelevanceFactoryCreatesMetric() {
+        assertInstanceOf(OutputRelevanceMetric.class, Metrics.answerRelevance());
         assertInstanceOf(OutputRelevanceMetric.class,
-                         Metrics.answerRelevance(new StubModel()));
-        assertInstanceOf(OutputRelevanceMetric.class,
-                         Metrics.answerRelevance(new StubModel(),
-                                                 OutputRelevanceMetric.DEFAULT_PROMPT_TEMPLATE));
+                         Metrics.answerRelevance(OutputRelevanceMetric.DEFAULT_PROMPT_TEMPLATE));
     }
 
     @Test
     @SuppressWarnings("java:S2201")
     void factoryMethodsPreserveConstructorValidation() {
-        expectIllegalArgument(() -> Metrics.answerRelevance(null));
-        expectIllegalArgument(() -> Metrics.answerRelevance(new StubModel(), " "));
+        expectIllegalArgument(() -> Metrics.answerRelevance(" "));
         expectIllegalArgument(() -> Metrics.outputSimilarity(new StubEmbeddingModel(), ""));
         expectIllegalArgument(() -> Metrics.outputRelevanceBySimilarity(null));
     }

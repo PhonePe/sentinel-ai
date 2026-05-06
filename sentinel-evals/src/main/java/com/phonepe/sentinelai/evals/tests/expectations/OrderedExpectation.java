@@ -16,27 +16,29 @@
 
 package com.phonepe.sentinelai.evals.tests.expectations;
 
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import com.phonepe.sentinelai.evals.tests.Expectation;
 import com.phonepe.sentinelai.evals.tests.MessageExpectation;
 
 import java.util.List;
 
+/**
+ * Expectation definition that asserts a sequence of {@link MessageExpectation}s
+ * appear in order (though not necessarily consecutively) within the message history.
+ *
+ * Computation is performed by {@code OrderedExpectationExecutor}.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
+ */
 public class OrderedExpectation<R, T> implements Expectation<R, T> {
-    private List<MessageExpectation<R, T>> expectations;
+
+    private final List<MessageExpectation<R, T>> expectations;
 
     public OrderedExpectation(List<MessageExpectation<R, T>> expectations) {
         this.expectations = expectations;
     }
 
-    @Override
-    public boolean evaluate(R result, EvalExpectationContext<T> context) {
-        int expectationIndex = 0;
-        for (int i = 0; i < context.getOldMessages().size() && expectationIndex < expectations.size(); i++) {
-            if (expectations.get(expectationIndex).matches(context.getOldMessages().get(i))) {
-                expectationIndex++;
-            }
-        }
-        return expectationIndex == expectations.size();
+    public List<MessageExpectation<R, T>> getExpectations() {
+        return expectations;
     }
 }

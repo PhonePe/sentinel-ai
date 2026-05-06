@@ -18,12 +18,10 @@ package com.phonepe.sentinelai.evals.tests.metrics;
 
 import org.junit.jupiter.api.Test;
 
-import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.embedding.EmbeddingModel;
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
+import com.phonepe.sentinelai.evals.tests.TestFactory;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -58,13 +56,6 @@ class OutputSimilarityMetricTest {
         }
     }
 
-    private static EvalExpectationContext<String> emptyContext() {
-        return new EvalExpectationContext<>("run-id",
-                                            "input",
-                                            List.of(),
-                                            new ModelUsageStats());
-    }
-
     @Test
     void calculateClampsNegativeCosineToZero() {
         final var model = new TestEmbeddingModel(Map.of("result", new float[]{
@@ -76,7 +67,7 @@ class OutputSimilarityMetricTest {
                                                         }));
         final var metric = new OutputSimilarityMetric<String>(model, "reference");
 
-        final var score = metric.calculate("result", emptyContext());
+        final var score = TestFactory.calculate(metric, "result", TestFactory.context());
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -92,7 +83,7 @@ class OutputSimilarityMetricTest {
                                                         }));
         final var metric = new OutputSimilarityMetric<String>(model, "reference");
 
-        final var score = metric.calculate("result", emptyContext());
+        final var score = TestFactory.calculate(metric, "result", TestFactory.context());
 
         assertEquals(1.0, score, EPSILON);
         assertEquals("OutputSimilarity", metric.metricName());
@@ -109,7 +100,7 @@ class OutputSimilarityMetricTest {
                                                         }));
         final var metric = new OutputSimilarityMetric<String>(model, "reference");
 
-        final var score = metric.calculate("result", emptyContext());
+        final var score = TestFactory.calculate(metric, "result", TestFactory.context());
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -125,7 +116,7 @@ class OutputSimilarityMetricTest {
                                                         }));
         final var metric = new OutputSimilarityMetric<String>(model, "reference");
 
-        final var score = metric.calculate("result", emptyContext());
+        final var score = TestFactory.calculate(metric, "result", TestFactory.context());
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -140,7 +131,7 @@ class OutputSimilarityMetricTest {
         final var model = new TestEmbeddingModel(map);
         final var metric = new OutputSimilarityMetric<String>(model, "reference");
 
-        final var score = metric.calculate("result", emptyContext());
+        final var score = TestFactory.calculate(metric, "result", TestFactory.context());
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -152,8 +143,8 @@ class OutputSimilarityMetricTest {
         }));
         final var metric = new OutputSimilarityMetric<String>(model, "reference");
 
-        assertEquals(0.0, metric.calculate(null, emptyContext()), EPSILON);
-        assertEquals(0.0, metric.calculate("", emptyContext()), EPSILON);
+        assertEquals(0.0, TestFactory.calculate(metric, null, TestFactory.context()), EPSILON);
+        assertEquals(0.0, TestFactory.calculate(metric, "", TestFactory.context()), EPSILON);
         assertEquals(0, model.lookupCount);
     }
 
@@ -168,7 +159,7 @@ class OutputSimilarityMetricTest {
                                                         }));
         final var metric = new OutputSimilarityMetric<String>(model, "reference");
 
-        final var score = metric.calculate("result", emptyContext());
+        final var score = TestFactory.calculate(metric, "result", TestFactory.context());
 
         assertEquals(Math.sqrt(0.5), score, EPSILON);
     }

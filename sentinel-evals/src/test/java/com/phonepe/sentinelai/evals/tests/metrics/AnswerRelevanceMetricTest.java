@@ -36,7 +36,8 @@ import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
+import com.phonepe.sentinelai.evals.EvalStatus;
+import com.phonepe.sentinelai.evals.tests.TestFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -98,9 +99,6 @@ class AnswerRelevanceMetricTest {
         }
     }
 
-    private static EvalExpectationContext<String> context(String request) {
-        return new EvalExpectationContext<>("run-id", request, List.of(), new ModelUsageStats());
-    }
 
     @Test
     void calculateReturnsScoreForValidJsonObjectPayload() {
@@ -108,9 +106,9 @@ class AnswerRelevanceMetricTest {
         payload.put("score", 0.78);
         payload.put("reason", "Partially aligned");
         final var evaluator = new TestEvaluatorModel(payload, ErrorType.SUCCESS, false);
-        final var metric = new OutputRelevanceMetric<String>(evaluator);
+        final var metric = new OutputRelevanceMetric<String>();
 
-        final var score = metric.calculate("Result", context("Request"));
+        final var score = TestFactory.calculate(metric, evaluator, "Result", TestFactory.contextWith("Request"));
 
         assertEquals(0.78, score, EPSILON);
     }
@@ -121,9 +119,12 @@ class AnswerRelevanceMetricTest {
                                                                                        "{\"score\":0.91,\"reason\":\"Aligned\"}"),
                                                      ErrorType.SUCCESS,
                                                      false);
-        final var metric = new OutputRelevanceMetric<String>(evaluator);
+        final var metric = new OutputRelevanceMetric<String>();
 
-        final var score = metric.calculate("All systems green and stable", context("all systems request"));
+        final var score = TestFactory.calculate(metric,
+                                                evaluator,
+                                                "All systems green and stable",
+                                                TestFactory.contextWith("all systems request"));
 
         assertEquals(0.91, score, EPSILON);
         assertEquals("AnswerRelevance", metric.metricName());
@@ -131,29 +132,33 @@ class AnswerRelevanceMetricTest {
 
     @Test
     void calculateReturnsZeroForInvalidJudgePayloads() {
-        final var metric = new OutputRelevanceMetric<String>(new TestEvaluatorModel(JsonNodeFactory.instance.textNode(
-                                                                                                                      "{}"),
-                                                                                    ErrorType.SUCCESS,
-                                                                                    false));
-        assertEquals(0.0, metric.calculate("answer", context("request")), EPSILON);
+        final var stubEvaluator = new TestEvaluatorModel(JsonNodeFactory.instance.textNode("{}"),
+                                                         ErrorType.SUCCESS,
+                                                         false);
+        assertEquals(0.0,
+                     TestFactory.calculate(new OutputRelevanceMetric<String>(),
+                                           stubEvaluator,
+                                           "answer",
+                                           TestFactory.contextWith("request")),
+                     EPSILON);
 
         final var missingReason = JsonNodeFactory.instance.objectNode();
         missingReason.put("score", 0.4);
         assertEquals(0.0,
-                     new OutputRelevanceMetric<String>(new TestEvaluatorModel(missingReason,
-                                                                              ErrorType.SUCCESS,
-                                                                              false)).calculate("answer",
-                                                                                                context("request")),
+                     TestFactory.calculate(new OutputRelevanceMetric<String>(),
+                                           new TestEvaluatorModel(missingReason, ErrorType.SUCCESS, false),
+                                           "answer",
+                                           TestFactory.contextWith("request")),
                      EPSILON);
 
         final var outOfRangeScore = JsonNodeFactory.instance.objectNode();
         outOfRangeScore.put("score", 1.1);
         outOfRangeScore.put("reason", "too high");
         assertEquals(0.0,
-                     new OutputRelevanceMetric<String>(new TestEvaluatorModel(outOfRangeScore,
-                                                                              ErrorType.SUCCESS,
-                                                                              false)).calculate("answer",
-                                                                                                context("request")),
+                     TestFactory.calculate(new OutputRelevanceMetric<String>(),
+                                           new TestEvaluatorModel(outOfRangeScore, ErrorType.SUCCESS, false),
+                                           "answer",
+                                           TestFactory.contextWith("request")),
                      EPSILON);
 
         final var extraField = JsonNodeFactory.instance.objectNode();
@@ -161,10 +166,10 @@ class AnswerRelevanceMetricTest {
         extraField.put("reason", "ok");
         extraField.put("extra", "not allowed");
         assertEquals(0.0,
-                     new OutputRelevanceMetric<String>(new TestEvaluatorModel(extraField,
-                                                                              ErrorType.SUCCESS,
-                                                                              false)).calculate("answer",
-                                                                                                context("request")),
+                     TestFactory.calculate(new OutputRelevanceMetric<String>(),
+                                           new TestEvaluatorModel(extraField, ErrorType.SUCCESS, false),
+                                           "answer",
+                                           TestFactory.contextWith("request")),
                      EPSILON);
     }
 
@@ -174,26 +179,33 @@ class AnswerRelevanceMetricTest {
                                                                                        "{\"score\":1.0,\"reason\":\"ok\"}"),
                                                      ErrorType.SUCCESS,
                                                      false);
-        final var metric = new OutputRelevanceMetric<String>(evaluator);
+        final var metric = new OutputRelevanceMetric<String>();
 
-        assertEquals(0.0, metric.calculate(null, context("request")), EPSILON);
-        assertEquals(0.0, metric.calculate("", context("request")), EPSILON);
-        assertEquals(0.0, metric.calculate("answer", null), EPSILON);
-        assertEquals(0.0, metric.calculate("answer", context(null)), EPSILON);
-        assertEquals(0.0, metric.calculate("answer", context("")), EPSILON);
+        assertEquals(0.0, TestFactory.calculate(metric, evaluator, null, TestFactory.contextWith("request")), EPSILON);
+        assertEquals(0.0, TestFactory.calculate(metric, evaluator, "", TestFactory.contextWith("request")), EPSILON);
+        assertEquals(0.0, TestFactory.calculate(metric, evaluator, "answer", null), EPSILON);
+        assertEquals(0.0,
+                     TestFactory.calculate(metric, evaluator, "answer", TestFactory.contextWith(null)),
+                     EPSILON);
+        assertEquals(0.0,
+                     TestFactory.calculate(metric, evaluator, "answer", TestFactory.contextWith("")),
+                     EPSILON);
     }
 
     @Test
     void calculateReturnsZeroWhenModelErrorsOrThrows() {
-        final var erroredMetric = new OutputRelevanceMetric<String>(new TestEvaluatorModel(null,
-                                                                                           ErrorType.NO_RESPONSE,
-                                                                                           false));
-        final var throwingMetric = new OutputRelevanceMetric<String>(new TestEvaluatorModel(null,
-                                                                                            ErrorType.SUCCESS,
-                                                                                            true));
+        final var erroredModel = new TestEvaluatorModel(null, ErrorType.NO_RESPONSE, false);
+        final var throwingModel = new TestEvaluatorModel(null, ErrorType.SUCCESS, true);
+        final var metric = new OutputRelevanceMetric<String>();
 
-        assertEquals(0.0, erroredMetric.calculate("answer", context("request")), EPSILON);
-        assertEquals(0.0, throwingMetric.calculate("answer", context("request")), EPSILON);
+        assertEquals(0.0,
+                     TestFactory.calculate(metric, erroredModel, "answer", TestFactory.contextWith("request")),
+                     EPSILON);
+        assertThrows(RuntimeException.class,
+                     () -> TestFactory.calculate(metric,
+                                                 throwingModel,
+                                                 "answer",
+                                                 TestFactory.contextWith("request")));
     }
 
     @Test
@@ -202,15 +214,16 @@ class AnswerRelevanceMetricTest {
                                                                                        "{\"score\":0.67,\"reason\":\"ok\"}"),
                                                      ErrorType.SUCCESS,
                                                      false);
-        final var metric = new OutputRelevanceMetric<String>(evaluator,
-                                                             "REQ={request};ANS={answer}",
-                                                             new ObjectMapper());
+        final var metric = new OutputRelevanceMetric<String>("REQ={request};ANS={answer}", new ObjectMapper());
 
-        final var score = metric.calculate("agent-answer", context("user-request"));
+        final var score = TestFactory.calculate(metric,
+                                                evaluator,
+                                                "agent-answer",
+                                                TestFactory.contextWith("user-request"));
 
         assertEquals(0.67, score, EPSILON);
         assertEquals("OutputRelevanceMetric", evaluator.capturedContext.getAgentName());
-        assertEquals("run-id", evaluator.capturedContext.getRunId());
+        assertEquals("test-run", evaluator.capturedContext.getRunId());
         assertEquals(2, evaluator.capturedMessages.size());
         final var userPrompt = (UserPrompt) evaluator.capturedMessages.get(1);
         assertTrue(userPrompt.getContent().contains("REQ=user-request;ANS=agent-answer"));
@@ -223,20 +236,27 @@ class AnswerRelevanceMetricTest {
                                                      ErrorType.SUCCESS,
                                                      false);
 
-        assertThrows(IllegalArgumentException.class, () -> new OutputRelevanceMetric<String>(null));
-        assertThrows(IllegalArgumentException.class, () -> new OutputRelevanceMetric<>(evaluator, " "));
+        assertThrows(IllegalArgumentException.class, () -> new OutputRelevanceMetric<String>(" "));
         assertThrows(IllegalArgumentException.class,
-                     () -> new OutputRelevanceMetric<>(evaluator,
-                                                       "Only request: {request}"));
+                     () -> new OutputRelevanceMetric<>("Only request: {request}"));
         assertThrows(IllegalArgumentException.class,
-                     () -> new OutputRelevanceMetric<>(evaluator,
-                                                       "Only answer: {answer}"));
+                     () -> new OutputRelevanceMetric<>("Only answer: {answer}"));
         assertThrows(IllegalArgumentException.class,
-                     () -> new OutputRelevanceMetric<>(evaluator,
-                                                       "Template without placeholders"));
+                     () -> new OutputRelevanceMetric<>("Template without placeholders"));
         assertThrows(IllegalArgumentException.class,
-                     () -> new OutputRelevanceMetric<>(evaluator,
-                                                       OutputRelevanceMetric.DEFAULT_PROMPT_TEMPLATE,
-                                                       null));
+                     () -> new OutputRelevanceMetric<>(OutputRelevanceMetric.DEFAULT_PROMPT_TEMPLATE, null));
+    }
+
+    @Test
+    void metricExpectationSkipsWhenJudgeModelThrows() {
+        final var throwingModel = new TestEvaluatorModel(null, ErrorType.SUCCESS, true);
+        final var expectation = new MetricExpectation<String, String>(new OutputRelevanceMetric<>(), 0.8);
+
+        final var report = TestFactory.evaluateWithReport(expectation,
+                                                          throwingModel,
+                                                          "answer",
+                                                          TestFactory.contextWith("request"));
+
+        assertEquals(EvalStatus.SKIPPED, report.getStatus());
     }
 }

@@ -16,29 +16,28 @@
 
 package com.phonepe.sentinelai.evals.tests.expectations;
 
-import com.google.common.base.Strings;
-
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import com.phonepe.sentinelai.evals.tests.Expectation;
 
 import lombok.ToString;
 
-import java.util.Locale;
-
+/**
+ * Expectation definition that asserts the output string contains a given substring
+ * (case-insensitive).
+ *
+ * Computation is performed by {@code OutputContainsExpectationExecutor}.
+ *
+ * @param <T> input/request type
+ */
 @ToString
 public class OutputContainsExpectation<T> implements Expectation<String, T> {
+
     private final String containsSubstring;
 
     public OutputContainsExpectation(String containsSubstring) {
         this.containsSubstring = containsSubstring;
     }
 
-    @Override
-    public boolean evaluate(String result, EvalExpectationContext<T> context) {
-        if (result == null) {
-            return Strings.isNullOrEmpty(containsSubstring);
-        }
-        return result.toLowerCase(Locale.ROOT).contains(containsSubstring.toLowerCase(Locale.ROOT));
+    public String getContainsSubstring() {
+        return containsSubstring;
     }
-
 }

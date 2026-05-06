@@ -17,17 +17,19 @@
 package com.phonepe.sentinelai.evals.tests.metrics;
 
 import com.phonepe.sentinelai.embedding.EmbeddingModel;
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 
 /**
- * Calculates semantic similarity between output and a reference text using embedding models.
+ * Definition for a metric that measures semantic similarity between output and a reference text.
  *
- * Measures how semantically similar the generated output is to the reference text.
+ * Carries only configuration (embedding model, reference text).
+ * Computation is performed by {@code OutputSimilarityMetricExecutor}.
+ *
  * Uses cosine similarity of embedding vectors (0.0-1.0 scale).
  *
  * @param <T> The input/request type
  */
 public class OutputSimilarityMetric<T> implements Metric<String, T> {
+
     private final EmbeddingModel embeddingModel;
     private final String referenceText;
 
@@ -48,18 +50,12 @@ public class OutputSimilarityMetric<T> implements Metric<String, T> {
         this.referenceText = referenceText;
     }
 
-    @Override
-    public double calculate(String result, EvalExpectationContext<T> context) {
-        if (result == null || result.isEmpty()) {
-            return 0.0;
-        }
+    public EmbeddingModel getEmbeddingModel() {
+        return embeddingModel;
+    }
 
-        // Get embeddings for output and reference
-        final float[] outputEmbedding = embeddingModel.getEmbedding(result);
-        final float[] referenceEmbedding = embeddingModel.getEmbedding(referenceText);
-
-        // Calculate cosine similarity
-        return SimilarityUtils.cosineSimilarity(outputEmbedding, referenceEmbedding);
+    public String getReferenceText() {
+        return referenceText;
     }
 
     @Override
@@ -69,9 +65,8 @@ public class OutputSimilarityMetric<T> implements Metric<String, T> {
 
     @Override
     public String toString() {
-        return "OutputSimilarityMetric(reference=" + referenceText.substring(
-                                                                             0,
-                                                                             Math.min(30, referenceText.length()))
+        return "OutputSimilarityMetric(reference="
+                + referenceText.substring(0, Math.min(30, referenceText.length()))
                 + "...)";
     }
 }

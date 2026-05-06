@@ -16,19 +16,21 @@
 
 package com.phonepe.sentinelai.evals.tests.metrics;
 
-import com.phonepe.sentinelai.evals.EvalStatus;
-import com.phonepe.sentinelai.evals.ExpectationReport;
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import com.phonepe.sentinelai.evals.tests.Expectation;
 
 import lombok.ToString;
 
-
 /**
- * Wraps a Metric with an optional threshold for pass/fail determination.
+ * Expectation definition that wraps a {@link Metric} with an optional pass/fail threshold.
+ *
+ * Computation is performed by {@code MetricExpectationExecutor}.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
  */
 @ToString
 public class MetricExpectation<R, T> implements Expectation<R, T> {
+
     private final Metric<R, T> metric;
     private final Double threshold;
 
@@ -41,24 +43,11 @@ public class MetricExpectation<R, T> implements Expectation<R, T> {
         this.threshold = threshold;
     }
 
-
-    @Override
-    public boolean evaluate(R result, EvalExpectationContext<T> context) {
-        final var report = evaluateWithReport(result, context);
-        return report.getStatus() == EvalStatus.PASSED;
+    public Metric<R, T> getMetric() {
+        return metric;
     }
 
-    @Override
-    public ExpectationReport evaluateWithReport(R result, EvalExpectationContext<T> context) {
-        final double score = metric.calculate(result, context);
-        if (threshold == null) {
-            return ExpectationReport.metric(metric.metricName(),
-                                            score,
-                                            "Metric evaluated without threshold enforcement");
-        }
-        return ExpectationReport.scored(metric.metricName(),
-                                        score,
-                                        threshold,
-                                        "Metric evaluation with threshold comparison");
+    public Double getThreshold() {
+        return threshold;
     }
 }

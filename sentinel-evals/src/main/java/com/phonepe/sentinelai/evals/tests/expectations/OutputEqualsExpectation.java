@@ -16,22 +16,25 @@
 
 package com.phonepe.sentinelai.evals.tests.expectations;
 
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import com.phonepe.sentinelai.evals.tests.Expectation;
 
-import java.util.Objects;
-
+/**
+ * Expectation definition that asserts the output equals an expected value.
+ *
+ * Computation is performed by {@code OutputEqualsExpectationExecutor}.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
+ */
 public class OutputEqualsExpectation<R, T> implements Expectation<R, T> {
+
     private final R expectedOutput;
 
     public OutputEqualsExpectation(R expectedOutput) {
         this.expectedOutput = expectedOutput;
     }
 
-    @Override
-    public boolean evaluate(R result, EvalExpectationContext<T> context) {
-        return Objects.equals(result, expectedOutput);
+    public R getExpectedOutput() {
+        return expectedOutput;
     }
-
-
 }

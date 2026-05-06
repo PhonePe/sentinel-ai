@@ -131,7 +131,7 @@ Custom judge prompts must contain `{request}` and `{answer}` placeholders, which
 
 #### Writing a custom LLM-judged metric
 
-Extend `AbstractLlmJudgeMetric<T>` to build your own judge metric (e.g. groundedness, toxicity, style). Only two things are needed: a judge prompt and a score parser.
+Extend `AbstractLlmJudgeMetric<T>` to define your own judge metric (e.g. groundedness, toxicity, style), then add a matching executor. The metric class now carries only configuration; execution lives in a corresponding `MetricExecutor`.
 
 ```java
 public class AnswerGroundednessMetric<T> extends AbstractLlmJudgeMetric<T> {
@@ -148,6 +148,14 @@ public class AnswerGroundednessMetric<T> extends AbstractLlmJudgeMetric<T> {
 
     @Override
     public String metricName() { return "AnswerGroundedness"; }
+}
+
+public class AnswerGroundednessMetricExecutor<T>
+        extends AbstractLlmJudgeMetricExecutor<AnswerGroundednessMetric<T>, T> {
+
+    public AnswerGroundednessMetricExecutor(AnswerGroundednessMetric<T> metric) {
+        super(metric);
+    }
 
     @Override
     protected double parseScore(ModelOutput output) {
@@ -159,15 +167,29 @@ public class AnswerGroundednessMetric<T> extends AbstractLlmJudgeMetric<T> {
 
     @Override
     protected String renderPrompt(String request, String answer) {
-        return promptTemplate().replace("{request}", request).replace("{answer}", answer);
+        return metric.getPromptTemplate().replace("{request}", request).replace("{answer}", answer);
     }
 }
 ```
 
-Then use it via `MetricExpectation`:
+Register the custom metric in your `MetricExecutorFactory`, then use it via `MetricExpectation`:
 
 ```java
+MetricExecutorFactory metricExecutorFactory = new DefaultMetricExecutorFactory() {
+    @Override
+    public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric) {
+        if (metric instanceof AnswerGroundednessMetric<?> groundednessMetric) {
+            @SuppressWarnings("unchecked")
+            var typedMetric = (AnswerGroundednessMetric<T>) groundednessMetric;
+            return (MetricExecutor<R, T>) new AnswerGroundednessMetricExecutor<>(typedMetric);
+        }
+        return super.create(metric);
+    }
+};
+
 var expectation = new MetricExpectation<>(new AnswerGroundednessMetric<>(judgeModel), 0.85);
+var evalEngine = new EvalEngine(mapper,
+        new DefaultExpectationExecutorFactory(metricExecutorFactory));
 ```
 
 ---
@@ -207,4 +229,18 @@ void agentSmokeEvals() {
 ```
 
 Use `samplePercentage` to keep PR builds fast while running the full suite on merges to main.
+
+## Real agent integration example
+
+For end-to-end validation with a live model (no model mocking), see
+`sentinel-evals/src/test/java/com/phonepe/sentinelai/evals/RealNicknameAgentExpectationsIntegrationTest.java`.
+
+This test demonstrates:
+
+- typed request object (`name`, `age`) and structured nickname output
+- deterministic expectations (`outputEquals`, `jsonPathEquals`, `where/at` operators)
+- tool-call expectations (`toolCalled`, `ordered`)
+- metric expectations (`outputSimilarity`, `answerRelevance`)
+
+The test is gated to run only when real endpoints are enabled (for example with `-Preal-tests`).
 

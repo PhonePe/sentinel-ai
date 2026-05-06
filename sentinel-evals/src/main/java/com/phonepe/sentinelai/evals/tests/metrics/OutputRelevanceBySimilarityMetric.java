@@ -17,14 +17,17 @@
 package com.phonepe.sentinelai.evals.tests.metrics;
 
 import com.phonepe.sentinelai.embedding.EmbeddingModel;
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 
 /**
- * Measures semantic relevance between output and input using cosine similarity over embeddings.
+ * Definition for a metric that measures semantic relevance between output and input.
+ *
+ * Carries only configuration (embedding model).
+ * Computation is performed by {@code OutputRelevanceBySimilarityMetricExecutor}.
  *
  * @param <T> input/request type
  */
 public class OutputRelevanceBySimilarityMetric<T> implements Metric<String, T> {
+
     private final EmbeddingModel embeddingModel;
 
     public OutputRelevanceBySimilarityMetric(EmbeddingModel embeddingModel) {
@@ -34,19 +37,8 @@ public class OutputRelevanceBySimilarityMetric<T> implements Metric<String, T> {
         this.embeddingModel = embeddingModel;
     }
 
-    @Override
-    public double calculate(String result, EvalExpectationContext<T> context) {
-        if (result == null || result.isEmpty() || context == null || context.getRequest() == null) {
-            return 0.0;
-        }
-        final String inputText = String.valueOf(context.getRequest());
-        if (inputText.isEmpty()) {
-            return 0.0;
-        }
-
-        final float[] outputEmbedding = embeddingModel.getEmbedding(result);
-        final float[] inputEmbedding = embeddingModel.getEmbedding(inputText);
-        return SimilarityUtils.cosineSimilarity(outputEmbedding, inputEmbedding);
+    public EmbeddingModel getEmbeddingModel() {
+        return embeddingModel;
     }
 
     @Override

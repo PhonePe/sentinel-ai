@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.evals;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 import org.junit.jupiter.api.Test;
@@ -38,6 +37,7 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.evals.tests.Dataset;
 import com.phonepe.sentinelai.evals.tests.Expectations;
 import com.phonepe.sentinelai.evals.tests.TestCase;
+import com.phonepe.sentinelai.evals.tests.TestFactory;
 
 import lombok.NonNull;
 import lombok.Value;
@@ -108,10 +108,7 @@ class PartialOutputEvalTest {
 
     @Test
     void testPartialOutputMatchingOnStatusOnly() {
-        val agent = new DecisionAgent(AgentSetup.builder()
-                .mapper(new ObjectMapper())
-                .model(new DecisionModel())
-                .build());
+        val agent = new DecisionAgent(TestFactory.agentSetupBuilder(new DecisionModel()).build());
 
         val dataset = new Dataset("status-only-evals",
                                   List.of(

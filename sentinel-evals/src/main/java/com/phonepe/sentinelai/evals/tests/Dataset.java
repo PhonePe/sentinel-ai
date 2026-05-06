@@ -16,15 +16,12 @@
 
 package com.phonepe.sentinelai.evals.tests;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Value;
 
 import java.util.List;
 
-@Data
-@AllArgsConstructor
+@Value
 public class Dataset<R, T> {
-    private String name;
-    private List<TestCase<R, T>> testCases;
-
+    String name;
+    List<TestCase<R, T>> testCases;
 }

@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.evals.tests;
 
-import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.embedding.EmbeddingModel;
 import com.phonepe.sentinelai.evals.tests.metrics.Metric;
 import com.phonepe.sentinelai.evals.tests.metrics.OutputRelevanceBySimilarityMetric;
@@ -31,13 +30,12 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class Metrics {
 
-    public static <T> Metric<String, T> answerRelevance(Model evaluatorModel) {
-        return new OutputRelevanceMetric<>(evaluatorModel);
+    public static <T> Metric<String, T> answerRelevance() {
+        return new OutputRelevanceMetric<>();
     }
 
-    public static <T> Metric<String, T> answerRelevance(Model evaluatorModel,
-                                                        String promptTemplate) {
-        return new OutputRelevanceMetric<>(evaluatorModel, promptTemplate);
+    public static <T> Metric<String, T> answerRelevance(String promptTemplate) {
+        return new OutputRelevanceMetric<>(promptTemplate);
     }
 
     public static <T> Metric<String, T> outputRelevanceBySimilarity(EmbeddingModel embeddingModel) {

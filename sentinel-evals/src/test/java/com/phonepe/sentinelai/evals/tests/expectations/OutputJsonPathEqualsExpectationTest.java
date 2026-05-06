@@ -18,14 +18,11 @@ package com.phonepe.sentinelai.evals.tests.expectations;
 
 import org.junit.jupiter.api.Test;
 
-import com.phonepe.sentinelai.core.model.ModelUsageStats;
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
+import com.phonepe.sentinelai.evals.tests.TestFactory;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 
 import lombok.Value;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,22 +35,15 @@ class OutputJsonPathEqualsExpectationTest {
         String explanation;
     }
 
-    private static EvalExpectationContext<Object> emptyContext() {
-        return new EvalExpectationContext<>("run",
-                                            null,
-                                            List.of(),
-                                            new ModelUsageStats());
-    }
-
     @Test
     void testFailsWhenFieldValueDiffers() {
         final var expectation = new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>("$.status",
                                                                                                                                 Operator.EQ,
                                                                                                                                 "FAILED");
 
-        assertFalse(expectation.evaluate(
+        assertFalse(TestFactory.evaluate(expectation,
                                          new Decision("SUCCESS", "Everything is fine"),
-                                         emptyContext()));
+                                         TestFactory.context()));
     }
 
     @Test
@@ -62,9 +52,9 @@ class OutputJsonPathEqualsExpectationTest {
                                                                        Operator.EQ,
                                                                        "SUCCESS");
 
-        assertFalse(expectation.evaluate(
+        assertFalse(TestFactory.evaluate(expectation,
                                          new Decision("SUCCESS", "Everything is fine"),
-                                         emptyContext()));
+                                         TestFactory.context()));
     }
 
     @Test
@@ -73,8 +63,8 @@ class OutputJsonPathEqualsExpectationTest {
                                                                                                                                 Operator.EQ,
                                                                                                                                 "SUCCESS");
 
-        assertTrue(expectation.evaluate(
+        assertTrue(TestFactory.evaluate(expectation,
                                         new Decision("SUCCESS", "Everything is fine"),
-                                        emptyContext()));
+                                        TestFactory.context()));
     }
 }

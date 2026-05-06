@@ -16,22 +16,30 @@
 
 package com.phonepe.sentinelai.evals.tests.metrics;
 
+import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
+
 /**
- * Defines the identity and configuration of a metric that measures a quality aspect.
+ * Performs the numeric computation for a corresponding {@link Metric} definition.
  *
- * A Metric is a pure definition: it carries the parameters (e.g. model, thresholds,
- * reference text) that describe WHAT to measure. The actual computation is performed
- * by a corresponding {@link MetricExecutor} created via a {@link MetricExecutorFactory}.
- *
- * The score range is 0.0–1.0 (inclusive).
+ * Executors are obtained via a {@link MetricExecutorFactory} and are responsible
+ * for all computation logic. The {@link Metric} itself carries only configuration data.
  *
  * @param <R> The result/output type being evaluated
  * @param <T> The input/request type that generated the result
  */
-public interface Metric<R, T> {
+public interface MetricExecutor<R, T> {
 
     /**
-     * Human-readable name of this metric.
+     * Calculate a metric score for the given result.
+     *
+     * @param result  the output/result to evaluate
+     * @param context evaluation context containing request, messages, and usage stats
+     * @return a score between 0.0 and 1.0 (inclusive)
+     */
+    double calculate(R result, EvalExpectationContext<T> context);
+
+    /**
+     * Human-readable name of this metric executor (defaults to the class simple name).
      *
      * @return metric name
      */

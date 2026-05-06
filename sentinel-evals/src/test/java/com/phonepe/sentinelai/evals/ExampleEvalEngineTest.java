@@ -37,12 +37,13 @@ import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.embedding.EmbeddingModel;
 import com.phonepe.sentinelai.evals.tests.Dataset;
+import com.phonepe.sentinelai.evals.tests.DefaultExpectationExecutorFactory;
 import com.phonepe.sentinelai.evals.tests.Expectation;
 import com.phonepe.sentinelai.evals.tests.Expectations;
 import com.phonepe.sentinelai.evals.tests.TestCase;
+import com.phonepe.sentinelai.evals.tests.metrics.DefaultMetricExecutorFactory;
 
 import lombok.NonNull;
-import lombok.Value;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,14 +55,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ExampleEvalEngineTest {
-
-    @Value
-    static class DecisionOutput {
-        String status;
-        int score;
-        int attempts;
-        String category;
-    }
 
     static class ExampleAnswerRelevanceJudgeModel implements Model {
         @Override
@@ -225,6 +218,14 @@ class ExampleEvalEngineTest {
         }
     }
 
+    record DecisionOutput(
+            String status,
+            int score,
+            int attempts,
+            String category
+    ) {
+    }
+
     @Test
     void exampleCoversJsonPathExpectationOperators() {
         final var agent = new ExampleDecisionAgent(AgentSetup.builder()
@@ -310,9 +311,7 @@ class ExampleEvalEngineTest {
                                                                        Expectations.outputSimilarity(embeddingModel,
                                                                                                      "All systems green and stable",
                                                                                                      0.9),
-                                                                       Expectations.answerRelevance(
-                                                                                                    new ExampleAnswerRelevanceJudgeModel(),
-                                                                                                    0.9),
+                                                                       Expectations.answerRelevance(0.9),
                                                                        Expectations.outputSimilarity(embeddingModel,
                                                                                                      "All systems green and stable"));
 
@@ -320,7 +319,11 @@ class ExampleEvalEngineTest {
                                           List.of(new TestCase<>("all systems request",
                                                                  expectations)));
 
-        final var report = new EvalEngine().run(dataset, agent);
+        final var judgeModel = new ExampleAnswerRelevanceJudgeModel();
+        final var report = new EvalEngine(new ObjectMapper(),
+                                          new DefaultExpectationExecutorFactory(
+                                                                                new DefaultMetricExecutorFactory(judgeModel)))
+                .run(dataset, agent);
 
         assertEquals(1, report.getExecutedTestCases());
         assertEquals(1, report.getPassedTestCases());

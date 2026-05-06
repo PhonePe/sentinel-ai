@@ -37,7 +37,7 @@ public class EvalRunConfig {
     long sampleSeed = 0L;
 
     @Builder.Default
-    Duration defaultTestCaseTimeout = Duration.of(10, ChronoUnit.SECONDS);
+    Duration defaultTestCaseTimeout = Duration.of(30, ChronoUnit.SECONDS);
 
     @Builder.Default
     int minimumSampleSize = 1;

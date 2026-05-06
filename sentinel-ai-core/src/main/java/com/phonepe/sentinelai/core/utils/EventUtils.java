@@ -180,14 +180,22 @@ public class EventUtils {
             log.debug("No new messages");
             return;
         }
-        modelRunContext.getAgentSetup()
-                .getEventBus()
-                .notify(new MessageSentAgentEvent(modelRunContext.getAgentName(),
-                                                  modelRunContext.getRunId(),
-                                                  modelRunContext.getSessionId(),
-                                                  modelRunContext.getUserId(),
-                                                  List.copyOf(prevMessages),
-                                                  List.copyOf(newMessages)));
+        try {
+            modelRunContext.getAgentSetup()
+                    .getEventBus()
+                    .notify(new MessageSentAgentEvent(modelRunContext.getAgentName(),
+                                                      modelRunContext.getRunId(),
+                                                      modelRunContext.getSessionId(),
+                                                      modelRunContext.getUserId(),
+                                                      List.copyOf(prevMessages),
+                                                      List.copyOf(newMessages)));
+        }
+        catch (Throwable e) {
+            log.error("Error while raising message sent event for agent: {}, runId: {}",
+                      modelRunContext.getAgentName(),
+                      modelRunContext.getRunId(),
+                      AgentUtils.rootCause(e).getMessage());
+        }
     }
 
     public static void raiseOutputEvent(ModelRunContext context,

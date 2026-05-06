@@ -18,12 +18,10 @@ package com.phonepe.sentinelai.evals.tests.metrics;
 
 import org.junit.jupiter.api.Test;
 
-import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.embedding.EmbeddingModel;
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
+import com.phonepe.sentinelai.evals.tests.TestFactory;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -58,13 +56,6 @@ class OutputRelevanceBySimilarityMetricTest {
         }
     }
 
-    private static <T> EvalExpectationContext<T> context(T request) {
-        return new EvalExpectationContext<>("run-id",
-                                            request,
-                                            List.of(),
-                                            new ModelUsageStats());
-    }
-
     @Test
     void calculateClampsNegativeCosineToZero() {
         final var model = new TestEmbeddingModel(Map.of("result", new float[]{
@@ -76,7 +67,7 @@ class OutputRelevanceBySimilarityMetricTest {
                                                         }));
         final var metric = new OutputRelevanceBySimilarityMetric<String>(model);
 
-        final var score = metric.calculate("result", context("request"));
+        final var score = TestFactory.calculate(metric, "result", TestFactory.contextWith("request"));
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -92,7 +83,7 @@ class OutputRelevanceBySimilarityMetricTest {
                                                         }));
         final var metric = new OutputRelevanceBySimilarityMetric<String>(model);
 
-        final var score = metric.calculate("result", context("request"));
+        final var score = TestFactory.calculate(metric, "result", TestFactory.contextWith("request"));
 
         assertEquals(1.0, score, EPSILON);
         assertEquals(2, model.lookupCount);
@@ -106,7 +97,7 @@ class OutputRelevanceBySimilarityMetricTest {
         }));
         final var metric = new OutputRelevanceBySimilarityMetric<String>(model);
 
-        assertEquals(0.0, metric.calculate("result", context("")), EPSILON);
+        assertEquals(0.0, TestFactory.calculate(metric, "result", TestFactory.contextWith("")), EPSILON);
         assertEquals(0, model.lookupCount);
     }
 
@@ -121,8 +112,8 @@ class OutputRelevanceBySimilarityMetricTest {
                                                         }));
         final var metric = new OutputRelevanceBySimilarityMetric<String>(model);
 
-        assertEquals(0.0, metric.calculate("result", null), EPSILON);
-        assertEquals(0.0, metric.calculate("result", context(null)), EPSILON);
+        assertEquals(0.0, TestFactory.calculate(metric, "result", null), EPSILON);
+        assertEquals(0.0, TestFactory.calculate(metric, "result", TestFactory.contextWith(null)), EPSILON);
         assertEquals(0, model.lookupCount);
     }
 
@@ -133,8 +124,8 @@ class OutputRelevanceBySimilarityMetricTest {
         }));
         final var metric = new OutputRelevanceBySimilarityMetric<String>(model);
 
-        assertEquals(0.0, metric.calculate(null, context("request")), EPSILON);
-        assertEquals(0.0, metric.calculate("", context("request")), EPSILON);
+        assertEquals(0.0, TestFactory.calculate(metric, null, TestFactory.contextWith("request")), EPSILON);
+        assertEquals(0.0, TestFactory.calculate(metric, "", TestFactory.contextWith("request")), EPSILON);
         assertEquals(0, model.lookupCount);
     }
 
@@ -149,7 +140,7 @@ class OutputRelevanceBySimilarityMetricTest {
                                                         }));
         final var metric = new OutputRelevanceBySimilarityMetric<String>(model);
 
-        final var score = metric.calculate("result", context("request"));
+        final var score = TestFactory.calculate(metric, "result", TestFactory.contextWith("request"));
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -165,7 +156,7 @@ class OutputRelevanceBySimilarityMetricTest {
                                                         }));
         final var metric = new OutputRelevanceBySimilarityMetric<String>(model);
 
-        final var score = metric.calculate("result", context("request"));
+        final var score = TestFactory.calculate(metric, "result", TestFactory.contextWith("request"));
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -180,7 +171,7 @@ class OutputRelevanceBySimilarityMetricTest {
         final var model = new TestEmbeddingModel(map);
         final var metric = new OutputRelevanceBySimilarityMetric<String>(model);
 
-        final var score = metric.calculate("result", context("request"));
+        final var score = TestFactory.calculate(metric, "result", TestFactory.contextWith("request"));
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -196,7 +187,7 @@ class OutputRelevanceBySimilarityMetricTest {
                                                         }));
         final var metric = new OutputRelevanceBySimilarityMetric<String>(model);
 
-        final var score = metric.calculate("result", context("request"));
+        final var score = TestFactory.calculate(metric, "result", TestFactory.contextWith("request"));
 
         assertEquals(Math.sqrt(0.5), score, EPSILON);
     }
@@ -212,7 +203,7 @@ class OutputRelevanceBySimilarityMetricTest {
                                                         }));
         final var metric = new OutputRelevanceBySimilarityMetric<Integer>(model);
 
-        final var score = metric.calculate("result", context(42));
+        final var score = TestFactory.calculate(metric, "result", TestFactory.contextWith(42));
 
         assertEquals(1.0, score, EPSILON);
     }

@@ -16,18 +16,15 @@
 
 package com.phonepe.sentinelai.evals.tests;
 
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-
+/**
+ * Base definition class for expectations that match against individual agent messages.
+ *
+ * Subclasses carry only the configuration data that describes WHAT to assert.
+ * The matching predicate lives in a corresponding
+ * {@link com.phonepe.sentinelai.evals.tests.expectations.executors.MessageExpectationExecutor}.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
+ */
 public abstract class MessageExpectation<R, T> implements Expectation<R, T> {
-    @Override
-    public boolean evaluate(R result, EvalExpectationContext<T> context) {
-        for (AgentMessage message : context.getOldMessages()) {
-            if (matches(message)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public abstract boolean matches(AgentMessage message);
 }

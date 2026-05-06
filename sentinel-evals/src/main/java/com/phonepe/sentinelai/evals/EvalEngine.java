@@ -16,14 +16,20 @@
 
 package com.phonepe.sentinelai.evals;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.evals.tests.Dataset;
+import com.phonepe.sentinelai.evals.tests.DefaultExpectationExecutorFactory;
 import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import com.phonepe.sentinelai.evals.tests.Expectation;
+import com.phonepe.sentinelai.evals.tests.ExpectationExecutor;
+import com.phonepe.sentinelai.evals.tests.ExpectationExecutorFactory;
 import com.phonepe.sentinelai.evals.tests.TestCase;
 
 import java.util.ArrayList;
@@ -36,6 +42,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class EvalEngine {
+
+    private final ExpectationExecutorFactory executorFactory;
+
+    public EvalEngine() {
+        this(JsonUtils.createMapper());
+    }
+
+    public EvalEngine(ObjectMapper objectMapper) {
+        this(objectMapper, new DefaultExpectationExecutorFactory());
+    }
+
+    public EvalEngine(ObjectMapper objectMapper, ExpectationExecutorFactory executorFactory) {
+        SerDe.initialize(Objects.requireNonNull(objectMapper, "objectMapper cannot be null"));
+        this.executorFactory = Objects.requireNonNull(executorFactory, "executorFactory cannot be null");
+    }
 
     private static <R, T> EvalExpectationContext<R> buildContext(TestCase<R, T> testCase,
                                                                  List<AgentMessage> allMessages,
@@ -145,12 +166,19 @@ public class EvalEngine {
                     ? List.of()
                     : testCase.getExpectations();
             for (Expectation<T, R> expectation : expectations) {
-                final var report = expectation.evaluateWithReport(output.getData(), context);
+                @SuppressWarnings({
+                        "unchecked", "rawtypes"
+                }) final var executor = (ExpectationExecutor<T, R>) executorFactory.create((Agent) agent, expectation);
+                final var report = executor.evaluateWithReport(output.getData(), context);
                 expectationReports.add(report);
-                if (report.getStatus() != EvalStatus.PASSED) {
+                if (report.getStatus() == EvalStatus.FAILED) {
                     status = EvalStatus.FAILED;
                     details = "Expectation failed: " + report.getExpectation();
                     break;
+                }
+                if (report.getStatus() == EvalStatus.SKIPPED) {
+                    status = EvalStatus.SKIPPED;
+                    details = "Expectation skipped: " + report.getExpectation();
                 }
             }
             return new TestCaseReport(testCase.getInput(),

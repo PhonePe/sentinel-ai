@@ -97,4 +97,12 @@ public class ExpectationReport {
                 .threshold(Optional.of(threshold))
                 .build();
     }
+
+    public static ExpectationReport skipped(String expectation, String details) {
+        return ExpectationReport.builder()
+                .expectation(expectation)
+                .status(EvalStatus.SKIPPED)
+                .details(details)
+                .build();
+    }
 }

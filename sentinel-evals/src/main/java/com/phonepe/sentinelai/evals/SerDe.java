@@ -16,23 +16,24 @@
 
 package com.phonepe.sentinelai.evals;
 
-import lombok.Builder;
-import lombok.Value;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.util.List;
+import com.phonepe.sentinelai.core.utils.JsonUtils;
 
-@Value
-@Builder
-public class EvalReport {
-    String datasetName;
-    int totalTestCases;
-    int sampledTestCases;
-    int executedTestCases;
-    int passedTestCases;
-    int failedTestCases;
-    int skippedTestCases;
-    long durationMs;
-    boolean completedAllSampledCases;
-    List<TestCaseReport> testCaseReports;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
+public final class SerDe {
+    private static final AtomicReference<ObjectMapper> MAPPER = new AtomicReference<>();
+
+    private SerDe() {
+    }
+
+    public static void initialize(ObjectMapper objectMapper) {
+        MAPPER.set(Objects.requireNonNull(objectMapper, "objectMapper cannot be null"));
+    }
+
+    public static ObjectMapper mapper() {
+        return MAPPER.updateAndGet(existing -> existing != null ? existing : JsonUtils.createMapper());
+    }
 }

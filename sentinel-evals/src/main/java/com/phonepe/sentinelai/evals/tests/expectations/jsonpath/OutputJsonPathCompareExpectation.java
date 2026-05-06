@@ -16,22 +16,21 @@
 
 package com.phonepe.sentinelai.evals.tests.expectations.jsonpath;
 
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.JsonPath;
-
-import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import com.phonepe.sentinelai.evals.tests.Expectation;
 
 import lombok.ToString;
 
-import java.math.BigDecimal;
-import java.util.Collection;
-import java.util.Objects;
-
+/**
+ * Expectation definition that asserts a JSON-Path expression in the output satisfies
+ * a given comparison operator against an expected value.
+ *
+ * Computation is performed by {@code OutputJsonPathCompareExpectationExecutor}.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
+ */
 @ToString
 public class OutputJsonPathCompareExpectation<R, T> implements Expectation<R, T> {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final String jsonPath;
     private final Operator operator;
@@ -45,23 +44,6 @@ public class OutputJsonPathCompareExpectation<R, T> implements Expectation<R, T>
         this.expectedValue = expectedValue;
     }
 
-    @SuppressWarnings({
-            "unchecked", "rawtypes"
-    })
-    private static int compareOrder(Object actual,
-                                    Object expected) {
-        if (actual == null || expected == null) {
-            throw new IllegalArgumentException("Both actual and expected must be non-null for ordered comparisons");
-        }
-        if (actual instanceof Number actualNumber && expected instanceof Number expectedNumber) {
-            return new BigDecimal(actualNumber.toString()).compareTo(new BigDecimal(expectedNumber.toString()));
-        }
-        if (actual.getClass().equals(expected.getClass()) && actual instanceof Comparable actualComparable) {
-            return actualComparable.compareTo(expected);
-        }
-        throw new IllegalArgumentException("Unsupported ordered comparison between values");
-    }
-
     private static String normalizePath(String jsonPath) {
         if (jsonPath == null || jsonPath.isBlank()) {
             throw new IllegalArgumentException("jsonPath must not be blank");
@@ -73,32 +55,15 @@ public class OutputJsonPathCompareExpectation<R, T> implements Expectation<R, T>
         return "$." + trimmed;
     }
 
-    @Override
-    public boolean evaluate(R result,
-                            EvalExpectationContext<T> context) {
-        if (result == null) {
-            return operator == Operator.EQ && expectedValue == null;
-        }
-        try {
-            final var document = OBJECT_MAPPER.convertValue(result, Object.class);
-            final var actualValue = JsonPath.read(document, jsonPath);
-            return compare(actualValue);
-        }
-        catch (RuntimeException e) {
-            return false;
-        }
+    public Object getExpectedValue() {
+        return expectedValue;
     }
 
-    private boolean compare(Object actualValue) {
-        return switch (operator) {
-            case EQ -> Objects.equals(actualValue, expectedValue);
-            case NE -> !Objects.equals(actualValue, expectedValue);
-            case GT -> compareOrder(actualValue, expectedValue) > 0;
-            case GTE -> compareOrder(actualValue, expectedValue) >= 0;
-            case LT -> compareOrder(actualValue, expectedValue) < 0;
-            case LTE -> compareOrder(actualValue, expectedValue) <= 0;
-            case IN -> expectedValue instanceof Collection<?> collection && collection.contains(actualValue);
-            case NOT_IN -> expectedValue instanceof Collection<?> collection && !collection.contains(actualValue);
-        };
+    public String getJsonPath() {
+        return jsonPath;
+    }
+
+    public Operator getOperator() {
+        return operator;
     }
 }

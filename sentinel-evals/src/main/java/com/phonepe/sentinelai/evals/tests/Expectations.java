@@ -16,7 +16,7 @@
 
 package com.phonepe.sentinelai.evals.tests;
 
-import com.phonepe.sentinelai.core.model.Model;
+import com.phonepe.sentinelai.core.utils.ToolUtils;
 import com.phonepe.sentinelai.embedding.EmbeddingModel;
 import com.phonepe.sentinelai.evals.tests.expectations.OrderedExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputContainsExpectation;
@@ -26,8 +26,10 @@ import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExpectation;
 
+import lombok.val;
 import lombok.experimental.UtilityClass;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -90,15 +92,13 @@ public class Expectations {
     }
 
 
-    public static <T> Expectation<String, T> answerRelevance(Model evaluatorModel,
-                                                             String promptTemplate,
+    public static <T> Expectation<String, T> answerRelevance(String promptTemplate,
                                                              double threshold) {
-        return new MetricExpectation<>(Metrics.answerRelevance(evaluatorModel, promptTemplate), threshold);
+        return new MetricExpectation<>(Metrics.answerRelevance(promptTemplate), threshold);
     }
 
-    public static <T> Expectation<String, T> answerRelevance(Model evaluatorModel,
-                                                             double threshold) {
-        return answerRelevance(evaluatorModel, null, threshold);
+    public static <T> Expectation<String, T> answerRelevance(double threshold) {
+        return answerRelevance(null, threshold);
     }
 
     public static <R, T> JsonPathExpectationBuilder<R, T> at(String jsonPath) {
@@ -138,6 +138,15 @@ public class Expectations {
                                                               String referenceText,
                                                               double threshold) {
         return new MetricExpectation<>(Metrics.outputSimilarity(embeddingModel, referenceText), threshold);
+    }
+
+    public static <R, T> MessageExpectation<R, T> toolCalled(Method method) {
+        return toolCalled(method, 1);
+    }
+
+    public static <R, T> MessageExpectation<R, T> toolCalled(Method method, int times) {
+        val metadata = ToolUtils.toolMetadata(method.getDeclaringClass().getSimpleName(), method);
+        return new ToolCalledExpectation<>(metadata.getFirst().getId(), times, null);
     }
 
     public static <R, T> MessageExpectation<R, T> toolCalled(String toolName) {

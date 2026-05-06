@@ -16,15 +16,16 @@
 
 package com.phonepe.sentinelai.evals.tests;
 
-import com.phonepe.sentinelai.evals.ExpectationReport;
-
+/**
+ * Marker interface representing the <em>definition</em> of an expectation.
+ *
+ * An Expectation carries only the configuration data that describes WHAT to assert
+ * (e.g. an expected substring, a JSON-Path expression, a metric threshold). All
+ * computation is delegated to a corresponding {@link ExpectationExecutor} created
+ * by an {@link ExpectationExecutorFactory}.
+ *
+ * @param <R> result/output type being evaluated
+ * @param <T> input/request type
+ */
 public interface Expectation<R, T> {
-    boolean evaluate(R result, EvalExpectationContext<T> context);
-
-    default ExpectationReport evaluateWithReport(R result, EvalExpectationContext<T> context) {
-        final boolean passes = evaluate(result, context);
-        return ExpectationReport.passFail(toString(),
-                                          passes,
-                                          passes ? "Expectation passed" : "Expectation failed");
-    }
 }
