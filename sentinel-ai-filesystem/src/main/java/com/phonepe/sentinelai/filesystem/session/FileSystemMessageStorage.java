@@ -30,6 +30,7 @@ import com.phonepe.sentinelai.session.QueryDirection;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -41,6 +42,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Consumer;
 
@@ -56,6 +58,7 @@ import java.util.function.Consumer;
  * - All messages from file are read in one shot at startup and served from the treemap
  * - Writes are appended to file and committed to the treemap for access
  */
+@Slf4j
 public class FileSystemMessageStorage {
 
     private static final String MESSAGES_FILE_NAME = "messages.jsonl";
@@ -69,7 +72,9 @@ public class FileSystemMessageStorage {
     private final TreeMap<MessageMeta, AgentMessage> messageCache;
 
     private final StampedLock lock = new StampedLock();
+    private final AtomicBoolean previousMessagesRead = new AtomicBoolean(false);
 
+    private final String sessionDir;
     private final ObjectMapper objectMapper;
 
     private final Path filePath;
@@ -79,14 +84,9 @@ public class FileSystemMessageStorage {
     public FileSystemMessageStorage(@NonNull String sessionDir, @NonNull ObjectMapper objectMapper) {
         this.messageCache = new TreeMap<>(Comparator.comparing(MessageMeta::timestamp)
                 .thenComparing(MessageMeta::messageId));
+        this.sessionDir = sessionDir;
         this.objectMapper = objectMapper;
         this.filePath = ensureMessageFile(sessionDir);
-        // Load existing messages from file into cache and be done and dusted with
-        // the reading part
-        readMessagesFromFile(sessionDir, objectMapper, msg -> {
-            final var meta = new MessageMeta(msg.getMessageId(), msg.getTimestamp());
-            messageCache.put(meta, msg);
-        });
     }
 
     /**
@@ -150,6 +150,7 @@ public class FileSystemMessageStorage {
         }
         final var stamp = lock.readLock();
         try {
+            loadPreviousMessagesIfNeededUnsafe();
             final var messages = switch (queryDirection) {
                 case NEWER -> {
                     final var subMap = actualPointer == null
@@ -215,6 +216,17 @@ public class FileSystemMessageStorage {
         }
     }
 
+    private void loadPreviousMessagesIfNeededUnsafe() {
+        if (!previousMessagesRead.get()) {
+            // Load existing messages from file into cache
+            readMessagesFromFile(sessionDir, objectMapper, msg -> {
+                final var meta = new MessageMeta(msg.getMessageId(), msg.getTimestamp());
+                messageCache.put(meta, msg);
+            });
+            previousMessagesRead.set(true);
+        }
+    }
+
     @SneakyThrows
     public boolean purgeMessages(String sessionId) {
         final var stamp = lock.writeLock();
@@ -258,9 +270,24 @@ public class FileSystemMessageStorage {
         if (!Files.exists(filePath, LinkOption.NOFOLLOW_LINKS)) {
             return;
         }
+        log.info("Loading existing messages from file: {}", filePath.toAbsolutePath());
         try (final var lines = Files.lines(filePath, StandardCharsets.UTF_8)) {
-            lines.map(line -> readFromJson(line, AgentMessage.class))
-                    .forEach(messageConsumer);
+            lines.forEach(line -> {
+                if (Strings.isNullOrEmpty(line) || line.isBlank()) {
+                    return; // Skip empty or blank lines
+                }
+                try {
+                    final var message = readFromJson(line, AgentMessage.class);
+                    messageConsumer.accept(message);
+                }
+                catch (Exception e) {
+                    log.warn("Skipping corrupted message line: {}", e.getMessage());
+                }
+            });
+        }
+        catch (Exception e) {
+            log.error("Error reading messages from file: %s".formatted(filePath.toAbsolutePath()),
+                      AgentUtils.rootCause(e).getMessage());
         }
     }
 

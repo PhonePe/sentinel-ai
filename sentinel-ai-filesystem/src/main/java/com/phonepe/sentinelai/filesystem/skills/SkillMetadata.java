@@ -39,6 +39,8 @@ public class SkillMetadata {
      */
     String name;
 
+    String title;
+
     /**
      * Required: description of what the skill does and when to use it (max 1024 chars)
      */
