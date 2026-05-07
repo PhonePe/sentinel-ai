@@ -116,7 +116,7 @@ public class EvalEngine {
     private static <R, T> EvalExpectationContext<R> buildContext(TestCase<R, T> testCase,
                                                                  List<AgentMessage> allMessages,
                                                                  ModelUsageStats usageStats) {
-        final var safeMessages = allMessages == null ? List.<AgentMessage>of() : allMessages;
+        final var safeMessages = Objects.requireNonNullElse(allMessages, List.<AgentMessage>of());
         return new EvalExpectationContext<>("eval-run-" + UUID.randomUUID(),
                                             testCase.getInput(),
                                             safeMessages,
@@ -274,9 +274,9 @@ public class EvalEngine {
             var status = EvalStatus.PASSED;
             var details = "All expectations passed";
 
-            final List<Expectation<T, R>> expectations = testCase.getExpectations() == null
-                    ? List.of()
-                    : testCase.getExpectations();
+            final List<Expectation<T, R>> expectations = Objects.requireNonNullElse(testCase.getExpectations(),
+                                                                                    List.of());
+
             for (Expectation<T, R> expectation : expectations) {
                 final var executor = createExecutor(agent, expectation);
                 final var report = executor.evaluateWithReport(output.getData(), context);

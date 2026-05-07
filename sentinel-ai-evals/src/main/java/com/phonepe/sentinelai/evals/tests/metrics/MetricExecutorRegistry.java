@@ -131,9 +131,9 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
                                                       LLMIdentifier llmIdentifier,
                                                       LLMModelFactory llmModelFactory,
                                                       ObjectMapper objectMapper) {
-        final var effectiveEmbeddingFactory = embeddingModelFactory != null
-                ? embeddingModelFactory : EmbeddingModelFactory.noOp();
-        final var effectiveLlmFactory = llmModelFactory != null ? llmModelFactory : LLMModelFactory.noOp();
+        final var effectiveEmbeddingFactory = Objects.requireNonNullElse(embeddingModelFactory,
+                                                                         EmbeddingModelFactory.noOp());
+        final var effectiveLlmFactory = Objects.requireNonNullElse(llmModelFactory, LLMModelFactory.noOp());
 
         final EmbeddingModel embeddingModel = embeddingModelIdentifier != null
                 ? effectiveEmbeddingFactory.create(embeddingModelIdentifier) : null;

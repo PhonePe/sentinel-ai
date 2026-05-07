@@ -51,6 +51,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 
@@ -305,8 +306,8 @@ public class TestFactory {
                                                        final var data = JsonNodeFactory.instance.objectNode();
                                                        data.put(Agent.OUTPUT_VARIABLE_NAME,
                                                                 "{\"score\":0.0,\"reason\":\"mock\"}");
-                                                       final var safeMessages = oldMessages == null ? List
-                                                               .<AgentMessage>of() : oldMessages;
+                                                       final var safeMessages = Objects.requireNonNullElse(oldMessages,
+                                                                                                           List.<AgentMessage>of());
                                                        return CompletableFuture.completedFuture(ModelOutput.success(
                                                                                                                     data,
                                                                                                                     List.of(),

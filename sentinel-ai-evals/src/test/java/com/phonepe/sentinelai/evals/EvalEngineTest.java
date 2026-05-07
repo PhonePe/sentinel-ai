@@ -132,7 +132,7 @@ class EvalEngineTest {
                 agentMessagesPreProcessors) -> {
             final var data = JsonNodeFactory.instance.objectNode();
             data.put(Agent.OUTPUT_VARIABLE_NAME, "{\"score\":0.0,\"reason\":\"mock\"}");
-            final var safeMessages = oldMessages == null ? List.<AgentMessage>of() : oldMessages;
+            final var safeMessages = Objects.requireNonNullElse(oldMessages, List.<AgentMessage>of());
             return CompletableFuture.completedFuture(ModelOutput.success(data,
                                                                          List.of(),
                                                                          safeMessages,
