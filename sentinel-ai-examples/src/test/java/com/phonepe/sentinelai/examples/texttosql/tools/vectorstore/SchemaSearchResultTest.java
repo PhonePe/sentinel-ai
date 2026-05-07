@@ -16,13 +16,24 @@
 
 package com.phonepe.sentinelai.examples.texttosql.tools.vectorstore;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @DisplayName("SchemaSearchResult")
 class SchemaSearchResultTest {
+
+    @Test
+    @DisplayName("record equality is value-based")
+    void equalityIsValueBased() {
+        SchemaSearchResult a = new SchemaSearchResult("table", "users", null, "content", 1.0f);
+        SchemaSearchResult b = new SchemaSearchResult("table", "users", null, "content", 1.0f);
+        assertEquals(a, b);
+        assertEquals(a.hashCode(), b.hashCode());
+    }
 
     @Test
     @DisplayName("record stores all fields correctly")
@@ -38,22 +49,12 @@ class SchemaSearchResultTest {
     @Test
     @DisplayName("record stores column-level result correctly")
     void storesColumnLevelResult() {
-        SchemaSearchResult r =
-                new SchemaSearchResult("column", "orders", "status", "orders status content", 0.75f);
+        SchemaSearchResult r = new SchemaSearchResult("column", "orders", "status", "orders status content", 0.75f);
         assertEquals("column", r.docType());
         assertEquals("orders", r.tableName());
         assertEquals("status", r.columnName());
         assertEquals("orders status content", r.content());
         assertEquals(0.75f, r.score(), 1e-6f);
-    }
-
-    @Test
-    @DisplayName("record equality is value-based")
-    void equalityIsValueBased() {
-        SchemaSearchResult a = new SchemaSearchResult("table", "users", null, "content", 1.0f);
-        SchemaSearchResult b = new SchemaSearchResult("table", "users", null, "content", 1.0f);
-        assertEquals(a, b);
-        assertEquals(a.hashCode(), b.hashCode());
     }
 
     @Test

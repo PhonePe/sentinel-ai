@@ -46,6 +46,7 @@ We use **Spotless** for consistent code styling.
 - Only run spotless on the maven modules & files which are modified rather than running it on all the Maven modules/files in a module in the project.
   You can do this by running `mvn -Pspotless spotless:apply -DspotlessFiles=path/to/modified/file1,path/to/modified/file2` from the root of the project.
 - Styling is based on `java-format.xml` (Eclipse-style).
+- Do not use wildcard imports in source or test classes. Always import the specific classes or static members that are actually used.
 
 ### Language Server (JDTLS)
 If you are using `jdtls` or a similar Java LSP:

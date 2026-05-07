@@ -19,12 +19,18 @@ package com.phonepe.sentinelai.examples.texttosql.tools.vectorstore;
 /**
  * A single result returned by {@link SchemaVectorStore#hybridSearch}.
  *
- * @param docType "table" when the match is a table-level document, "column" when it is a
- *     column-level document
- * @param tableName name of the matching table
+ * @param docType    "table" when the match is a table-level document, "column" when it is a
+ *                   column-level document
+ * @param tableName  name of the matching table
  * @param columnName name of the matching column, or {@code null} for table-level documents
- * @param content full text content that was indexed for this document
- * @param score combined hybrid score (BM25 + cosine similarity), higher is better
+ * @param content    full text content that was indexed for this document
+ * @param score      combined hybrid score (BM25 + cosine similarity), higher is better
  */
 public record SchemaSearchResult(
-        String docType, String tableName, String columnName, String content, float score) {}
+        String docType,
+        String tableName,
+        String columnName,
+        String content,
+        float score
+) {
+}

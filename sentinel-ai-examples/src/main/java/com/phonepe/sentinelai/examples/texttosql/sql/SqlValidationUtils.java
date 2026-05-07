@@ -27,20 +27,21 @@ public final class SqlValidationUtils {
     /** Only allow identifiers that are alphanumeric plus underscores to prevent SQL injection. */
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("^[a-zA-Z_]\\w*$");
 
-    private SqlValidationUtils() {}
+    private SqlValidationUtils() {
+    }
 
     @SuppressWarnings("unused")
     public static void validateDatabaseName(String databaseName) {
         validateIdentifier(databaseName, DATABASE_NAME_LABEL);
     }
 
-    public static void validateTableName(String tableName) {
-        validateIdentifier(tableName, TABLE_NAME_LABEL);
-    }
-
     public static void validateIdentifier(String identifier, String label) {
         if (identifier == null || !SAFE_IDENTIFIER.matcher(identifier).matches()) {
             throw new IllegalArgumentException("Invalid " + label + ": " + identifier);
         }
+    }
+
+    public static void validateTableName(String tableName) {
+        validateIdentifier(tableName, TABLE_NAME_LABEL);
     }
 }

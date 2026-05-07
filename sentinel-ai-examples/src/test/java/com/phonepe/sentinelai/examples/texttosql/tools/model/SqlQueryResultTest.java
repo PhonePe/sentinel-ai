@@ -16,11 +16,14 @@
 
 package com.phonepe.sentinelai.examples.texttosql.tools.model;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("SqlQueryResult")
 class SqlQueryResultTest {
@@ -38,26 +41,10 @@ class SqlQueryResultTest {
     }
 
     @Test
-    @DisplayName("record allows null explanation")
-    void nullExplanationAllowed() {
-        SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), null, 0L);
-        assertNull(result.explanation());
-    }
-
-    @Test
     @DisplayName("record allows empty results list")
     void emptyResultsAllowed() {
         SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), "no rows", 5L);
         assertTrue(result.results().isEmpty());
-    }
-
-    @Test
-    @DisplayName("record equality is value-based")
-    void recordEquality() {
-        List<String> rows = List.of("{\"x\":1}");
-        SqlQueryResult a = new SqlQueryResult("SELECT 1", rows, "ok", 10L);
-        SqlQueryResult b = new SqlQueryResult("SELECT 1", rows, "ok", 10L);
-        assertEquals(a, b);
     }
 
     @Test
@@ -67,6 +54,22 @@ class SqlQueryResultTest {
         SqlQueryResult a = new SqlQueryResult("SELECT 1", rows, "ok", 10L);
         SqlQueryResult b = new SqlQueryResult("SELECT 1", rows, "ok", 10L);
         assertEquals(a.hashCode(), b.hashCode());
+    }
+
+    @Test
+    @DisplayName("record allows null explanation")
+    void nullExplanationAllowed() {
+        SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), null, 0L);
+        assertNull(result.explanation());
+    }
+
+    @Test
+    @DisplayName("record equality is value-based")
+    void recordEquality() {
+        List<String> rows = List.of("{\"x\":1}");
+        SqlQueryResult a = new SqlQueryResult("SELECT 1", rows, "ok", 10L);
+        SqlQueryResult b = new SqlQueryResult("SELECT 1", rows, "ok", 10L);
+        assertEquals(a, b);
     }
 
     @Test

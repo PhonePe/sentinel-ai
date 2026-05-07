@@ -16,22 +16,34 @@
 
 package com.phonepe.sentinelai.examples.texttosql.server;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
+
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jersey.setup.JerseyEnvironment;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.nio.file.Path;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests for {@link SqliteRestServer}.
@@ -51,10 +63,14 @@ class SqliteRestServerTest {
     class FindFreePortTests {
 
         @Test
-        @DisplayName("returns a positive port number")
-        void returnsPositivePort() {
-            final int port = SqliteRestServer.findFreePort();
-            assertTrue(port > 0, "Port should be positive");
+        @DisplayName("returns different ports on successive calls (usually)")
+        void returnsDifferentPortsOnSuccessiveCalls() {
+            // This is probabilistic — two random free ports are highly unlikely to be equal.
+            // We just verify that both calls succeed.
+            final int port1 = SqliteRestServer.findFreePort();
+            final int port2 = SqliteRestServer.findFreePort();
+            assertTrue(port1 > 0);
+            assertTrue(port2 > 0);
         }
 
         @Test
@@ -65,14 +81,10 @@ class SqliteRestServerTest {
         }
 
         @Test
-        @DisplayName("returns different ports on successive calls (usually)")
-        void returnsDifferentPortsOnSuccessiveCalls() {
-            // This is probabilistic — two random free ports are highly unlikely to be equal.
-            // We just verify that both calls succeed.
-            final int port1 = SqliteRestServer.findFreePort();
-            final int port2 = SqliteRestServer.findFreePort();
-            assertTrue(port1 > 0);
-            assertTrue(port2 > 0);
+        @DisplayName("returns a positive port number")
+        void returnsPositivePort() {
+            final int port = SqliteRestServer.findFreePort();
+            assertTrue(port > 0, "Port should be positive");
         }
     }
 
@@ -81,24 +93,31 @@ class SqliteRestServerTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("waitForPort")
-    class WaitForPortTests {
+    @DisplayName("initialize and run")
+    class InitializeAndRunTests {
 
         @Test
-        @DisplayName("throws IllegalStateException when port is not reachable within timeout")
-        void throwsWhenPortNotReachable() throws Exception {
-            final Method m =
-                    SqliteRestServer.class.getDeclaredMethod(
-                            "waitForPort", String.class, int.class, long.class);
-            m.setAccessible(true);
+        @DisplayName("initialize does not throw and ignores the bootstrap argument")
+        @SuppressWarnings("unchecked")
+        void initializeDoesNotThrow() {
+            final SqliteRestServer server = new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
+            final Bootstrap<SqliteRestConfig> bootstrap = mock(Bootstrap.class);
+            // initialize() is a no-op — just confirm it doesn't throw
+            assertDoesNotThrow(() -> server.initialize(bootstrap));
+        }
 
-            // Port 1 is unreachable; 300 ms timeout guarantees a quick failure
-            final InvocationTargetException ex =
-                    assertThrows(
-                            InvocationTargetException.class,
-                            () -> m.invoke(null, "localhost", 1, 300L));
-            assertInstanceOf(IllegalStateException.class, ex.getCause());
-            assertTrue(ex.getCause().getMessage().contains("did not start"));
+        @Test
+        @DisplayName("run registers the SqliteRestResource with jersey environment")
+        void runRegistersResource() {
+            final SqliteRestServer server = new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
+            final Environment environment = mock(Environment.class);
+            final JerseyEnvironment jersey = mock(JerseyEnvironment.class);
+            when(environment.jersey()).thenReturn(jersey);
+
+            final SqliteRestConfig config = new SqliteRestConfig();
+            server.run(config, environment);
+
+            verify(jersey, times(1)).register(any(SqliteRestResource.class));
         }
     }
 
@@ -110,37 +129,6 @@ class SqliteRestServerTest {
     // =========================================================================
     // initialize & run — Dropwizard lifecycle hooks (via Mockito)
     // =========================================================================
-
-    @Nested
-    @DisplayName("initialize and run")
-    class InitializeAndRunTests {
-
-        @Test
-        @DisplayName("initialize does not throw and ignores the bootstrap argument")
-        @SuppressWarnings("unchecked")
-        void initializeDoesNotThrow() {
-            final SqliteRestServer server =
-                    new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
-            final Bootstrap<SqliteRestConfig> bootstrap = mock(Bootstrap.class);
-            // initialize() is a no-op — just confirm it doesn't throw
-            assertDoesNotThrow(() -> server.initialize(bootstrap));
-        }
-
-        @Test
-        @DisplayName("run registers the SqliteRestResource with jersey environment")
-        void runRegistersResource() {
-            final SqliteRestServer server =
-                    new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
-            final Environment environment = mock(Environment.class);
-            final JerseyEnvironment jersey = mock(JerseyEnvironment.class);
-            when(environment.jersey()).thenReturn(jersey);
-
-            final SqliteRestConfig config = new SqliteRestConfig();
-            server.run(config, environment);
-
-            verify(jersey, times(1)).register(any(SqliteRestResource.class));
-        }
-    }
 
     @Nested
     @DisplayName("startEmbedded")
@@ -159,14 +147,38 @@ class SqliteRestServerTest {
             DatabaseInitializer.ensureInitialised(dbPath);
 
             final int port = SqliteRestServer.findFreePort();
-            final String baseUrl =
-                    SqliteRestServer.startEmbedded(
-                            dbPath.toAbsolutePath().toString(), port, new ObjectMapper());
+            final String baseUrl = SqliteRestServer.startEmbedded(
+                                                                  dbPath.toAbsolutePath().toString(),
+                                                                  port,
+                                                                  new ObjectMapper());
 
             assertNotNull(baseUrl, "Base URL should not be null");
             assertTrue(
-                    baseUrl.startsWith("http://localhost:"),
-                    "Base URL should start with http://localhost:");
+                       baseUrl.startsWith("http://localhost:"),
+                       "Base URL should start with http://localhost:");
+        }
+    }
+
+    @Nested
+    @DisplayName("waitForPort")
+    class WaitForPortTests {
+
+        @Test
+        @DisplayName("throws IllegalStateException when port is not reachable within timeout")
+        void throwsWhenPortNotReachable() throws Exception {
+            final Method m = SqliteRestServer.class.getDeclaredMethod(
+                                                                      "waitForPort",
+                                                                      String.class,
+                                                                      int.class,
+                                                                      long.class);
+            m.setAccessible(true);
+
+            // Port 1 is unreachable; 300 ms timeout guarantees a quick failure
+            final InvocationTargetException ex = assertThrows(
+                                                              InvocationTargetException.class,
+                                                              () -> m.invoke(null, "localhost", 1, 300L));
+            assertInstanceOf(IllegalStateException.class, ex.getCause());
+            assertTrue(ex.getCause().getMessage().contains("did not start"));
         }
     }
 }

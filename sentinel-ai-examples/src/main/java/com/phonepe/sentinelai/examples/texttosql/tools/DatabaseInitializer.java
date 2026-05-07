@@ -16,6 +16,13 @@
 
 package com.phonepe.sentinelai.examples.texttosql.tools;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import lombok.SneakyThrows;
+import lombok.val;
+import lombok.experimental.UtilityClass;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -28,11 +35,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
-import lombok.SneakyThrows;
-import lombok.experimental.UtilityClass;
-import lombok.val;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Utility class that initialises the SQLite e-commerce database on first run.
@@ -40,10 +42,10 @@ import org.slf4j.LoggerFactory;
  * <p>If the database file does not exist (or is empty), this class:
  *
  * <ol>
- *   <li>Creates the database file at the specified path.
- *   <li>Executes the bundled {@code schema.sql} DDL to create all tables and indexes.
- *   <li>Loads CSV data from the bundled {@code db/ecommercdata/*.csv} files into each table, using a plain
- *       {@link BufferedReader} (no extra dependencies).
+ * <li>Creates the database file at the specified path.
+ * <li>Executes the bundled {@code schema.sql} DDL to create all tables and indexes.
+ * <li>Loads CSV data from the bundled {@code db/ecommercdata/*.csv} files into each table, using a plain
+ * {@link BufferedReader} (no extra dependencies).
  * </ol>
  *
  * <p>If the database already exists and has tables, it is left untouched.
@@ -54,7 +56,7 @@ public class DatabaseInitializer {
     private static final Logger log = LoggerFactory.getLogger(DatabaseInitializer.class);
 
     private static final String[] TABLE_ORDER = {
-        "users", "sellers", "catalog", "inventory", "orders"
+            "users", "sellers", "catalog", "inventory", "orders"
     };
 
     /**
@@ -93,6 +95,11 @@ public class DatabaseInitializer {
     // Internal helpers
     // -------------------------------------------------------------------------
 
+    public static void main(String[] args) {
+        final Path dbPath = Path.of("sentinel-ai-examples/.data/ecommerce.db");
+        ensureInitialised(dbPath);
+    }
+
     /**
      * Parses a single CSV line into tokens, respecting double-quoted fields (which may contain
      * commas). Escaped inner quotes ({@code ""}) are unescaped.
@@ -112,22 +119,27 @@ public class DatabaseInitializer {
                     // Doubled quote inside quoted field — emit a literal quote, skip both chars
                     current.append('"');
                     i += 2;
-                } else if (c == '"') {
+                }
+                else if (c == '"') {
                     inQuotes = false; // closing quote
                     i++;
-                } else {
+                }
+                else {
                     current.append(c);
                     i++;
                 }
-            } else {
+            }
+            else {
                 if (c == '"') {
                     inQuotes = true;
                     i++;
-                } else if (c == ',') {
+                }
+                else if (c == ',') {
                     tokens.add(current.toString());
                     current.setLength(0);
                     i++;
-                } else {
+                }
+                else {
                     current.append(c);
                     i++;
                 }
@@ -135,24 +147,6 @@ public class DatabaseInitializer {
         }
         tokens.add(current.toString()); // last field
         return tokens;
-    }
-
-    /**
-     * Opens a resource stream by path, trying the thread context classloader first (so that
-     * test-classpath resources in {@code target/test-classes} are found even when this class is
-     * loaded from a cached JAR), then falling back to the class's own classloader.
-     */
-    private static java.io.InputStream openResource(String path) {
-        final var tccl = Thread.currentThread().getContextClassLoader();
-        // Strip the leading '/' that getResourceAsStream expects but ClassLoader does not
-        final String stripped = path.startsWith("/") ? path.substring(1) : path;
-        if (tccl != null) {
-            final var stream = tccl.getResourceAsStream(stripped);
-            if (stream != null) {
-                return stream;
-            }
-        }
-        return DatabaseInitializer.class.getResourceAsStream(path);
     }
 
     @SneakyThrows
@@ -188,10 +182,9 @@ public class DatabaseInitializer {
     @SneakyThrows
     private static boolean isDatabasePopulated(Path dbPath) {
         try (Connection conn = connect(dbPath);
-                var stmt = conn.createStatement();
-                var rs =
-                        stmt.executeQuery(
-                                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")) {
+             var stmt = conn.createStatement();
+             var rs = stmt.executeQuery(
+                                        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")) {
             return rs.next() && rs.getInt(1) > 0;
         }
     }
@@ -206,11 +199,10 @@ public class DatabaseInitializer {
         final var stream = openResource(resource);
         if (stream == null) {
             throw new IllegalStateException(
-                    "No CSV file found for table '" + table + "' at " + resource);
+                                            "No CSV file found for table '" + table + "' at " + resource);
         }
 
-        try (var reader =
-                new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+        try (var reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             // First line = column headers
             final String headerLine = reader.readLine();
             if (headerLine == null) {
@@ -221,14 +213,13 @@ public class DatabaseInitializer {
             final List<String> headers = parseCsvLine(headerLine);
             final int colCount = headers.size();
             final String placeholders = "?,".repeat(colCount).replaceAll(",$", "");
-            final String insertSql =
-                    "INSERT OR IGNORE INTO \""
-                            + table
-                            + "\" (\""
-                            + String.join("\", \"", headers)
-                            + "\") VALUES ("
-                            + placeholders
-                            + ")";
+            final String insertSql = "INSERT OR IGNORE INTO \""
+                    + table
+                    + "\" (\""
+                    + String.join("\", \"", headers)
+                    + "\") VALUES ("
+                    + placeholders
+                    + ")";
 
             try (var pstmt = conn.prepareStatement(insertSql)) {
                 String csvLine;
@@ -243,7 +234,8 @@ public class DatabaseInitializer {
                         final String val = i < row.size() ? row.get(i).trim() : "";
                         if (val.isEmpty()) {
                             pstmt.setNull(i + 1, java.sql.Types.NULL);
-                        } else {
+                        }
+                        else {
                             pstmt.setString(i + 1, val);
                         }
                     }
@@ -256,8 +248,21 @@ public class DatabaseInitializer {
         }
     }
 
-    public static void main(String[] args) {
-        final Path dbPath = Path.of("sentinel-ai-examples/.data/ecommerce.db");
-        ensureInitialised(dbPath);
+    /**
+     * Opens a resource stream by path, trying the thread context classloader first (so that
+     * test-classpath resources in {@code target/test-classes} are found even when this class is
+     * loaded from a cached JAR), then falling back to the class's own classloader.
+     */
+    private static java.io.InputStream openResource(String path) {
+        final var tccl = Thread.currentThread().getContextClassLoader();
+        // Strip the leading '/' that getResourceAsStream expects but ClassLoader does not
+        final String stripped = path.startsWith("/") ? path.substring(1) : path;
+        if (tccl != null) {
+            final var stream = tccl.getResourceAsStream(stripped);
+            if (stream != null) {
+                return stream;
+            }
+        }
+        return DatabaseInitializer.class.getResourceAsStream(path);
     }
 }

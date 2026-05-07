@@ -16,63 +16,70 @@
 
 package com.phonepe.sentinelai.examples.texttosql.sql;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 @DisplayName("SqlValidationUtils")
 class SqlValidationUtilsTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"users", "orders_2025", "inventory_archive"})
-    @DisplayName("accepts valid table names")
-    void acceptsValidTableNames(String tableName) {
-        assertDoesNotThrow(() -> SqlValidationUtils.validateTableName(tableName));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"analytics", "main_db", "warehouse_01"})
+    @ValueSource(strings = {
+            "analytics", "main_db", "warehouse_01"
+    })
     @DisplayName("accepts valid database names")
     void acceptsValidDatabaseNames(String databaseName) {
         assertDoesNotThrow(() -> SqlValidationUtils.validateDatabaseName(databaseName));
     }
 
     @ParameterizedTest
-    @NullSource
-    @ValueSource(strings = {"", "bad table", "users;DROP", "123users", "../users"})
-    @DisplayName("rejects invalid table names")
-    void rejectsInvalidTableNames(String tableName) {
-        final IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () -> SqlValidationUtils.validateTableName(tableName));
-        assertEquals("Invalid table name: " + tableName, exception.getMessage());
+    @ValueSource(strings = {
+            "users", "orders_2025", "inventory_archive"
+    })
+    @DisplayName("accepts valid table names")
+    void acceptsValidTableNames(String tableName) {
+        assertDoesNotThrow(() -> SqlValidationUtils.validateTableName(tableName));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "bad db", "../prod", "1primary"})
+    @ValueSource(strings = {
+            "", "bad db", "../prod", "1primary"
+    })
     @DisplayName("rejects invalid database names")
     void rejectsInvalidDatabaseNames(String databaseName) {
-        final IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () -> SqlValidationUtils.validateDatabaseName(databaseName));
+        final IllegalArgumentException exception = assertThrows(
+                                                                IllegalArgumentException.class,
+                                                                () -> SqlValidationUtils.validateDatabaseName(
+                                                                                                              databaseName));
         assertEquals("Invalid database name: " + databaseName, exception.getMessage());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {
+            "", "bad table", "users;DROP", "123users", "../users"
+    })
+    @DisplayName("rejects invalid table names")
+    void rejectsInvalidTableNames(String tableName) {
+        final IllegalArgumentException exception = assertThrows(
+                                                                IllegalArgumentException.class,
+                                                                () -> SqlValidationUtils.validateTableName(tableName));
+        assertEquals("Invalid table name: " + tableName, exception.getMessage());
     }
 
     @ParameterizedTest
     @NullSource
     @DisplayName("rejects null database names")
     void rejectsNullDatabaseNames(String databaseName) {
-        final IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () -> SqlValidationUtils.validateDatabaseName(databaseName));
+        final IllegalArgumentException exception = assertThrows(
+                                                                IllegalArgumentException.class,
+                                                                () -> SqlValidationUtils.validateDatabaseName(
+                                                                                                              databaseName));
         assertEquals("Invalid database name: null", exception.getMessage());
     }
 }

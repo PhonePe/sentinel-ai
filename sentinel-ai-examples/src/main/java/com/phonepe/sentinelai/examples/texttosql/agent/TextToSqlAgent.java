@@ -23,15 +23,16 @@ import com.phonepe.sentinelai.core.agent.ApproveAllToolRuns;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
 import com.phonepe.sentinelai.core.errorhandling.DefaultErrorHandler;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-
 import com.phonepe.sentinelai.examples.texttosql.tools.LocalTools;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
+
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Singular;
+
+import java.util.List;
+import java.util.Map;
+import java.util.TimeZone;
 
 /**
  * Text-to-SQL agent that translates natural-language questions into SQLite queries and returns
@@ -40,13 +41,13 @@ import lombok.Singular;
  * <p>The agent is equipped with three layers of tools:
  *
  * <ol>
- *   <li><b>Local tools</b> — registered via {@code registerTools()} after construction; these
- *       include timestamp conversion, schema inspection, and result formatting ({@link
- *       LocalTools}).
- *   <li><b>Remote-HTTP toolbox</b> — registered via {@code registerToolbox()} after construction;
- *       these call the embedded Dropwizard SQLite REST server.
- *   <li><b>Skills extension</b> — injected via {@code extensions} at construction time; provides
- *       the SQL execution skill loaded from {@code resources/skills/sql-execution/}.
+ * <li><b>Local tools</b> — registered via {@code registerTools()} after construction; these
+ * include timestamp conversion, schema inspection, and result formatting ({@link
+ * LocalTools}).
+ * <li><b>Remote-HTTP toolbox</b> — registered via {@code registerToolbox()} after construction;
+ * these call the embedded Dropwizard SQLite REST server.
+ * <li><b>Skills extension</b> — injected via {@code extensions} at construction time; provides
+ * the SQL execution skill loaded from {@code resources/skills/sql-execution/}.
  * </ol>
  *
  * <p>Output type is {@link SqlQueryResult}, a record holding the generated SQL, result rows, a
@@ -54,8 +55,7 @@ import lombok.Singular;
  */
 public class TextToSqlAgent extends Agent<String, SqlQueryResult, TextToSqlAgent> {
 
-    private static final String SYSTEM_PROMPT =
-            """
+    private static final String SYSTEM_PROMPT = """
             You are an expert SQL assistant for an e-commerce SQLite database.
             Translate natural-language questions into SQL queries, execute them, and return structured results.
             Follow the sql-execution skill protocol for every request.
@@ -66,24 +66,24 @@ public class TextToSqlAgent extends Agent<String, SqlQueryResult, TextToSqlAgent
     /**
      * Constructs the agent.
      *
-     * @param setup agent setup (model, mapper, model settings)
+     * @param setup      agent setup (model, mapper, model settings)
      * @param extensions agent extensions, e.g. {@code AgentSkillsExtension}
      */
     @Builder
     public TextToSqlAgent(
-            @NonNull AgentSetup setup,
-            @Singular List<AgentExtension<String, SqlQueryResult, TextToSqlAgent>> extensions,
-            @NonNull OutputValidator<String, SqlQueryResult> outputValidator) {
+                          @NonNull AgentSetup setup,
+                          @Singular List<AgentExtension<String, SqlQueryResult, TextToSqlAgent>> extensions,
+                          @NonNull OutputValidator<String, SqlQueryResult> outputValidator) {
         super(
-                SqlQueryResult.class,
-                SYSTEM_PROMPT,
-                setup,
-                extensions,
-                Map.of(),
-                new ApproveAllToolRuns<>(),
-                outputValidator,
-                new DefaultErrorHandler<>(),
-                new NeverTerminateEarlyStrategy());
+              SqlQueryResult.class,
+              SYSTEM_PROMPT,
+              setup,
+              extensions,
+              Map.of(),
+              new ApproveAllToolRuns<>(),
+              outputValidator,
+              new DefaultErrorHandler<>(),
+              new NeverTerminateEarlyStrategy());
     }
 
     @Override

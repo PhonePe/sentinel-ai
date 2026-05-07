@@ -16,21 +16,24 @@
 
 package com.phonepe.sentinelai.examples.texttosql.server;
 
-import static java.nio.file.Files.createTempFile;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.dropwizard.core.Application;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
+
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+
+import static java.nio.file.Files.createTempFile;
 
 /**
  * Embedded Dropwizard application that exposes a REST API mirroring the functionality of the {@code
@@ -77,9 +80,9 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
      * Starts the Dropwizard server in a daemon thread and returns once the server is ready to
      * accept connections.
      *
-     * @param dbPath path to the SQLite database file
-     * @param port HTTP port to bind (use 0 for OS-assigned free port; however Dropwizard requires a
-     *     concrete port here, so the CLI picks a free port before calling this)
+     * @param dbPath       path to the SQLite database file
+     * @param port         HTTP port to bind (use 0 for OS-assigned free port; however Dropwizard requires a
+     *                     concrete port here, so the CLI picks a free port before calling this)
      * @param objectMapper shared Jackson mapper
      * @return the base URL, e.g. {@code http://localhost:8765}
      */
@@ -91,29 +94,35 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
 
         // Dropwizard parses CLI args; we provide "server" command with an
         // inline YAML config that overrides the default ports.
-        final String[] args = {"server", buildInlineConfig(port)};
+        final String[] args = {
+                "server", buildInlineConfig(port)
+        };
 
-        final var startFuture =
-                CompletableFuture.runAsync(
-                        () -> {
-                            try {
-                                server.run(args);
-                            } catch (Exception e) {
-                                throw new IllegalStateException(
-                                        "Failed to start embedded SQLite REST server", e);
-                            }
-                        });
+        final var startFuture = CompletableFuture.runAsync(
+                                                           () -> {
+                                                               try {
+                                                                   server.run(args);
+                                                               }
+                                                               catch (Exception e) {
+                                                                   throw new IllegalStateException(
+                                                                                                   "Failed to start embedded SQLite REST server",
+                                                                                                   e);
+                                                               }
+                                                           });
 
         // Give the server up to 30 seconds to start
         try {
             startFuture.get(30, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warn("Interrupted while waiting for server start: {}", e.getMessage());
-        } catch (TimeoutException e) {
+        }
+        catch (TimeoutException e) {
             // Timeout is expected — Dropwizard's run() blocks serving requests,
             // so we just wait briefly for the port to become available instead.
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             if (!(e.getCause() instanceof java.net.BindException)) {
                 log.warn("Server start completed with: {}", e.getMessage());
             }
@@ -139,8 +148,7 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
     @SneakyThrows
     static String buildInlineConfig(int port) {
         final String template;
-        try (var stream =
-                SqliteRestServer.class.getClassLoader().getResourceAsStream("dw/config.yml")) {
+        try (var stream = SqliteRestServer.class.getClassLoader().getResourceAsStream("dw/config.yml")) {
             if (stream == null) {
                 throw new IllegalStateException("Classpath resource dw/config.yml not found");
             }
@@ -148,15 +156,13 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
         }
 
         // Replace the shell-style default-value placeholders with the actual ports.
-        final String yaml =
-                template.replaceAll("\\$\\{DW_PORT(?::-[^}]*)?}", String.valueOf(port))
-                        .replaceAll("\\$\\{DW_ADMIN_PORT(?::-[^}]*)?}", String.valueOf(port + 1));
+        final String yaml = template.replaceAll("\\$\\{DW_PORT(?::-[^}]*)?}", String.valueOf(port))
+                .replaceAll("\\$\\{DW_ADMIN_PORT(?::-[^}]*)?}", String.valueOf(port + 1));
 
         // java:S5443 — temp file created with owner-only permissions (rw-------) to prevent
         // race conditions. The file contains Dropwizard config (ports only, no credentials).
-        final var ownerOnly =
-                PosixFilePermissions.asFileAttribute(
-                        PosixFilePermissions.fromString("rw-------"));
+        final var ownerOnly = PosixFilePermissions.asFileAttribute(
+                                                                   PosixFilePermissions.fromString("rw-------"));
         final var tmpFile = createTempFile("sqlite-rest-server-", ".yaml", ownerOnly);
         java.nio.file.Files.writeString(tmpFile, yaml);
         tmpFile.toFile().deleteOnExit();
@@ -176,13 +182,14 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
             try (var socket = new Socket()) {
                 socket.connect(new InetSocketAddress(host, port), 500);
                 return; // connected — server is ready
-            } catch (Exception ignored) {
+            }
+            catch (Exception ignored) {
                 // Not yet available; retry after a short delay
             }
             Thread.sleep(200);
         }
         throw new IllegalStateException(
-                "SQLite REST server did not start within " + timeoutMs + "ms");
+                                        "SQLite REST server did not start within " + timeoutMs + "ms");
     }
 
     @Override

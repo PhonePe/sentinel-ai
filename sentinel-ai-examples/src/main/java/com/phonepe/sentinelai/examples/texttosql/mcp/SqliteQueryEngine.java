@@ -17,8 +17,15 @@
 package com.phonepe.sentinelai.examples.texttosql.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.phonepe.sentinelai.examples.texttosql.sql.SqlValidationUtils;
+
 import io.modelcontextprotocol.spec.McpSchema;
+
+import com.phonepe.sentinelai.examples.texttosql.sql.SqlValidationUtils;
+
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -28,9 +35,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Executes SQL read operations against an SQLite database and returns {@link
@@ -64,31 +68,30 @@ public class SqliteQueryEngine {
         }
 
         final String upper = sql.trim().toUpperCase();
-        final Set<String> writePrefixes =
-                Set.of(
-                        "INSERT",
-                        "UPDATE",
-                        "DELETE",
-                        "DROP",
-                        "ALTER",
-                        "CREATE",
-                        "REPLACE",
-                        "TRUNCATE",
-                        "MERGE",
-                        "ATTACH",
-                        "DETACH");
+        final Set<String> writePrefixes = Set.of(
+                                                 "INSERT",
+                                                 "UPDATE",
+                                                 "DELETE",
+                                                 "DROP",
+                                                 "ALTER",
+                                                 "CREATE",
+                                                 "REPLACE",
+                                                 "TRUNCATE",
+                                                 "MERGE",
+                                                 "ATTACH",
+                                                 "DETACH");
         for (final String prefix : writePrefixes) {
             if (upper.contains(prefix)) {
                 return error(
-                        "Write DML statements are not allowed via this endpoint. "
-                                + "Statement starts with: "
-                                + prefix);
+                             "Write DML statements are not allowed via this endpoint. "
+                                     + "Statement starts with: "
+                                     + prefix);
             }
         }
 
-        @SuppressWarnings("unchecked")
-        final List<Object> values =
-                args.containsKey("values") ? (List<Object>) args.get("values") : List.of();
+        @SuppressWarnings("unchecked") final List<Object> values = args.containsKey("values") ? (List<Object>) args.get(
+                                                                                                                        "values")
+                : List.of();
 
         log.info("Executing SQL: {}", sql);
         final long startMs = System.currentTimeMillis();
@@ -108,26 +111,41 @@ public class SqliteQueryEngine {
             result.put("rowCount", rows.size());
             result.put("executionTimeMs", elapsed);
             return success(mapper.writeValueAsString(result));
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.error("SQL execution error: {}", e.getMessage());
             return error("SQL execution failed: " + e.getMessage());
         }
     }
 
-    /** Lists all user-defined tables in the SQLite database. */
+    /** Returns high-level metadata about the database (path, table count, size). */
     @SneakyThrows
-    public McpSchema.CallToolResult listTables(ObjectMapper mapper) {
+    public McpSchema.CallToolResult getDatabaseInfo(ObjectMapper mapper) {
         try (Connection conn = connect()) {
-            final List<Map<String, Object>> rows =
-                    executeSelect(
-                            conn,
-                            "SELECT name FROM sqlite_master WHERE type='table' "
-                                    + "AND name NOT LIKE 'sqlite_%' ORDER BY name",
-                            List.of());
-            final List<String> tables = rows.stream().map(r -> (String) r.get("name")).toList();
-            return success(mapper.writeValueAsString(Map.of("tables", tables)));
-        } catch (Exception e) {
-            return error("Failed to list tables: " + e.getMessage());
+            final List<Map<String, Object>> tables = executeSelect(
+                                                                   conn,
+                                                                   "SELECT name FROM sqlite_master WHERE type='table' "
+                                                                           + "AND name NOT LIKE 'sqlite_%'",
+                                                                   List.of());
+            final List<Map<String, Object>> pageSize = executeSelect(conn, "PRAGMA page_size", List.of());
+            final List<Map<String, Object>> pageCount = executeSelect(conn, "PRAGMA page_count", List.of());
+
+            final long ps = pageSize.isEmpty()
+                    ? 0L
+                    : Long.parseLong(String.valueOf(pageSize.get(0).get("page_size")));
+            final long pc = pageCount.isEmpty()
+                    ? 0L
+                    : Long.parseLong(String.valueOf(pageCount.get(0).get("page_count")));
+
+            final Map<String, Object> info = new LinkedHashMap<>();
+            info.put("databasePath", dbPath);
+            info.put("tableCount", tables.size());
+            info.put("tables", tables.stream().map(r -> r.get("name")).toList());
+            info.put("approximateSizeBytes", ps * pc);
+            return success(mapper.writeValueAsString(info));
+        }
+        catch (Exception e) {
+            return error("Failed to get database info: " + e.getMessage());
         }
     }
 
@@ -140,54 +158,39 @@ public class SqliteQueryEngine {
         }
         try {
             SqlValidationUtils.validateTableName(tableName);
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             return error(e.getMessage());
         }
         try (Connection conn = connect()) {
-            final List<Map<String, Object>> columns =
-                    executeSelect(conn, "PRAGMA table_info(\"" + tableName + "\")", List.of());
+            final List<Map<String, Object>> columns = executeSelect(conn,
+                                                                    "PRAGMA table_info(\"" + tableName + "\")",
+                                                                    List.of());
             if (columns.isEmpty()) {
                 return error("Table not found: " + tableName);
             }
             return success(
-                    mapper.writeValueAsString(Map.of("tableName", tableName, "columns", columns)));
-        } catch (Exception e) {
+                           mapper.writeValueAsString(Map.of("tableName", tableName, "columns", columns)));
+        }
+        catch (Exception e) {
             return error("Failed to get schema for table '" + tableName + "': " + e.getMessage());
         }
     }
 
-    /** Returns high-level metadata about the database (path, table count, size). */
+    /** Lists all user-defined tables in the SQLite database. */
     @SneakyThrows
-    public McpSchema.CallToolResult getDatabaseInfo(ObjectMapper mapper) {
+    public McpSchema.CallToolResult listTables(ObjectMapper mapper) {
         try (Connection conn = connect()) {
-            final List<Map<String, Object>> tables =
-                    executeSelect(
-                            conn,
-                            "SELECT name FROM sqlite_master WHERE type='table' "
-                                    + "AND name NOT LIKE 'sqlite_%'",
-                            List.of());
-            final List<Map<String, Object>> pageSize =
-                    executeSelect(conn, "PRAGMA page_size", List.of());
-            final List<Map<String, Object>> pageCount =
-                    executeSelect(conn, "PRAGMA page_count", List.of());
-
-            final long ps =
-                    pageSize.isEmpty()
-                            ? 0L
-                            : Long.parseLong(String.valueOf(pageSize.get(0).get("page_size")));
-            final long pc =
-                    pageCount.isEmpty()
-                            ? 0L
-                            : Long.parseLong(String.valueOf(pageCount.get(0).get("page_count")));
-
-            final Map<String, Object> info = new LinkedHashMap<>();
-            info.put("databasePath", dbPath);
-            info.put("tableCount", tables.size());
-            info.put("tables", tables.stream().map(r -> r.get("name")).toList());
-            info.put("approximateSizeBytes", ps * pc);
-            return success(mapper.writeValueAsString(info));
-        } catch (Exception e) {
-            return error("Failed to get database info: " + e.getMessage());
+            final List<Map<String, Object>> rows = executeSelect(
+                                                                 conn,
+                                                                 "SELECT name FROM sqlite_master WHERE type='table' "
+                                                                         + "AND name NOT LIKE 'sqlite_%' ORDER BY name",
+                                                                 List.of());
+            final List<String> tables = rows.stream().map(r -> (String) r.get("name")).toList();
+            return success(mapper.writeValueAsString(Map.of("tables", tables)));
+        }
+        catch (Exception e) {
+            return error("Failed to list tables: " + e.getMessage());
         }
     }
 
@@ -204,9 +207,19 @@ public class SqliteQueryEngine {
         return DriverManager.getConnection("jdbc:sqlite:" + dbPath);
     }
 
+    private McpSchema.CallToolResult error(String message) {
+        return McpSchema.CallToolResult.builder().addTextContent(message).isError(true).build();
+    }
+
+    // -------------------------------------------------------------------------
+    // Result helpers
+    // -------------------------------------------------------------------------
+
     @SneakyThrows
     private List<Map<String, Object>> executeSelect(
-            Connection conn, String sql, List<Object> params) {
+                                                    Connection conn,
+                                                    String sql,
+                                                    List<Object> params) {
         try (final var stmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < params.size(); i++) {
                 stmt.setObject(i + 1, params.get(i));
@@ -227,15 +240,7 @@ public class SqliteQueryEngine {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Result helpers
-    // -------------------------------------------------------------------------
-
     private McpSchema.CallToolResult success(String text) {
         return McpSchema.CallToolResult.builder().addTextContent(text).isError(false).build();
-    }
-
-    private McpSchema.CallToolResult error(String message) {
-        return McpSchema.CallToolResult.builder().addTextContent(message).isError(true).build();
     }
 }

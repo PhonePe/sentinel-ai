@@ -17,16 +17,19 @@
 package com.phonepe.sentinelai.examples.texttosql.tools;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.examples.texttosql.cli.ConsoleUtils;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A {@link ToolBox} that lets the LLM pause and ask the human operator for clarification.
@@ -34,9 +37,9 @@ import org.slf4j.LoggerFactory;
  * <p>Two tools are exposed:
  *
  * <ul>
- *   <li>{@code ask_user_question} — for open-ended questions where any free-text answer is valid.
- *   <li>{@code ask_user_to_choose} — for situations where there are a fixed set of discrete
- *       choices; the LLM supplies the option labels and the user picks one.
+ * <li>{@code ask_user_question} — for open-ended questions where any free-text answer is valid.
+ * <li>{@code ask_user_to_choose} — for situations where there are a fixed set of discrete
+ * choices; the LLM supplies the option labels and the user picks one.
  * </ul>
  *
  * <p>Both tools block the current thread until the user presses Enter, making the call
@@ -60,16 +63,61 @@ public class AskUserTool implements ToolBox {
     private static final String ANSI_BRIGHT_GREEN = "\u001B[92m";
 
     /** Shared stdin reader — reused across calls so the stream is never closed prematurely. */
-    private final BufferedReader stdin =
-            new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+    private final BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
 
-    @Override
-    public String name() {
-        return "ask_user_tool";
+    /** Prints a styled multiple-choice menu to stdout and the {@code >} prompt. */
+    private static void printChoices(String question, List<String> choices) {
+        System.out.println();
+        System.out.println(
+                           ANSI_BOLD
+                                   + ANSI_CYAN
+                                   + "┌─ Please choose one of the following "
+                                   + "─".repeat(33)
+                                   + "┐"
+                                   + ANSI_RESET);
+        System.out.println(ANSI_BRIGHT_YELLOW + "  " + question + ANSI_RESET);
+        System.out.println();
+        for (int i = 0; i < choices.size(); i++) {
+            System.out.printf(
+                              "  %s%s%d.%s %s%n",
+                              ANSI_BOLD,
+                              ANSI_BRIGHT_YELLOW,
+                              i + 1,
+                              ANSI_RESET,
+                              choices.get(i));
+        }
+        System.out.println(ANSI_BOLD + ANSI_CYAN + "└" + "─".repeat(70) + "┘" + ANSI_RESET);
+        System.out.println("  Enter a number (1–" + choices.size() + ") or type your answer:");
+        printInputPrompt();
     }
 
     // -------------------------------------------------------------------------
     // Tools
+    // -------------------------------------------------------------------------
+
+    /** Prints the {@code >} input prompt. */
+    private static void printInputPrompt() {
+        System.out.print(ANSI_BOLD + ANSI_BRIGHT_GREEN + "> " + ANSI_RESET);
+        System.out.flush();
+    }
+
+    /** Prints a styled question banner to stdout and the {@code >} prompt. */
+    private static void printQuestion(String question) {
+        System.out.println();
+        System.out.println(
+                           ANSI_BOLD
+                                   + ANSI_CYAN
+                                   + "┌─ Clarification needed "
+                                   + "─".repeat(47)
+                                   + "┐"
+                                   + ANSI_RESET);
+        System.out.println(ANSI_BRIGHT_YELLOW + "  " + question + ANSI_RESET);
+        System.out.println(ANSI_BOLD + ANSI_CYAN + "└" + "─".repeat(70) + "┘" + ANSI_RESET);
+        printInputPrompt();
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
     // -------------------------------------------------------------------------
 
     /**
@@ -83,13 +131,10 @@ public class AskUserTool implements ToolBox {
      * @return the raw text the user typed, or {@code "<no input>"} if EOF was reached
      */
     @Tool(
-            name = "ask_user_question",
-            timeoutSeconds = -1,
-            value =
-                    """
-                            Ask the user a free-form clarification question and wait for their answer. 
-                            Use this when the user's intent is ambiguous or a required piece of information 
-                            is missing and cannot be expressed as a list of fixed choices. 
+            name = "ask_user_question", timeoutSeconds = -1, value = """
+                            Ask the user a free-form clarification question and wait for their answer.
+                            Use this when the user's intent is ambiguous or a required piece of information
+                            is missing and cannot be expressed as a list of fixed choices.
                             The user's typed response is returned verbatim.
                     """)
     public String askUserQuestion(String question) {
@@ -97,7 +142,8 @@ public class AskUserTool implements ToolBox {
         try {
             printQuestion(question);
             return readUserInput();
-        } finally {
+        }
+        finally {
             ConsoleUtils.enableSpinner();
         }
     }
@@ -110,16 +156,13 @@ public class AskUserTool implements ToolBox {
      * ranges, different aggregation levels, or different related tables.
      *
      * @param question the question or context explaining what is being decided
-     * @param choices a semicolon-separated string of option labels to present (must contain at
-     *     least two items, e.g. {@code "Option A;Option B;Option C"})
+     * @param choices  a semicolon-separated string of option labels to present (must contain at
+     *                 least two items, e.g. {@code "Option A;Option B;Option C"})
      * @return the label of the chosen option, exactly as supplied in {@code choices}, or the raw
-     *     input if the user typed something not matching any option number or label
+     *         input if the user typed something not matching any option number or label
      */
     @Tool(
-            name = "ask_user_to_choose",
-            timeoutSeconds = -1,
-            value =
-                    """
+            name = "ask_user_to_choose", timeoutSeconds = -1, value = """
                             Present the user with a numbered list of discrete choices and wait for them to pick one.
                             Use this when there are multiple valid interpretations or alternative execution paths — for example
                             different time ranges, different tables or fields, grouping keys, or alternative queries —
@@ -132,12 +175,10 @@ public class AskUserTool implements ToolBox {
                             **IMPORTANT**: Because ';' (semi-colon) is used as a choice delimiter, it can't be used in the choice descriptions
                     """)
     public String askUserToChoose(
-            @JsonPropertyDescription("The question to ask the user")
-            String question,
-            @JsonPropertyDescription(
-                    "The answer choices as a semicolon-separated string, e.g. \"Option A;Option B;Option C\"."
-                            + " Each token becomes one numbered option presented to the user.")
-            String choices) {
+                                  @JsonPropertyDescription("The question to ask the user") String question,
+                                  @JsonPropertyDescription(
+                                      "The answer choices as a semicolon-separated string, e.g. \"Option A;Option B;Option C\"."
+                                              + " Each token becomes one numbered option presented to the user.") String choices) {
         ConsoleUtils.disableSpinner();
         try {
             if (choices == null || choices.isBlank()) {
@@ -145,14 +186,14 @@ public class AskUserTool implements ToolBox {
                 return askUserQuestion(question);
             }
 
-            final List<String> choiceList =
-                    Arrays.stream(choices.split(";"))
-                            .map(String::trim)
-                            .filter(s -> !s.isEmpty())
-                            .toList();
+            final List<String> choiceList = Arrays.stream(choices.split(";"))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
 
             if (choiceList.isEmpty()) {
-                log.warn("askUserToChoose: no non-empty tokens after parsing '{}' — falling back to free-form question", choices);
+                log.warn("askUserToChoose: no non-empty tokens after parsing '{}' — falling back to free-form question",
+                         choices);
                 return askUserQuestion(question);
             }
 
@@ -167,7 +208,8 @@ public class AskUserTool implements ToolBox {
                     log.debug("User selected choice #{}: {}", idx, selected);
                     return selected;
                 }
-            } catch (NumberFormatException ignored) {
+            }
+            catch (NumberFormatException ignored) {
                 // Not a number — fall through and return the raw text.
             }
 
@@ -182,60 +224,15 @@ public class AskUserTool implements ToolBox {
             // Return whatever the user typed; the LLM can interpret it.
             log.debug("User input '{}' did not match any choice — returning raw input", raw);
             return raw;
-        } finally {
+        }
+        finally {
             ConsoleUtils.enableSpinner();
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Private helpers
-    // -------------------------------------------------------------------------
-
-    /** Prints a styled question banner to stdout and the {@code >} prompt. */
-    private static void printQuestion(String question) {
-        System.out.println();
-        System.out.println(
-                ANSI_BOLD
-                        + ANSI_CYAN
-                        + "┌─ Clarification needed "
-                        + "─".repeat(47)
-                        + "┐"
-                        + ANSI_RESET);
-        System.out.println(ANSI_BRIGHT_YELLOW + "  " + question + ANSI_RESET);
-        System.out.println(ANSI_BOLD + ANSI_CYAN + "└" + "─".repeat(70) + "┘" + ANSI_RESET);
-        printInputPrompt();
-    }
-
-    /** Prints a styled multiple-choice menu to stdout and the {@code >} prompt. */
-    private static void printChoices(String question, List<String> choices) {
-        System.out.println();
-        System.out.println(
-                ANSI_BOLD
-                        + ANSI_CYAN
-                        + "┌─ Please choose one of the following "
-                        + "─".repeat(33)
-                        + "┐"
-                        + ANSI_RESET);
-        System.out.println(ANSI_BRIGHT_YELLOW + "  " + question + ANSI_RESET);
-        System.out.println();
-        for (int i = 0; i < choices.size(); i++) {
-            System.out.printf(
-                    "  %s%s%d.%s %s%n",
-                    ANSI_BOLD,
-                    ANSI_BRIGHT_YELLOW,
-                    i + 1,
-                    ANSI_RESET,
-                    choices.get(i));
-        }
-        System.out.println(ANSI_BOLD + ANSI_CYAN + "└" + "─".repeat(70) + "┘" + ANSI_RESET);
-        System.out.println("  Enter a number (1–" + choices.size() + ") or type your answer:");
-        printInputPrompt();
-    }
-
-    /** Prints the {@code >} input prompt. */
-    private static void printInputPrompt() {
-        System.out.print(ANSI_BOLD + ANSI_BRIGHT_GREEN + "> " + ANSI_RESET);
-        System.out.flush();
+    @Override
+    public String name() {
+        return "ask_user_tool";
     }
 
     /**
@@ -253,7 +250,8 @@ public class AskUserTool implements ToolBox {
             final String trimmed = line.trim();
             log.debug("User provided input: {}", trimmed);
             return trimmed.isEmpty() ? "<no input>" : trimmed;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.error("Failed to read user input", e);
             return "<error reading input: " + e.getMessage() + ">";
         }

@@ -28,9 +28,9 @@ package com.phonepe.sentinelai.examples.texttosql.tools.vectorstore;
  * <p>While not as expressive as transformer-based embeddings, this approach captures:
  *
  * <ul>
- *   <li>Exact word matches (via word-level hashing)
- *   <li>Morphological similarity — e.g. "order" and "ordered" share many 3-gram buckets
- *   <li>Sub-word patterns shared across domain-specific terms
+ * <li>Exact word matches (via word-level hashing)
+ * <li>Morphological similarity — e.g. "order" and "ordered" share many 3-gram buckets
+ * <li>Sub-word patterns shared across domain-specific terms
  * </ul>
  */
 public class HashTextEmbedder {
@@ -40,6 +40,19 @@ public class HashTextEmbedder {
 
     private static final float WORD_WEIGHT = 1.0f;
     private static final float TRIGRAM_WEIGHT = 0.5f;
+
+    private static void l2Normalize(float[] vector) {
+        float sumSq = 0.0f;
+        for (float v : vector) {
+            sumSq += v * v;
+        }
+        if (sumSq > 0.0f) {
+            float norm = (float) Math.sqrt(sumSq);
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] /= norm;
+            }
+        }
+    }
 
     /**
      * Embeds {@code text} into a {@link #VECTOR_DIM}-dimensional L2-normalised float vector.
@@ -76,18 +89,5 @@ public class HashTextEmbedder {
 
         l2Normalize(vector);
         return vector;
-    }
-
-    private static void l2Normalize(float[] vector) {
-        float sumSq = 0.0f;
-        for (float v : vector) {
-            sumSq += v * v;
-        }
-        if (sumSq > 0.0f) {
-            float norm = (float) Math.sqrt(sumSq);
-            for (int i = 0; i < vector.length; i++) {
-                vector[i] /= norm;
-            }
-        }
     }
 }

@@ -16,13 +16,17 @@
 
 package com.phonepe.sentinelai.examples.texttosql.server;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for the package-visible helper methods of {@link SqliteRestServer}.
@@ -41,6 +45,30 @@ class SqliteRestServerHelpersTest {
     class BuildInlineConfigTests {
 
         @Test
+        @DisplayName("admin port is port + 1")
+        void adminPortIsPortPlusOne() throws java.io.IOException {
+            final int port = 7777;
+            final String configPath = SqliteRestServer.buildInlineConfig(port);
+            final String content = Files.readString(Path.of(configPath));
+            assertTrue(
+                       content.contains(String.valueOf(port + 1)),
+                       "Generated config should contain the admin port (port + 1)");
+        }
+
+        @Test
+        @DisplayName("does not contain shell-style placeholder tokens after substitution")
+        void noUnresolvedPlaceholders() throws java.io.IOException {
+            final String configPath = SqliteRestServer.buildInlineConfig(8080);
+            final String content = Files.readString(Path.of(configPath));
+            assertFalse(
+                        content.contains("${DW_PORT"),
+                        "Generated config must not contain unresolved DW_PORT placeholder");
+            assertFalse(
+                        content.contains("${DW_ADMIN_PORT"),
+                        "Generated config must not contain unresolved DW_ADMIN_PORT placeholder");
+        }
+
+        @Test
         @DisplayName("returns path to a temp file that exists on disk")
         void returnsTempFileThatExists() {
             final String configPath = SqliteRestServer.buildInlineConfig(9876);
@@ -55,32 +83,8 @@ class SqliteRestServerHelpersTest {
             final String configPath = SqliteRestServer.buildInlineConfig(port);
             final String content = Files.readString(Path.of(configPath));
             assertTrue(
-                    content.contains(String.valueOf(port)),
-                    "Generated config should contain the requested port number");
-        }
-
-        @Test
-        @DisplayName("does not contain shell-style placeholder tokens after substitution")
-        void noUnresolvedPlaceholders() throws java.io.IOException {
-            final String configPath = SqliteRestServer.buildInlineConfig(8080);
-            final String content = Files.readString(Path.of(configPath));
-            assertFalse(
-                    content.contains("${DW_PORT"),
-                    "Generated config must not contain unresolved DW_PORT placeholder");
-            assertFalse(
-                    content.contains("${DW_ADMIN_PORT"),
-                    "Generated config must not contain unresolved DW_ADMIN_PORT placeholder");
-        }
-
-        @Test
-        @DisplayName("admin port is port + 1")
-        void adminPortIsPortPlusOne() throws java.io.IOException {
-            final int port = 7777;
-            final String configPath = SqliteRestServer.buildInlineConfig(port);
-            final String content = Files.readString(Path.of(configPath));
-            assertTrue(
-                    content.contains(String.valueOf(port + 1)),
-                    "Generated config should contain the admin port (port + 1)");
+                       content.contains(String.valueOf(port)),
+                       "Generated config should contain the requested port number");
         }
     }
 
@@ -93,23 +97,22 @@ class SqliteRestServerHelpersTest {
     class WaitForPortTests {
 
         @Test
-        @DisplayName("throws IllegalStateException when port is not reachable within timeout")
-        void throwsWhenPortNotReachable() {
-            assertThrows(
-                    IllegalStateException.class,
-                    () -> SqliteRestServer.waitForPort("localhost", 1, 300L));
+        @DisplayName("error message mentions the timeout duration")
+        void errorMessageMentionsTimeout() {
+            final IllegalStateException ex = assertThrows(
+                                                          IllegalStateException.class,
+                                                          () -> SqliteRestServer.waitForPort("localhost", 1, 300L));
+            assertTrue(
+                       ex.getMessage().contains("did not start"),
+                       "Error should say server did not start");
         }
 
         @Test
-        @DisplayName("error message mentions the timeout duration")
-        void errorMessageMentionsTimeout() {
-            final IllegalStateException ex =
-                    assertThrows(
-                            IllegalStateException.class,
-                            () -> SqliteRestServer.waitForPort("localhost", 1, 300L));
-            assertTrue(
-                    ex.getMessage().contains("did not start"),
-                    "Error should say server did not start");
+        @DisplayName("throws IllegalStateException when port is not reachable within timeout")
+        void throwsWhenPortNotReachable() {
+            assertThrows(
+                         IllegalStateException.class,
+                         () -> SqliteRestServer.waitForPort("localhost", 1, 300L));
         }
     }
 }

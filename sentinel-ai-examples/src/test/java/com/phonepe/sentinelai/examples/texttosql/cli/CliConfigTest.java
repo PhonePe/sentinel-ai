@@ -16,35 +16,22 @@
 
 package com.phonepe.sentinelai.examples.texttosql.cli;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @DisplayName("CliConfig")
 class CliConfigTest {
-
-    @Test
-    @DisplayName("default construction produces expected defaults")
-    void defaultConstructionProducesDefaults() {
-        CliConfig config = new CliConfig();
-
-        assertNotNull(config.getOpenai());
-        assertNotNull(config.getDatabase());
-        assertNotNull(config.getAgent());
-    }
 
     @Nested
     @DisplayName("AgentConfig defaults")
     class AgentConfigDefaults {
-
-        @Test
-        @DisplayName("default temperature is 0.0")
-        void defaultTemperatureIsZero() {
-            CliConfig.AgentConfig cfg = new CliConfig.AgentConfig();
-            assertEquals(0.0f, cfg.getTemperature(), 1e-6f);
-        }
 
         @Test
         @DisplayName("default maxTokens is 4096")
@@ -58,6 +45,13 @@ class CliConfigTest {
         void defaultStreamingIsTrue() {
             CliConfig.AgentConfig cfg = new CliConfig.AgentConfig();
             assertTrue(cfg.isStreaming());
+        }
+
+        @Test
+        @DisplayName("default temperature is 0.0")
+        void defaultTemperatureIsZero() {
+            CliConfig.AgentConfig cfg = new CliConfig.AgentConfig();
+            assertEquals(0.0f, cfg.getTemperature(), 1e-6f);
         }
 
         @Test
@@ -99,10 +93,11 @@ class CliConfigTest {
     class OpenAIConfigDefaults {
 
         @Test
-        @DisplayName("default model is gpt-4o")
-        void defaultModelIsGpt4o() {
+        @DisplayName("default apiKey and baseUrl are null")
+        void defaultApiKeyAndBaseUrlAreNull() {
             CliConfig.OpenAIConfig cfg = new CliConfig.OpenAIConfig();
-            assertEquals("gpt-4o", cfg.getModel());
+            assertNull(cfg.getApiKey());
+            assertNull(cfg.getBaseUrl());
         }
 
         @Test
@@ -113,11 +108,10 @@ class CliConfigTest {
         }
 
         @Test
-        @DisplayName("default apiKey and baseUrl are null")
-        void defaultApiKeyAndBaseUrlAreNull() {
+        @DisplayName("default model is gpt-4o")
+        void defaultModelIsGpt4o() {
             CliConfig.OpenAIConfig cfg = new CliConfig.OpenAIConfig();
-            assertNull(cfg.getApiKey());
-            assertNull(cfg.getBaseUrl());
+            assertEquals("gpt-4o", cfg.getModel());
         }
 
         @Test
@@ -134,6 +128,16 @@ class CliConfigTest {
             assertEquals("gpt-3.5-turbo", cfg.getModel());
             assertEquals("Token ", cfg.getBearerPrefix());
         }
+    }
+
+    @Test
+    @DisplayName("default construction produces expected defaults")
+    void defaultConstructionProducesDefaults() {
+        CliConfig config = new CliConfig();
+
+        assertNotNull(config.getOpenai());
+        assertNotNull(config.getDatabase());
+        assertNotNull(config.getAgent());
     }
 
     @Test

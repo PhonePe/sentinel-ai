@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.examples.texttosql.server;
 
 import io.dropwizard.core.Configuration;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

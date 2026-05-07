@@ -17,9 +17,14 @@
 package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import com.github.vertical_blank.sqlformatter.SqlFormatter;
+
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
-import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.examples.texttosql.tools.LocalTools;
+import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
+
+import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -27,8 +32,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Terminal output helpers for the Text-to-SQL CLI.
@@ -69,61 +72,38 @@ public class ConsoleUtils {
     private static final AtomicBoolean SPINNER_ENABLED = new AtomicBoolean(true);
 
     private static final long DEFAULT_FUTURE_TIMEOUT = Long.parseLong(
-            System.getProperty("default.future.timeout.ms", "5000"));
-
-    /**
-     * Disables the progress spinner globally. Spinner output will be suppressed until {@link
-     * #enableSpinner()} is called.
-     */
-    public static void disableSpinner() {
-        SPINNER_ENABLED.set(false);
-    }
-
-    /**
-     * Re-enables the progress spinner globally after a previous call to {@link #disableSpinner()}.
-     */
-    public static void enableSpinner() {
-        SPINNER_ENABLED.set(true);
-    }
-
-    // -------------------------------------------------------------------------
-    // Spinner vocabulary
-    // -------------------------------------------------------------------------
+                                                                      System.getProperty("default.future.timeout.ms",
+                                                                                         "5000"));
 
     /** Fun verbs displayed while the agent is thinking in non-streaming mode. */
-    private static final List<String> PROCESSING_VERBS =
-            List.of(
-                    "Vaporizing",
-                    "Atomizing",
-                    "Pulverizing",
-                    "Supervising",
-                    "Synthesizing",
-                    "Quantum-tunneling",
-                    "Defragmenting",
-                    "Hypercomputing",
-                    "Recalibrating",
-                    "Triangulating",
-                    "Extrapolating",
-                    "Turbo-charging",
-                    "Galvanizing",
-                    "Electrifying",
-                    "Catalyzing",
-                    "Bootstrapping",
-                    "Orchestrating",
-                    "Harmonizing",
-                    "Contemplating",
-                    "Ruminating",
-                    "Decimating",
-                    "Liquefying",
-                    "Disintegrating",
-                    "Nebulizing",
-                    "Carbonizing",
-                    "Combusting",
-                    "Evaporating");
-
-    // -------------------------------------------------------------------------
-    // Spinner
-    // -------------------------------------------------------------------------
+    private static final List<String> PROCESSING_VERBS = List.of(
+                                                                 "Vaporizing",
+                                                                 "Atomizing",
+                                                                 "Pulverizing",
+                                                                 "Supervising",
+                                                                 "Synthesizing",
+                                                                 "Quantum-tunneling",
+                                                                 "Defragmenting",
+                                                                 "Hypercomputing",
+                                                                 "Recalibrating",
+                                                                 "Triangulating",
+                                                                 "Extrapolating",
+                                                                 "Turbo-charging",
+                                                                 "Galvanizing",
+                                                                 "Electrifying",
+                                                                 "Catalyzing",
+                                                                 "Bootstrapping",
+                                                                 "Orchestrating",
+                                                                 "Harmonizing",
+                                                                 "Contemplating",
+                                                                 "Ruminating",
+                                                                 "Decimating",
+                                                                 "Liquefying",
+                                                                 "Disintegrating",
+                                                                 "Nebulizing",
+                                                                 "Carbonizing",
+                                                                 "Combusting",
+                                                                 "Evaporating");
 
     /**
      * Waits for {@code future} to complete, printing a randomly chosen processing verb every 5
@@ -132,13 +112,13 @@ public class ConsoleUtils {
      * <p>When the future resolves the spinner line is cleared before returning so that subsequent
      * output is not offset by leftover characters.
      *
-     * @param <T> the future's value type
-     * @param future the future to await
+     * @param <T>         the future's value type
+     * @param future      the future to await
      * @param showSpinner {@code true} to display the spinner; pass {@code false} in streaming mode
-     *     where token chunks are already being printed live
+     *                    where token chunks are already being printed live
      * @return the resolved value of the future
      * @throws InterruptedException if the current thread is interrupted while waiting
-     * @throws ExecutionException if the future completed exceptionally
+     * @throws ExecutionException   if the future completed exceptionally
      */
     public static <T> T awaitWithSpinner(CompletableFuture<T> future, boolean showSpinner)
             throws InterruptedException, ExecutionException {
@@ -151,19 +131,43 @@ public class ConsoleUtils {
                     System.out.flush();
                 }
                 return result;
-            } catch (TimeoutException ignored) {
+            }
+            catch (TimeoutException ignored) {
                 if (showSpinner && SPINNER_ENABLED.get()) {
-                    final String verb =
-                            PROCESSING_VERBS.get(
-                                    // java:S2245 — ThreadLocalRandom is intentional here; this picks
-                                    // a display verb for a CLI spinner animation and has no security
-                                    // or cryptographic purpose whatsoever.
-                                    ThreadLocalRandom.current().nextInt(PROCESSING_VERBS.size()));
+                    final String verb = PROCESSING_VERBS.get(
+                                                             // java:S2245 — ThreadLocalRandom is intentional here; this picks
+                                                             // a display verb for a CLI spinner animation and has no security
+                                                             // or cryptographic purpose whatsoever.
+                                                             ThreadLocalRandom.current().nextInt(PROCESSING_VERBS
+                                                                     .size()));
                     System.out.print("\r" + BOLD + YELLOW + verb + "..." + RESET);
                     System.out.flush();
                 }
             }
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Spinner vocabulary
+    // -------------------------------------------------------------------------
+
+    /**
+     * Disables the progress spinner globally. Spinner output will be suppressed until {@link
+     * #enableSpinner()} is called.
+     */
+    public static void disableSpinner() {
+        SPINNER_ENABLED.set(false);
+    }
+
+    // -------------------------------------------------------------------------
+    // Spinner
+    // -------------------------------------------------------------------------
+
+    /**
+     * Re-enables the progress spinner globally after a previous call to {@link #disableSpinner()}.
+     */
+    public static void enableSpinner() {
+        SPINNER_ENABLED.set(true);
     }
 
     // -------------------------------------------------------------------------
@@ -173,21 +177,58 @@ public class ConsoleUtils {
     /** Prints the welcome banner in bright cyan. */
     public static void printBanner() {
         System.out.println(
-                BRIGHT_CYAN
-                        + """
+                           BRIGHT_CYAN
+                                   + """
 
-                        ╔════════════════════════════════════════════════════╗
-                        ║   Sentinel AI — Text-to-SQL Agent (e-commerce DB)  ║
-                        ╠════════════════════════════════════════════════════╣
-                        ║  Ask questions in plain English about:             ║
-                        ║    • users, sellers, catalog, inventory, orders    ║
-                        ║  Commands:                                         ║
-                        ║    /dumpMessages [file]  — export all messages     ║
-                        ║  Type 'exit' or 'quit' to stop, Ctrl+D to EOF.     ║
-                        ╚════════════════════════════════════════════════════╝
-                        """
-                        + RESET);
+                                           ╔════════════════════════════════════════════════════╗
+                                           ║   Sentinel AI — Text-to-SQL Agent (e-commerce DB)  ║
+                                           ╠════════════════════════════════════════════════════╣
+                                           ║  Ask questions in plain English about:             ║
+                                           ║    • users, sellers, catalog, inventory, orders    ║
+                                           ║  Commands:                                         ║
+                                           ║    /dumpMessages [file]  — export all messages     ║
+                                           ║  Type 'exit' or 'quit' to stop, Ctrl+D to EOF.     ║
+                                           ╚════════════════════════════════════════════════════╝
+                                           """
+                                   + RESET);
     }
+
+    /**
+     * Prints a confirmation that the message dump was written successfully.
+     *
+     * @param path         absolute path of the file that was written
+     * @param messageCount number of messages serialized
+     */
+    public static void printDumpSuccess(String path, int messageCount) {
+        System.out.println(
+                           BOLD
+                                   + GREEN
+                                   + "[Dump] "
+                                   + RESET
+                                   + GREEN
+                                   + "Exported "
+                                   + messageCount
+                                   + " message(s) → "
+                                   + path
+                                   + RESET);
+    }
+
+    // -------------------------------------------------------------------------
+    // Interactive-loop prompt
+    // -------------------------------------------------------------------------
+
+    /**
+     * Writes {@code message} as a bold-red {@code [Error]} line to {@link System#err}.
+     *
+     * @param message the error description
+     */
+    public static void printError(String message) {
+        System.err.println(BOLD + RED + "[Error] " + RESET + RED + message + RESET);
+    }
+
+    // -------------------------------------------------------------------------
+    // Query result
+    // -------------------------------------------------------------------------
 
     /** Prints a short list of starter prompts to help the user get going. */
     public static void printExamples() {
@@ -195,21 +236,21 @@ public class ConsoleUtils {
         System.out.println();
         System.out.println(BOLD + YELLOW + "  1. " + RESET + "List top 3 sellers by order volume");
         System.out.println(
-                BOLD + YELLOW + "  2. " + RESET + "Find the user with the most number of orders");
+                           BOLD + YELLOW + "  2. " + RESET + "Find the user with the most number of orders");
         System.out.println(BOLD + YELLOW + "  3. " + RESET + "Find out top cities by shoe sales");
         System.out.println(
-                BOLD
-                        + YELLOW
-                        + "  4. "
-                        + RESET
-                        + "What are the top 5 best-selling products this month?");
+                           BOLD
+                                   + YELLOW
+                                   + "  4. "
+                                   + RESET
+                                   + "What are the top 5 best-selling products this month?");
         System.out.println(
-                BOLD + YELLOW + "  5. " + RESET + "Show total revenue per product category");
+                           BOLD + YELLOW + "  5. " + RESET + "Show total revenue per product category");
         System.out.println();
     }
 
     // -------------------------------------------------------------------------
-    // Interactive-loop prompt
+    // Error / warning helpers
     // -------------------------------------------------------------------------
 
     /** Prints the {@code >} input prompt in bold bright-green. */
@@ -218,21 +259,17 @@ public class ConsoleUtils {
         System.out.flush();
     }
 
-    // -------------------------------------------------------------------------
-    // Query result
-    // -------------------------------------------------------------------------
-
     /**
      * Renders a {@link SqlQueryResult} in a formatted, colour-highlighted layout:
      *
      * <ul>
-     *   <li>Cyan box containing the pretty-printed SQL (green text)
-     *   <li>Dim timing line
-     *   <li>Bold bright-yellow verbal explanation (when present)
-     *   <li>ASCII result table
+     * <li>Cyan box containing the pretty-printed SQL (green text)
+     * <li>Dim timing line
+     * <li>Bold bright-yellow verbal explanation (when present)
+     * <li>ASCII result table
      * </ul>
      *
-     * @param result the query result produced by the agent
+     * @param result      the query result produced by the agent
      * @param wallClockMs total elapsed time since the query was dispatched
      */
     public static void printStructuredResult(SqlQueryResult result, long wallClockMs) {
@@ -250,15 +287,15 @@ public class ConsoleUtils {
         // ── Timing ────────────────────────────────────────────────────────
         System.out.println(BOLD + BRIGHT_YELLOW + "── Timing Info " + "─".repeat(55) + RESET);
         System.out.printf(
-                DIM + "Query execution: %d ms  │  Wall clock: %d ms" + RESET + "%n",
-                result.executionTimeMs(),
-                wallClockMs);
+                          DIM + "Query execution: %d ms  │  Wall clock: %d ms" + RESET + "%n",
+                          result.executionTimeMs(),
+                          wallClockMs);
         System.out.println();
 
         // ── Explanation ───────────────────────────────────────────────────
         if (result.explanation() != null && !result.explanation().isBlank()) {
             System.out.println(
-                    BOLD + BRIGHT_YELLOW + "── Verbal Explanation " + "─".repeat(55) + RESET);
+                               BOLD + BRIGHT_YELLOW + "── Verbal Explanation " + "─".repeat(55) + RESET);
             System.out.println(result.explanation());
             System.out.println();
         }
@@ -268,17 +305,53 @@ public class ConsoleUtils {
         System.out.println(LocalTools.formatResultsAsTable(result));
     }
 
-    // -------------------------------------------------------------------------
-    // Error / warning helpers
-    // -------------------------------------------------------------------------
-
     /**
-     * Writes {@code message} as a bold-red {@code [Error]} line to {@link System#err}.
+     * Prints model token-usage statistics for the last query in dim (grey) colour.
      *
-     * @param message the error description
+     * <p>Emits a single line showing total tokens, request tokens, response tokens, number of tool
+     * calls, and number of LLM round-trips. Nothing is printed when {@code usage} is {@code null}.
+     *
+     * @param usage the {@link ModelUsageStats} returned by {@link
+     *              com.phonepe.sentinelai.core.agent.AgentOutput#getUsage()}
      */
-    public static void printError(String message) {
-        System.err.println(BOLD + RED + "[Error] " + RESET + RED + message + RESET);
+    public static void printUsageStats(ModelUsageStats usage) {
+        if (usage == null) {
+            return;
+        }
+        System.out.println(BOLD + BRIGHT_YELLOW + "── Usage Stats " + "─".repeat(55) + RESET);
+        System.out.printf(
+                          DIM
+                                  + "   Total: %d tokens  │  Request: %d  │  Response: %d"
+                                  + "  │  Tool calls: %d  │  LLM requests: %d"
+                                  + RESET
+                                  + "%n",
+                          usage.getTotalTokens(),
+                          usage.getRequestTokens(),
+                          usage.getResponseTokens(),
+                          usage.getToolCallsForRun(),
+                          usage.getRequestsForRun());
+
+        // ── Request token breakdown ───────────────────────────────────────
+        final var req = usage.getRequestTokenDetails();
+        System.out.printf(
+                          DIM + "   Request breakdown:   cached: %d  │  audio: %d" + RESET + "%n",
+                          req.getCachedTokens(),
+                          req.getAudioTokens());
+
+        // ── Response token breakdown ──────────────────────────────────────
+        final var resp = usage.getResponseTokenDetails();
+        System.out.printf(
+                          DIM
+                                  + "   Response breakdown:  reasoning: %d  │  accepted predictions: %d"
+                                  + "  │  rejected predictions: %d  │  audio: %d"
+                                  + RESET
+                                  + "%n",
+                          resp.getReasoningTokens(),
+                          resp.getAcceptedPredictionTokens(),
+                          resp.getRejectedPredictionTokens(),
+                          resp.getAudioTokens());
+
+        System.out.println();
     }
 
     /**
@@ -288,75 +361,6 @@ public class ConsoleUtils {
      */
     public static void printWarning(String message) {
         System.out.println(YELLOW + "[Warning] " + message + RESET);
-    }
-
-    /**
-     * Prints a confirmation that the message dump was written successfully.
-     *
-     * @param path absolute path of the file that was written
-     * @param messageCount number of messages serialized
-     */
-    public static void printDumpSuccess(String path, int messageCount) {
-        System.out.println(
-                BOLD
-                        + GREEN
-                        + "[Dump] "
-                        + RESET
-                        + GREEN
-                        + "Exported "
-                        + messageCount
-                        + " message(s) → "
-                        + path
-                        + RESET);
-    }
-
-    /**
-     * Prints model token-usage statistics for the last query in dim (grey) colour.
-     *
-     * <p>Emits a single line showing total tokens, request tokens, response tokens, number of tool
-     * calls, and number of LLM round-trips. Nothing is printed when {@code usage} is {@code null}.
-     *
-     * @param usage the {@link ModelUsageStats} returned by {@link
-     *     com.phonepe.sentinelai.core.agent.AgentOutput#getUsage()}
-     */
-    public static void printUsageStats(ModelUsageStats usage) {
-        if (usage == null) {
-            return;
-        }
-        System.out.println(BOLD + BRIGHT_YELLOW + "── Usage Stats " + "─".repeat(55) + RESET);
-        System.out.printf(
-                DIM
-                        + "   Total: %d tokens  │  Request: %d  │  Response: %d"
-                        + "  │  Tool calls: %d  │  LLM requests: %d"
-                        + RESET
-                        + "%n",
-                usage.getTotalTokens(),
-                usage.getRequestTokens(),
-                usage.getResponseTokens(),
-                usage.getToolCallsForRun(),
-                usage.getRequestsForRun());
-
-        // ── Request token breakdown ───────────────────────────────────────
-        final var req = usage.getRequestTokenDetails();
-        System.out.printf(
-                DIM + "   Request breakdown:   cached: %d  │  audio: %d" + RESET + "%n",
-                req.getCachedTokens(),
-                req.getAudioTokens());
-
-        // ── Response token breakdown ──────────────────────────────────────
-        final var resp = usage.getResponseTokenDetails();
-        System.out.printf(
-                DIM
-                        + "   Response breakdown:  reasoning: %d  │  accepted predictions: %d"
-                        + "  │  rejected predictions: %d  │  audio: %d"
-                        + RESET
-                        + "%n",
-                resp.getReasoningTokens(),
-                resp.getAcceptedPredictionTokens(),
-                resp.getRejectedPredictionTokens(),
-                resp.getAudioTokens());
-
-        System.out.println();
     }
 
     // -------------------------------------------------------------------------
@@ -373,7 +377,8 @@ public class ConsoleUtils {
         }
         try {
             return SqlFormatter.format(sql);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.debug("SQL formatting failed — using raw SQL: {}", e.getMessage());
             return sql;
         }

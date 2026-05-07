@@ -18,6 +18,9 @@ package com.phonepe.sentinelai.examples.texttosql.tools.vectorstore;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -26,7 +29,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Bootstraps the Lucene schema vector store from {@code schema_descriptions.json}.
@@ -45,13 +47,7 @@ public class VectorStoreInitializer {
     private static final String SCHEMA_JSON_RESOURCE = "/db/schema_descriptions.json";
     static final String INDEX_DIR_NAME = "lucene-schema-index";
 
-    private VectorStoreInitializer() {}
-
-    public static void main(String[] args) throws Exception {
-        final Path dataDir = Path.of("sentinel-ai-examples/.data");
-        try (SchemaVectorStore vectorStore = VectorStoreInitializer.ensureInitialized(dataDir)) {
-            // ignored
-        }
+    private VectorStoreInitializer() {
     }
 
     /**
@@ -59,7 +55,7 @@ public class VectorStoreInitializer {
      * exist.
      *
      * @param dataDir directory where the index will be (or already is) stored; typically the
-     *     {@code .data/} directory alongside the SQLite database
+     *                {@code .data/} directory alongside the SQLite database
      * @return an open {@link SchemaVectorStore} backed by the Lucene index
      * @throws IOException if the index cannot be read or written
      */
@@ -68,7 +64,8 @@ public class VectorStoreInitializer {
 
         if (isIndexPresent(indexPath)) {
             log.info("Schema vector store index found at {}, skipping initialisation", indexPath);
-        } else {
+        }
+        else {
             log.info("Schema vector store index not found at {}, building index", indexPath);
             Files.createDirectories(indexPath);
             buildIndex(indexPath);
@@ -78,7 +75,41 @@ public class VectorStoreInitializer {
         return new SchemaVectorStore(indexPath);
     }
 
+    public static void main(String[] args) throws Exception {
+        final Path dataDir = Path.of("sentinel-ai-examples/.data");
+        try (SchemaVectorStore vectorStore = VectorStoreInitializer.ensureInitialized(dataDir)) {
+            // ignored
+        }
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
+
+    private static Map<String, String> buildDocEntry(
+                                                     String docId,
+                                                     String docType,
+                                                     String tableName,
+                                                     String columnName,
+                                                     String content) {
+        Map<String, String> entry = new HashMap<>();
+        entry.put("docId", docId);
+        entry.put("docType", docType);
+        entry.put("tableName", tableName);
+        if (columnName != null) {
+            entry.put("columnName", columnName);
+        }
+        entry.put("content", content);
+        return entry;
+    }
+
+    /**
+     * Loads {@code schema_descriptions.json} from the classpath and writes a fresh Lucene index.
+     */
+    private static void buildIndex(Path indexPath) throws IOException {
+        List<Map<String, String>> documents = loadDocuments();
+        try (SchemaVectorStore store = new SchemaVectorStore(indexPath)) {
+            store.buildIndex(documents);
+        }
+    }
 
     /**
      * An index is considered present when the directory exists and contains at least one file
@@ -90,19 +121,10 @@ public class VectorStoreInitializer {
         }
         try (var files = Files.list(indexPath)) {
             return files.findAny().isPresent();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             log.warn("Failed to list index directory {}: {}", indexPath, e.getMessage());
             return false;
-        }
-    }
-
-    /**
-     * Loads {@code schema_descriptions.json} from the classpath and writes a fresh Lucene index.
-     */
-    private static void buildIndex(Path indexPath) throws IOException {
-        List<Map<String, String>> documents = loadDocuments();
-        try (SchemaVectorStore store = new SchemaVectorStore(indexPath)) {
-            store.buildIndex(documents);
         }
     }
 
@@ -117,11 +139,10 @@ public class VectorStoreInitializer {
     private static List<Map<String, String>> loadDocuments() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
 
-        InputStream resource =
-                VectorStoreInitializer.class.getResourceAsStream(SCHEMA_JSON_RESOURCE);
+        InputStream resource = VectorStoreInitializer.class.getResourceAsStream(SCHEMA_JSON_RESOURCE);
         if (resource == null) {
             throw new IOException(
-                    "Could not find " + SCHEMA_JSON_RESOURCE + " on the classpath");
+                                  "Could not find " + SCHEMA_JSON_RESOURCE + " on the classpath");
         }
 
         JsonNode root = mapper.readTree(resource);
@@ -138,12 +159,12 @@ public class VectorStoreInitializer {
 
             // Table-level document
             documents.add(
-                    buildDocEntry(
-                            tableName,
-                            "table",
-                            tableName,
-                            null,
-                            tableName + ": " + tableDescription));
+                          buildDocEntry(
+                                        tableName,
+                                        "table",
+                                        tableName,
+                                        null,
+                                        tableName + ": " + tableDescription));
 
             // Column-level documents
             JsonNode columns = tableNode.get("columns");
@@ -152,45 +173,27 @@ public class VectorStoreInitializer {
                     String columnName = colNode.get("name").asText();
                     String columnDescription = colNode.get("description").asText();
 
-                    String content =
-                            tableName
-                                    + " "
-                                    + columnName
-                                    + " "
-                                    + columnDescription;
+                    String content = tableName
+                            + " "
+                            + columnName
+                            + " "
+                            + columnDescription;
 
                     documents.add(
-                            buildDocEntry(
-                                    tableName + "." + columnName,
-                                    "column",
-                                    tableName,
-                                    columnName,
-                                    content));
+                                  buildDocEntry(
+                                                tableName + "." + columnName,
+                                                "column",
+                                                tableName,
+                                                columnName,
+                                                content));
                 }
             }
         }
 
         log.info(
-                "Loaded {} schema documents from {} for indexing",
-                documents.size(),
-                SCHEMA_JSON_RESOURCE);
+                 "Loaded {} schema documents from {} for indexing",
+                 documents.size(),
+                 SCHEMA_JSON_RESOURCE);
         return documents;
-    }
-
-    private static Map<String, String> buildDocEntry(
-            String docId,
-            String docType,
-            String tableName,
-            String columnName,
-            String content) {
-        Map<String, String> entry = new HashMap<>();
-        entry.put("docId", docId);
-        entry.put("docType", docType);
-        entry.put("tableName", tableName);
-        if (columnName != null) {
-            entry.put("columnName", columnName);
-        }
-        entry.put("content", content);
-        return entry;
     }
 }

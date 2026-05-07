@@ -16,13 +16,6 @@
 
 package com.phonepe.sentinelai.examples.texttosql.tools.vectorstore;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -36,9 +29,23 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.queryparser.classic.QueryParserBase;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.FSDirectory;
+
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Lucene-based vector store for schema documents (tables and columns).
@@ -81,6 +88,25 @@ public class SchemaVectorStore implements AutoCloseable {
 
     // ── Index writing ────────────────────────────────────────────────────────
 
+    /** Maps a raw {@link TopDocs} result set into {@link SchemaSearchResult} records. */
+    private static List<SchemaSearchResult> collectResults(IndexSearcher searcher, TopDocs topDocs)
+            throws IOException {
+        List<SchemaSearchResult> results = new ArrayList<>();
+        for (ScoreDoc sd : topDocs.scoreDocs) {
+            Document doc = searcher.storedFields().document(sd.doc);
+            results.add(
+                        new SchemaSearchResult(
+                                               doc.get(FIELD_DOC_TYPE),
+                                               doc.get(FIELD_TABLE_NAME),
+                                               doc.get(FIELD_COLUMN_NAME),
+                                               doc.get(FIELD_CONTENT),
+                                               sd.score));
+        }
+        return results;
+    }
+
+    // ── Search ───────────────────────────────────────────────────────────────
+
     /**
      * Builds a new index from the provided documents, replacing any existing index at the same
      * path.
@@ -88,7 +114,7 @@ public class SchemaVectorStore implements AutoCloseable {
      * <p>Called once by {@link VectorStoreInitializer}; not intended for incremental updates.
      *
      * @param documents list of entries to index; each entry must have {@code docId}, {@code
-     *     docType}, {@code tableName}, and {@code content}; {@code columnName} may be {@code null}
+     *     docType}  , {@code tableName}, and {@code content}; {@code columnName} may be {@code null}
      */
     public void buildIndex(List<Map<String, String>> documents) throws IOException {
         try (StandardAnalyzer analyzer = new StandardAnalyzer()) {
@@ -107,19 +133,25 @@ public class SchemaVectorStore implements AutoCloseable {
                     doc.add(new StringField(FIELD_DOC_TYPE, entry.get("docType"), Field.Store.YES));
                     doc.add(
                             new StringField(
-                                    FIELD_TABLE_NAME, entry.get("tableName"), Field.Store.YES));
+                                            FIELD_TABLE_NAME,
+                                            entry.get("tableName"),
+                                            Field.Store.YES));
 
                     String columnName = entry.get("columnName");
                     if (columnName != null && !columnName.isBlank()) {
                         doc.add(
                                 new StringField(
-                                        FIELD_COLUMN_NAME, columnName, Field.Store.YES));
+                                                FIELD_COLUMN_NAME,
+                                                columnName,
+                                                Field.Store.YES));
                     }
 
                     doc.add(new TextField(FIELD_CONTENT, content, Field.Store.YES));
                     doc.add(
                             new KnnFloatVectorField(
-                                    FIELD_VECTOR, vector, VectorSimilarityFunction.COSINE));
+                                                    FIELD_VECTOR,
+                                                    vector,
+                                                    VectorSimilarityFunction.COSINE));
 
                     writer.addDocument(doc);
                 }
@@ -129,59 +161,9 @@ public class SchemaVectorStore implements AutoCloseable {
         }
     }
 
-    // ── Search ───────────────────────────────────────────────────────────────
-
-    /**
-     * Runs a pure BM25 keyword search against the {@code content} field.
-     *
-     * <p>Results are ranked by TF-IDF/BM25 score only — no vector similarity is considered. Use
-     * this when the query contains exact terms present in table or column descriptions.
-     *
-     * @param query keyword query string (standard Lucene query syntax is supported)
-     * @param topK maximum number of results to return
-     * @return BM25-ranked list of matching schema documents
-     */
-    public List<SchemaSearchResult> keywordSearch(String query, int topK) throws IOException {
-        try (DirectoryReader reader = DirectoryReader.open(directory)) {
-            IndexSearcher searcher = new IndexSearcher(reader);
-            searcher.setSimilarity(new BM25Similarity());
-
-            org.apache.lucene.search.Query bm25Query;
-            try (StandardAnalyzer analyzer = new StandardAnalyzer()) {
-                QueryParser parser = new QueryParser(FIELD_CONTENT, analyzer);
-                try {
-                    bm25Query = parser.parse(QueryParserBase.escape(query));
-                } catch (ParseException e) {
-                    log.debug("BM25 query parse failed for '{}': {}", query, e.getMessage());
-                    bm25Query = new MatchAllDocsQuery();
-                }
-            }
-
-            TopDocs topDocs = searcher.search(bm25Query, topK);
-            return collectResults(searcher, topDocs);
-        }
-    }
-    /**
-     * Runs a pure KNN semantic search against the {@code vector} field using cosine similarity.
-     *
-     * <p>Results are ranked by cosine similarity between the query embedding and indexed document
-     * embeddings only — no keyword matching is considered. Use this when the query uses
-     * paraphrased or conceptually similar (but not literally matching) language.
-     *
-     * @param query natural-language query string; will be embedded via {@link HashTextEmbedder}
-     * @param topK maximum number of results to return
-     * @return cosine-similarity-ranked list of matching schema documents
-     */
-    public List<SchemaSearchResult> semanticSearch(String query, int topK) throws IOException {
-        try (DirectoryReader reader = DirectoryReader.open(directory)) {
-            IndexSearcher searcher = new IndexSearcher(reader);
-
-            float[] queryVector = embedder.embed(query);
-            KnnFloatVectorQuery knnQuery =
-                    new KnnFloatVectorQuery(FIELD_VECTOR, queryVector, topK);
-            TopDocs topDocs = searcher.search(knnQuery, topK);
-            return collectResults(searcher, topDocs);
-        }
+    @Override
+    public void close() throws IOException {
+        directory.close();
     }
 
     /**
@@ -191,17 +173,17 @@ public class SchemaVectorStore implements AutoCloseable {
      * <p>Algorithm:
      *
      * <ol>
-     *   <li>Embed {@code query} into a float vector using {@link HashTextEmbedder}.
-     *   <li>Execute a BM25 full-text query against the {@code content} field.
-     *   <li>Execute a KNN query against the {@code vector} field.
-     *   <li>Collect all candidate documents from both result sets.
-     *   <li>Normalise each score set to [0, 1] by dividing by its maximum.
-     *   <li>Blend: {@code combinedScore = BM25_WEIGHT × normBM25 + (1 − BM25_WEIGHT) × normKNN}.
-     *   <li>Sort by combined score (descending) and return the top {@code topK} results.
+     * <li>Embed {@code query} into a float vector using {@link HashTextEmbedder}.
+     * <li>Execute a BM25 full-text query against the {@code content} field.
+     * <li>Execute a KNN query against the {@code vector} field.
+     * <li>Collect all candidate documents from both result sets.
+     * <li>Normalise each score set to [0, 1] by dividing by its maximum.
+     * <li>Blend: {@code combinedScore = BM25_WEIGHT × normBM25 + (1 − BM25_WEIGHT) × normKNN}.
+     * <li>Sort by combined score (descending) and return the top {@code topK} results.
      * </ol>
      *
      * @param query natural-language or keyword query string
-     * @param topK maximum number of results to return
+     * @param topK  maximum number of results to return
      * @return ranked list of matching schema documents
      */
     public List<SchemaSearchResult> hybridSearch(String query, int topK) throws IOException {
@@ -219,7 +201,8 @@ public class SchemaVectorStore implements AutoCloseable {
                 Query bm25Query;
                 try {
                     bm25Query = parser.parse(QueryParserBase.escape(query));
-                } catch (ParseException e) {
+                }
+                catch (ParseException e) {
                     log.debug("BM25 query parse failed for '{}', using match-all: {}", query, e.getMessage());
                     bm25Query = new MatchAllDocsQuery();
                 }
@@ -231,8 +214,7 @@ public class SchemaVectorStore implements AutoCloseable {
 
             // ── KNN vector search ────────────────────────────────────────────
             Map<Integer, Float> knnScores = new HashMap<>();
-            KnnFloatVectorQuery knnQuery =
-                    new KnnFloatVectorQuery(FIELD_VECTOR, queryVector, candidateCount);
+            KnnFloatVectorQuery knnQuery = new KnnFloatVectorQuery(FIELD_VECTOR, queryVector, candidateCount);
             TopDocs knnDocs = searcher.search(knnQuery, candidateCount);
             for (ScoreDoc sd : knnDocs.scoreDocs) {
                 // Cosine similarity is already in [0,1] for normalised vectors
@@ -258,8 +240,7 @@ public class SchemaVectorStore implements AutoCloseable {
                 }
             }
 
-            List<Map.Entry<Integer, Float>> ranked =
-                    new ArrayList<>(combinedScores.entrySet());
+            List<Map.Entry<Integer, Float>> ranked = new ArrayList<>(combinedScores.entrySet());
             ranked.sort((a, b) -> Float.compare(b.getValue(), a.getValue()));
 
             List<SchemaSearchResult> results = new ArrayList<>();
@@ -269,12 +250,12 @@ public class SchemaVectorStore implements AutoCloseable {
 
                 String columnName = doc.get(FIELD_COLUMN_NAME);
                 results.add(
-                        new SchemaSearchResult(
-                                doc.get(FIELD_DOC_TYPE),
-                                doc.get(FIELD_TABLE_NAME),
-                                columnName,
-                                doc.get(FIELD_CONTENT),
-                                entry.getValue()));
+                            new SchemaSearchResult(
+                                                   doc.get(FIELD_DOC_TYPE),
+                                                   doc.get(FIELD_TABLE_NAME),
+                                                   columnName,
+                                                   doc.get(FIELD_CONTENT),
+                                                   entry.getValue()));
             }
             return results;
         }
@@ -282,25 +263,57 @@ public class SchemaVectorStore implements AutoCloseable {
 
     // ── Internal helpers ─────────────────────────────────────────────────────
 
-    /** Maps a raw {@link TopDocs} result set into {@link SchemaSearchResult} records. */
-    private static List<SchemaSearchResult> collectResults(IndexSearcher searcher, TopDocs topDocs)
-            throws IOException {
-        List<SchemaSearchResult> results = new ArrayList<>();
-        for (ScoreDoc sd : topDocs.scoreDocs) {
-            Document doc = searcher.storedFields().document(sd.doc);
-            results.add(
-                    new SchemaSearchResult(
-                            doc.get(FIELD_DOC_TYPE),
-                            doc.get(FIELD_TABLE_NAME),
-                            doc.get(FIELD_COLUMN_NAME),
-                            doc.get(FIELD_CONTENT),
-                            sd.score));
+    /**
+     * Runs a pure BM25 keyword search against the {@code content} field.
+     *
+     * <p>Results are ranked by TF-IDF/BM25 score only — no vector similarity is considered. Use
+     * this when the query contains exact terms present in table or column descriptions.
+     *
+     * @param query keyword query string (standard Lucene query syntax is supported)
+     * @param topK  maximum number of results to return
+     * @return BM25-ranked list of matching schema documents
+     */
+    public List<SchemaSearchResult> keywordSearch(String query, int topK) throws IOException {
+        try (DirectoryReader reader = DirectoryReader.open(directory)) {
+            IndexSearcher searcher = new IndexSearcher(reader);
+            searcher.setSimilarity(new BM25Similarity());
+
+            org.apache.lucene.search.Query bm25Query;
+            try (StandardAnalyzer analyzer = new StandardAnalyzer()) {
+                QueryParser parser = new QueryParser(FIELD_CONTENT, analyzer);
+                try {
+                    bm25Query = parser.parse(QueryParserBase.escape(query));
+                }
+                catch (ParseException e) {
+                    log.debug("BM25 query parse failed for '{}': {}", query, e.getMessage());
+                    bm25Query = new MatchAllDocsQuery();
+                }
+            }
+
+            TopDocs topDocs = searcher.search(bm25Query, topK);
+            return collectResults(searcher, topDocs);
         }
-        return results;
     }
 
-    @Override
-    public void close() throws IOException {
-        directory.close();
+    /**
+     * Runs a pure KNN semantic search against the {@code vector} field using cosine similarity.
+     *
+     * <p>Results are ranked by cosine similarity between the query embedding and indexed document
+     * embeddings only — no keyword matching is considered. Use this when the query uses
+     * paraphrased or conceptually similar (but not literally matching) language.
+     *
+     * @param query natural-language query string; will be embedded via {@link HashTextEmbedder}
+     * @param topK  maximum number of results to return
+     * @return cosine-similarity-ranked list of matching schema documents
+     */
+    public List<SchemaSearchResult> semanticSearch(String query, int topK) throws IOException {
+        try (DirectoryReader reader = DirectoryReader.open(directory)) {
+            IndexSearcher searcher = new IndexSearcher(reader);
+
+            float[] queryVector = embedder.embed(query);
+            KnnFloatVectorQuery knnQuery = new KnnFloatVectorQuery(FIELD_VECTOR, queryVector, topK);
+            TopDocs topDocs = searcher.search(knnQuery, topK);
+            return collectResults(searcher, topDocs);
+        }
     }
 }
