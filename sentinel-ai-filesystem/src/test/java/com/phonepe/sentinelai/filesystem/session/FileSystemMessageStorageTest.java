@@ -30,6 +30,8 @@ import com.phonepe.sentinelai.session.QueryDirection;
 
 import lombok.SneakyThrows;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -77,6 +79,110 @@ class FileSystemMessageStorageTest {
 
     @Test
     @SneakyThrows
+    void testCompletelyCorruptedFile() {
+        // Create messages file with only corrupted content
+        final var messagesFile = Path.of(sessionDir, "messages.jsonl");
+        Files.createDirectories(messagesFile.getParent());
+        Files.write(messagesFile,
+                    List.of(
+                            "not valid json",
+                            "{broken",
+                            "}{}{",
+                            "null"
+                    ),
+                    StandardCharsets.UTF_8);
+
+        // Should not crash when reading completely corrupted file
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        final var response = newStorage.readMessages(10, false, null, QueryDirection.NEWER);
+
+        // Should return empty result
+        assertTrue(response.getItems().isEmpty());
+    }
+
+    @Test
+    @SneakyThrows
+    void testCorruptedJsonLine() {
+        final var sessionId = "test-session";
+        final var runId = UUID.randomUUID().toString();
+
+        // Add a valid message first
+        final var validMessage = Text.builder()
+                .sessionId(sessionId)
+                .runId(runId)
+                .content("valid message")
+                .timestamp(1000L)
+                .stats(new ModelUsageStats())
+                .build();
+        messageStorage.addMessages(List.of(validMessage));
+
+        // Now manually corrupt the messages file by appending invalid JSON
+        final var messagesFile = Path.of(sessionDir, "messages.jsonl");
+        final var corruptedLines = List.of(
+                                           "{invalid json}",
+                                           "not json at all",
+                                           "{\"incomplete\": "
+        );
+        Files.write(messagesFile,
+                    corruptedLines,
+                    StandardCharsets.UTF_8,
+                    java.nio.file.StandardOpenOption.APPEND);
+
+        // Create new storage instance to trigger reading from file
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+
+        // Should still be able to read valid messages despite corruption
+        final var response = newStorage.readMessages(10, false, null, QueryDirection.NEWER);
+
+        // Should have the one valid message
+        assertEquals(1, response.getItems().size());
+        assertEquals("valid message", ((Text) response.getItems().get(0)).getContent());
+    }
+
+    @Test
+    @SneakyThrows
+    void testEmptyLinesInJsonl() {
+        final var sessionId = "test-session";
+        final var runId = UUID.randomUUID().toString();
+
+        // Add a valid message
+        final var message1 = Text.builder()
+                .sessionId(sessionId)
+                .runId(runId)
+                .content("message 1")
+                .timestamp(1000L)
+                .stats(new ModelUsageStats())
+                .build();
+        messageStorage.addMessages(List.of(message1));
+
+        // Append empty lines and another valid message
+        final var messagesFile = Path.of(sessionDir, "messages.jsonl");
+        Files.write(messagesFile,
+                    List.of("", "  ", ""),
+                    StandardCharsets.UTF_8,
+                    java.nio.file.StandardOpenOption.APPEND);
+
+        final var message2 = Text.builder()
+                .sessionId(sessionId)
+                .runId(runId)
+                .content("message 2")
+                .timestamp(2000L)
+                .stats(new ModelUsageStats())
+                .build();
+        messageStorage.addMessages(List.of(message2));
+
+        // Create new storage to read from file
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        final var response = newStorage.readMessages(10, false, null, QueryDirection.NEWER);
+
+        // Should have both valid messages
+        assertEquals(2, response.getItems().size());
+        assertEquals("message 1", ((Text) response.getItems().get(0)).getContent());
+        assertEquals("message 2", ((Text) response.getItems().get(1)).getContent());
+    }
+
+    @Test
+    @SneakyThrows
     void testEmptyStorage() {
         final var response = messageStorage.readMessages(10, false, null, QueryDirection.NEWER);
         assertTrue(response.getItems().isEmpty());
@@ -113,6 +219,51 @@ class FileSystemMessageStorageTest {
         assertEquals(3, response.getItems().size());
         assertEquals("msg1", ((Text) response.getItems().get(0)).getContent());
         assertEquals("msg3", ((Text) response.getItems().get(2)).getContent());
+    }
+
+    @Test
+    @SneakyThrows
+    void testPartiallyCorruptedFile() {
+        final var sessionId = "test-session";
+        final var runId = UUID.randomUUID().toString();
+
+        // Add valid messages
+        final var message1 = Text.builder()
+                .sessionId(sessionId)
+                .runId(runId)
+                .content("first valid")
+                .timestamp(1000L)
+                .stats(new ModelUsageStats())
+                .build();
+
+        final var message2 = Text.builder()
+                .sessionId(sessionId)
+                .runId(runId)
+                .content("second valid")
+                .timestamp(2000L)
+                .stats(new ModelUsageStats())
+                .build();
+
+        messageStorage.addMessages(List.of(message1));
+
+        // Append corrupted line
+        final var messagesFile = Path.of(sessionDir, "messages.jsonl");
+        Files.write(messagesFile,
+                    List.of("{'malformed': json}"),
+                    StandardCharsets.UTF_8,
+                    java.nio.file.StandardOpenOption.APPEND);
+
+        // Add another valid message
+        messageStorage.addMessages(List.of(message2));
+
+        // Create new storage and read
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        final var response = newStorage.readMessages(10, false, null, QueryDirection.NEWER);
+
+        // Should gracefully skip the corrupted line and read valid messages
+        assertEquals(2, response.getItems().size());
+        assertEquals("first valid", ((Text) response.getItems().get(0)).getContent());
+        assertEquals("second valid", ((Text) response.getItems().get(1)).getContent());
     }
 
     @Test
