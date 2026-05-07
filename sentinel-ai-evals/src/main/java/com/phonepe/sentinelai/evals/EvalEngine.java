@@ -230,10 +230,10 @@ public class EvalEngine {
     })
     private <R, T, A extends Agent<R, T, A>> ExpectationExecutor<T, R> createExecutor(Agent<R, T, A> agent,
                                                                                       Expectation<T, R> expectation) {
-        return (ExpectationExecutor<T, R>) executorFactory.create((Agent) agent,
-                                                                  expectation,
-                                                                  objectMapper,
-                                                                  executorService);
+        return executorFactory.create((Agent) agent,
+                                      expectation,
+                                      objectMapper,
+                                      executorService);
     }
 
     private <R, T> List<TestCaseReport> executeAndCollectReports(Agent<R, T, ?> agent,

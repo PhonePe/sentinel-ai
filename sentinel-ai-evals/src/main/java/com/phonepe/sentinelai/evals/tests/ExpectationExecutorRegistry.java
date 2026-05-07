@@ -66,13 +66,6 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
 
     private final Map<Class<?>, ExpectationExecutorFactory> registry = new ConcurrentHashMap<>();
 
-    /**
-     * Creates an empty expectation registry backed by the supplied metric factory.
-     *
-     * @param metricExecutorFactory metric factory used when registering metric-backed expectations
-     */
-    public ExpectationExecutorRegistry() {
-    }
 
     /**
      * Creates a registry pre-loaded with all built-in expectation executors.

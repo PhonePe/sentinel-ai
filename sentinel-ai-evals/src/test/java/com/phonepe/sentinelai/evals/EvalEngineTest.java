@@ -149,7 +149,7 @@ class EvalEngineTest {
         val dataset = new Dataset<String, String>("test-dataset", tests);
 
         val report = engine.run(dataset,
-                                TestFactory.testAgent("ok", 0),
+                                TestFactory.testAgent("ok"),
                                 EvalRunConfig.defaults().withFailFast(true));
 
         assertEquals(2, report.getSampledTestCases());
@@ -200,7 +200,7 @@ class EvalEngineTest {
         val dataset = new Dataset<>("metric-skip-dataset", tests);
 
         val report = engine.run(dataset,
-                                TestFactory.testAgent("ok", 0),
+                                TestFactory.testAgent("ok"),
                                 EvalRunConfig.defaults());
 
         assertEquals(1, report.getExecutedTestCases());
@@ -219,7 +219,7 @@ class EvalEngineTest {
         }
         val dataset = new Dataset<String, String>("test-dataset", tests);
         val report = engine.run(dataset,
-                                TestFactory.testAgent("ok", 0),
+                                TestFactory.testAgent("ok"),
                                 EvalRunConfig.defaults()
                                         .withSamplePercentage(30)
                                         .withSampleSeed(7L));
@@ -236,11 +236,11 @@ class EvalEngineTest {
         EvalEngine engine = engineWithMockJudgeModel();
         val tests = List.of(new TestCase<>("slow",
                                            List.of(Expectations.outputContains("ok")),
-                                           Duration.ofMillis(50)));
+                                           Duration.ofMillis(1)));
         val dataset = new Dataset<>("test-dataset", tests);
 
         val report = engine.run(dataset,
-                                TestFactory.testAgent("ok", 200),
+                                TestFactory.testAgent("ok"),
                                 EvalRunConfig.defaults());
 
         assertEquals(1, report.getExecutedTestCases());

@@ -98,25 +98,11 @@ public class TestFactory {
      */
     public static class TestModel implements Model {
         private final String output;
-        private final long delayMs;
 
-        public TestModel(String output,
-                         long delayMs) {
+        public TestModel(String output) {
             this.output = output;
-            this.delayMs = delayMs;
         }
 
-        private static void sleep(long delayMs) {
-            if (delayMs <= 0) {
-                return;
-            }
-            try {
-                Thread.sleep(delayMs);
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
 
         @Override
         public CompletableFuture<ModelOutput> compute(ModelRunContext context,
@@ -127,7 +113,6 @@ public class TestFactory {
                                                       EarlyTerminationStrategy earlyTerminationStrategy,
                                                       List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
             return CompletableFuture.supplyAsync(() -> {
-                sleep(delayMs);
                 val usage = new ModelUsageStats();
                 ObjectNode data = JsonNodeFactory.instance.objectNode();
                 data.put(Agent.OUTPUT_VARIABLE_NAME, output);
@@ -135,7 +120,7 @@ public class TestFactory {
                                                                  context.getRunId(),
                                                                  output,
                                                                  usage,
-                                                                 delayMs));
+                                                                 2));
                 val allMessages = new ArrayList<>(oldMessages);
                 allMessages.addAll(newMessages);
                 return ModelOutput.success(data,
@@ -345,81 +330,6 @@ public class TestFactory {
      * @return TestAgent instance
      */
     public static TestAgent testAgent(String output) {
-        return testAgent(new TestModel(output, 0));
-    }
-
-    /**
-     * Creates a {@link TestAgent} with custom system prompt and the given model.
-     *
-     * @param systemPrompt the system prompt to use
-     * @param model        the Model to use
-     * @return TestAgent instance
-     */
-    public static TestAgent testAgent(String systemPrompt,
-                                      Model model) {
-        val mapper = new ObjectMapper();
-        return new TestAgent(String.class,
-                             systemPrompt,
-                             AgentSetup.builder()
-                                     .mapper(mapper)
-                                     .model(model)
-                                     .build(),
-                             List.of(),
-                             Map.of());
-    }
-
-    /**
-     * Creates a TestAgent with custom system prompt and ObjectMapper.
-     *
-     * @param systemPrompt the system prompt
-     * @param model        the Model to use
-     * @param mapper       the ObjectMapper to use
-     * @return TestAgent instance
-     */
-    public static TestAgent testAgent(String systemPrompt,
-                                      Model model,
-                                      ObjectMapper mapper) {
-        return new TestAgent(String.class,
-                             systemPrompt,
-                             AgentSetup.builder()
-                                     .mapper(mapper)
-                                     .model(model)
-                                     .build(),
-                             List.of(),
-                             Map.of());
-    }
-
-    /**
-     * Creates a {@link TestAgent} with a {@link TestModel} that returns the specified output with delay.
-     *
-     * @param output  the string output for the test model
-     * @param delayMs delay in milliseconds
-     * @return TestAgent instance
-     */
-    public static TestAgent testAgent(String output,
-                                      long delayMs) {
-        return testAgent(new TestModel(output, delayMs));
-    }
-
-    /**
-     * Creates a {@link TestModel} with the given string output and no delay.
-     *
-     * @param output the string output to return
-     * @return TestModel instance
-     */
-    public static TestModel testModel(String output) {
-        return new TestModel(output, 0);
-    }
-
-    /**
-     * Creates a {@link TestModel} with the given string output and delay.
-     *
-     * @param output  the string output to return
-     * @param delayMs delay in milliseconds
-     * @return TestModel instance
-     */
-    public static TestModel testModel(String output,
-                                      long delayMs) {
-        return new TestModel(output, delayMs);
+        return testAgent(new TestModel(output));
     }
 }
