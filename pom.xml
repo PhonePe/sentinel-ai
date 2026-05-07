@@ -318,9 +318,42 @@
                         <version>${spotless.version}</version>
                         <configuration>
                             <java>
-                                <googleJavaFormat>
-                                    <style>AOSP</style>
-                                </googleJavaFormat>
+                                <licenseHeader>
+                                    <file>${maven.multiModuleProjectDirectory}/license.header</file>
+                                </licenseHeader>
+                                <eclipse>
+                                    <version>4.38</version>
+                                    <file>${maven.multiModuleProjectDirectory}/java-format.xml</file>
+                                    <sortMembersEnabled>true</sortMembersEnabled>
+                                    <!-- Sort order
+                                    - Static Fields
+                                    - Type Definitions
+                                    - Initializers
+                                    - Field Definitions
+                                    - Field Initializers
+                                    - Constructor
+                                    - Static functions
+                                    - Methods
+                                    -->
+                                    <sortMembersOrder>SF,T,SI,F,I,C,SM,M</sortMembersOrder>
+                                    <sortMembersVisibilityOrderEnabled>true</sortMembersVisibilityOrderEnabled>
+                                    <!--
+                                    - Public
+                                    - Protected
+                                    - Package
+                                    - Private
+                                    -->
+                                    <sortMembersVisibilityOrder>B,R,D,V</sortMembersVisibilityOrder>
+                                </eclipse>
+                                <removeUnusedImports/>
+                                <importOrder>
+                                    <order>com,io,org,com.phonepe,,java,javax,\#</order>
+                                    <semanticSort>true</semanticSort>
+                                </importOrder>
+                                <trimTrailingWhitespace/>
+                                <forbidWildcardImports/>
+                                <endWithNewline/>
+                                <!-- <ratchetFrom>origin/master</ratchetFrom> -->
                             </java>
                         </configuration>
                         <executions>

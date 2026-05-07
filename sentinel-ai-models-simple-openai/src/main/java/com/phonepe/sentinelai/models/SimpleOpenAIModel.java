@@ -605,8 +605,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              }
                                                                          }
                                                                          case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
-                                                                             log.info("Tool call requested. Reasoning content = {}", message.getReasoningContent());
-
                                                                              //Model is waiting for us to run tools and respond back
                                                                              final var toolCalls = toolCallData
                                                                                      .values()

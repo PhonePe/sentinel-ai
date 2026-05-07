@@ -236,6 +236,15 @@ class SqliteQueryEngineTest {
         }
 
         @Test
+        @DisplayName("returns error when tableName is an invalid identifier")
+        void returnsErrorWhenTableNameInvalid() {
+            final McpSchema.CallToolResult result =
+                    engine.getTableSchema(Map.of("tableName", "bad table; DROP"), mapper);
+            assertEquals(Boolean.TRUE, result.isError());
+            assertTrue(firstText(result).contains("Invalid table name"));
+        }
+
+        @Test
         @DisplayName("returns error for unknown table")
         void returnsErrorForUnknownTable() {
             final McpSchema.CallToolResult result =

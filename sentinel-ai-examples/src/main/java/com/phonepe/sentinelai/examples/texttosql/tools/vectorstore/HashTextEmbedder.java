@@ -18,6 +18,8 @@ package com.phonepe.sentinelai.examples.texttosql.tools.vectorstore;
 
 /**
  * Lightweight text embedder based on feature hashing.
+ * This implementation is not meant to be used in production. It exists purely for the purpose of demonstration.
+ * It doesn't compute semantic similarity and only computes syntactical similarity based on character n-gram features.
  *
  * <p>Converts a text string into a fixed-dimension float vector using a combination of word-level
  * and character 3-gram features hashed into {@link #VECTOR_DIM} buckets, then L2-normalised. The

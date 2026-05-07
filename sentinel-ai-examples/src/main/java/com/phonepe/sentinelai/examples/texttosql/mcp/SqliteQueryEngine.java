@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.examples.texttosql.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.phonepe.sentinelai.examples.texttosql.sql.SqlValidationUtils;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -73,9 +74,11 @@ public class SqliteQueryEngine {
                         "CREATE",
                         "REPLACE",
                         "TRUNCATE",
-                        "MERGE");
+                        "MERGE",
+                        "ATTACH",
+                        "DETACH");
         for (final String prefix : writePrefixes) {
-            if (upper.startsWith(prefix)) {
+            if (upper.contains(prefix)) {
                 return error(
                         "Write DML statements are not allowed via this endpoint. "
                                 + "Statement starts with: "
@@ -89,6 +92,7 @@ public class SqliteQueryEngine {
 
         log.info("Executing SQL: {}", sql);
         final long startMs = System.currentTimeMillis();
+
         try (Connection conn = connect()) {
             final List<Map<String, Object>> rows = executeSelect(conn, sql, values);
             final long elapsed = System.currentTimeMillis() - startMs;
@@ -133,6 +137,11 @@ public class SqliteQueryEngine {
         final String tableName = (String) args.get("tableName");
         if (tableName == null || tableName.isBlank()) {
             return error("Field 'tableName' is required");
+        }
+        try {
+            SqlValidationUtils.validateTableName(tableName);
+        } catch (IllegalArgumentException e) {
+            return error(e.getMessage());
         }
         try (Connection conn = connect()) {
             final List<Map<String, Object>> columns =
@@ -186,6 +195,10 @@ public class SqliteQueryEngine {
     // JDBC helpers
     // -------------------------------------------------------------------------
 
+    /**
+     * NOTE: This creates a new connection per call and is intentionally kept simple for demo purposes.
+     * For production use, replace with a connection pool (e.g. HikariCP, C3P0, etc.).
+     */
     @SneakyThrows
     private Connection connect() {
         return DriverManager.getConnection("jdbc:sqlite:" + dbPath);

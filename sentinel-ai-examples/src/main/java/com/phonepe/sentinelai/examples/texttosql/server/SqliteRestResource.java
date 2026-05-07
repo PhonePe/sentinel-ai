@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.examples.texttosql.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.phonepe.sentinelai.examples.texttosql.sql.SqlValidationUtils;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -38,7 +39,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -75,17 +75,7 @@ public class SqliteRestResource {
     private static final String AFFECTED_ROWS = "affectedRows";
     private static final String COL_EQUALS_PLACEHOLDER = "\" = ?";
     private static final String AND_SEPARATOR = " AND ";
-    private static final String TABLE_NAME_LABEL = "table name";
     private static final String COLUMN_NAME_LABEL = "column name";
-
-    /** Only allow identifiers that are alphanumeric plus underscores to prevent SQL injection. */
-    private static final Pattern SAFE_IDENTIFIER = Pattern.compile("^[a-zA-Z_]\\w*$");
-
-    private static void validateIdentifier(String name, String label) {
-        if (!SAFE_IDENTIFIER.matcher(name).matches()) {
-            throw new IllegalArgumentException("Invalid " + label + ": " + name);
-        }
-    }
 
     // -------------------------------------------------------------------------
     // Query endpoint — executes arbitrary SQL
@@ -105,9 +95,9 @@ public class SqliteRestResource {
             return error(400, "Field 'data' (non-empty object) is required");
         }
 
-        validateIdentifier(table, TABLE_NAME_LABEL);
+        SqlValidationUtils.validateTableName(table);
         final var cols = new ArrayList<>(data.keySet());
-        cols.forEach(col -> validateIdentifier(col, COLUMN_NAME_LABEL));
+        cols.forEach(col -> SqlValidationUtils.validateIdentifier(col, COLUMN_NAME_LABEL));
         final var placeholders = cols.stream().map(c -> "?").toList();
         final String sql =
                 "INSERT INTO \""
@@ -146,12 +136,12 @@ public class SqliteRestResource {
                     400, "Field 'conditions' is required (to avoid accidental full-table deletes)");
         }
 
-        validateIdentifier(table, TABLE_NAME_LABEL);
-        final var params = new ArrayList<Object>();
+        SqlValidationUtils.validateTableName(table);
+        final var params = new ArrayList<>();
         final var whereClauses = new ArrayList<String>();
         conditions.forEach(
                 (k, v) -> {
-                    validateIdentifier(k, COLUMN_NAME_LABEL);
+                    SqlValidationUtils.validateIdentifier(k, COLUMN_NAME_LABEL);
                     whereClauses.add("\"" + k + COL_EQUALS_PLACEHOLDER);
                     params.add(v);
                 });
@@ -199,9 +189,11 @@ public class SqliteRestResource {
                         "CREATE",
                         "REPLACE",
                         "TRUNCATE",
-                        "MERGE");
+                        "MERGE",
+                        "ATTACH",
+                        "DETACH");
         for (final String prefix : writePrefixes) {
-            if (trimmedUpper.startsWith(prefix)) {
+            if (trimmedUpper.contains(prefix)) {
                 throw new WriteQueryNotAllowedException(
                         "Write DML statements are not allowed via this endpoint. Offending statement starts with: "
                                 + prefix);
@@ -292,6 +284,7 @@ public class SqliteRestResource {
     @Path("/schema/{tableName}")
     @SneakyThrows
     public Response getTableSchema(@PathParam("tableName") String tableName) {
+        SqlValidationUtils.validateTableName(tableName);
         try (Connection conn = connect()) {
             final var rows =
                     executeSelect(conn, "PRAGMA table_info(\"" + tableName + "\")", List.of());
@@ -333,7 +326,7 @@ public class SqliteRestResource {
             @QueryParam("offset") Integer offset,
             @QueryParam("conditions") String conditionsJson) {
 
-        validateIdentifier(table, TABLE_NAME_LABEL);
+        SqlValidationUtils.validateTableName(table);
         try (Connection conn = connect()) {
             final var sb = new StringBuilder("SELECT * FROM \"").append(table).append("\"");
             final List<Object> params = new ArrayList<>();
@@ -346,7 +339,7 @@ public class SqliteRestResource {
                     final var clauses = new ArrayList<String>();
                     conditions.forEach(
                             (k, v) -> {
-                                validateIdentifier(k, COLUMN_NAME_LABEL);
+                                SqlValidationUtils.validateIdentifier(k, COLUMN_NAME_LABEL);
                                 clauses.add("\"" + k + COL_EQUALS_PLACEHOLDER);
                                 params.add(v);
                             });
@@ -385,19 +378,19 @@ public class SqliteRestResource {
                     400, "Field 'conditions' is required (to avoid accidental full-table updates)");
         }
 
-        validateIdentifier(table, TABLE_NAME_LABEL);
-        final var params = new ArrayList<Object>();
+        SqlValidationUtils.validateTableName(table);
+        final var params = new ArrayList<>();
         final var setClauses = new ArrayList<String>();
         data.forEach(
                 (k, v) -> {
-                    validateIdentifier(k, COLUMN_NAME_LABEL);
+                    SqlValidationUtils.validateIdentifier(k, COLUMN_NAME_LABEL);
                     setClauses.add("\"" + k + COL_EQUALS_PLACEHOLDER);
                     params.add(v);
                 });
         final var whereClauses = new ArrayList<String>();
         conditions.forEach(
                 (k, v) -> {
-                    validateIdentifier(k, COLUMN_NAME_LABEL);
+                    SqlValidationUtils.validateIdentifier(k, COLUMN_NAME_LABEL);
                     whereClauses.add("\"" + k + COL_EQUALS_PLACEHOLDER);
                     params.add(v);
                 });

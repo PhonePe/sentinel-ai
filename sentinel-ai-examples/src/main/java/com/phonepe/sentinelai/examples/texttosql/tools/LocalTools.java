@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
+import com.phonepe.sentinelai.examples.texttosql.sql.SqlValidationUtils;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.TableDescRequest;
 import com.phonepe.sentinelai.examples.texttosql.tools.vectorstore.SchemaSearchResult;
@@ -78,8 +79,7 @@ public class LocalTools implements ToolBox {
      * @param dataDir directory used for persisting vector store data (typically the {@code .data/}
      *     directory that also contains the SQLite file)
      */
-    @SneakyThrows
-    public LocalTools(String dbPath, Path dataDir) {
+    public LocalTools(String dbPath, Path dataDir) throws IOException {
         this.dbPath = dbPath;
         this.vectorStore = VectorStoreInitializer.ensureInitialized(dataDir);
         this.schemaDescriptions = loadSchemaDescriptions();
@@ -417,13 +417,11 @@ public class LocalTools implements ToolBox {
     // The SELECT and PRAGMA queries use double-quoted identifiers which are safe in SQLite.
     @SuppressWarnings("java:S2077")
     private void appendTableDdl(Connection conn, String table, StringBuilder sb) {
+        SqlValidationUtils.validateTableName(table);
         // Get CREATE TABLE statement for the full annotated DDL
-        try (var stmt = conn.createStatement();
-                ResultSet rs =
-                        stmt.executeQuery(
-                                "SELECT sql FROM sqlite_master WHERE type='table' AND name='"
-                                        + table
-                                        + "'")) {
+        try (var stmt = conn.prepareStatement("SELECT sql FROM sqlite_master WHERE type='table' AND name=?")) {
+            stmt.setString(1, table);
+            ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 sb.append("```sql\n").append(rs.getString("sql")).append("\n```\n");
             }
