@@ -208,7 +208,7 @@ class AnswerRelevanceMetricTest {
                                                      false);
         final var metric = new OutputRelevanceMetric<String>("REQ={request};ANS={answer}");
 
-        final var score = MetricExecutorRegistry.withDefaults(evaluator, new ObjectMapper())
+        final var score = MetricExecutorRegistry.withDefaults(null, evaluator, new ObjectMapper())
                 .create(metric, new ObjectMapper(), ForkJoinPool.commonPool())
                 .calculate("agent-answer", TestFactory.contextWith("user-request"));
 

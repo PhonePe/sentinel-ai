@@ -70,7 +70,7 @@ public class EvalEngine {
      * @param objectMapper mapper used for eval serialization and JSONPath evaluation
      */
     public EvalEngine(ObjectMapper objectMapper) {
-        this(objectMapper, ForkJoinPool.commonPool(), ExpectationExecutorRegistry.withDefaults(objectMapper));
+        this(objectMapper, ForkJoinPool.commonPool(), ExpectationExecutorRegistry.withDefaults());
     }
 
     /**
@@ -81,7 +81,7 @@ public class EvalEngine {
      */
     public EvalEngine(ObjectMapper objectMapper,
                       ExecutorService executorService) {
-        this(objectMapper, executorService, ExpectationExecutorRegistry.withDefaults(objectMapper));
+        this(objectMapper, executorService, ExpectationExecutorRegistry.withDefaults());
     }
 
     /**
@@ -168,6 +168,8 @@ public class EvalEngine {
      */
     public <R, T, A extends Agent<R, T, A>> EvalReport run(Dataset<R, T> dataset,
                                                            Agent<R, T, A> agent) {
+        Objects.requireNonNull(dataset, "dataset cannot be null");
+        Objects.requireNonNull(agent, "agent cannot be null");
         return run(dataset, agent, EvalRunConfig.defaults());
     }
 
@@ -185,31 +187,22 @@ public class EvalEngine {
     public <R, T, A extends Agent<R, T, A>> EvalReport run(Dataset<R, T> dataset,
                                                            Agent<R, T, A> agent,
                                                            EvalRunConfig config) {
+        Objects.requireNonNull(dataset, "dataset cannot be null");
+        Objects.requireNonNull(agent, "agent cannot be null");
+        Objects.requireNonNull(config, "config cannot be null");
         final var startTime = System.nanoTime();
         final var allCases = Objects.requireNonNullElse(dataset.getTestCases(), List.<TestCase<R, T>>of());
         final var sampledCases = sampleTestCases(allCases, config);
-        final var reports = new ArrayList<TestCaseReport>();
-        int passedCount = 0;
-        int failedCount = 0;
-        int skippedCount = 0;
+        final var reports = executeAndCollectReports(agent, sampledCases, config);
 
-        for (TestCase<R, T> testCase : sampledCases) {
-            final var report = executeTestCase(agent, testCase, config);
-            reports.add(report);
-            if (report.getStatus() == EvalStatus.PASSED) {
-                passedCount++;
-            }
-            else if (report.getStatus() == EvalStatus.FAILED) {
-                failedCount++;
-            }
-            else if (report.getStatus() == EvalStatus.SKIPPED) {
-                skippedCount++;
-            }
-            if (config.isFailFast() && report.getStatus() == EvalStatus.FAILED) {
-                break;
-            }
-        }
+        return buildReport(dataset, allCases, sampledCases, reports, startTime);
+    }
 
+    private <R, T> EvalReport buildReport(Dataset<R, T> dataset,
+                                          List<TestCase<R, T>> allCases,
+                                          List<TestCase<R, T>> sampledCases,
+                                          List<TestCaseReport> reports,
+                                          long startTimeNanos) {
         final var executedCount = reports.size();
         final var rawMetricScores = collectRawMetricScores(reports);
 
@@ -218,14 +211,28 @@ public class EvalEngine {
                 .totalTestCases(allCases.size())
                 .sampledTestCases(sampledCases.size())
                 .executedTestCases(executedCount)
-                .passedTestCases(passedCount)
-                .failedTestCases(failedCount)
-                .skippedTestCases(skippedCount)
-                .durationMs(elapsedMs(startTime))
+                .passedTestCases((int) reports.stream().filter(r -> r.getStatus() == EvalStatus.PASSED).count())
+                .failedTestCases((int) reports.stream().filter(r -> r.getStatus() == EvalStatus.FAILED).count())
+                .skippedTestCases((int) reports.stream().filter(r -> r.getStatus() == EvalStatus.SKIPPED).count())
+                .durationMs(elapsedMs(startTimeNanos))
                 .completedAllSampledCases(executedCount == sampledCases.size())
                 .testCaseReports(List.copyOf(reports))
                 .metricScores(rawMetricScores)
                 .build();
+    }
+
+    private <R, T> List<TestCaseReport> executeAndCollectReports(Agent<R, T, ?> agent,
+                                                                 List<TestCase<R, T>> sampledCases,
+                                                                 EvalRunConfig config) {
+        final var reports = new ArrayList<TestCaseReport>();
+        for (TestCase<R, T> testCase : sampledCases) {
+            final var report = executeTestCase(agent, testCase, config);
+            reports.add(report);
+            if (config.isFailFast() && report.getStatus() == EvalStatus.FAILED) {
+                break;
+            }
+        }
+        return reports;
     }
 
     private <R, T, A extends Agent<R, T, A>> TestCaseReport executeTestCase(Agent<R, T, A> agent,

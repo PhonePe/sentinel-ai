@@ -27,5 +27,6 @@ package com.phonepe.sentinelai.evals.tests;
  * @param <R> result/output type being evaluated
  * @param <T> input/request type
  */
+@SuppressWarnings("unused")
 public interface Expectation<R, T> {
 }

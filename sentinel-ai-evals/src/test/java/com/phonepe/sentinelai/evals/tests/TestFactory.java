@@ -36,6 +36,9 @@ import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.evals.ExpectationReport;
+import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelFactory;
+import com.phonepe.sentinelai.evals.tests.metrics.LLMIdentifier;
+import com.phonepe.sentinelai.evals.tests.metrics.LLMModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.Metric;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry;
@@ -60,7 +63,6 @@ public class TestFactory {
 
     // Default constants
     private static final String DEFAULT_RUN_ID = "test-run";
-    private static final String DEFAULT_SESSION_ID = "test-session";
 
     /**
      * Generic test agent for use in eval tests. Supports tool execution via {@link Tool} annotations.
@@ -290,25 +292,31 @@ public class TestFactory {
     }
 
     public static MetricExecutorFactory metricExecutorFactory() {
-        return MetricExecutorRegistry.withDefaults((context,
-                                                    outputDefinitions,
-                                                    oldMessages,
-                                                    tools,
-                                                    toolRunner,
-                                                    earlyTerminationStrategy,
-                                                    agentMessagesPreProcessors) -> {
-            final var data = JsonNodeFactory.instance.objectNode();
-            data.put(Agent.OUTPUT_VARIABLE_NAME, "{\"score\":0.0,\"reason\":\"mock\"}");
-            final var safeMessages = oldMessages == null ? List.<AgentMessage>of() : oldMessages;
-            return CompletableFuture.completedFuture(ModelOutput.success(data,
-                                                                         List.of(),
-                                                                         safeMessages,
-                                                                         new ModelUsageStats()));
-        });
+        return MetricExecutorRegistry.withDefaults(null,
+                                                   EmbeddingModelFactory.noOp(),
+                                                   new LLMIdentifier("mock"),
+                                                   (LLMModelFactory) id -> (context,
+                                                                            outputDefinitions,
+                                                                            oldMessages,
+                                                                            tools,
+                                                                            toolRunner,
+                                                                            earlyTerminationStrategy,
+                                                                            agentMessagesPreProcessors) -> {
+                                                       final var data = JsonNodeFactory.instance.objectNode();
+                                                       data.put(Agent.OUTPUT_VARIABLE_NAME,
+                                                                "{\"score\":0.0,\"reason\":\"mock\"}");
+                                                       final var safeMessages = oldMessages == null ? List
+                                                               .<AgentMessage>of() : oldMessages;
+                                                       return CompletableFuture.completedFuture(ModelOutput.success(
+                                                                                                                    data,
+                                                                                                                    List.of(),
+                                                                                                                    safeMessages,
+                                                                                                                    new ModelUsageStats()));
+                                                   });
     }
 
     public static MetricExecutorFactory metricExecutorFactory(Model answerRelevanceModel) {
-        return MetricExecutorRegistry.withDefaults(answerRelevanceModel);
+        return MetricExecutorRegistry.withDefaults(null, answerRelevanceModel, TestFactory.mapper());
     }
 
     /**

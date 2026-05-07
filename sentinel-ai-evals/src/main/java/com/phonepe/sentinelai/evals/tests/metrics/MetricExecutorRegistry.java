@@ -35,9 +35,7 @@ import java.util.concurrent.ExecutorService;
  * Registry-based {@link MetricExecutorFactory} that dispatches to a registered
  * {@link MetricExecutorFactory} per {@link Metric} class.
  *
- * <p>The preferred way to create a registry is via the factory-based overloads, which
- * accept {@link EmbeddingModelFactory} / {@link LLMModelFactory} together with their
- * respective identifiers:
+ * <p>Library users can extend the built-in set by calling {@link #register}:
  *
  * <pre>{@code
  * MetricExecutorRegistry registry = MetricExecutorRegistry.withDefaults(
@@ -58,10 +56,6 @@ import java.util.concurrent.ExecutorService;
 public class MetricExecutorRegistry implements MetricExecutorFactory {
 
     private final Map<Class<?>, MetricExecutorFactory> registry = new ConcurrentHashMap<>();
-
-    // -------------------------------------------------------------------------
-    // Factory-based withDefaults (primary API)
-    // -------------------------------------------------------------------------
 
     /**
      * Creates a registry pre-loaded with all built-in metric executors.
@@ -86,30 +80,72 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
      *                             {@code null} skips registering embedding-based metrics
      * @param answerRelevanceModel judge {@link Model} for answer relevance scoring;
      *                             {@code null} skips registering LLM-judge metrics
-     * @deprecated Prefer {@link #withDefaults(EmbeddingModelIdentifier, EmbeddingModelFactory,
-     *             LLMIdentifier, LLMModelFactory)} instead.
-     */
-    @Deprecated
-    public static MetricExecutorRegistry withDefaults(EmbeddingModel embeddingModel,
-                                                      Model answerRelevanceModel) {
-        return withDefaults(embeddingModel, answerRelevanceModel, JsonUtils.createMapper());
-    }
-
-    /**
-     * Creates a registry pre-loaded with all built-in metric executors.
-     *
-     * @param embeddingModel       {@link EmbeddingModel} for embedding-based metrics;
-     *                             {@code null} skips registering embedding-based metrics
-     * @param answerRelevanceModel judge {@link Model} for answer relevance scoring;
-     *                             {@code null} skips registering LLM-judge metrics
      * @param objectMapper         mapper used by JSON-dependent metric executors
-     * @deprecated Prefer {@link #withDefaults(EmbeddingModelIdentifier, EmbeddingModelFactory,
-     *             LLMIdentifier, LLMModelFactory, ObjectMapper)} instead.
      */
-    @Deprecated
     public static MetricExecutorRegistry withDefaults(EmbeddingModel embeddingModel,
                                                       Model answerRelevanceModel,
                                                       ObjectMapper objectMapper) {
+        return buildRegistry(embeddingModel, answerRelevanceModel, objectMapper);
+    }
+
+    /**
+     * Creates a registry pre-loaded with all built-in metric executors, resolving models
+     * via the supplied factories and identifiers.
+     *
+     * @param embeddingModelIdentifier identifies the embedding model passed to {@code embeddingModelFactory};
+     *                                 {@code null} skips embedding-based metrics
+     * @param embeddingModelFactory    factory that creates an {@link EmbeddingModel} from the identifier;
+     *                                 uses {@link EmbeddingModelFactory#noOp()} when {@code null}
+     * @param llmIdentifier            identifies the LLM passed to {@code llmModelFactory};
+     *                                 {@code null} skips LLM-judge metrics
+     * @param llmModelFactory          factory that creates a {@link Model} from the identifier;
+     *                                 uses {@link LLMModelFactory#noOp()} when {@code null}
+     */
+    public static MetricExecutorRegistry withDefaults(EmbeddingModelIdentifier embeddingModelIdentifier,
+                                                      EmbeddingModelFactory embeddingModelFactory,
+                                                      LLMIdentifier llmIdentifier,
+                                                      LLMModelFactory llmModelFactory) {
+        return withDefaults(embeddingModelIdentifier,
+                            embeddingModelFactory,
+                            llmIdentifier,
+                            llmModelFactory,
+                            JsonUtils.createMapper());
+    }
+
+    /**
+     * Creates a registry pre-loaded with all built-in metric executors, resolving models
+     * via the supplied factories and identifiers.
+     *
+     * @param embeddingModelIdentifier identifies the embedding model passed to {@code embeddingModelFactory};
+     *                                 {@code null} skips embedding-based metrics
+     * @param embeddingModelFactory    factory that creates an {@link EmbeddingModel} from the identifier;
+     *                                 uses {@link EmbeddingModelFactory#noOp()} when {@code null}
+     * @param llmIdentifier            identifies the LLM passed to {@code llmModelFactory};
+     *                                 {@code null} skips LLM-judge metrics
+     * @param llmModelFactory          factory that creates a {@link Model} from the identifier;
+     *                                 uses {@link LLMModelFactory#noOp()} when {@code null}
+     * @param objectMapper             mapper used by JSON-dependent metric executors
+     */
+    public static MetricExecutorRegistry withDefaults(EmbeddingModelIdentifier embeddingModelIdentifier,
+                                                      EmbeddingModelFactory embeddingModelFactory,
+                                                      LLMIdentifier llmIdentifier,
+                                                      LLMModelFactory llmModelFactory,
+                                                      ObjectMapper objectMapper) {
+        final var effectiveEmbeddingFactory = embeddingModelFactory != null
+                ? embeddingModelFactory : EmbeddingModelFactory.noOp();
+        final var effectiveLlmFactory = llmModelFactory != null ? llmModelFactory : LLMModelFactory.noOp();
+
+        final EmbeddingModel embeddingModel = embeddingModelIdentifier != null
+                ? effectiveEmbeddingFactory.create(embeddingModelIdentifier) : null;
+        final Model answerRelevanceModel = llmIdentifier != null
+                ? effectiveLlmFactory.create(llmIdentifier) : null;
+
+        return buildRegistry(embeddingModel, answerRelevanceModel, objectMapper);
+    }
+
+    private static MetricExecutorRegistry buildRegistry(EmbeddingModel embeddingModel,
+                                                        Model answerRelevanceModel,
+                                                        ObjectMapper objectMapper) {
         Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
         final var registry = new MetricExecutorRegistry();
         final List<String> skippedMetrics = new ArrayList<>();
@@ -173,104 +209,6 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
 
         return registry;
     }
-
-    // -------------------------------------------------------------------------
-    // Legacy withDefaults (kept for backward compatibility)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Creates a registry pre-loaded with all built-in metric executors, resolving models
-     * via the supplied factories and identifiers.
-     *
-     * @param embeddingModelIdentifier identifies the embedding model passed to {@code embeddingModelFactory};
-     *                                 {@code null} skips embedding-based metrics
-     * @param embeddingModelFactory    factory that creates an {@link EmbeddingModel} from the identifier;
-     *                                 uses {@link EmbeddingModelFactory#noOp()} when {@code null}
-     * @param llmIdentifier            identifies the LLM passed to {@code llmModelFactory};
-     *                                 {@code null} skips LLM-judge metrics
-     * @param llmModelFactory          factory that creates a {@link Model} from the identifier;
-     *                                 uses {@link LLMModelFactory#noOp()} when {@code null}
-     */
-    public static MetricExecutorRegistry withDefaults(EmbeddingModelIdentifier embeddingModelIdentifier,
-                                                      EmbeddingModelFactory embeddingModelFactory,
-                                                      LLMIdentifier llmIdentifier,
-                                                      LLMModelFactory llmModelFactory) {
-        return withDefaults(embeddingModelIdentifier,
-                            embeddingModelFactory,
-                            llmIdentifier,
-                            llmModelFactory,
-                            JsonUtils.createMapper());
-    }
-
-    /**
-     * Creates a registry pre-loaded with all built-in metric executors, resolving models
-     * via the supplied factories and identifiers.
-     *
-     * @param embeddingModelIdentifier identifies the embedding model passed to {@code embeddingModelFactory};
-     *                                 {@code null} skips embedding-based metrics
-     * @param embeddingModelFactory    factory that creates an {@link EmbeddingModel} from the identifier;
-     *                                 uses {@link EmbeddingModelFactory#noOp()} when {@code null}
-     * @param llmIdentifier            identifies the LLM passed to {@code llmModelFactory};
-     *                                 {@code null} skips LLM-judge metrics
-     * @param llmModelFactory          factory that creates a {@link Model} from the identifier;
-     *                                 uses {@link LLMModelFactory#noOp()} when {@code null}
-     * @param objectMapper             mapper used by JSON-dependent metric executors
-     */
-    public static MetricExecutorRegistry withDefaults(EmbeddingModelIdentifier embeddingModelIdentifier,
-                                                      EmbeddingModelFactory embeddingModelFactory,
-                                                      LLMIdentifier llmIdentifier,
-                                                      LLMModelFactory llmModelFactory,
-                                                      ObjectMapper objectMapper) {
-        final var effectiveEmbeddingFactory = embeddingModelFactory != null
-                ? embeddingModelFactory : EmbeddingModelFactory.noOp();
-        final var effectiveLlmFactory = llmModelFactory != null ? llmModelFactory : LLMModelFactory.noOp();
-
-        final EmbeddingModel embeddingModel = embeddingModelIdentifier != null
-                ? effectiveEmbeddingFactory.create(embeddingModelIdentifier) : null;
-        final Model answerRelevanceModel = llmIdentifier != null
-                ? effectiveLlmFactory.create(llmIdentifier) : null;
-
-        return withDefaults(embeddingModel, answerRelevanceModel, objectMapper);
-    }
-
-    /**
-     * Creates a registry pre-loaded with all built-in metric executors.
-     *
-     * @param answerRelevanceModel judge {@link Model} for answer relevance scoring;
-     *                             {@code null} skips registering LLM-judge metrics
-     * @deprecated Prefer the factory-based overloads instead.
-     */
-    @Deprecated
-    public static MetricExecutorRegistry withDefaults(Model answerRelevanceModel) {
-        return withDefaults(null, answerRelevanceModel, JsonUtils.createMapper());
-    }
-
-    /**
-     * Creates a registry pre-loaded with all built-in metric executors.
-     *
-     * @param answerRelevanceModel judge {@link Model} for answer relevance scoring;
-     *                             {@code null} skips registering LLM-judge metrics
-     * @param objectMapper         mapper used by JSON-dependent metric executors
-     * @deprecated Prefer the factory-based overloads instead.
-     */
-    @Deprecated
-    public static MetricExecutorRegistry withDefaults(Model answerRelevanceModel,
-                                                      ObjectMapper objectMapper) {
-        return withDefaults(null, answerRelevanceModel, objectMapper);
-    }
-
-    /**
-     * Creates a registry pre-loaded with all built-in metric executors.
-     * Metrics requiring a model will not be registered.
-     *
-     * @param objectMapper mapper used by JSON-dependent metric executors
-     * @deprecated Prefer {@link #withDefaults()} or the factory-based overloads instead.
-     */
-    @Deprecated
-    public static MetricExecutorRegistry withDefaults(ObjectMapper objectMapper) {
-        return withDefaults(null, null, Objects.requireNonNull(objectMapper, "objectMapper cannot be null"));
-    }
-
 
     /**
      * Resolves an executor for the supplied metric instance.

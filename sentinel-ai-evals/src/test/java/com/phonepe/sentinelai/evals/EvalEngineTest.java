@@ -116,7 +116,7 @@ class EvalEngineTest {
 
     private static EvalEngine engineWithMockJudgeModel() {
         final var mapper = TestFactory.mapper();
-        final var metricExecutorFactory = MetricExecutorRegistry.withDefaults(mockJudgeModel(), mapper);
+        final var metricExecutorFactory = MetricExecutorRegistry.withDefaults(null, mockJudgeModel(), mapper);
         final var expectationExecutorFactory = ExpectationExecutorRegistry.withDefaults(metricExecutorFactory,
                                                                                         mapper);
         return new EvalEngine(mapper, expectationExecutorFactory);
@@ -169,7 +169,9 @@ class EvalEngineTest {
             }
         };
         MetricExecutorFactory metricExecutorFactory = new MetricExecutorFactory() {
-            private final MetricExecutorFactory fallback = MetricExecutorRegistry.withDefaults(mockJudgeModel());
+            private final MetricExecutorFactory fallback = MetricExecutorRegistry.withDefaults(null,
+                                                                                               mockJudgeModel(),
+                                                                                               TestFactory.mapper());
 
             @Override
             // Type erasure in anonymous MetricExecutor<> prevents compile-time type checking

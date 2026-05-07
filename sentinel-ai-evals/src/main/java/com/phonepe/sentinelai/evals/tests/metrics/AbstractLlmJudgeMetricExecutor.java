@@ -122,7 +122,7 @@ public abstract class AbstractLlmJudgeMetricExecutor<M extends AbstractLlmJudgeM
         }
         catch (Exception e) {
             log.warn("Exception while calculating metric {}: {}", metricName(), e.getMessage());
-            throw new RuntimeException("Metric evaluation failed: " + metricName(), e);
+            throw new IllegalStateException("Metric evaluation failed: " + metricName(), e);
         }
     }
 

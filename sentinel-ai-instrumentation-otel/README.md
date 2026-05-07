@@ -32,6 +32,6 @@ final var agent = new MyAgent(agentSetup, List.of(otelExtension), Map.of());
 ### Run tests
 
 ```bash
-mvn test -pl sentinel-instrumentation
+mvn test -pl sentinel-ai-instrumentation-otel
 ```
 

@@ -28,6 +28,7 @@ package com.phonepe.sentinelai.evals.tests.metrics;
  * @param <R> The result/output type being evaluated
  * @param <T> The input/request type that generated the result
  */
+@SuppressWarnings("unused")
 public interface Metric<R, T> {
 
     /**

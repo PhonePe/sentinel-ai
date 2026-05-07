@@ -51,7 +51,7 @@ public final class EvalReportAssertions {
                             .map(expectationReport -> "    - [" + expectationReport.getStatus() + "] "
                                     + expectationReport.getExpectation() + " :: "
                                     + expectationReport.getDetails())
-                            .collect(Collectors.joining("\n"));
+                            .collect(Collectors.joining(System.lineSeparator()));
 
                     final var renderedExpectations = expectationDiagnostics.isBlank()
                             ? "    - (no expectation-level diagnostics captured)"

@@ -32,6 +32,8 @@ import com.phonepe.sentinelai.evals.tests.expectations.executors.OutputEqualsExp
 import com.phonepe.sentinelai.evals.tests.expectations.executors.ToolCalledExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.jsonpath.OutputJsonPathCompareExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
+import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelFactory;
+import com.phonepe.sentinelai.evals.tests.metrics.LLMModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExpectation;
@@ -69,8 +71,7 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
      *
      * @param metricExecutorFactory metric factory used when registering metric-backed expectations
      */
-    public ExpectationExecutorRegistry(MetricExecutorFactory metricExecutorFactory) {
-        Objects.requireNonNull(metricExecutorFactory, "metricExecutorFactory cannot be null");
+    public ExpectationExecutorRegistry() {
     }
 
     /**
@@ -101,9 +102,13 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
                                                            ObjectMapper objectMapper) {
         final var mapper = Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
         final var metricsFactory = metricExecutorFactory != null
-                ? metricExecutorFactory : MetricExecutorRegistry.withDefaults(mapper);
+                ? metricExecutorFactory : MetricExecutorRegistry.withDefaults(null,
+                                                                              EmbeddingModelFactory.noOp(),
+                                                                              null,
+                                                                              LLMModelFactory.noOp(),
+                                                                              mapper);
 
-        final var registry = new ExpectationExecutorRegistry(metricsFactory);
+        final var registry = new ExpectationExecutorRegistry();
 
         @SuppressWarnings("unchecked") final var outputEqualsClass = (Class<? extends Expectation<?, ?>>) (Object) OutputEqualsExpectation.class;
         registry.register(outputEqualsClass, new ExpectationExecutorFactory() {
@@ -200,15 +205,6 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
         });
 
         return registry;
-    }
-
-    /**
-     * Creates a registry pre-loaded with all built-in expectation executors.
-     *
-     * @param objectMapper mapper used by built-in JSON-dependent executors
-     */
-    public static ExpectationExecutorRegistry withDefaults(ObjectMapper objectMapper) {
-        return withDefaults(null, objectMapper);
     }
 
     /**

@@ -90,7 +90,7 @@ public class OutputJsonPathCompareExpectationExecutor<R, T> implements Expectati
     @Override
     public boolean evaluate(R result, EvalExpectationContext<T> context) {
         if (result == null) {
-            return expectation.getOperator() == Operator.EQ && expectation.getExpectedValue() == null;
+            return compare(null, expectation.getOperator(), expectation.getExpectedValue());
         }
         try {
             final var document = objectMapper.convertValue(result, Object.class);
