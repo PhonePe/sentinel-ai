@@ -16,11 +16,13 @@
 
 package com.phonepe.sentinelai.filesystem.skills;
 
-import java.nio.file.Path;
-import java.util.Map;
-import javax.annotation.Nullable;
 import lombok.Builder;
 import lombok.Value;
+
+import java.nio.file.Path;
+import java.util.Map;
+
+import javax.annotation.Nullable;
 
 /** Represents a complete Agent Skill loaded from a directory */
 @Value
@@ -37,13 +39,16 @@ public class AgentSkill {
     Path skillDirectory;
 
     /** Optional: Paths to reference files in references/ subdirectory */
-    @Nullable Map<String, Path> referenceFiles;
+    @Nullable
+    Map<String, Path> referenceFiles;
 
     /** Optional: Paths to script files in scripts/ subdirectory */
-    @Nullable Map<String, Path> scriptFiles;
+    @Nullable
+    Map<String, Path> scriptFiles;
 
     /** Optional: Paths to asset files in assets/ subdirectory */
-    @Nullable Map<String, Path> assetFiles;
+    @Nullable
+    Map<String, Path> assetFiles;
 
     /** Format skill for display in catalog (name + description only) */
     public String formatCatalogEntry() {

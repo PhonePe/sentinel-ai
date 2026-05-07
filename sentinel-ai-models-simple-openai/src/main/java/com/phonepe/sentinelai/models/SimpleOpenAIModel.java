@@ -324,18 +324,18 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                              stopwatch));
                     }
                     case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> runTools(
-                                    message.getToolCalls(),
-                                   context,
-                                   toolsForExecution,
-                                   toolRunner,
-                                   stats,
-                                   stopwatch,
-                                   generatedOutput,
-                                   openAiMessages,
-                                   allMessages,
-                                   newMessages,
-                                   oldMessages)
-                                    .orElse(null);
+                                                                                           message.getToolCalls(),
+                                                                                           context,
+                                                                                           toolsForExecution,
+                                                                                           toolRunner,
+                                                                                           stats,
+                                                                                           stopwatch,
+                                                                                           generatedOutput,
+                                                                                           openAiMessages,
+                                                                                           allMessages,
+                                                                                           newMessages,
+                                                                                           oldMessages)
+                            .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(oldMessages,
                                                                    stats,
                                                                    SentinelError
@@ -604,7 +604,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                                               stopwatch);
                                                                              }
                                                                          }
-                                                                         case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
+                                                                         case FinishReasons.FUNCTION_CALL,
+                                                                                 FinishReasons.TOOL_CALLS -> {
                                                                              //Model is waiting for us to run tools and respond back
                                                                              final var toolCalls = toolCallData
                                                                                      .values()
@@ -884,7 +885,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
     private static Chat.Choice extractResponse(Chat completionResponse) {
         String errorMessage = """
-                Empty choices in completion response. 
+                Empty choices in completion response.
                 This usually indicates a response deserialization failure or a malformed response from the server""";
         if (completionResponse.getChoices() == null) {
             log.warn(errorMessage);

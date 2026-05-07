@@ -24,8 +24,6 @@ import com.phonepe.sentinelai.toolbox.remotehttp.templating.engines.handlebar.Ha
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;

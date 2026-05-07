@@ -17,11 +17,14 @@
 package com.phonepe.sentinelai.filesystem.skills;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Map;
-import javax.annotation.Nullable;
+
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
+
+import java.util.Map;
+
+import javax.annotation.Nullable;
 
 /** Represents the YAML frontmatter metadata in a SKILL.md file */
 @Value

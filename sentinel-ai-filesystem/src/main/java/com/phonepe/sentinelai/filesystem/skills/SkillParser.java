@@ -18,13 +18,15 @@ package com.phonepe.sentinelai.filesystem.skills;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
-import lombok.extern.slf4j.Slf4j;
 
 /** Parser for SKILL.md files with YAML frontmatter */
 @Slf4j
@@ -50,17 +52,18 @@ public class SkillParser {
 
         if (parsed == null) {
             throw new IllegalArgumentException(
-                    "Invalid SKILL.md format: YAML frontmatter not found in " + skillFile);
+                                               "Invalid SKILL.md format: YAML frontmatter not found in " + skillFile);
         }
 
         SkillMetadata metadata;
         try {
             metadata = yamlMapper.readValue(parsed[0], SkillMetadata.class);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             log.error(
-                    "Error deserializing YAML frontmatter for skill at path: {}",
-                    skillDirectory,
-                    e);
+                      "Error deserializing YAML frontmatter for skill at path: {}",
+                      skillDirectory,
+                      e);
             throw e;
         }
 
@@ -110,7 +113,7 @@ public class SkillParser {
      *
      * @param content the full file content
      * @return a two-element array: {@code [yamlContent, markdownBody]}, or {@code null} if the file
-     *     does not contain valid frontmatter
+     *         does not contain valid frontmatter
      */
     private String[] parseFrontmatter(final String content) {
         final var lines = content.split("\n", -1);
@@ -151,7 +154,9 @@ public class SkillParser {
             body.append(lines[i]);
         }
 
-        return new String[] {yaml.toString(), body.toString().trim()};
+        return new String[]{
+                yaml.toString(), body.toString().trim()
+        };
     }
 
     /** Scan a subdirectory for files and return a map of filename -> path */
@@ -166,10 +171,10 @@ public class SkillParser {
         try (Stream<Path> paths = Files.walk(subdir)) {
             paths.filter(Files::isRegularFile)
                     .forEach(
-                            path -> {
-                                String relativePath = subdir.relativize(path).toString();
-                                files.put(relativePath, path);
-                            });
+                             path -> {
+                                 String relativePath = subdir.relativize(path).toString();
+                                 files.put(relativePath, path);
+                             });
         }
 
         return files;

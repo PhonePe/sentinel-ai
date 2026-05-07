@@ -16,6 +16,8 @@
 
 package com.phonepe.sentinelai.filesystem.skills;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,7 +29,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import lombok.extern.slf4j.Slf4j;
 
 /** Registry for discovering and managing Agent Skills */
 @Slf4j
@@ -57,28 +58,29 @@ public class SkillRegistry {
                                 final var skillName = dir.getFileName().toString();
                                 if (!skillsToLoad.isEmpty() && !skillsToLoad.contains(skillName)) {
                                     log.warn(
-                                            "Skipping skill {} as it's not in the specified skills to load",
-                                            skillName);
+                                             "Skipping skill {} as it's not in the specified skills to load",
+                                             skillName);
                                     return false;
                                 }
                                 return true;
                             })
                     .forEach(
-                            skillDir -> {
-                                try {
-                                    final var metadata = parser.parseMetadata(skillDir);
-                                    skillCatalog.put(metadata.getName(), metadata);
-                                    log.info(
-                                            "Discovered skill: {} - {}",
-                                            metadata.getName(),
-                                            metadata.getDescription());
-                                } catch (Exception e) {
-                                    log.warn(
-                                            "Failed to parse skill in {}: {}",
-                                            skillDir,
-                                            e.getMessage());
-                                }
-                            });
+                             skillDir -> {
+                                 try {
+                                     final var metadata = parser.parseMetadata(skillDir);
+                                     skillCatalog.put(metadata.getName(), metadata);
+                                     log.info(
+                                              "Discovered skill: {} - {}",
+                                              metadata.getName(),
+                                              metadata.getDescription());
+                                 }
+                                 catch (Exception e) {
+                                     log.warn(
+                                              "Failed to parse skill in {}: {}",
+                                              skillDir,
+                                              e.getMessage());
+                                 }
+                             });
         }
     }
 
@@ -94,11 +96,31 @@ public class SkillRegistry {
         skillCatalog
                 .values()
                 .forEach(
-                        metadata ->
-                                sb.append(
-                                        String.format(
-                                                "- **%s**: %s%n",
-                                                metadata.getName(), metadata.getDescription())));
+                         metadata -> sb.append(
+                                               String.format(
+                                                             "- **%s**: %s%n",
+                                                             metadata.getName(),
+                                                             metadata.getDescription())));
+        return sb.toString();
+    }
+
+    /** Format all loaded skills as YAML with their names and descriptions */
+    public String formatLoadedSkillsAsYaml() {
+        if (loadedSkills.isEmpty()) {
+            return "loaded_skills: []\n";
+        }
+
+        final var sb = new StringBuilder();
+        sb.append("loaded_skills:\n");
+        loadedSkills
+                .values()
+                .forEach(
+                         skill -> {
+                             sb.append("  - name: ").append(skill.getName()).append("\n");
+                             sb.append("    description: ")
+                                     .append(skill.getDescription())
+                                     .append("\n");
+                         });
         return sb.toString();
     }
 
@@ -111,11 +133,11 @@ public class SkillRegistry {
     public Map<String, String> getSkillCatalog() {
         return skillCatalog.entrySet().stream()
                 .collect(
-                        Collectors.toMap(
-                                Map.Entry::getKey,
-                                e -> e.getValue().getDescription(),
-                                (a, b) -> a,
-                                LinkedHashMap::new));
+                         Collectors.toMap(
+                                          Map.Entry::getKey,
+                                          e -> e.getValue().getDescription(),
+                                          (a, b) -> a,
+                                          LinkedHashMap::new));
     }
 
     /** Get all discovered skill names */
@@ -148,7 +170,8 @@ public class SkillRegistry {
                     loadedSkills.put(skillName, skill);
                     log.info("Loaded skill: {}", skillName);
                     return Optional.of(skill);
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     log.error("Failed to load skill {}: {}", skillName, e.getMessage(), e);
                     return Optional.empty();
                 }
@@ -157,26 +180,6 @@ public class SkillRegistry {
 
         log.error("Skill directory not found for: {}", skillName);
         return Optional.empty();
-    }
-
-    /** Format all loaded skills as YAML with their names and descriptions */
-    public String formatLoadedSkillsAsYaml() {
-        if (loadedSkills.isEmpty()) {
-            return "loaded_skills: []\n";
-        }
-
-        final var sb = new StringBuilder();
-        sb.append("loaded_skills:\n");
-        loadedSkills
-                .values()
-                .forEach(
-                        skill -> {
-                            sb.append("  - name: ").append(skill.getName()).append("\n");
-                            sb.append("    description: ")
-                                    .append(skill.getDescription())
-                                    .append("\n");
-                        });
-        return sb.toString();
     }
 
     /** Load a single skill from an absolute path (for single-skill mode) */
