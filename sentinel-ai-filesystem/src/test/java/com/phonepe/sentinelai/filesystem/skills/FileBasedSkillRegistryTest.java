@@ -32,15 +32,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class SkillRegistryTest {
+class FileBasedSkillRegistryTest {
 
     private Path tempDir;
-    private SkillRegistry registry;
+    private FileBasedSkillRegistry registry;
 
     @BeforeEach
     void setUp() throws IOException {
         tempDir = Files.createTempDirectory("skill-registry-test-");
-        registry = new SkillRegistry();
+        registry = new FileBasedSkillRegistry();
     }
 
     @AfterEach
@@ -134,6 +134,27 @@ class SkillRegistryTest {
     }
 
     @Test
+    void testLoadReferenceFile() throws IOException {
+        createTestSkillWithReferenceFile("test-skill", "A test skill", "guide.md", "# Guide Content");
+        ((FileBasedSkillRegistry) registry).discoverSkills(tempDir, Set.of());
+
+        final var content = registry.loadReferenceFile("test-skill", "guide.md");
+
+        assertTrue(content.isPresent());
+        assertEquals("# Guide Content", content.get());
+    }
+
+    @Test
+    void testLoadReferenceFileNotFound() throws IOException {
+        createTestSkillWithReferenceFile("test-skill", "A test skill", "guide.md", "# Guide Content");
+        ((FileBasedSkillRegistry) registry).discoverSkills(tempDir, Set.of());
+
+        final var content = registry.loadReferenceFile("test-skill", "missing.md");
+
+        assertTrue(content.isEmpty());
+    }
+
+    @Test
     void testLoadSkill() throws IOException {
         createTestSkill("test-skill", "A test skill");
         registry.discoverSkills(tempDir, Set.of());
@@ -202,5 +223,15 @@ class SkillRegistryTest {
                 """.formatted(name, description, name);
 
         Files.writeString(skillDir.resolve("SKILL.md"), skillContent);
+    }
+
+    private void createTestSkillWithReferenceFile(String name,
+                                                  String description,
+                                                  String refFileName,
+                                                  String refContent) throws IOException {
+        createTestSkill(name, description);
+        final var referencesDir = tempDir.resolve(name).resolve("references");
+        Files.createDirectory(referencesDir);
+        Files.writeString(referencesDir.resolve(refFileName), refContent);
     }
 }

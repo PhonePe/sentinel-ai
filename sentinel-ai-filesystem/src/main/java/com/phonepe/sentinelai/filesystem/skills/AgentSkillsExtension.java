@@ -40,11 +40,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+
+import static com.phonepe.sentinelai.filesystem.skills.FileBasedSkillRegistry.expandSkillDir;
 
 /**
  * Extension that provides Agent Skills capabilities to Sentinel AI agents.
@@ -70,7 +73,8 @@ import java.util.Set;
 public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
 
     private static final String READ_SKILL_REFERENCE_TOOL_ID = "agent_skills_extension_read_skill_reference";
-    private final SkillRegistry registry = new SkillRegistry();
+    private final SkillRegistry registry;
+    private final Set<String> activatedSkills = new HashSet<>();
 
     private final boolean singleSkillMode;
 
@@ -89,12 +93,10 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
     public AgentSkillsExtension(@NonNull String baseDir,
                                 @NonNull List<String> skillsDirectories,
                                 Collection<String> skillsToLoad) {
+        final var registry = new FileBasedSkillRegistry();
         // Discover skills from all provided directories
-        final var skillsFilter = Set.copyOf(Objects.requireNonNullElseGet(skillsToLoad, Set::<String>of));
-        for (String dirPath : skillsDirectories) {
-            final var skillsDir = expandSkillDir(dirPath, baseDir);
-            registry.discoverSkills(skillsDir, skillsFilter);
-        }
+        registry.discoverSkills(baseDir, skillsDirectories, skillsToLoad);
+        this.registry = registry;
         this.singleSkillMode = false;
         this.tools = readTools(this);
     }
@@ -108,62 +110,13 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
     @SneakyThrows
     @Builder(builderMethodName = "withSingleSkill", builderClassName = "SingleSkillBuilder")
     public AgentSkillsExtension(@NonNull String baseDir, final String singleSkill) {
+        final var registry = new FileBasedSkillRegistry();
         var skillPath = expandSkillDir(singleSkill, baseDir);
-        this.registry.loadSkillFromPath(skillPath);
+        registry.loadSkillFromPath(skillPath);
+        this.registry = registry;
+        registry.getSkillNames().stream().findFirst().ifPresent(activatedSkills::add);
         this.singleSkillMode = true;
         this.tools = readTools(this);
-    }
-
-    private static StringBuilder addSection(StringBuilder sb, String title, Collection<String> items) {
-        if (items.isEmpty()) {
-            return sb;
-        }
-        sb.append("\n\n## ").append(title).append("\n");
-        items.forEach(item -> sb.append("- ").append(item).append("\n"));
-        return sb;
-    }
-
-    /**
-     * Tries to resolve a skill directory path.
-     * <ol>
-     * <li>Uses the path as-is if it is already an existing directory.</li>
-     * <li>Resolves relative to {@code baseDir}.</li>
-     * <li>Resolves relative to the current working directory.</li>
-     * </ol>
-     *
-     * @throws IllegalArgumentException if no valid directory can be found
-     */
-    private static Path expandSkillDir(String skillDir, String baseDir) {
-        var path = Paths.get(skillDir);
-        if (Files.isDirectory(path)) {
-            return path.toAbsolutePath().normalize();
-        }
-
-        path = Paths.get(baseDir, skillDir);
-        if (Files.isDirectory(path)) {
-            return path.toAbsolutePath().normalize();
-        }
-
-        path = Paths.get(System.getProperty("user.dir"), skillDir);
-        if (Files.isDirectory(path)) {
-            return path.toAbsolutePath().normalize();
-        }
-
-        throw new IllegalArgumentException("Skills directory does not exist: " + skillDir);
-    }
-
-    private static Map<String, ExecutableTool> readTools(AgentSkillsExtension<?, ?, ?> extension) {
-        final var allTools = ToolUtils.readTools(extension);
-        // In single skill mode, we won't have the list skills and activate skill tools -
-        // the instructions will be injected directly via system prompts
-        if (extension.singleSkillMode) {
-            return Map.copyOf(Maps.filterKeys(allTools, key -> key.equals(READ_SKILL_REFERENCE_TOOL_ID)));
-        }
-        return Map.copyOf(allTools);
-    }
-
-    private static String skillNotFoundError(final String skillName) {
-        return "Error: Skill '" + skillName + "' not found in catalog.";
     }
 
     @Tool("Activate a skill by name to access its instructions and capabilities")
@@ -175,6 +128,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
         if (null == skill) {
             return skillNotFoundError(skillName);
         }
+        activatedSkills.add(skillName);
 
         final var response = new StringBuilder();
         response.append("# Skill Activated: ").append(skill.getName()).append("\n\n");
@@ -205,7 +159,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
 
         // In single-skill mode, don't add skill discovery - just inject the skill directly
         if (!singleSkillMode) {
-            if (registry.hasSkills()) {
+            if (!registry.getSkillCatalog().isEmpty()) {
                 // Add task for skill discovery and activation
                 tasks.add(SystemPrompt.Task.builder()
                         .objective("Check if any available skills are relevant to the user's request")
@@ -216,6 +170,8 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
                                 3. Once activated, follow the skill's instructions carefully
                                 4. You can activate multiple skills if needed
                                 5. Always prefer activating relevant skills over using general tools, as skills may provide specialized capabilities and context
+                                6. Only load skill references, assets and scripts if they are relevant and are needed to accomplish the task at hand. 
+                                Don't automatically load everything as it can lead to poor usage of tokens in the current context window.
                                 """)
                         .tool(tools.values()
                                 .stream()
@@ -225,7 +181,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
                                         .build())
                                 .toList())
                         .build());
-                hints.add(registry.formatCatalog());
+                hints.add(formatCatalog(registry));
             }
         }
         else {
@@ -252,11 +208,11 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
 
     @Tool("List all available skills with their descriptions")
     public String listSkills() {
-        if (!registry.hasSkills()) {
+        if (registry.getSkillCatalog().isEmpty()) {
             return "No skills are currently available.";
         }
 
-        return registry.formatCatalog();
+        return formatCatalog(registry);
     }
 
     @Override
@@ -273,26 +229,26 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
     public String readSkillReference(
                                      @JsonPropertyDescription("Name of the skill") String skillName,
                                      @JsonPropertyDescription("Path to the reference file within the skill's references/ directory") String referenceFile) {
-
-        final var skill = registry.getLoadedSkill(skillName).orElse(null);
-        if (null == skill) {
-            return skillNotFoundError(skillName);
-        }
-
-        if (skill.getReferenceFiles() == null || skill.getReferenceFiles().isEmpty()) {
-            return "Error: Skill '" + skillName + "' has no reference files.";
-        }
-
-        if (!skill.getReferenceFiles().containsKey(referenceFile)) {
-            return "Error: Reference file '"
-                    + referenceFile
-                    + "' not found in skill '"
-                    + skillName
-                    + "'.";
-        }
-
         try {
-            final var content = Files.readString(skill.getReferenceFiles().get(referenceFile));
+            if (!activatedSkills.contains(skillName)) {
+                return skillNotFoundError(skillName);
+            }
+            final var skill = registry.loadSkill(skillName).orElse(null);
+            if (null == skill) {
+                return skillNotFoundError(skillName);
+            }
+            if (skill.getReferenceFiles() == null || skill.getReferenceFiles().isEmpty()) {
+                return "Error: Skill '" + skillName + "' has no reference files.";
+            }
+
+            final var content = registry.loadReferenceFile(skillName, referenceFile).orElse(null);
+            if (content == null) {
+                return "Error: Reference file '"
+                        + referenceFile
+                        + "' not found in skill '"
+                        + skillName
+                        + "'.";
+            }
             return SkillContentSanitizer.sanitize(content);
         }
         catch (Exception e) {
@@ -304,5 +260,40 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
     @Override
     public Map<String, ExecutableTool> tools() {
         return tools;
+    }
+
+    private static StringBuilder addSection(StringBuilder sb, String title, Collection<String> items) {
+        if (items.isEmpty()) {
+            return sb;
+        }
+        sb.append("\n\n## ").append(title).append("\n");
+        items.forEach(item -> sb.append("- ").append(item).append("\n"));
+        return sb;
+    }
+
+    private static String formatCatalog(SkillRegistry registry) {
+        final var catalog = registry.getSkillCatalog();
+        if (catalog.isEmpty()) {
+            return "No skills available.";
+        }
+
+        final var sb = new StringBuilder();
+        sb.append("Available Skills:\n\n");
+        catalog.forEach((name, description) -> sb.append(String.format("- **%s**: %s%n", name, description)));
+        return sb.toString();
+    }
+
+    private static Map<String, ExecutableTool> readTools(AgentSkillsExtension<?, ?, ?> extension) {
+        final var allTools = ToolUtils.readTools(extension);
+        // In single skill mode, we won't have the list skills and activate skill tools -
+        // the instructions will be injected directly via system prompts
+        if (extension.singleSkillMode) {
+            return Map.copyOf(Maps.filterKeys(allTools, key -> key.equals(READ_SKILL_REFERENCE_TOOL_ID)));
+        }
+        return Map.copyOf(allTools);
+    }
+
+    private static String skillNotFoundError(final String skillName) {
+        return "Error: Skill '" + skillName + "' not found in catalog.";
     }
 }
