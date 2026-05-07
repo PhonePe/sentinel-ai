@@ -13,9 +13,21 @@ extra_css        = ["stylesheets/extra.css"]
 nav = [
   {"Home" = "index.md"},
   {"Agents" = "agents.md"},
-  {"Tools" = [{"Overview" = "tools.md"}, {"Using MCP Servers" = "using-mcp-servers.md"}, {"Calling Remote Services" = "calling-remote-services.md"}]},
-  {"Extensions" = [{"Messages & Session" = "messages-session.md"}, {"Agent Skills" = "agent-skills-extension.md"}, {"Agent Registry" = "agent-registry.md"}, {"Agent Memory" = "agent-memory.md"}]},
-  {"Observability" = [{"Overview" = "observability.md"}, {"OpenTelemetry" = "opentelemetry.md"}]},
+  {"Tools" = [
+    {"Overview" = "tools.md"},
+    {"Using MCP Servers" = "using-mcp-servers.md"},
+    {"Calling Remote Services" = "calling-remote-services.md"}
+  ]},
+  {"Extensions" = [
+    {"Messages & Session" = "messages-session.md"},
+    {"Agent Skills" = "agent-skills-extension.md"},
+    {"Agent Registry" = "agent-registry.md"},
+    {"Agent Memory" = "agent-memory.md"}
+  ]},
+  {"Observability" = [
+    {"Overview" = "observability.md"},
+    {"OpenTelemetry" = "opentelemetry.md"}
+  ]},
   {"Testing" = [{"Evals" = "evals.md"}]},
   {"Errors" = "errors.md"}
 ]

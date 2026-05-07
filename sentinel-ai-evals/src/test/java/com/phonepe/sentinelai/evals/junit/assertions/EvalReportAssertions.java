@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Assertions;
 import com.phonepe.sentinelai.evals.EvalReport;
 import com.phonepe.sentinelai.evals.EvalStatus;
 
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -57,19 +58,19 @@ public final class EvalReportAssertions {
                             ? "    - (no expectation-level diagnostics captured)"
                             : expectationDiagnostics;
 
-                    return "TestCase #%d [%s]\n"
+                    return "TestCase #%d [%s]%n"
                             .formatted(index + 1, testCaseReport.getStatus())
-                            + "  input: %s\n".formatted(String.valueOf(testCaseReport.getInput()))
-                            + "  details: %s\n".formatted(testCaseReport.getDetails())
-                            + "  expectations:\n"
+                            + "  input: %s%n".formatted(String.valueOf(testCaseReport.getInput()))
+                            + "  details: %s%n".formatted(testCaseReport.getDetails())
+                            + "  expectations:%n"
                             + renderedExpectations;
                 })
-                .filter(line -> line != null)
+                .filter(Objects::nonNull)
                 .collect(Collectors.joining("\n\n"));
 
-        Assertions.fail("Eval run failed\n"
-                + "dataset: %s\n".formatted(report.getDatasetName())
-                + "executed=%d passed=%d failed=%d skipped=%d\n\n"
+        Assertions.fail("Eval run failed%n"
+                + "dataset: %s%n".formatted(report.getDatasetName())
+                + "executed=%d passed=%d failed=%d skipped=%d%n%n"
                         .formatted(report.getExecutedTestCases(),
                                    report.getPassedTestCases(),
                                    report.getFailedTestCases(),
