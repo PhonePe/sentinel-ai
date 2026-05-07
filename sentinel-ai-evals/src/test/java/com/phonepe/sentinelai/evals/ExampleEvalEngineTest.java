@@ -41,6 +41,10 @@ import com.phonepe.sentinelai.evals.tests.Expectation;
 import com.phonepe.sentinelai.evals.tests.ExpectationExecutorRegistry;
 import com.phonepe.sentinelai.evals.tests.Expectations;
 import com.phonepe.sentinelai.evals.tests.TestCase;
+import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelFactory;
+import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelIdentifier;
+import com.phonepe.sentinelai.evals.tests.metrics.LLMIdentifier;
+import com.phonepe.sentinelai.evals.tests.metrics.LLMModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry;
 
 import lombok.NonNull;
@@ -308,11 +312,11 @@ class ExampleEvalEngineTest {
                                                                                                                     "fetch_weather"),
                                                                                             Expectations.toolCalled(
                                                                                                                     "fetch_calculator")),
-                                                                       Expectations.outputSimilarity(embeddingModel,
+                                                                       Expectations.outputSimilarity(
                                                                                                      "All systems green and stable",
                                                                                                      0.9),
                                                                        Expectations.answerRelevance(0.9),
-                                                                       Expectations.outputSimilarity(embeddingModel,
+                                                                       Expectations.outputSimilarity(
                                                                                                      "All systems green and stable"));
 
         final var dataset = new Dataset<>("example-string-evals",
@@ -320,10 +324,17 @@ class ExampleEvalEngineTest {
                                                                  expectations)));
 
         final var judgeModel = new ExampleAnswerRelevanceJudgeModel();
+        final EmbeddingModelFactory embeddingFactory = id -> embeddingModel;
+        final LLMModelFactory llmFactory = id -> judgeModel;
         final var report = new EvalEngine(new ObjectMapper(),
                                           ExpectationExecutorRegistry.withDefaults(
                                                                                    MetricExecutorRegistry.withDefaults(
-                                                                                                                       judgeModel)))
+                                                                                                                       new EmbeddingModelIdentifier(
+                                                                                                                                                    "fixed-embedding"),
+                                                                                                                       embeddingFactory,
+                                                                                                                       new LLMIdentifier(
+                                                                                                                                         "judge-model"),
+                                                                                                                       llmFactory)))
                 .run(dataset, agent);
 
         assertEquals(1, report.getExecutedTestCases());

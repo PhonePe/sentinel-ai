@@ -17,7 +17,6 @@
 package com.phonepe.sentinelai.evals.tests;
 
 import com.phonepe.sentinelai.core.utils.ToolUtils;
-import com.phonepe.sentinelai.embedding.EmbeddingModel;
 import com.phonepe.sentinelai.evals.tests.expectations.OrderedExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputContainsExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputEqualsExpectation;
@@ -251,30 +250,30 @@ public class Expectations {
 
     /**
      * Creates a similarity expectation without an explicit threshold.
+     * The embedding model is provided at execution time via
+     * {@link com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry}.
      *
-     * @param embeddingModel embedding model used to create vectors
-     * @param referenceText  reference answer to compare with
-     * @param <T>            input/request type
+     * @param referenceText reference answer to compare with
+     * @param <T>           input/request type
      * @return metric-backed similarity expectation
      */
-    public static <T> Expectation<String, T> outputSimilarity(EmbeddingModel embeddingModel,
-                                                              String referenceText) {
-        return new MetricExpectation<>(Metrics.outputSimilarity(embeddingModel, referenceText));
+    public static <T> Expectation<String, T> outputSimilarity(String referenceText) {
+        return new MetricExpectation<>(Metrics.outputSimilarity(referenceText));
     }
 
     /**
      * Creates a similarity expectation with an explicit threshold.
+     * The embedding model is provided at execution time via
+     * {@link com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry}.
      *
-     * @param embeddingModel embedding model used to create vectors
-     * @param referenceText  reference answer to compare with
-     * @param threshold      minimum similarity score required to pass
-     * @param <T>            input/request type
+     * @param referenceText reference answer to compare with
+     * @param threshold     minimum similarity score required to pass
+     * @param <T>           input/request type
      * @return thresholded similarity expectation
      */
-    public static <T> Expectation<String, T> outputSimilarity(EmbeddingModel embeddingModel,
-                                                              String referenceText,
+    public static <T> Expectation<String, T> outputSimilarity(String referenceText,
                                                               double threshold) {
-        return new MetricExpectation<>(Metrics.outputSimilarity(embeddingModel, referenceText), threshold);
+        return new MetricExpectation<>(Metrics.outputSimilarity(referenceText), threshold);
     }
 
     /**

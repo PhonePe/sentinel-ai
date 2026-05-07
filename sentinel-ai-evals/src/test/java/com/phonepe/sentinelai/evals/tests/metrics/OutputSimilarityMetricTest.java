@@ -56,6 +56,13 @@ class OutputSimilarityMetricTest {
         }
     }
 
+    private static <T> double calculate(OutputSimilarityMetric<T> metric,
+                                        EmbeddingModel model,
+                                        String result,
+                                        com.phonepe.sentinelai.evals.tests.EvalExpectationContext<T> context) {
+        return new OutputSimilarityMetricExecutor<>(metric, model).calculate(result, context);
+    }
+
     @Test
     void calculateClampsNegativeCosineToZero() {
         final var model = new TestEmbeddingModel(Map.of("result", new float[]{
@@ -65,9 +72,9 @@ class OutputSimilarityMetricTest {
                                                         new float[]{
                                                                 -1f, 0f
                                                         }));
-        final var metric = new OutputSimilarityMetric<String>(model, "reference");
+        final var metric = new OutputSimilarityMetric<String>("reference");
 
-        final var score = TestFactory.calculate(metric, "result", TestFactory.context());
+        final var score = calculate(metric, model, "result", TestFactory.context());
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -81,9 +88,9 @@ class OutputSimilarityMetricTest {
                                                         new float[]{
                                                                 1f, 0f
                                                         }));
-        final var metric = new OutputSimilarityMetric<String>(model, "reference");
+        final var metric = new OutputSimilarityMetric<String>("reference");
 
-        final var score = TestFactory.calculate(metric, "result", TestFactory.context());
+        final var score = calculate(metric, model, "result", TestFactory.context());
 
         assertEquals(1.0, score, EPSILON);
         assertEquals("OutputSimilarity", metric.metricName());
@@ -98,9 +105,9 @@ class OutputSimilarityMetricTest {
                                                         new float[]{
                                                                 1f, 0f
                                                         }));
-        final var metric = new OutputSimilarityMetric<String>(model, "reference");
+        final var metric = new OutputSimilarityMetric<String>("reference");
 
-        final var score = TestFactory.calculate(metric, "result", TestFactory.context());
+        final var score = calculate(metric, model, "result", TestFactory.context());
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -114,9 +121,9 @@ class OutputSimilarityMetricTest {
                                                         new float[]{
                                                                 1f, 0f
                                                         }));
-        final var metric = new OutputSimilarityMetric<String>(model, "reference");
+        final var metric = new OutputSimilarityMetric<String>("reference");
 
-        final var score = TestFactory.calculate(metric, "result", TestFactory.context());
+        final var score = calculate(metric, model, "result", TestFactory.context());
 
         assertEquals(0.0, score, EPSILON);
     }
@@ -126,10 +133,10 @@ class OutputSimilarityMetricTest {
         final var model = new TestEmbeddingModel(Map.of("reference", new float[]{
                 1f, 0f
         }));
-        final var metric = new OutputSimilarityMetric<String>(model, "reference");
+        final var metric = new OutputSimilarityMetric<String>("reference");
 
-        assertEquals(0.0, TestFactory.calculate(metric, null, TestFactory.context()), EPSILON);
-        assertEquals(0.0, TestFactory.calculate(metric, "", TestFactory.context()), EPSILON);
+        assertEquals(0.0, calculate(metric, model, null, TestFactory.context()), EPSILON);
+        assertEquals(0.0, calculate(metric, model, "", TestFactory.context()), EPSILON);
         assertEquals(0, model.lookupCount);
     }
 
@@ -142,10 +149,10 @@ class OutputSimilarityMetricTest {
                                                         new float[]{
                                                                 1f, 0f
                                                         }));
-        final var metric = new OutputSimilarityMetric<String>(model, "reference");
+        final var metric = new OutputSimilarityMetric<String>("reference");
 
         assertThrows(IllegalArgumentException.class,
-                     () -> TestFactory.calculate(metric, "result", TestFactory.context()));
+                     () -> calculate(metric, model, "result", TestFactory.context()));
 
     }
 
@@ -157,21 +164,22 @@ class OutputSimilarityMetricTest {
         });
         map.put("result", null);
         final var model = new TestEmbeddingModel(map);
-        final var metric = new OutputSimilarityMetric<String>(model, "reference");
+        final var metric = new OutputSimilarityMetric<String>("reference");
 
         assertThrows(IllegalArgumentException.class,
-                     () -> TestFactory.calculate(metric, "result", TestFactory.context()));
+                     () -> calculate(metric, model, "result", TestFactory.context()));
 
     }
 
     @Test
     void constructorValidatesInputs() {
-        final var model = new TestEmbeddingModel(Map.of("reference", new float[]{
-                1f, 0f
-        }));
+        assertThrows(IllegalArgumentException.class, () -> new OutputSimilarityMetric<>(null));
+        assertThrows(IllegalArgumentException.class, () -> new OutputSimilarityMetric<>(""));
+    }
 
-        assertThrows(IllegalArgumentException.class, () -> new OutputSimilarityMetric<String>(null, "reference"));
-        assertThrows(IllegalArgumentException.class, () -> new OutputSimilarityMetric<>(model, null));
-        assertThrows(IllegalArgumentException.class, () -> new OutputSimilarityMetric<>(model, ""));
+    @Test
+    void executorConstructorValidatesEmbeddingModel() {
+        final var metric = new OutputSimilarityMetric<String>("reference");
+        assertThrows(IllegalArgumentException.class, () -> new OutputSimilarityMetricExecutor<>(metric, null));
     }
 }

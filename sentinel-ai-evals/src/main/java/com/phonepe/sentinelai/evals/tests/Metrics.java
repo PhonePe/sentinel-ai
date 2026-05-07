@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.evals.tests;
 
-import com.phonepe.sentinelai.embedding.EmbeddingModel;
 import com.phonepe.sentinelai.evals.tests.metrics.Metric;
 import com.phonepe.sentinelai.evals.tests.metrics.OutputRelevanceBySimilarityMetric;
 import com.phonepe.sentinelai.evals.tests.metrics.OutputRelevanceMetric;
@@ -53,25 +52,26 @@ public class Metrics {
 
     /**
      * Creates a similarity-based topical relevance metric.
+     * The embedding model is provided at execution time via
+     * {@link com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry}.
      *
-     * @param embeddingModel embedding model used to vectorize request and output
-     * @param <T>            input/request type
+     * @param <T> input/request type
      * @return output relevance metric based on embedding similarity
      */
-    public static <T> Metric<String, T> outputRelevanceBySimilarity(EmbeddingModel embeddingModel) {
-        return new OutputRelevanceBySimilarityMetric<>(embeddingModel);
+    public static <T> Metric<String, T> outputRelevanceBySimilarity() {
+        return new OutputRelevanceBySimilarityMetric<>();
     }
 
     /**
      * Creates a reference-answer similarity metric.
+     * The embedding model is provided at execution time via
+     * {@link com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry}.
      *
-     * @param embeddingModel embedding model used to vectorize output and reference text
-     * @param referenceText  reference answer to compare against
-     * @param <T>            input/request type
+     * @param referenceText reference answer to compare against
+     * @param <T>           input/request type
      * @return output similarity metric definition
      */
-    public static <T> Metric<String, T> outputSimilarity(EmbeddingModel embeddingModel,
-                                                         String referenceText) {
-        return new OutputSimilarityMetric<>(embeddingModel, referenceText);
+    public static <T> Metric<String, T> outputSimilarity(String referenceText) {
+        return new OutputSimilarityMetric<>(referenceText);
     }
 }

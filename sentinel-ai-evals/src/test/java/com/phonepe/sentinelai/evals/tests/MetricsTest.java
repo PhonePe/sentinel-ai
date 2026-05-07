@@ -18,7 +18,6 @@ package com.phonepe.sentinelai.evals.tests;
 
 import org.junit.jupiter.api.Test;
 
-import com.phonepe.sentinelai.embedding.EmbeddingModel;
 import com.phonepe.sentinelai.evals.tests.metrics.OutputRelevanceBySimilarityMetric;
 import com.phonepe.sentinelai.evals.tests.metrics.OutputRelevanceMetric;
 import com.phonepe.sentinelai.evals.tests.metrics.OutputSimilarityMetric;
@@ -27,25 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MetricsTest {
-
-    private static class StubEmbeddingModel implements EmbeddingModel {
-        @Override
-        public void close() {
-            // no-op
-        }
-
-        @Override
-        public int dimensions() {
-            return 2;
-        }
-
-        @Override
-        public float[] getEmbedding(String input) {
-            return new float[]{
-                    1f, 0f
-            };
-        }
-    }
 
     // Result of assertThrows ignored; we only verify exception is thrown, not inspect it
     @SuppressWarnings("java:S2201")
@@ -65,20 +45,19 @@ class MetricsTest {
     @SuppressWarnings("java:S2201")
     void factoryMethodsValidateParameters() {
         expectIllegalArgument(() -> Metrics.answerRelevance(" "));
-        expectIllegalArgument(() -> Metrics.outputSimilarity(new StubEmbeddingModel(), ""));
-        expectIllegalArgument(() -> Metrics.outputRelevanceBySimilarity(null));
+        expectIllegalArgument(() -> Metrics.outputSimilarity(""));
+        expectIllegalArgument(() -> Metrics.outputSimilarity(null));
     }
 
     @Test
     void outputRelevanceBySimilarityFactoryCreatesMetric() {
         assertInstanceOf(OutputRelevanceBySimilarityMetric.class,
-                         Metrics.outputRelevanceBySimilarity(new StubEmbeddingModel()));
+                         Metrics.outputRelevanceBySimilarity());
     }
 
     @Test
     void outputSimilarityFactoryCreatesMetric() {
         assertInstanceOf(OutputSimilarityMetric.class,
-                         Metrics.outputSimilarity(new StubEmbeddingModel(),
-                                                  "reference"));
+                         Metrics.outputSimilarity("reference"));
     }
 }

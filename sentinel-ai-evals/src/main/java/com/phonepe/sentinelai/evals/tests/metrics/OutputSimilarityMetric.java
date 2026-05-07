@@ -16,13 +16,12 @@
 
 package com.phonepe.sentinelai.evals.tests.metrics;
 
-import com.phonepe.sentinelai.embedding.EmbeddingModel;
-
 /**
  * Definition for a metric that measures semantic similarity between output and a reference text.
  *
- * Carries only configuration (embedding model, reference text).
- * Computation is performed by {@code OutputSimilarityMetricExecutor}.
+ * Carries only the reference text configuration.
+ * The embedding model required for computation is provided via the executor
+ * (wired through {@link MetricExecutorRegistry}).
  *
  * Uses cosine similarity of embedding vectors (0.0-1.0 scale).
  *
@@ -30,33 +29,18 @@ import com.phonepe.sentinelai.embedding.EmbeddingModel;
  */
 public class OutputSimilarityMetric<T> implements Metric<String, T> {
 
-    private final EmbeddingModel embeddingModel;
     private final String referenceText;
 
     /**
      * Create similarity metric comparing output to a reference text.
      *
-     * @param embeddingModel the embedding model for semantic representation
-     * @param referenceText  the reference text to compare against
+     * @param referenceText the reference text to compare against
      */
-    public OutputSimilarityMetric(EmbeddingModel embeddingModel, String referenceText) {
-        if (embeddingModel == null) {
-            throw new IllegalArgumentException("embeddingModel cannot be null");
-        }
+    public OutputSimilarityMetric(String referenceText) {
         if (referenceText == null || referenceText.isEmpty()) {
             throw new IllegalArgumentException("referenceText cannot be null or empty");
         }
-        this.embeddingModel = embeddingModel;
         this.referenceText = referenceText;
-    }
-
-    /**
-     * Returns the embedding model used by this metric.
-     *
-     * @return embedding model instance
-     */
-    public EmbeddingModel getEmbeddingModel() {
-        return embeddingModel;
     }
 
     /**

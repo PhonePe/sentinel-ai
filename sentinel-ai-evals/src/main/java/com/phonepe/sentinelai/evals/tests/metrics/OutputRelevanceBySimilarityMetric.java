@@ -16,40 +16,16 @@
 
 package com.phonepe.sentinelai.evals.tests.metrics;
 
-import com.phonepe.sentinelai.embedding.EmbeddingModel;
-
 /**
  * Definition for a metric that measures semantic relevance between output and input.
  *
- * Carries only configuration (embedding model).
- * Computation is performed by {@code OutputRelevanceBySimilarityMetricExecutor}.
+ * This is a pure marker/config class — it carries no parameters.
+ * The embedding model required for computation is provided via the executor
+ * (wired through {@link MetricExecutorRegistry}).
  *
  * @param <T> input/request type
  */
 public class OutputRelevanceBySimilarityMetric<T> implements Metric<String, T> {
-
-    private final EmbeddingModel embeddingModel;
-
-    /**
-     * Creates a relevance metric comparing the output with the original request via embeddings.
-     *
-     * @param embeddingModel embedding model used to vectorize text
-     */
-    public OutputRelevanceBySimilarityMetric(EmbeddingModel embeddingModel) {
-        if (embeddingModel == null) {
-            throw new IllegalArgumentException("embeddingModel cannot be null");
-        }
-        this.embeddingModel = embeddingModel;
-    }
-
-    /**
-     * Returns the embedding model used by this metric.
-     *
-     * @return embedding model
-     */
-    public EmbeddingModel getEmbeddingModel() {
-        return embeddingModel;
-    }
 
     /**
      * Returns the stable display name of this metric.

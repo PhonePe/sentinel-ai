@@ -39,6 +39,10 @@ import com.phonepe.sentinelai.evals.tests.Expectation;
 import com.phonepe.sentinelai.evals.tests.ExpectationExecutorRegistry;
 import com.phonepe.sentinelai.evals.tests.Expectations;
 import com.phonepe.sentinelai.evals.tests.TestCase;
+import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelFactory;
+import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelIdentifier;
+import com.phonepe.sentinelai.evals.tests.metrics.LLMIdentifier;
+import com.phonepe.sentinelai.evals.tests.metrics.LLMModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import com.phonepe.sentinelai.models.SimpleOpenAIModelOptions;
@@ -302,11 +306,9 @@ class RealNicknameAgentExpectationsIntegrationTest {
                                                                                   Expectations.outputEquals(
                                                                                                             "Possible nicknames for Shubham (26): Shubhamy, Shubhamster, Shubz"),
                                                                                   Expectations.outputSimilarity(
-                                                                                                                embeddingModel,
                                                                                                                 "Possible nicknames for Shubham (26): Shubhamy, Shubhamster, Shubz",
                                                                                                                 0.9),
                                                                                   Expectations.outputSimilarity(
-                                                                                                                embeddingModel,
                                                                                                                 "Possible nicknames for Shubham (26): Shubhamy, Shubhamster, Shubz"),
                                                                                   Expectations.answerRelevance(0.5));
 
@@ -318,7 +320,13 @@ class RealNicknameAgentExpectationsIntegrationTest {
         final var stringReport = new EvalEngine(mapper,
                                                 ExpectationExecutorRegistry.withDefaults(
                                                                                          MetricExecutorRegistry
-                                                                                                 .withDefaults(judgeModel)))
+                                                                                                 .withDefaults(
+                                                                                                               new EmbeddingModelIdentifier(
+                                                                                                                                            "fixed-embedding"),
+                                                                                                               (EmbeddingModelFactory) id -> embeddingModel,
+                                                                                                               new LLMIdentifier(
+                                                                                                                                 "judge-model"),
+                                                                                                               (LLMModelFactory) id -> judgeModel)))
                 .run(stringDataset,
                      stringAgent);
 

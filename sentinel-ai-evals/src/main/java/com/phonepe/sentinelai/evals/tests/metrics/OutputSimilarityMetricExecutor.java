@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.evals.tests.metrics;
 
+import com.phonepe.sentinelai.embedding.EmbeddingModel;
 import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 
 /**
@@ -27,14 +28,21 @@ import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 public class OutputSimilarityMetricExecutor<T> implements MetricExecutor<String, T> {
 
     private final OutputSimilarityMetric<T> metric;
+    private final EmbeddingModel embeddingModel;
 
     /**
      * Creates an executor for output-similarity scoring.
      *
-     * @param metric metric definition to evaluate
+     * @param metric         metric definition to evaluate
+     * @param embeddingModel embedding model used to vectorize output and reference text
      */
-    public OutputSimilarityMetricExecutor(OutputSimilarityMetric<T> metric) {
+    public OutputSimilarityMetricExecutor(OutputSimilarityMetric<T> metric,
+                                          EmbeddingModel embeddingModel) {
+        if (embeddingModel == null) {
+            throw new IllegalArgumentException("embeddingModel cannot be null");
+        }
         this.metric = metric;
+        this.embeddingModel = embeddingModel;
     }
 
     /**
@@ -50,8 +58,8 @@ public class OutputSimilarityMetricExecutor<T> implements MetricExecutor<String,
             return 0.0;
         }
 
-        final float[] outputEmbedding = metric.getEmbeddingModel().getEmbedding(result);
-        final float[] referenceEmbedding = metric.getEmbeddingModel().getEmbedding(metric.getReferenceText());
+        final float[] outputEmbedding = embeddingModel.getEmbedding(result);
+        final float[] referenceEmbedding = embeddingModel.getEmbedding(metric.getReferenceText());
 
         return SimilarityUtils.cosineSimilarity(outputEmbedding, referenceEmbedding);
     }
