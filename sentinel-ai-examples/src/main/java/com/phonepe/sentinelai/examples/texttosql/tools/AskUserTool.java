@@ -25,7 +25,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link ToolBox} that lets the LLM pause and ask the human operator for clarification.
@@ -48,8 +49,9 @@ import lombok.extern.slf4j.Slf4j;
  * agent.registerToolbox(new AskUserTool());
  * }</pre>
  */
-@Slf4j
 public class AskUserTool implements ToolBox {
+
+    private static final Logger log = LoggerFactory.getLogger(AskUserTool.class);
 
     private static final String ANSI_RESET = "\u001B[0m";
     private static final String ANSI_BOLD = "\u001B[1m";

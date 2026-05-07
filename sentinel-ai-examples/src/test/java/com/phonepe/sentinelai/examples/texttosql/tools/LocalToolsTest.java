@@ -41,7 +41,7 @@ class LocalToolsTest {
     static Path dbPath;
 
     @BeforeAll
-    static void setUp() throws Exception {
+    static void setUp() {
         dbPath = tempDir.resolve("test.db");
         // Seed the database so LocalTools can connect to it
         DatabaseInitializer.ensureInitialised(dbPath);

@@ -25,7 +25,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
@@ -42,7 +41,6 @@ import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,12 +48,16 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.ParameterizedTest;
 
 /**
  * Unit tests for the constants and enum types exposed by {@link TextToSqlCLI}.
@@ -902,9 +904,10 @@ class TextToSqlCLITest {
     @DisplayName("runInteractiveLoop")
     class RunInteractiveLoopTests {
 
-        @Test
-        @DisplayName("returns 0 immediately when first input is 'exit'")
-        void returnsZeroOnExitCommand() throws Exception {
+        @ParameterizedTest
+        @MethodSource("runInteractiveLoopInputs")
+        @DisplayName("returns 0 for exit and non-query control inputs")
+        void returnsZeroForExitAndControlInputs(String input) throws Exception {
             final CliConfig config = buildConfig();
             final ObjectMapper mapper = JsonUtils.createMapper();
             final TextToSqlAgent agent = buildAgent(config, mapper);
@@ -918,10 +921,7 @@ class TextToSqlCLITest {
                             ObjectMapper.class);
             m.setAccessible(true);
 
-            final java.io.InputStream original = System.in;
-            try {
-                System.setIn(
-                        new java.io.ByteArrayInputStream("exit\n".getBytes(StandardCharsets.UTF_8)));
+            try (var ignored = new SystemInOverride(input)) {
                 final int result =
                         (int)
                                 m.invoke(
@@ -931,146 +931,29 @@ class TextToSqlCLITest {
                                         "test-session",
                                         mapper);
                 assertEquals(0, result);
-            } finally {
-                System.setIn(original);
             }
         }
 
-        @Test
-        @DisplayName("returns 0 immediately when first input is 'quit'")
-        void returnsZeroOnQuitCommand() throws Exception {
-            final CliConfig config = buildConfig();
-            final ObjectMapper mapper = JsonUtils.createMapper();
-            final TextToSqlAgent agent = buildAgent(config, mapper);
-
-            final Method m =
-                    TextToSqlCLI.class.getDeclaredMethod(
-                            "runInteractiveLoop",
-                            TextToSqlAgent.class,
-                            CliConfig.class,
-                            String.class,
-                            ObjectMapper.class);
-            m.setAccessible(true);
-
-            final java.io.InputStream original = System.in;
-            try {
-                System.setIn(
-                        new java.io.ByteArrayInputStream("quit\n".getBytes(StandardCharsets.UTF_8)));
-                final int result =
-                        (int)
-                                m.invoke(
-                                        new TextToSqlCLI(),
-                                        agent,
-                                        config,
-                                        "test-session",
-                                        mapper);
-                assertEquals(0, result);
-            } finally {
-                System.setIn(original);
-            }
+        private static Stream<Arguments> runInteractiveLoopInputs() {
+            return Stream.of(
+                    Arguments.of("exit\n"),
+                    Arguments.of("quit\n"),
+                    Arguments.of("\nexit\n"),
+                    Arguments.of(""),
+                    Arguments.of("/dumpMessages\nexit\n"));
         }
 
-        @Test
-        @DisplayName("skips empty lines and exits when 'exit' is entered after blank line")
-        void skipsEmptyLinesThenExits() throws Exception {
-            final CliConfig config = buildConfig();
-            final ObjectMapper mapper = JsonUtils.createMapper();
-            final TextToSqlAgent agent = buildAgent(config, mapper);
+        private static final class SystemInOverride implements AutoCloseable {
+            private final java.io.InputStream original;
 
-            final Method m =
-                    TextToSqlCLI.class.getDeclaredMethod(
-                            "runInteractiveLoop",
-                            TextToSqlAgent.class,
-                            CliConfig.class,
-                            String.class,
-                            ObjectMapper.class);
-            m.setAccessible(true);
-
-            final java.io.InputStream original = System.in;
-            try {
-                // Empty line → warning → continue; then "exit"
+            private SystemInOverride(String input) {
+                this.original = System.in;
                 System.setIn(
-                        new java.io.ByteArrayInputStream(
-                                "\nexit\n".getBytes(StandardCharsets.UTF_8)));
-                final int result =
-                        (int)
-                                m.invoke(
-                                        new TextToSqlCLI(),
-                                        agent,
-                                        config,
-                                        "test-session",
-                                        mapper);
-                assertEquals(0, result);
-            } finally {
-                System.setIn(original);
+                        new java.io.ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
             }
-        }
 
-        @Test
-        @DisplayName("returns 0 on EOF (null readLine) — prints EOF message and exits")
-        void returnsZeroOnEof() throws Exception {
-            final CliConfig config = buildConfig();
-            final ObjectMapper mapper = JsonUtils.createMapper();
-            final TextToSqlAgent agent = buildAgent(config, mapper);
-
-            final Method m =
-                    TextToSqlCLI.class.getDeclaredMethod(
-                            "runInteractiveLoop",
-                            TextToSqlAgent.class,
-                            CliConfig.class,
-                            String.class,
-                            ObjectMapper.class);
-            m.setAccessible(true);
-
-            final java.io.InputStream original = System.in;
-            try {
-                // Empty stream → readLine() returns null immediately
-                System.setIn(new java.io.ByteArrayInputStream(new byte[0]));
-                final int result =
-                        (int)
-                                m.invoke(
-                                        new TextToSqlCLI(),
-                                        agent,
-                                        config,
-                                        "test-session",
-                                        mapper);
-                assertEquals(0, result);
-            } finally {
-                System.setIn(original);
-            }
-        }
-
-        @Test
-        @DisplayName("/dumpMessages with no prior output prints a warning and continues to exit")
-        void dumpMessagesBeforeAnyQueryPrintsWarning() throws Exception {
-            final CliConfig config = buildConfig();
-            final ObjectMapper mapper = JsonUtils.createMapper();
-            final TextToSqlAgent agent = buildAgent(config, mapper);
-
-            final Method m =
-                    TextToSqlCLI.class.getDeclaredMethod(
-                            "runInteractiveLoop",
-                            TextToSqlAgent.class,
-                            CliConfig.class,
-                            String.class,
-                            ObjectMapper.class);
-            m.setAccessible(true);
-
-            final java.io.InputStream original = System.in;
-            try {
-                System.setIn(
-                        new java.io.ByteArrayInputStream(
-                                "/dumpMessages\nexit\n".getBytes(StandardCharsets.UTF_8)));
-                final int result =
-                        (int)
-                                m.invoke(
-                                        new TextToSqlCLI(),
-                                        agent,
-                                        config,
-                                        "test-session",
-                                        mapper);
-                assertEquals(0, result);
-            } finally {
+            @Override
+            public void close() {
                 System.setIn(original);
             }
         }
@@ -1172,7 +1055,7 @@ class TextToSqlCLITest {
         @Test
         @DisplayName("non-streaming: data result triggers printStructuredResult")
         @SuppressWarnings("unchecked")
-        void nonStreamingSuccessWithData() throws Exception {
+        void nonStreamingSuccessWithData() {
             final TextToSqlAgent agent = mock(TextToSqlAgent.class);
             final SqlQueryResult result =
                     new SqlQueryResult("SELECT 1", List.of("{\"x\":1}"), "one row", 42L);
@@ -1187,7 +1070,7 @@ class TextToSqlCLITest {
         @Test
         @DisplayName("non-streaming: null data + error triggers printError")
         @SuppressWarnings("unchecked")
-        void nonStreamingErrorResult() throws Exception {
+        void nonStreamingErrorResult() {
             final TextToSqlAgent agent = mock(TextToSqlAgent.class);
             final SentinelError err = SentinelError.error(ErrorType.NO_RESPONSE);
             final AgentOutput<SqlQueryResult> output =
@@ -1201,7 +1084,7 @@ class TextToSqlCLITest {
         @Test
         @DisplayName("non-streaming: both data and error null triggers printWarning")
         @SuppressWarnings("unchecked")
-        void nonStreamingEmptyResult() throws Exception {
+        void nonStreamingEmptyResult() {
             final TextToSqlAgent agent = mock(TextToSqlAgent.class);
             final AgentOutput<SqlQueryResult> output =
                     new AgentOutput<>(null, List.of(), List.of(), null, null);
@@ -1214,7 +1097,7 @@ class TextToSqlCLITest {
         @Test
         @DisplayName("streaming: executeAsyncStreaming is called and result is handled")
         @SuppressWarnings("unchecked")
-        void streamingSuccessWithData() throws Exception {
+        void streamingSuccessWithData() {
             final TextToSqlAgent agent = mock(TextToSqlAgent.class);
             final SqlQueryResult result =
                     new SqlQueryResult("SELECT 2", List.of(), "no rows", 10L);
@@ -1229,7 +1112,7 @@ class TextToSqlCLITest {
         @Test
         @DisplayName("exception during executeAsync is caught and error is printed")
         @SuppressWarnings("unchecked")
-        void exceptionIsCaughtAndPrinted() throws Exception {
+        void exceptionIsCaughtAndPrinted() {
             final TextToSqlAgent agent = mock(TextToSqlAgent.class);
             when(agent.executeAsync(any()))
                     .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));

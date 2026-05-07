@@ -42,7 +42,7 @@ class SqliteRestServerHelpersTest {
 
         @Test
         @DisplayName("returns path to a temp file that exists on disk")
-        void returnsTempFileThatExists() throws Exception {
+        void returnsTempFileThatExists() {
             final String configPath = SqliteRestServer.buildInlineConfig(9876);
             assertNotNull(configPath);
             assertTrue(Files.exists(Path.of(configPath)), "Temp config file should exist");
@@ -50,7 +50,7 @@ class SqliteRestServerHelpersTest {
 
         @Test
         @DisplayName("substitutes port into the generated config file content")
-        void substitutesPortInContent() throws Exception {
+        void substitutesPortInContent() throws java.io.IOException {
             final int port = 12345;
             final String configPath = SqliteRestServer.buildInlineConfig(port);
             final String content = Files.readString(Path.of(configPath));
@@ -61,7 +61,7 @@ class SqliteRestServerHelpersTest {
 
         @Test
         @DisplayName("does not contain shell-style placeholder tokens after substitution")
-        void noUnresolvedPlaceholders() throws Exception {
+        void noUnresolvedPlaceholders() throws java.io.IOException {
             final String configPath = SqliteRestServer.buildInlineConfig(8080);
             final String content = Files.readString(Path.of(configPath));
             assertFalse(
@@ -74,7 +74,7 @@ class SqliteRestServerHelpersTest {
 
         @Test
         @DisplayName("admin port is port + 1")
-        void adminPortIsPortPlusOne() throws Exception {
+        void adminPortIsPortPlusOne() throws java.io.IOException {
             final int port = 7777;
             final String configPath = SqliteRestServer.buildInlineConfig(port);
             final String content = Files.readString(Path.of(configPath));

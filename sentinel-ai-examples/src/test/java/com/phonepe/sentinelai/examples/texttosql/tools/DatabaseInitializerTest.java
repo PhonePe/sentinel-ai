@@ -190,7 +190,7 @@ class DatabaseInitializerTest {
 
         @Test
         @DisplayName("creates parent directories when they do not exist")
-        void createsParentDirectories(@TempDir Path tempDir) throws IOException {
+        void createsParentDirectories(@TempDir Path tempDir) {
             Path dbPath = tempDir.resolve("nested").resolve("deep").resolve("test.db");
             assertFalse(Files.exists(dbPath.getParent()));
 

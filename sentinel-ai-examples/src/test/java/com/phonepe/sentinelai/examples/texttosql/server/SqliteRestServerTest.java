@@ -128,7 +128,7 @@ class SqliteRestServerTest {
 
         @Test
         @DisplayName("run registers the SqliteRestResource with jersey environment")
-        void runRegistersResource() throws Exception {
+        void runRegistersResource() {
             final SqliteRestServer server =
                     new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
             final Environment environment = mock(Environment.class);
@@ -154,7 +154,7 @@ class SqliteRestServerTest {
          */
         @Test
         @DisplayName("server starts and responds to GET /api/sqlite/tables")
-        void serverStartsAndServesTables(@TempDir Path tempDir) throws Exception {
+        void serverStartsAndServesTables(@TempDir Path tempDir) {
             final Path dbPath = tempDir.resolve("smoke.db");
             DatabaseInitializer.ensureInitialised(dbPath);
 

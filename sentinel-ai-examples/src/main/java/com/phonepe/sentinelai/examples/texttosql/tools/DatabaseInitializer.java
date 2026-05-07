@@ -30,8 +30,9 @@ import java.util.Objects;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility class that initialises the SQLite e-commerce database on first run.
@@ -47,9 +48,10 @@ import lombok.val;
  *
  * <p>If the database already exists and has tables, it is left untouched.
  */
-@Slf4j
 @UtilityClass
 public class DatabaseInitializer {
+
+    private static final Logger log = LoggerFactory.getLogger(DatabaseInitializer.class);
 
     private static final String[] TABLE_ORDER = {
         "users", "sellers", "catalog", "inventory", "orders"

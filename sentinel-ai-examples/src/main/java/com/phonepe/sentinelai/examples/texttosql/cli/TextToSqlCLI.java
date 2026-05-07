@@ -206,7 +206,7 @@ public class TextToSqlCLI implements Callable<Integer> {
         final Path dbPath = initializeDatabase(config);
 
         final OkHttpClientAdapter clientAdapter = buildTrustedHttpClient(config);
-        final SimpleOpenAIModel<?> model = buildOpenAIModel(config, clientAdapter, mapper);
+        final SimpleOpenAIModel<SimpleOpenAI> model = buildOpenAIModel(config, clientAdapter, mapper);
         final AgentSetup agentSetup = buildAgentSetup(config, model, mapper);
 
         final AgentSkillsExtension<String, SqlQueryResult, TextToSqlAgent> skillsExtension =
@@ -332,7 +332,7 @@ public class TextToSqlCLI implements Callable<Integer> {
         return new OkHttpClientAdapter(httpClient);
     }
 
-    static SimpleOpenAIModel<?> buildOpenAIModel(
+    static SimpleOpenAIModel<SimpleOpenAI> buildOpenAIModel(
             CliConfig config, OkHttpClientAdapter clientAdapter, ObjectMapper mapper) {
         log.info(
                 "Building OpenAI model [name={}, baseUrl={}]",
@@ -354,7 +354,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * mode).
      */
     static AgentSetup buildAgentSetup(
-            CliConfig config, SimpleOpenAIModel<?> model, ObjectMapper mapper) {
+            CliConfig config, SimpleOpenAIModel<SimpleOpenAI> model, ObjectMapper mapper) {
         log.info(
                 "Configuring agent setup [temperature={}, maxTokens={}, streaming={}]",
                 config.getAgent().getTemperature(),
@@ -590,33 +590,35 @@ public class TextToSqlCLI implements Callable<Integer> {
         while (true) {
             ConsoleUtils.printPrompt();
             line = console.readLine();
-            if (line == null) {
+            final boolean eof = line == null;
+            if (eof) {
                 System.out.println("EOF encountered. Exiting!");
-                break;
+            } else {
+                line = line.trim();
+                if (line.isEmpty()) {
+                    ConsoleUtils.printWarning("Empty input — please provide a prompt.");
+                    continue;
+                }
+                if (line.equalsIgnoreCase("exit") || line.equalsIgnoreCase("quit")) {
+                    System.out.println("Goodbye!");
+                } else if (line.startsWith("/dumpMessages")) {
+                    // output the message exchange thus far with the agent (based on the last agent
+                    // output)
+                    // the messages are written in JSON format for debugging purpose to a file in
+                    // the current directory
+                    final String[] parts = line.split("\\s+", 2);
+                    final String filename =
+                            parts.length > 1 && !parts[1].isBlank()
+                                    ? parts[1].trim()
+                                    : "messages-" + System.currentTimeMillis() + ".json";
+                    dumpMessages(filename, mapper);
+                    continue;
+                } else {
+                    handleQuery(agent, config, line, effectiveSessionId);
+                    continue;
+                }
             }
-            line = line.trim();
-            if (line.isEmpty()) {
-                ConsoleUtils.printWarning("Empty input — please provide a prompt.");
-                continue;
-            }
-            if (line.equalsIgnoreCase("exit") || line.equalsIgnoreCase("quit")) {
-                System.out.println("Goodbye!");
-                break;
-            }
-            if (line.startsWith("/dumpMessages")) {
-                // output the message exchange thus far with the agent (based on the last agent
-                // output)
-                // the messages are written in JSON format for debugging purpose to a file in the
-                // current directory
-                final String[] parts = line.split("\\s+", 2);
-                final String filename =
-                        parts.length > 1 && !parts[1].isBlank()
-                                ? parts[1].trim()
-                                : "messages-" + System.currentTimeMillis() + ".json";
-                dumpMessages(filename, mapper);
-                continue;
-            }
-            handleQuery(agent, config, line, effectiveSessionId);
+            break;
         }
         return 0;
     }

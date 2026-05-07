@@ -219,10 +219,10 @@ public class SqliteQueryEngine {
     // -------------------------------------------------------------------------
 
     private McpSchema.CallToolResult success(String text) {
-        return new McpSchema.CallToolResult(text, false);
+        return McpSchema.CallToolResult.builder().addTextContent(text).isError(false).build();
     }
 
     private McpSchema.CallToolResult error(String message) {
-        return new McpSchema.CallToolResult(message, true);
+        return McpSchema.CallToolResult.builder().addTextContent(message).isError(true).build();
     }
 }

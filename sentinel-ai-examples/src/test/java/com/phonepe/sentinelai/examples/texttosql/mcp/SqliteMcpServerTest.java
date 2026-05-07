@@ -34,6 +34,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * Tests for {@link SqliteMcpServer}.
@@ -58,7 +60,7 @@ class SqliteMcpServerTest {
     static ObjectMapper mapper;
 
     @BeforeAll
-    static void setUp() throws Exception {
+    static void setUp() throws NoSuchFieldException, IllegalAccessException {
         final Path dbPath = tempDir.resolve("mcp-test.db");
         DatabaseInitializer.ensureInitialised(dbPath);
 
@@ -135,7 +137,7 @@ class SqliteMcpServerTest {
             final McpSchema.CallToolResult result =
                     (McpSchema.CallToolResult) method.invoke(server, mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()), "handleListTables should not return an error");
+            assertNotEquals(Boolean.TRUE, result.isError(), "handleListTables should not return an error");
             assertTrue(
                     firstText(result).contains("tables"),
                     "Result should contain a 'tables' key");
@@ -151,7 +153,7 @@ class SqliteMcpServerTest {
             final McpSchema.CallToolResult result =
                     (McpSchema.CallToolResult) method.invoke(badServer, mapper);
             assertNotNull(result);
-            assertTrue(Boolean.TRUE.equals(result.isError()), "Bad db path should return error");
+            assertEquals(Boolean.TRUE, result.isError(), "Bad db path should return error");
         }
     }
 
@@ -174,7 +176,7 @@ class SqliteMcpServerTest {
                     (McpSchema.CallToolResult)
                             method.invoke(server, Map.of("tableName", "users"), mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()), "Should succeed for existing table");
+            assertNotEquals(Boolean.TRUE, result.isError(), "Should succeed for existing table");
             assertTrue(firstText(result).contains("users"));
         }
 
@@ -190,7 +192,7 @@ class SqliteMcpServerTest {
                             method.invoke(
                                     server, Map.of("tableName", "nonexistent_xyz"), mapper);
             assertNotNull(result);
-            assertTrue(Boolean.TRUE.equals(result.isError()), "Should return error for unknown table");
+            assertEquals(Boolean.TRUE, result.isError(), "Should return error for unknown table");
         }
 
         @Test
@@ -203,7 +205,7 @@ class SqliteMcpServerTest {
             final McpSchema.CallToolResult result =
                     (McpSchema.CallToolResult) method.invoke(server, Map.of(), mapper);
             assertNotNull(result);
-            assertTrue(Boolean.TRUE.equals(result.isError()), "Should return error when tableName is missing");
+            assertEquals(Boolean.TRUE, result.isError(), "Should return error when tableName is missing");
         }
 
         @Test
@@ -217,7 +219,7 @@ class SqliteMcpServerTest {
                     (McpSchema.CallToolResult)
                             method.invoke(badServer, Map.of("tableName", "users"), mapper);
             assertNotNull(result);
-            assertTrue(Boolean.TRUE.equals(result.isError()), "Bad db path should return error");
+            assertEquals(Boolean.TRUE, result.isError(), "Bad db path should return error");
         }
     }
 
@@ -239,7 +241,7 @@ class SqliteMcpServerTest {
             final McpSchema.CallToolResult result =
                     (McpSchema.CallToolResult) method.invoke(server, mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()), "handleGetDatabaseInfo should not return an error");
+            assertNotEquals(Boolean.TRUE, result.isError(), "handleGetDatabaseInfo should not return an error");
             assertTrue(firstText(result).contains("tableCount"));
         }
 
@@ -253,7 +255,7 @@ class SqliteMcpServerTest {
             final McpSchema.CallToolResult result =
                     (McpSchema.CallToolResult) method.invoke(badServer, mapper);
             assertNotNull(result);
-            assertTrue(Boolean.TRUE.equals(result.isError()), "Bad db path should return error");
+            assertEquals(Boolean.TRUE, result.isError(), "Bad db path should return error");
         }
     }
 
@@ -277,7 +279,7 @@ class SqliteMcpServerTest {
                             method.invoke(
                                     server, Map.of("sql", "SELECT 1 AS one"), mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()), "Valid SELECT should succeed");
+            assertNotEquals(Boolean.TRUE, result.isError(), "Valid SELECT should succeed");
         }
 
         @Test
@@ -290,58 +292,26 @@ class SqliteMcpServerTest {
             final McpSchema.CallToolResult result =
                     (McpSchema.CallToolResult) method.invoke(server, Map.of(), mapper);
             assertNotNull(result);
-            assertTrue(Boolean.TRUE.equals(result.isError()), "Missing sql should return an error");
+            assertEquals(Boolean.TRUE, result.isError(), "Missing sql should return an error");
         }
 
-        @Test
-        @DisplayName("returns error for an INSERT statement")
-        void returnsErrorForInsert() throws Exception {
+        @ParameterizedTest
+        @CsvSource({
+                "INSERT INTO users (id) VALUES (99999),INSERT should be rejected",
+                "DELETE FROM users WHERE id = 99999,DELETE should be rejected",
+                "UPDATE users SET id = 0 WHERE id = 99999,UPDATE should be rejected"
+        })
+        @DisplayName("returns error for write statements")
+        void returnsErrorForWriteStatements(String sql, String message) throws Exception {
             final Method method =
                     SqliteMcpServer.class.getDeclaredMethod(
                             "handleExecuteQuery", Map.class, ObjectMapper.class);
             method.setAccessible(true);
             final McpSchema.CallToolResult result =
                     (McpSchema.CallToolResult)
-                            method.invoke(
-                                    server,
-                                    Map.of("sql", "INSERT INTO users (id) VALUES (99999)"),
-                                    mapper);
+                            method.invoke(server, Map.of("sql", sql), mapper);
             assertNotNull(result);
-            assertTrue(Boolean.TRUE.equals(result.isError()), "INSERT should be rejected");
-        }
-
-        @Test
-        @DisplayName("returns error for a DELETE statement")
-        void returnsErrorForDelete() throws Exception {
-            final Method method =
-                    SqliteMcpServer.class.getDeclaredMethod(
-                            "handleExecuteQuery", Map.class, ObjectMapper.class);
-            method.setAccessible(true);
-            final McpSchema.CallToolResult result =
-                    (McpSchema.CallToolResult)
-                            method.invoke(
-                                    server,
-                                    Map.of("sql", "DELETE FROM users WHERE id = 99999"),
-                                    mapper);
-            assertNotNull(result);
-            assertTrue(Boolean.TRUE.equals(result.isError()), "DELETE should be rejected");
-        }
-
-        @Test
-        @DisplayName("returns error for an UPDATE statement")
-        void returnsErrorForUpdate() throws Exception {
-            final Method method =
-                    SqliteMcpServer.class.getDeclaredMethod(
-                            "handleExecuteQuery", Map.class, ObjectMapper.class);
-            method.setAccessible(true);
-            final McpSchema.CallToolResult result =
-                    (McpSchema.CallToolResult)
-                            method.invoke(
-                                    server,
-                                    Map.of("sql", "UPDATE users SET id = 0 WHERE id = 99999"),
-                                    mapper);
-            assertNotNull(result);
-            assertTrue(Boolean.TRUE.equals(result.isError()), "UPDATE should be rejected");
+            assertEquals(Boolean.TRUE, result.isError(), message);
         }
 
         @Test
@@ -358,7 +328,7 @@ class SqliteMcpServerTest {
                                     Map.of("sql", "SELECT COUNT(*) FROM users", "values", List.of()),
                                     mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()), "SELECT with empty values list should succeed");
+            assertNotEquals(Boolean.TRUE, result.isError(), "SELECT with empty values list should succeed");
         }
 
         @Test
@@ -373,7 +343,7 @@ class SqliteMcpServerTest {
                             method.invoke(
                                     server, Map.of("sql", "SELECT user_id FROM users LIMIT 3"), mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()), "SELECT from users should succeed");
+            assertNotEquals(Boolean.TRUE, result.isError(), "SELECT from users should succeed");
             assertTrue(firstText(result).contains("rows"));
         }
     }
@@ -466,38 +436,23 @@ class SqliteMcpServerTest {
     @DisplayName("handleExecuteQuery — additional cases")
     class HandleExecuteQueryAdditionalTests {
 
-        @Test
-        @DisplayName("returns error for invalid SQL syntax")
-        void returnsErrorForBadSql() throws Exception {
+        @ParameterizedTest
+        @CsvSource({
+                "server,SELECT FROM INVALID SYNTAX !!!",
+                "badServer,SELECT 1"
+        })
+        @DisplayName("returns error for failing queries")
+        void returnsErrorForFailingQueries(String target, String sql) throws Exception {
             final Method method =
                     SqliteMcpServer.class.getDeclaredMethod(
                             "handleExecuteQuery", Map.class, ObjectMapper.class);
             method.setAccessible(true);
+            final SqliteMcpServer selected = "badServer".equals(target) ? badServer : server;
             final McpSchema.CallToolResult result =
                     (McpSchema.CallToolResult)
-                            method.invoke(
-                                    server, Map.of("sql", "SELECT FROM INVALID SYNTAX !!!"), mapper);
+                            method.invoke(selected, Map.of("sql", sql), mapper);
             assertNotNull(result);
-            assertTrue(
-                    Boolean.TRUE.equals(result.isError()),
-                    "Invalid SQL syntax should return error");
-        }
-
-        @Test
-        @DisplayName("returns error when database is not accessible")
-        void returnsErrorForBadDbPath() throws Exception {
-            final Method method =
-                    SqliteMcpServer.class.getDeclaredMethod(
-                            "handleExecuteQuery", Map.class, ObjectMapper.class);
-            method.setAccessible(true);
-            final McpSchema.CallToolResult result =
-                    (McpSchema.CallToolResult)
-                            method.invoke(
-                                    badServer, Map.of("sql", "SELECT 1"), mapper);
-            assertNotNull(result);
-            assertTrue(
-                    Boolean.TRUE.equals(result.isError()),
-                    "Bad db path should return error");
+            assertEquals(Boolean.TRUE, result.isError(), "Failing query should return error");
         }
     }
 
@@ -520,9 +475,7 @@ class SqliteMcpServerTest {
                     (McpSchema.CallToolResult)
                             method.invoke(server, Map.of("tableName", "   "), mapper);
             assertNotNull(result);
-            assertTrue(
-                    Boolean.TRUE.equals(result.isError()),
-                    "Blank tableName should return an error");
+            assertEquals(Boolean.TRUE, result.isError(), "Blank tableName should return an error");
         }
     }
 }

@@ -85,12 +85,9 @@ class TextToSqlAgentTest {
     @Test
     @DisplayName("builder throws NullPointerException when setup is null")
     void builderThrowsWhenSetupIsNull() {
-        assertThrows(
-                NullPointerException.class,
-                () -> TextToSqlAgent.builder()
-                        .setup(null)
-                        .outputValidator((ctx, out) -> OutputValidationResults.success())
-                        .build());
+        final var builder = TextToSqlAgent.builder();
+        builder.outputValidator((ctx, out) -> OutputValidationResults.success());
+        assertThrows(NullPointerException.class, () -> builder.setup(null));
     }
 
     @Test
@@ -104,12 +101,8 @@ class TextToSqlAgentTest {
                         .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
                         .outputGenerationTool(result -> result)
                         .build();
-        // outputValidator is @NonNull in the builder — passing null should throw
-        assertThrows(
-                NullPointerException.class,
-                () -> TextToSqlAgent.builder()
-                        .setup(setup)
-                        .outputValidator(null)
-                        .build());
+        final var builder = TextToSqlAgent.builder();
+        builder.setup(setup);
+        assertThrows(NullPointerException.class, () -> builder.outputValidator(null));
     }
 }

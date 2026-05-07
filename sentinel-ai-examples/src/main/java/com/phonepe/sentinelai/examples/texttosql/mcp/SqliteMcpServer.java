@@ -130,10 +130,9 @@ public class SqliteMcpServer implements Callable<Integer> {
     public Integer call() {
         DatabaseInitializer.ensureInitialised(Paths.get(dbPath).toAbsolutePath());
         log.info("SQLite MCP server starting [transport={}, dbPath={}]", transport, dbPath);
-        final SqliteQueryEngine engine = new SqliteQueryEngine(dbPath);
         return switch (transport) {
-            case STDIO -> runStdioMode(engine);
-            case SSE -> runSseMode(engine);
+            case STDIO -> runStdioMode();
+            case SSE -> runSseMode();
         };
     }
 
@@ -147,7 +146,7 @@ public class SqliteMcpServer implements Callable<Integer> {
      * <p>Blocks the main thread until the parent process closes the pipe.
      */
     @SneakyThrows
-    private Integer runStdioMode(SqliteQueryEngine engine) {
+    private Integer runStdioMode() {
         final ObjectMapper mapper = JsonUtils.createMapper();
         final var jsonMapper = new JacksonMcpJsonMapper(mapper);
 
@@ -160,18 +159,16 @@ public class SqliteMcpServer implements Callable<Integer> {
                         .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
                         .toolCall(
                                 executeQueryTool(jsonMapper),
-                                (exchange, args) ->
-                                        engine.executeQuery(args.arguments(), mapper))
+                                (exchange, args) -> handleExecuteQuery(args.arguments(), mapper))
                         .toolCall(
                                 listTablesTool(jsonMapper),
-                                (exchange, args) -> engine.listTables(mapper))
+                                (exchange, args) -> handleListTables(mapper))
                         .toolCall(
                                 getTableSchemaTool(jsonMapper),
-                                (exchange, args) ->
-                                        engine.getTableSchema(args.arguments(), mapper))
+                                (exchange, args) -> handleGetTableSchema(args.arguments(), mapper))
                         .toolCall(
                                 getDatabaseInfoTool(jsonMapper),
-                                (exchange, args) -> engine.getDatabaseInfo(mapper))
+                                (exchange, args) -> handleGetDatabaseInfo(mapper))
                         .build();
 
         log.info("SQLite MCP server started in STDIO mode. Database: {}", dbPath);
@@ -189,7 +186,7 @@ public class SqliteMcpServer implements Callable<Integer> {
      * <p>Starts an embedded Jetty server on {@link #port} and blocks until the server is stopped.
      */
     @SneakyThrows
-    private Integer runSseMode(SqliteQueryEngine engine) {
+    private Integer runSseMode() {
         final ObjectMapper mapper = JsonUtils.createMapper();
         final var jsonMapper = new JacksonMcpJsonMapper(mapper);
 
@@ -204,18 +201,18 @@ public class SqliteMcpServer implements Callable<Integer> {
                 McpServer.sync(transportProvider)
                         .serverInfo("sqlite-mcp-server", "1.0.0")
                         .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
-                        .tool(
+                        .toolCall(
                                 executeQueryTool(jsonMapper),
-                                (exchange, args) -> engine.executeQuery(args, mapper))
-                        .tool(
+                                (exchange, args) -> handleExecuteQuery(args.arguments(), mapper))
+                        .toolCall(
                                 listTablesTool(jsonMapper),
-                                (exchange, args) -> engine.listTables(mapper))
-                        .tool(
+                                (exchange, args) -> handleListTables(mapper))
+                        .toolCall(
                                 getTableSchemaTool(jsonMapper),
-                                (exchange, args) -> engine.getTableSchema(args, mapper))
-                        .tool(
+                                (exchange, args) -> handleGetTableSchema(args.arguments(), mapper))
+                        .toolCall(
                                 getDatabaseInfoTool(jsonMapper),
-                                (exchange, args) -> engine.getDatabaseInfo(mapper))
+                                (exchange, args) -> handleGetDatabaseInfo(mapper))
                         .build();
 
         // Embed the SSE transport provider in a Jetty 12 (ee10) server

@@ -22,8 +22,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
 import jakarta.ws.rs.core.Response;
 import java.nio.file.Path;
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
@@ -31,6 +29,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * Tests for {@link SqliteRestResource} exercising all eight endpoints by calling them directly
@@ -46,7 +46,7 @@ class SqliteRestResourceTest {
     static ObjectMapper mapper;
 
     @BeforeAll
-    static void setUp() throws Exception {
+    static void setUp() {
         Path dbPath = tempDir.resolve("test.db");
         DatabaseInitializer.ensureInitialised(dbPath);
         mapper = new ObjectMapper();
@@ -63,7 +63,7 @@ class SqliteRestResourceTest {
 
         @Test
         @DisplayName("returns 200 with tables list")
-        void returns200WithTablesList() throws Exception {
+        void returns200WithTablesList() {
             Response resp = resource.listTables();
             assertEquals(200, resp.getStatus());
             String body = (String) resp.getEntity();
@@ -72,7 +72,7 @@ class SqliteRestResourceTest {
 
         @Test
         @DisplayName("tables list contains expected e-commerce tables")
-        void containsExpectedTables() throws Exception {
+        void containsExpectedTables() {
             Response resp = resource.listTables();
             String body = (String) resp.getEntity();
             assertTrue(body.contains("users"));
@@ -129,7 +129,7 @@ class SqliteRestResourceTest {
 
         @Test
         @DisplayName("tableCount is at least 5")
-        void tableCountAtLeastFive() throws Exception {
+        void tableCountAtLeastFive() throws java.io.IOException {
             Response resp = resource.getDatabaseInfo();
             String body = (String) resp.getEntity();
             @SuppressWarnings("unchecked")
@@ -169,40 +169,16 @@ class SqliteRestResourceTest {
             assertEquals(400, resp.getStatus());
         }
 
-        @Test
-        @DisplayName("throws WriteQueryNotAllowedException for INSERT")
-        void throwsForInsert() {
-            Map<String, Object> body =
-                    Map.of("sql", "INSERT INTO users (id) VALUES (999999)");
-            assertThrows(
-                    SqliteRestResource.WriteQueryNotAllowedException.class,
-                    () -> resource.executeQuery(body));
-        }
-
-        @Test
-        @DisplayName("throws WriteQueryNotAllowedException for DELETE")
-        void throwsForDelete() {
-            Map<String, Object> body =
-                    Map.of("sql", "DELETE FROM users WHERE id = 999999");
-            assertThrows(
-                    SqliteRestResource.WriteQueryNotAllowedException.class,
-                    () -> resource.executeQuery(body));
-        }
-
-        @Test
-        @DisplayName("throws WriteQueryNotAllowedException for UPDATE")
-        void throwsForUpdate() {
-            Map<String, Object> body =
-                    Map.of("sql", "UPDATE users SET id = 0 WHERE id = 999999");
-            assertThrows(
-                    SqliteRestResource.WriteQueryNotAllowedException.class,
-                    () -> resource.executeQuery(body));
-        }
-
-        @Test
-        @DisplayName("throws WriteQueryNotAllowedException for DROP")
-        void throwsForDrop() {
-            Map<String, Object> body = Map.of("sql", "DROP TABLE users");
+        @ParameterizedTest
+        @CsvSource({
+                "INSERT INTO users (id) VALUES (999999)",
+                "DELETE FROM users WHERE id = 999999",
+                "UPDATE users SET id = 0 WHERE id = 999999",
+                "DROP TABLE users"
+        })
+        @DisplayName("throws WriteQueryNotAllowedException for write statements")
+        void throwsForWriteStatements(String sql) {
+            Map<String, Object> body = Map.of("sql", sql);
             assertThrows(
                     SqliteRestResource.WriteQueryNotAllowedException.class,
                     () -> resource.executeQuery(body));
@@ -210,7 +186,7 @@ class SqliteRestResourceTest {
 
         @Test
         @DisplayName("returns rows for SELECT from users table")
-        void returnsRowsForUsersSelect() throws Exception {
+        void returnsRowsForUsersSelect() {
             Map<String, Object> body = Map.of("sql", "SELECT user_id FROM users LIMIT 3");
             Response resp = resource.executeQuery(body);
             assertEquals(200, resp.getStatus());
@@ -255,7 +231,7 @@ class SqliteRestResourceTest {
 
         @Test
         @DisplayName("limit and offset parameters are respected")
-        void limitAndOffsetRespected() throws Exception {
+        void limitAndOffsetRespected() throws java.io.IOException {
             Response resp = resource.readRecords("users", 3, 0, null);
             assertEquals(200, resp.getStatus());
             String body = (String) resp.getEntity();
@@ -265,23 +241,17 @@ class SqliteRestResourceTest {
             assertTrue(rowCount <= 3, "Should return at most 3 rows");
         }
 
-        @Test
-        @DisplayName("empty conditions JSON object returns all rows (no WHERE clause)")
-        void emptyConditionsJsonReturnsAllRows() {
-            // An empty JSON object {} means conditions.isEmpty() is true → no WHERE clause appended
-            Response resp = resource.readRecords("users", 2, 0, "{}");
+        @ParameterizedTest
+        @CsvSource({
+                "{},2,0",
+                "{\"id\":\"99999999\"},,"
+        })
+        @DisplayName("supports conditions JSON")
+        void supportsConditionsJson(String conditionsJson, Integer limit, Integer offset) {
+            Response resp = resource.readRecords("users", limit, offset, conditionsJson);
             assertEquals(200, resp.getStatus());
             String body = (String) resp.getEntity();
             assertTrue(body.contains("rows"));
-        }
-
-        @Test
-        @DisplayName("conditions JSON filter works")
-        void conditionsFilterWorks() {
-            // Use an id that is very unlikely to exist to get 0 rows
-            Response resp = resource.readRecords("users", null, null,
-                    "{\"id\":\"99999999\"}");
-            assertEquals(200, resp.getStatus());
         }
 
         @Test
@@ -380,7 +350,7 @@ class SqliteRestResourceTest {
 
         @Test
         @DisplayName("inserting a seller returns 200 and affectedRows=1")
-        void insertSellerReturns200(@org.junit.jupiter.api.io.TempDir Path dir) throws Exception {
+        void insertSellerReturns200(@org.junit.jupiter.api.io.TempDir Path dir) {
             Path db = dir.resolve("crud.db");
             DatabaseInitializer.ensureInitialised(db);
             SqliteRestResource res = new SqliteRestResource(db.toAbsolutePath().toString(), mapper);
@@ -416,8 +386,7 @@ class SqliteRestResourceTest {
 
         @Test
         @DisplayName("updating a non-existent record returns 200 with affectedRows=0")
-        void updateNonExistentRowReturns200(@org.junit.jupiter.api.io.TempDir Path dir)
-                throws Exception {
+        void updateNonExistentRowReturns200(@org.junit.jupiter.api.io.TempDir Path dir) {
             Path db = dir.resolve("crud.db");
             DatabaseInitializer.ensureInitialised(db);
             SqliteRestResource res = new SqliteRestResource(db.toAbsolutePath().toString(), mapper);
@@ -443,8 +412,7 @@ class SqliteRestResourceTest {
 
         @Test
         @DisplayName("deleting a non-existent record returns 200 with affectedRows=0")
-        void deleteNonExistentRowReturns200(@org.junit.jupiter.api.io.TempDir Path dir)
-                throws Exception {
+        void deleteNonExistentRowReturns200(@org.junit.jupiter.api.io.TempDir Path dir) {
             Path db = dir.resolve("crud.db");
             DatabaseInitializer.ensureInitialised(db);
             SqliteRestResource res = new SqliteRestResource(db.toAbsolutePath().toString(), mapper);

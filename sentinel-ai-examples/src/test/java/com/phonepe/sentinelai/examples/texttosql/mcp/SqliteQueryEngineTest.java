@@ -31,6 +31,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * Tests for {@link SqliteQueryEngine}.
@@ -48,7 +50,7 @@ class SqliteQueryEngineTest {
     static ObjectMapper mapper;
 
     @BeforeAll
-    static void setUp() throws Exception {
+    static void setUp() {
         final Path dbPath = tempDir.resolve("query-engine-test.db");
         DatabaseInitializer.ensureInitialised(dbPath);
 
@@ -83,7 +85,7 @@ class SqliteQueryEngineTest {
             final McpSchema.CallToolResult result =
                     engine.executeQuery(Map.of("sql", "SELECT 1 AS one"), mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()), "Valid SELECT should succeed");
+            assertNotEquals(Boolean.TRUE, result.isError(), "Valid SELECT should succeed");
             assertTrue(firstText(result).contains("rows"));
         }
 
@@ -93,7 +95,7 @@ class SqliteQueryEngineTest {
             final McpSchema.CallToolResult result =
                     engine.executeQuery(Map.of("sql", "SELECT user_id FROM users LIMIT 3"), mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()), "SELECT from users should succeed");
+            assertNotEquals(Boolean.TRUE, result.isError(), "SELECT from users should succeed");
             assertTrue(firstText(result).contains("rows"));
         }
 
@@ -101,7 +103,7 @@ class SqliteQueryEngineTest {
         @DisplayName("returns error when sql field is absent")
         void returnsErrorWhenSqlAbsent() {
             final McpSchema.CallToolResult result = engine.executeQuery(Map.of(), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+            assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("'sql' is required"));
         }
 
@@ -110,85 +112,30 @@ class SqliteQueryEngineTest {
         void returnsErrorWhenSqlBlank() {
             final McpSchema.CallToolResult result =
                     engine.executeQuery(Map.of("sql", "   "), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+            assertEquals(Boolean.TRUE, result.isError());
         }
 
-        @Test
-        @DisplayName("rejects INSERT statements")
-        void rejectsInsert() {
+        @ParameterizedTest
+        @CsvSource({
+                "INSERT INTO users (id) VALUES (99999)",
+                "DELETE FROM users WHERE id = 99999",
+                "UPDATE users SET id = 0 WHERE id = 99999",
+                "DROP TABLE users",
+                "CREATE TABLE foo (id INT)",
+                "ALTER TABLE users ADD COLUMN foo TEXT",
+                "TRUNCATE TABLE users",
+                "MERGE INTO users USING src ON x = y",
+                "REPLACE INTO users (id) VALUES (1)",
+                "SELECT FROM INVALID SYNTAX !!!"
+        })
+        @DisplayName("rejects invalid SQL statements")
+        void rejectsInvalidStatements(String sql) {
             final McpSchema.CallToolResult result =
-                    engine.executeQuery(
-                            Map.of("sql", "INSERT INTO users (id) VALUES (99999)"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
-            assertTrue(firstText(result).contains("INSERT"));
-        }
-
-        @Test
-        @DisplayName("rejects DELETE statements")
-        void rejectsDelete() {
-            final McpSchema.CallToolResult result =
-                    engine.executeQuery(
-                            Map.of("sql", "DELETE FROM users WHERE id = 99999"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
-        }
-
-        @Test
-        @DisplayName("rejects UPDATE statements")
-        void rejectsUpdate() {
-            final McpSchema.CallToolResult result =
-                    engine.executeQuery(
-                            Map.of("sql", "UPDATE users SET id = 0 WHERE id = 99999"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
-        }
-
-        @Test
-        @DisplayName("rejects DROP statements")
-        void rejectsDrop() {
-            final McpSchema.CallToolResult result =
-                    engine.executeQuery(Map.of("sql", "DROP TABLE users"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
-        }
-
-        @Test
-        @DisplayName("rejects CREATE statements")
-        void rejectsCreate() {
-            final McpSchema.CallToolResult result =
-                    engine.executeQuery(Map.of("sql", "CREATE TABLE foo (id INT)"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
-        }
-
-        @Test
-        @DisplayName("rejects ALTER statements")
-        void rejectsAlter() {
-            final McpSchema.CallToolResult result =
-                    engine.executeQuery(
-                            Map.of("sql", "ALTER TABLE users ADD COLUMN foo TEXT"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
-        }
-
-        @Test
-        @DisplayName("rejects TRUNCATE statements")
-        void rejectsTruncate() {
-            final McpSchema.CallToolResult result =
-                    engine.executeQuery(Map.of("sql", "TRUNCATE TABLE users"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
-        }
-
-        @Test
-        @DisplayName("rejects MERGE statements")
-        void rejectsMerge() {
-            final McpSchema.CallToolResult result =
-                    engine.executeQuery(Map.of("sql", "MERGE INTO users USING src ON x = y"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
-        }
-
-        @Test
-        @DisplayName("rejects REPLACE statements")
-        void rejectsReplace() {
-            final McpSchema.CallToolResult result =
-                    engine.executeQuery(
-                            Map.of("sql", "REPLACE INTO users (id) VALUES (1)"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+                    engine.executeQuery(Map.of("sql", sql), mapper);
+            assertEquals(Boolean.TRUE, result.isError());
+            if (sql.startsWith("INSERT")) {
+                assertTrue(firstText(result).contains("INSERT"));
+            }
         }
 
         @Test
@@ -198,15 +145,7 @@ class SqliteQueryEngineTest {
                     engine.executeQuery(
                             Map.of("sql", "SELECT COUNT(*) FROM users", "values", List.of()),
                             mapper);
-            assertFalse(Boolean.TRUE.equals(result.isError()));
-        }
-
-        @Test
-        @DisplayName("returns error for invalid SQL syntax")
-        void returnsErrorForInvalidSql() {
-            final McpSchema.CallToolResult result =
-                    engine.executeQuery(Map.of("sql", "SELECT FROM INVALID SYNTAX !!!"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+            assertNotEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
@@ -214,7 +153,7 @@ class SqliteQueryEngineTest {
         void returnsErrorForBadDbPath() {
             final McpSchema.CallToolResult result =
                     badEngine.executeQuery(Map.of("sql", "SELECT 1"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+            assertEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
@@ -249,7 +188,7 @@ class SqliteQueryEngineTest {
         void returnsTablesList() {
             final McpSchema.CallToolResult result = engine.listTables(mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()));
+            assertNotEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("tables"));
         }
 
@@ -257,7 +196,7 @@ class SqliteQueryEngineTest {
         @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() {
             final McpSchema.CallToolResult result = badEngine.listTables(mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+            assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("Failed to list tables"));
         }
     }
@@ -276,7 +215,7 @@ class SqliteQueryEngineTest {
             final McpSchema.CallToolResult result =
                     engine.getTableSchema(Map.of("tableName", "users"), mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()));
+            assertNotEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("users"));
         }
 
@@ -284,7 +223,7 @@ class SqliteQueryEngineTest {
         @DisplayName("returns error when tableName is absent")
         void returnsErrorWhenTableNameAbsent() {
             final McpSchema.CallToolResult result = engine.getTableSchema(Map.of(), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+            assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("'tableName' is required"));
         }
 
@@ -293,7 +232,7 @@ class SqliteQueryEngineTest {
         void returnsErrorWhenTableNameBlank() {
             final McpSchema.CallToolResult result =
                     engine.getTableSchema(Map.of("tableName", "   "), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+            assertEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
@@ -301,7 +240,7 @@ class SqliteQueryEngineTest {
         void returnsErrorForUnknownTable() {
             final McpSchema.CallToolResult result =
                     engine.getTableSchema(Map.of("tableName", "nonexistent_xyz"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+            assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("Table not found"));
         }
 
@@ -310,7 +249,7 @@ class SqliteQueryEngineTest {
         void returnsErrorForBadDbPath() {
             final McpSchema.CallToolResult result =
                     badEngine.getTableSchema(Map.of("tableName", "users"), mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+            assertEquals(Boolean.TRUE, result.isError());
         }
     }
 
@@ -327,7 +266,7 @@ class SqliteQueryEngineTest {
         void returnsDatabaseMetadata() {
             final McpSchema.CallToolResult result = engine.getDatabaseInfo(mapper);
             assertNotNull(result);
-            assertFalse(Boolean.TRUE.equals(result.isError()));
+            assertNotEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("tableCount"));
         }
 
@@ -335,7 +274,7 @@ class SqliteQueryEngineTest {
         @DisplayName("returns approximateSizeBytes in the response")
         void returnsApproximateSizeBytes() {
             final McpSchema.CallToolResult result = engine.getDatabaseInfo(mapper);
-            assertFalse(Boolean.TRUE.equals(result.isError()));
+            assertNotEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("approximateSizeBytes"));
         }
 
@@ -343,7 +282,7 @@ class SqliteQueryEngineTest {
         @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() {
             final McpSchema.CallToolResult result = badEngine.getDatabaseInfo(mapper);
-            assertTrue(Boolean.TRUE.equals(result.isError()));
+            assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("Failed to get database info"));
         }
     }
