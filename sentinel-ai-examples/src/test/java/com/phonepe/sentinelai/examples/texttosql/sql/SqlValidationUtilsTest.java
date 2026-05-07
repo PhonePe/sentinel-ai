@@ -17,16 +17,32 @@
 package com.phonepe.sentinelai.examples.texttosql.sql;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @DisplayName("SqlValidationUtils")
 class SqlValidationUtilsTest {
+
+    @Test
+    @DisplayName("finds disallowed write keyword in sql")
+    void findsDisallowedWriteKeywordInSql() {
+        assertEquals("INSERT", SqlValidationUtils.findDisallowedWriteKeyword("INSERT INTO users(id) VALUES(1)"));
+    }
+
+    @Test
+    @DisplayName("returns null when sql has no disallowed write keyword")
+    void returnsNullWhenSqlHasNoDisallowedWriteKeyword() {
+        assertNull(SqlValidationUtils.findDisallowedWriteKeyword("WITH cte AS (SELECT 1) SELECT * FROM cte"));
+        assertNull(SqlValidationUtils.findDisallowedWriteKeyword("PRAGMA table_info(users)"));
+        assertNull(SqlValidationUtils.findDisallowedWriteKeyword(null));
+    }
 
     @ParameterizedTest
     @ValueSource(strings = {

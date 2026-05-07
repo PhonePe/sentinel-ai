@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Executes SQL read operations against an SQLite database and returns {@link
@@ -67,26 +66,11 @@ public class SqliteQueryEngine {
             return error("Field 'sql' is required");
         }
 
-        final String upper = sql.trim().toUpperCase();
-        final Set<String> writePrefixes = Set.of(
-                                                 "INSERT",
-                                                 "UPDATE",
-                                                 "DELETE",
-                                                 "DROP",
-                                                 "ALTER",
-                                                 "CREATE",
-                                                 "REPLACE",
-                                                 "TRUNCATE",
-                                                 "MERGE",
-                                                 "ATTACH",
-                                                 "DETACH");
-        for (final String prefix : writePrefixes) {
-            if (upper.contains(prefix)) {
-                return error(
-                             "Write DML statements are not allowed via this endpoint. "
-                                     + "Statement starts with: "
-                                     + prefix);
-            }
+        final String disallowedKeyword = SqlValidationUtils.findDisallowedWriteKeyword(sql);
+        if (disallowedKeyword != null) {
+            return error(
+                         "Write DML statements are not allowed via this endpoint. Statement starts with: "
+                                 + disallowedKeyword);
         }
 
         @SuppressWarnings("unchecked") final List<Object> values = args.containsKey("values") ? (List<Object>) args.get(

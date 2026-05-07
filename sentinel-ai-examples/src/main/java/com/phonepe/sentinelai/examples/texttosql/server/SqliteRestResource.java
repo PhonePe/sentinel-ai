@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * JAX-RS resource that provides a REST interface to a SQLite database.
@@ -194,25 +193,11 @@ public class SqliteRestResource {
             return error(400, "Field 'sql' is required");
         }
 
-        final String trimmedUpper = sql.trim().toUpperCase();
-        final Set<String> writePrefixes = Set.of(
-                                                 "INSERT",
-                                                 "UPDATE",
-                                                 "DELETE",
-                                                 "DROP",
-                                                 "ALTER",
-                                                 "CREATE",
-                                                 "REPLACE",
-                                                 "TRUNCATE",
-                                                 "MERGE",
-                                                 "ATTACH",
-                                                 "DETACH");
-        for (final String prefix : writePrefixes) {
-            if (trimmedUpper.contains(prefix)) {
-                throw new WriteQueryNotAllowedException(
-                                                        "Write DML statements are not allowed via this endpoint. Offending statement starts with: "
-                                                                + prefix);
-            }
+        final String disallowedKeyword = SqlValidationUtils.findDisallowedWriteKeyword(sql);
+        if (disallowedKeyword != null) {
+            throw new WriteQueryNotAllowedException(
+                                                    "Write DML statements are not allowed via this endpoint. Offending statement starts with: "
+                                                            + disallowedKeyword);
         }
 
         @SuppressWarnings("unchecked") final List<Object> values = body.containsKey("values") ? (List<Object>) body.get(

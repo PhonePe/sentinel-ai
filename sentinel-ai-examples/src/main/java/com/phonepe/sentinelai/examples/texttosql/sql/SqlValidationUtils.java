@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.examples.texttosql.sql;
 
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /** Shared validation helpers for SQL identifiers accepted by the text-to-SQL examples. */
@@ -23,6 +24,18 @@ public final class SqlValidationUtils {
 
     private static final String DATABASE_NAME_LABEL = "database name";
     private static final String TABLE_NAME_LABEL = "table name";
+    private static final Set<String> DISALLOWED_WRITE_KEYWORDS = Set.of(
+                                                                        "INSERT",
+                                                                        "UPDATE",
+                                                                        "DELETE",
+                                                                        "DROP",
+                                                                        "ALTER",
+                                                                        "CREATE",
+                                                                        "REPLACE",
+                                                                        "TRUNCATE",
+                                                                        "MERGE",
+                                                                        "ATTACH",
+                                                                        "DETACH");
 
     /** Only allow identifiers that are alphanumeric plus underscores to prevent SQL injection. */
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("^[a-zA-Z_]\\w*$");
@@ -43,5 +56,18 @@ public final class SqlValidationUtils {
 
     public static void validateTableName(String tableName) {
         validateIdentifier(tableName, TABLE_NAME_LABEL);
+    }
+
+    public static String findDisallowedWriteKeyword(String sql) {
+        if (sql == null) {
+            return null;
+        }
+        final String upper = sql.trim().toUpperCase();
+        for (final String keyword : DISALLOWED_WRITE_KEYWORDS) {
+            if (upper.contains(keyword)) {
+                return keyword;
+            }
+        }
+        return null;
     }
 }
