@@ -30,20 +30,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @DisplayName("SqlValidationUtils")
 class SqlValidationUtilsTest {
 
-    @Test
-    @DisplayName("finds disallowed write keyword in sql")
-    void findsDisallowedWriteKeywordInSql() {
-        assertEquals("INSERT", SqlValidationUtils.findDisallowedWriteKeyword("INSERT INTO users(id) VALUES(1)"));
-    }
-
-    @Test
-    @DisplayName("returns null when sql has no disallowed write keyword")
-    void returnsNullWhenSqlHasNoDisallowedWriteKeyword() {
-        assertNull(SqlValidationUtils.findDisallowedWriteKeyword("WITH cte AS (SELECT 1) SELECT * FROM cte"));
-        assertNull(SqlValidationUtils.findDisallowedWriteKeyword("PRAGMA table_info(users)"));
-        assertNull(SqlValidationUtils.findDisallowedWriteKeyword(null));
-    }
-
     @ParameterizedTest
     @ValueSource(strings = {
             "analytics", "main_db", "warehouse_01"
@@ -60,6 +46,12 @@ class SqlValidationUtilsTest {
     @DisplayName("accepts valid table names")
     void acceptsValidTableNames(String tableName) {
         assertDoesNotThrow(() -> SqlValidationUtils.validateTableName(tableName));
+    }
+
+    @Test
+    @DisplayName("finds disallowed write keyword in sql")
+    void findsDisallowedWriteKeywordInSql() {
+        assertEquals("INSERT", SqlValidationUtils.findDisallowedWriteKeyword("INSERT INTO users(id) VALUES(1)"));
     }
 
     @ParameterizedTest
@@ -97,5 +89,13 @@ class SqlValidationUtilsTest {
                                                                 () -> SqlValidationUtils.validateDatabaseName(
                                                                                                               databaseName));
         assertEquals("Invalid database name: null", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("returns null when sql has no disallowed write keyword")
+    void returnsNullWhenSqlHasNoDisallowedWriteKeyword() {
+        assertNull(SqlValidationUtils.findDisallowedWriteKeyword("WITH cte AS (SELECT 1) SELECT * FROM cte"));
+        assertNull(SqlValidationUtils.findDisallowedWriteKeyword("PRAGMA table_info(users)"));
+        assertNull(SqlValidationUtils.findDisallowedWriteKeyword(null));
     }
 }

@@ -43,6 +43,19 @@ public final class SqlValidationUtils {
     private SqlValidationUtils() {
     }
 
+    public static String findDisallowedWriteKeyword(String sql) {
+        if (sql == null) {
+            return null;
+        }
+        final String upper = sql.trim().toUpperCase();
+        for (final String keyword : DISALLOWED_WRITE_KEYWORDS) {
+            if (upper.contains(keyword)) {
+                return keyword;
+            }
+        }
+        return null;
+    }
+
     @SuppressWarnings("unused")
     public static void validateDatabaseName(String databaseName) {
         validateIdentifier(databaseName, DATABASE_NAME_LABEL);
@@ -56,18 +69,5 @@ public final class SqlValidationUtils {
 
     public static void validateTableName(String tableName) {
         validateIdentifier(tableName, TABLE_NAME_LABEL);
-    }
-
-    public static String findDisallowedWriteKeyword(String sql) {
-        if (sql == null) {
-            return null;
-        }
-        final String upper = sql.trim().toUpperCase();
-        for (final String keyword : DISALLOWED_WRITE_KEYWORDS) {
-            if (upper.contains(keyword)) {
-                return keyword;
-            }
-        }
-        return null;
     }
 }
