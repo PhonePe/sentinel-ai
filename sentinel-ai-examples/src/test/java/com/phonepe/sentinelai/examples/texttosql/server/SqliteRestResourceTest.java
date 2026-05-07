@@ -147,25 +147,22 @@ class SqliteRestResourceTest {
     @DisplayName("POST /query")
     class ExecuteQueryTests {
 
-        @Test
-        @DisplayName("returns 200 for a valid SELECT")
-        void returns200ForValidSelect() {
-            Map<String, Object> body = Map.of("sql", "SELECT 1 AS one");
+        @ParameterizedTest
+        @CsvSource({
+                "SELECT 1 AS one,200",
+                "'   ',400"
+        })
+        @DisplayName("returns expected status for simple query inputs")
+        void returnsExpectedStatusForSimpleQueryInputs(String sql, int expectedStatus) {
+            Map<String, Object> body = Map.of("sql", sql);
             Response resp = resource.executeQuery(body);
-            assertEquals(200, resp.getStatus());
+            assertEquals(expectedStatus, resp.getStatus());
         }
 
         @Test
         @DisplayName("returns 400 when sql field is missing")
         void returns400WhenSqlMissing() {
             Response resp = resource.executeQuery(Map.of());
-            assertEquals(400, resp.getStatus());
-        }
-
-        @Test
-        @DisplayName("returns 400 when sql field is blank")
-        void returns400WhenSqlBlank() {
-            Response resp = resource.executeQuery(Map.of("sql", "   "));
             assertEquals(400, resp.getStatus());
         }
 

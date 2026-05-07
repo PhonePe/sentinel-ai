@@ -590,37 +590,47 @@ public class TextToSqlCLI implements Callable<Integer> {
         while (true) {
             ConsoleUtils.printPrompt();
             line = console.readLine();
-            final boolean eof = line == null;
-            if (eof) {
-                System.out.println("EOF encountered. Exiting!");
-            } else {
-                line = line.trim();
-                if (line.isEmpty()) {
-                    ConsoleUtils.printWarning("Empty input — please provide a prompt.");
-                    continue;
-                }
-                if (line.equalsIgnoreCase("exit") || line.equalsIgnoreCase("quit")) {
-                    System.out.println("Goodbye!");
-                } else if (line.startsWith("/dumpMessages")) {
-                    // output the message exchange thus far with the agent (based on the last agent
-                    // output)
-                    // the messages are written in JSON format for debugging purpose to a file in
-                    // the current directory
-                    final String[] parts = line.split("\\s+", 2);
-                    final String filename =
-                            parts.length > 1 && !parts[1].isBlank()
-                                    ? parts[1].trim()
-                                    : "messages-" + System.currentTimeMillis() + ".json";
-                    dumpMessages(filename, mapper);
-                    continue;
-                } else {
-                    handleQuery(agent, config, line, effectiveSessionId);
-                    continue;
-                }
+            if (shouldExitInteractiveLoop(agent, config, effectiveSessionId, mapper, line)) {
+                break;
             }
-            break;
         }
         return 0;
+    }
+
+    private boolean shouldExitInteractiveLoop(
+            TextToSqlAgent agent,
+            CliConfig config,
+            String effectiveSessionId,
+            ObjectMapper mapper,
+            String line) {
+        if (line == null) {
+            System.out.println("EOF encountered. Exiting!");
+            return true;
+        }
+
+        final String trimmedLine = line.trim();
+        if (trimmedLine.isEmpty()) {
+            ConsoleUtils.printWarning("Empty input — please provide a prompt.");
+            return false;
+        }
+        if (trimmedLine.equalsIgnoreCase("exit") || trimmedLine.equalsIgnoreCase("quit")) {
+            System.out.println("Goodbye!");
+            return true;
+        }
+        if (trimmedLine.startsWith("/dumpMessages")) {
+            dumpMessages(resolveDumpMessagesFilename(trimmedLine), mapper);
+            return false;
+        }
+
+        handleQuery(agent, config, trimmedLine, effectiveSessionId);
+        return false;
+    }
+
+    private String resolveDumpMessagesFilename(String line) {
+        final String[] parts = line.split("\\s+", 2);
+        return parts.length > 1 && !parts[1].isBlank()
+                ? parts[1].trim()
+                : "messages-" + System.currentTimeMillis() + ".json";
     }
 
     /**

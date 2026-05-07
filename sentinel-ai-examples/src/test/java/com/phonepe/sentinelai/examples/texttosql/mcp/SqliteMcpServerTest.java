@@ -356,57 +356,24 @@ class SqliteMcpServerTest {
     @DisplayName("tool definitions")
     class ToolDefinitionTests {
 
-        @Test
-        @DisplayName("executeQueryTool returns a tool with name 'execute_query'")
-        void executeQueryToolHasCorrectName() throws Exception {
+        @ParameterizedTest
+        @CsvSource({
+                "executeQueryTool,execute_query",
+                "listTablesTool,list_tables",
+                "getTableSchemaTool,get_table_schema",
+                "getDatabaseInfoTool,get_database_info"
+        })
+        @DisplayName("tool definition methods return tools with expected names")
+        void toolDefinitionMethodsHaveCorrectNames(String methodName, String expectedName)
+                throws Exception {
             final JacksonMcpJsonMapper jsonMapper = new JacksonMcpJsonMapper(mapper);
             final Method method =
-                    SqliteMcpServer.class.getDeclaredMethod(
-                            "executeQueryTool", JacksonMcpJsonMapper.class);
+                    SqliteMcpServer.class.getDeclaredMethod(methodName, JacksonMcpJsonMapper.class);
             method.setAccessible(true);
             final McpSchema.Tool tool = (McpSchema.Tool) method.invoke(server, jsonMapper);
             assertNotNull(tool);
-            assertEquals("execute_query", tool.name());
+            assertEquals(expectedName, tool.name());
             assertNotNull(tool.description());
-        }
-
-        @Test
-        @DisplayName("listTablesTool returns a tool with name 'list_tables'")
-        void listTablesToolHasCorrectName() throws Exception {
-            final JacksonMcpJsonMapper jsonMapper = new JacksonMcpJsonMapper(mapper);
-            final Method method =
-                    SqliteMcpServer.class.getDeclaredMethod(
-                            "listTablesTool", JacksonMcpJsonMapper.class);
-            method.setAccessible(true);
-            final McpSchema.Tool tool = (McpSchema.Tool) method.invoke(server, jsonMapper);
-            assertNotNull(tool);
-            assertEquals("list_tables", tool.name());
-        }
-
-        @Test
-        @DisplayName("getTableSchemaTool returns a tool with name 'get_table_schema'")
-        void getTableSchemaToolHasCorrectName() throws Exception {
-            final JacksonMcpJsonMapper jsonMapper = new JacksonMcpJsonMapper(mapper);
-            final Method method =
-                    SqliteMcpServer.class.getDeclaredMethod(
-                            "getTableSchemaTool", JacksonMcpJsonMapper.class);
-            method.setAccessible(true);
-            final McpSchema.Tool tool = (McpSchema.Tool) method.invoke(server, jsonMapper);
-            assertNotNull(tool);
-            assertEquals("get_table_schema", tool.name());
-        }
-
-        @Test
-        @DisplayName("getDatabaseInfoTool returns a tool with name 'get_database_info'")
-        void getDatabaseInfoToolHasCorrectName() throws Exception {
-            final JacksonMcpJsonMapper jsonMapper = new JacksonMcpJsonMapper(mapper);
-            final Method method =
-                    SqliteMcpServer.class.getDeclaredMethod(
-                            "getDatabaseInfoTool", JacksonMcpJsonMapper.class);
-            method.setAccessible(true);
-            final McpSchema.Tool tool = (McpSchema.Tool) method.invoke(server, jsonMapper);
-            assertNotNull(tool);
-            assertEquals("get_database_info", tool.name());
         }
     }
 
