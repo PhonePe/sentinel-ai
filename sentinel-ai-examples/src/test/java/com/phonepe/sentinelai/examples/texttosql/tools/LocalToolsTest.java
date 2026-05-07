@@ -20,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.TableDescRequest;
+
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -41,7 +43,7 @@ class LocalToolsTest {
     static Path dbPath;
 
     @BeforeAll
-    static void setUp() {
+    static void setUp() throws IOException {
         dbPath = tempDir.resolve("test.db");
         // Seed the database so LocalTools can connect to it
         DatabaseInitializer.ensureInitialised(dbPath);
