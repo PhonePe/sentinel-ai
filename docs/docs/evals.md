@@ -128,15 +128,15 @@ For a complete working example (including multiple custom expectations), see
 
 ### Embedding-based metrics
 
-Embedding-based metrics use vector similarity to evaluate output quality without a live model call at evaluation time — they require an `EmbeddingModel` but are otherwise deterministic for a fixed model.
+Embedding-based metrics use vector similarity to evaluate output quality without a live model call at evaluation time — they require an `EmbeddingModel` resolved through `MetricExecutorRegistry` at runtime but are otherwise deterministic for a fixed model.
 
-Use `Expectations.*` for one-step expectation wiring, or `Metrics.*` to get a raw `Metric<String, T>` to compose with a custom threshold via `MetricExpectation`.
+Use `Expectations.*` for one-step expectation wiring, or `Metrics.*` to get a raw `Metric<String, T>` to compose with a custom threshold via `MetricExpectation`. The embedding model is **not** passed inline — it is supplied once to `MetricExecutorRegistry.withDefaults(...)` via an `EmbeddingModelFactory`.
 
 | Expectation helper | Metric class | What it measures |
 |---|---|---|
-| `outputSimilarity(embeddingModel, referenceText [, threshold])` | `OutputSimilarityMetric` | Cosine similarity between output and a fixed reference text |
-| `Metrics.outputSimilarity(embeddingModel, referenceText)` | `OutputSimilarityMetric` | Raw metric — wire your own threshold via `MetricExpectation` |
-| `Metrics.outputRelevanceBySimilarity(embeddingModel)` | `OutputRelevanceBySimilarityMetric` | Cosine similarity between output and the original request — a proxy for topical relevance |
+| `Expectations.outputSimilarity(referenceText [, threshold])` | `OutputSimilarityMetric` | Cosine similarity between output and a fixed reference text |
+| `Metrics.outputSimilarity(referenceText)` | `OutputSimilarityMetric` | Raw metric — wire your own threshold via `MetricExpectation` |
+| `Metrics.outputRelevanceBySimilarity()` | `OutputRelevanceBySimilarityMetric` | Cosine similarity between output and the original request — a proxy for topical relevance |
 
 **When to use:** output similarity is useful when you have a reference or golden answer and want to catch semantic regressions without an exact-match assertion. `outputRelevanceBySimilarity` is useful when you only want to ensure the output stays on-topic with the original request.
 
@@ -165,12 +165,17 @@ Custom judge prompts must contain `{request}` and `{answer}` placeholders, which
 
 ```java
 ObjectMapper mapper = ...;
-Model judgeModel = ...;
 
-var expectation = Expectations.answerRelevance(0.85);
+// Wire the judge model via factory + identifier (preferred API)
+LLMModelFactory llmFactory = id -> new SimpleOpenAIModel<>(id.modelId(), openAiProvider, mapper, options);
 
-var metricExecutorFactory = MetricExecutorRegistry.withDefaults(judgeModel, mapper);
-var expectationExecutorFactory = ExpectationExecutorRegistry.withDefaults(metricExecutorFactory, mapper);
+var metricExecutorRegistry = MetricExecutorRegistry.withDefaults(
+        new EmbeddingModelIdentifier("text-embedding-3-small"),
+        embeddingFactory,           // EmbeddingModelFactory — null to skip embedding-based metrics
+        new LLMIdentifier("gpt-4o"),
+        llmFactory);
+
+var expectationExecutorFactory = ExpectationExecutorRegistry.withDefaults(metricExecutorRegistry);
 var evalEngine = new EvalEngine(mapper, expectationExecutorFactory);
 ```
 
