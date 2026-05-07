@@ -120,6 +120,7 @@ public class ConsoleUtils {
      * @throws InterruptedException if the current thread is interrupted while waiting
      * @throws ExecutionException   if the future completed exceptionally
      */
+    @SuppressWarnings("java:S2245")
     public static <T> T awaitWithSpinner(CompletableFuture<T> future, boolean showSpinner)
             throws InterruptedException, ExecutionException {
         while (true) {
