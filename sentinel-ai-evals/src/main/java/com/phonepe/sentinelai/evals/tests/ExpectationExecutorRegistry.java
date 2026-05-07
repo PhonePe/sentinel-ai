@@ -36,10 +36,10 @@ import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExpectation;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -62,7 +62,7 @@ import java.util.concurrent.ExecutorService;
  */
 public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
 
-    private final Map<Class<?>, ExpectationExecutorFactory> registry = new LinkedHashMap<>();
+    private final Map<Class<?>, ExpectationExecutorFactory> registry = new ConcurrentHashMap<>();
 
     /**
      * Creates an empty expectation registry backed by the supplied metric factory.
@@ -102,6 +102,7 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
         final var mapper = Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
         final var metricsFactory = metricExecutorFactory != null
                 ? metricExecutorFactory : MetricExecutorRegistry.withDefaults(mapper);
+
         final var registry = new ExpectationExecutorRegistry(metricsFactory);
 
         @SuppressWarnings("unchecked") final var outputEqualsClass = (Class<? extends Expectation<?, ?>>) (Object) OutputEqualsExpectation.class;

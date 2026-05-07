@@ -17,27 +17,17 @@
 package com.phonepe.sentinelai.evals.tests.metrics;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
-import com.phonepe.sentinelai.core.agent.ToolRunner;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
-import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.Model;
-import com.phonepe.sentinelai.core.model.ModelOutput;
-import com.phonepe.sentinelai.core.model.ModelRunContext;
-import com.phonepe.sentinelai.core.model.ModelUsageStats;
-import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 
-import java.util.Collection;
-import java.util.LinkedHashMap;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -57,39 +47,19 @@ import java.util.concurrent.ExecutorService;
  * });
  * }</pre>
  */
+@Slf4j
 public class MetricExecutorRegistry implements MetricExecutorFactory {
 
-    private static final Model DEFAULT_ANSWER_RELEVANCE_MODEL = new DefaultAnswerRelevanceModel();
+    private final Map<Class<?>, MetricExecutorFactory> registry = new ConcurrentHashMap<>();
 
-    private static final class DefaultAnswerRelevanceModel implements Model {
-        @Override
-        public CompletableFuture<ModelOutput> compute(ModelRunContext context,
-                                                      Collection<ModelOutputDefinition> outputDefinitions,
-                                                      List<AgentMessage> oldMessages,
-                                                      Map<String, ExecutableTool> tools,
-                                                      ToolRunner toolRunner,
-                                                      EarlyTerminationStrategy earlyTerminationStrategy,
-                                                      List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
-            final var data = JsonNodeFactory.instance.objectNode();
-            data.put(Agent.OUTPUT_VARIABLE_NAME,
-                     "{\"score\":0.0,\"reason\":\"No answer relevance evaluator model configured\"}");
-            final var safeMessages = oldMessages == null ? List.<AgentMessage>of() : oldMessages;
-            return CompletableFuture.completedFuture(ModelOutput.success(data,
-                                                                         List.of(),
-                                                                         safeMessages,
-                                                                         new ModelUsageStats()));
-        }
-    }
-
-    private final Map<Class<?>, MetricExecutorFactory> registry = new LinkedHashMap<>();
 
     /**
-     * Creates a registry pre-loaded with all built-in metric executors, using a no-op judge model
-     * for answer relevance (score will always be 0.0 unless a real model is configured).
+     * Creates a registry pre-loaded with all built-in metric executors.
      */
     public static MetricExecutorRegistry withDefaults() {
         return withDefaults(null, JsonUtils.createMapper());
     }
+
 
     /**
      * Creates a registry pre-loaded with all built-in metric executors.
@@ -110,10 +80,9 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
      */
     public static MetricExecutorRegistry withDefaults(Model answerRelevanceModel,
                                                       ObjectMapper objectMapper) {
-        final var judgeModel = answerRelevanceModel != null
-                ? answerRelevanceModel : DEFAULT_ANSWER_RELEVANCE_MODEL;
         final var mapper = Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
         final var registry = new MetricExecutorRegistry();
+        final List<String> skippedMetrics = new ArrayList<>();
 
         @SuppressWarnings("unchecked") final var outputSimilarityClass = (Class<? extends Metric<?, ?>>) (Object) OutputSimilarityMetric.class;
         registry.register(outputSimilarityClass, new MetricExecutorFactory() {
@@ -139,20 +108,30 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
             }
         });
 
-        @SuppressWarnings("unchecked") final var outputRelevanceClass = (Class<? extends Metric<?, ?>>) (Object) OutputRelevanceMetric.class;
-        registry.register(outputRelevanceClass, new MetricExecutorFactory() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
-                                                      ObjectMapper objectMapper,
-                                                      ExecutorService executorService) {
-                return (MetricExecutor<R, T>) new OutputRelevanceMetricExecutor<>(
-                                                                                  (OutputRelevanceMetric<T>) metric,
-                                                                                  judgeModel,
-                                                                                  objectMapper,
-                                                                                  executorService);
-            }
-        });
+        if (answerRelevanceModel != null) {
+            @SuppressWarnings("unchecked") final var outputRelevanceClass = (Class<? extends Metric<?, ?>>) (Object) OutputRelevanceMetric.class;
+            registry.register(outputRelevanceClass, new MetricExecutorFactory() {
+                @Override
+                @SuppressWarnings("unchecked")
+                public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
+                                                          ObjectMapper objectMapper,
+                                                          ExecutorService executorService) {
+                    return (MetricExecutor<R, T>) new OutputRelevanceMetricExecutor<>(
+                                                                                      (OutputRelevanceMetric<T>) metric,
+                                                                                      answerRelevanceModel,
+                                                                                      objectMapper,
+                                                                                      executorService);
+                }
+            });
+        }
+        else {
+            skippedMetrics.add(OutputRelevanceMetric.class.getSimpleName());
+        }
+
+        if (!skippedMetrics.isEmpty()) {
+            log.warn("The following metrics were not registered: {}",
+                     skippedMetrics);
+        }
 
         return registry;
     }
@@ -163,7 +142,8 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
      * @param objectMapper mapper used by JSON-dependent metric executors
      */
     public static MetricExecutorRegistry withDefaults(ObjectMapper objectMapper) {
-        return withDefaults(null, objectMapper);
+        final var mapper = Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
+        return withDefaults(null, mapper);
     }
 
     /**

@@ -22,7 +22,7 @@ import com.phonepe.sentinelai.evals.tests.Expectations;
 import com.phonepe.sentinelai.evals.tests.TestFactory;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Value;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OutputJsonPathCompareExpectationTest {
 
-    @Data
+    @Value
     @AllArgsConstructor
     static class Decision {
         String status;

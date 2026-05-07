@@ -5,7 +5,7 @@ description: Tracing Sentinel AI agents with OpenTelemetry GenAI semantic conven
 
 # OpenTelemetry Instrumentation
 
-Sentinel AI provides OpenTelemetry support through `OpenTelemetryAgentExtension` in the `sentinel-instrumentation` module.
+Sentinel AI provides OpenTelemetry support through `OpenTelemetryAgentExtension` in the `sentinel-ai-instrumentation-otel` module.
 
 ## Dependency
 

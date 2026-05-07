@@ -18,7 +18,8 @@ package com.phonepe.sentinelai.evals.tests;
 
 import com.google.common.base.Preconditions;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -31,14 +32,14 @@ import java.util.Objects;
  * @param <R> request type accepted by the agent
  * @param <T> response type produced by the agent
  */
-@Data
+@Value
 public class TestCase<R, T> {
     /** Input request sent to the agent. */
-    private R input;
+    R input;
     /** Expectations evaluated against the agent output and execution context. */
-    private List<Expectation<T, R>> expectations;
+    List<Expectation<T, R>> expectations;
     /** Optional timeout overriding the dataset-level default timeout. */
-    private Duration timeout;
+    Duration timeout;
 
     /**
      * Creates a test case without an explicit timeout.
@@ -58,6 +59,7 @@ public class TestCase<R, T> {
      * @param expectations expectations to evaluate against the result
      * @param timeout      optional timeout for this test case; must be non-negative when provided
      */
+    @Builder
     public TestCase(R input, List<Expectation<T, R>> expectations, Duration timeout) {
         Preconditions.checkArgument(timeout == null || !timeout.isNegative(), "Timeout must be non-negative");
         this.input = input;

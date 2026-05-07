@@ -290,7 +290,21 @@ public class TestFactory {
     }
 
     public static MetricExecutorFactory metricExecutorFactory() {
-        return MetricExecutorRegistry.withDefaults();
+        return MetricExecutorRegistry.withDefaults((context,
+                                                    outputDefinitions,
+                                                    oldMessages,
+                                                    tools,
+                                                    toolRunner,
+                                                    earlyTerminationStrategy,
+                                                    agentMessagesPreProcessors) -> {
+            final var data = JsonNodeFactory.instance.objectNode();
+            data.put(Agent.OUTPUT_VARIABLE_NAME, "{\"score\":0.0,\"reason\":\"mock\"}");
+            final var safeMessages = oldMessages == null ? List.<AgentMessage>of() : oldMessages;
+            return CompletableFuture.completedFuture(ModelOutput.success(data,
+                                                                         List.of(),
+                                                                         safeMessages,
+                                                                         new ModelUsageStats()));
+        });
     }
 
     public static MetricExecutorFactory metricExecutorFactory(Model answerRelevanceModel) {

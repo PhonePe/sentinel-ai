@@ -36,7 +36,6 @@ import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.evals.tests.Dataset;
-import com.phonepe.sentinelai.evals.tests.ExpectationExecutorRegistry;
 import com.phonepe.sentinelai.evals.tests.Expectations;
 import com.phonepe.sentinelai.evals.tests.TestCase;
 import com.phonepe.sentinelai.evals.tests.TestFactory;
@@ -64,6 +63,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 class EvalEngineTest {
+
+    private static Model mockJudgeModel() {
+        return (context,
+                outputDefinitions,
+                oldMessages,
+                tools,
+                toolRunner,
+                earlyTerminationStrategy,
+                agentMessagesPreProcessors) -> {
+            final var data = JsonNodeFactory.instance.objectNode();
+            data.put(Agent.OUTPUT_VARIABLE_NAME, "{\"score\":0.0,\"reason\":\"mock\"}");
+            final var safeMessages = oldMessages == null ? List.<AgentMessage>of() : oldMessages;
+            return CompletableFuture.completedFuture(ModelOutput.success(data,
+                                                                         List.of(),
+                                                                         safeMessages,
+                                                                         new ModelUsageStats()));
+        };
+    }
 
     static class OrderedToolCallModel implements Model {
         private final List<String> encodedToolOrder;
@@ -114,35 +131,9 @@ class EvalEngineTest {
         }
     }
 
-    private static EvalEngine engineWithMockJudgeModel() {
-        final var mapper = TestFactory.mapper();
-        final var metricExecutorFactory = MetricExecutorRegistry.withDefaults(mockJudgeModel(), mapper);
-        final var expectationExecutorFactory = ExpectationExecutorRegistry.withDefaults(metricExecutorFactory,
-                                                                                        mapper);
-        return new EvalEngine(mapper, expectationExecutorFactory);
-    }
-
-    private static Model mockJudgeModel() {
-        return (context,
-                outputDefinitions,
-                oldMessages,
-                tools,
-                toolRunner,
-                earlyTerminationStrategy,
-                agentMessagesPreProcessors) -> {
-            final var data = JsonNodeFactory.instance.objectNode();
-            data.put(Agent.OUTPUT_VARIABLE_NAME, "{\"score\":0.0,\"reason\":\"mock\"}");
-            final var safeMessages = oldMessages == null ? List.<AgentMessage>of() : oldMessages;
-            return CompletableFuture.completedFuture(ModelOutput.success(data,
-                                                                         List.of(),
-                                                                         safeMessages,
-                                                                         new ModelUsageStats()));
-        };
-    }
-
     @Test
     void testFailFast() {
-        EvalEngine engine = engineWithMockJudgeModel();
+        EvalEngine engine = new EvalEngine();
         val tests = List.of(
                             new TestCase<String, String>("first", List.of(Expectations.outputContains("missing"))),
                             new TestCase<String, String>("second", List.of(Expectations.outputContains("ok"))));
@@ -213,7 +204,7 @@ class EvalEngineTest {
 
     @Test
     void testSampling() {
-        EvalEngine engine = engineWithMockJudgeModel();
+        EvalEngine engine = new EvalEngine();
         val tests = new ArrayList<TestCase<String, String>>();
         for (int i = 0; i < 10; i++) {
             tests.add(new TestCase<>("input-" + i,
@@ -236,7 +227,7 @@ class EvalEngineTest {
 
     @Test
     void testTimeoutMarksSkipped() {
-        EvalEngine engine = engineWithMockJudgeModel();
+        EvalEngine engine = new EvalEngine();
         val tests = List.of(new TestCase<>("slow",
                                            List.of(Expectations.outputContains("ok")),
                                            Duration.ofMillis(50)));
@@ -254,7 +245,7 @@ class EvalEngineTest {
 
     @Test
     void testToolCallsFollowEncodedOrder() {
-        EvalEngine engine = engineWithMockJudgeModel();
+        EvalEngine engine = new EvalEngine();
         val orderedExpectation = Expectations.<String, String>ordered(
                                                                       new ToolCalledExpectation<>("fetch_user"),
                                                                       new ToolCalledExpectation<>("fetch_account"));
@@ -273,3 +264,4 @@ class EvalEngineTest {
         assertEquals(0, report.getFailedTestCases());
     }
 }
+

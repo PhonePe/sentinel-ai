@@ -31,12 +31,6 @@ public class DefaultMetricExecutorFactory implements MetricExecutorFactory {
 
     private final MetricExecutorRegistry delegate;
 
-    /**
-     * Creates the deprecated factory backed by the default metric registry.
-     */
-    public DefaultMetricExecutorFactory() {
-        this.delegate = MetricExecutorRegistry.withDefaults(JsonUtils.createMapper());
-    }
 
     /**
      * Creates the deprecated factory backed by the default metric registry.
@@ -87,14 +81,6 @@ public class DefaultMetricExecutorFactory implements MetricExecutorFactory {
         this.delegate = MetricExecutorRegistry.withDefaults(answerRelevanceModel, objectMapper);
     }
 
-    /**
-     * Creates the deprecated factory backed by the default metric registry.
-     *
-     * @param objectMapper mapper used by JSON-dependent metric executors
-     */
-    public DefaultMetricExecutorFactory(ObjectMapper objectMapper) {
-        this.delegate = MetricExecutorRegistry.withDefaults(objectMapper);
-    }
 
     /**
      * Delegates metric executor creation to the underlying registry.
