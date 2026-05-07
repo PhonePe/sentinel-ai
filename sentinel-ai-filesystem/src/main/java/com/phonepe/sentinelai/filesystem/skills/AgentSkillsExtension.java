@@ -18,36 +18,17 @@ package com.phonepe.sentinelai.filesystem.skills;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.google.common.collect.Maps;
-
-import com.phonepe.sentinelai.core.agent.Agent;
-import com.phonepe.sentinelai.core.agent.AgentExtension;
-import com.phonepe.sentinelai.core.agent.AgentRunContext;
-import com.phonepe.sentinelai.core.agent.FactList;
-import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
-import com.phonepe.sentinelai.core.agent.ProcessingMode;
-import com.phonepe.sentinelai.core.agent.SystemPrompt;
+import com.phonepe.sentinelai.core.agent.*;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
-
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-
-import static com.phonepe.sentinelai.filesystem.skills.FileBasedSkillRegistry.expandSkillDir;
+import java.util.*;
 
 /**
  * Extension that provides Agent Skills capabilities to Sentinel AI agents.
@@ -93,9 +74,9 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
     public AgentSkillsExtension(@NonNull String baseDir,
                                 @NonNull List<String> skillsDirectories,
                                 Collection<String> skillsToLoad) {
-        final var registry = new FileBasedSkillRegistry();
+        final var registry = new FileBasedSkillRegistry(baseDir);
         // Discover skills from all provided directories
-        registry.discoverSkills(baseDir, skillsDirectories, skillsToLoad);
+        registry.discoverSkills(skillsDirectories, skillsToLoad);
         this.registry = registry;
         this.singleSkillMode = false;
         this.tools = readTools(this);
@@ -110,9 +91,8 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
     @SneakyThrows
     @Builder(builderMethodName = "withSingleSkill", builderClassName = "SingleSkillBuilder")
     public AgentSkillsExtension(@NonNull String baseDir, final String singleSkill) {
-        final var registry = new FileBasedSkillRegistry();
-        var skillPath = expandSkillDir(singleSkill, baseDir);
-        registry.loadSkillFromPath(skillPath);
+        final var registry = new FileBasedSkillRegistry(baseDir);
+        registry.loadSkillFromPath(singleSkill);
         this.registry = registry;
         registry.getSkillNames().stream().findFirst().ifPresent(activatedSkills::add);
         this.singleSkillMode = true;

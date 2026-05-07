@@ -25,7 +25,7 @@ import java.util.*;
  */
 public interface SkillRegistry {
 
-    void discoverSkills(String baseDir, List<String> skillsDirs, Collection<String> skillsToLoad) throws IOException;
+    void discoverSkills(List<String> skillsDirs, Collection<String> skillsToLoad) throws IOException;
 
     void discoverSkills(Path skillsDirectory, Set<String> skillsToLoad) throws IOException;
 
@@ -37,5 +37,5 @@ public interface SkillRegistry {
 
     Optional<AgentSkill> loadSkill(String skillName);
 
-    Optional<AgentSkill> loadSkillFromPath(Path skillPath) throws IOException;
+    Optional<AgentSkill> loadSkillFromPath(String skillPath) throws IOException;
 }

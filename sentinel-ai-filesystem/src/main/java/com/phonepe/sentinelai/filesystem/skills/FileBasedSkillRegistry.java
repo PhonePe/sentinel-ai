@@ -32,13 +32,18 @@ import java.util.stream.Stream;
 @Slf4j
 public class FileBasedSkillRegistry implements SkillRegistry {
 
+    private final String baseDir;
     private final SkillParser parser = new SkillParser();
     private final Map<String, SkillMetadata> skillCatalog = new LinkedHashMap<>();
     private final Map<String, AgentSkill> loadedSkills = new LinkedHashMap<>();
     private final Set<Path> skillDirectories = new HashSet<>();
 
+    public FileBasedSkillRegistry(final String baseDir) {
+        this.baseDir = baseDir;
+    }
+
     @Override
-    public void discoverSkills(String baseDir, List<String> skillsDirs, Collection<String> skillsToLoad) throws IOException {
+    public void discoverSkills(List<String> skillsDirs, Collection<String> skillsToLoad) throws IOException {
         // Discover skills from all provided directories
         final var skillsFilter = Set.copyOf(Objects.requireNonNullElseGet(skillsToLoad, Set::<String>of));
         for (String dirPath : skillsDirs) {
@@ -187,7 +192,9 @@ public class FileBasedSkillRegistry implements SkillRegistry {
      * Load a single skill from an absolute path (for single-skill mode)
      */
     @Override
-    public Optional<AgentSkill> loadSkillFromPath(Path skillPath) throws IOException {
+    public Optional<AgentSkill> loadSkillFromPath(String singleSkill) throws IOException {
+        var skillPath = expandSkillDir(singleSkill, baseDir);
+
         if (!Files.isDirectory(skillPath)) {
             throw new IllegalArgumentException("Not a directory: " + skillPath);
         }
