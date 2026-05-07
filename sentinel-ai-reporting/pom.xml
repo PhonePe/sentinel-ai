@@ -80,19 +80,14 @@
         <!-- storage -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
-            <artifactId>sentinel-evals</artifactId>
+            <artifactId>sentinel-ai-evals</artifactId>
             <version>${project.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.phonepe.sentinel-ai</groupId>
-            <artifactId>sentinel-evals-junit5</artifactId>
-            <version>${project.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
-            <artifactId>sentinel-instrumentation-otel</artifactId>
+            <artifactId>sentinel-ai-instrumentation-otel</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

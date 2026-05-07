@@ -22,7 +22,7 @@ Add dependency (version managed via the Sentinel BOM):
 ```xml
 <dependency>
     <groupId>com.phonepe.sentinel-ai</groupId>
-    <artifactId>sentinel-evals</artifactId>
+    <artifactId>sentinel-ai-evals</artifactId>
 </dependency>
 ```
 
@@ -91,6 +91,39 @@ Asserts that the agent called a specific tool during the run — useful for veri
 | `toolCalled(String toolName, int times, Map<String,Object> params)` | Tool was called N times with matching parameters |
 | `ordered(MessageExpectation... expectations)` | Message-level expectations are satisfied in order |
 
+#### Custom expectations
+
+If built-in expectations are not enough, create your own expectation type and executor, then register it in `ExpectationExecutorRegistry`.
+
+```java
+record StringLengthExpectation(int min, int max) implements Expectation<String, Object> {}
+
+final class StringLengthExpectationExecutor implements ExpectationExecutor<String, Object> {
+    private final StringLengthExpectation expectation;
+
+    StringLengthExpectationExecutor(StringLengthExpectation expectation) {
+        this.expectation = expectation;
+    }
+
+    @Override
+    public boolean evaluate(String result, EvalExpectationContext<Object> context) {
+        return result != null
+                && result.length() >= expectation.min()
+                && result.length() <= expectation.max();
+    }
+}
+
+var expectationExecutorFactory = ExpectationExecutorRegistry.withDefaults()
+        .register(StringLengthExpectation.class,
+                (agent, expectation, objectMapper, executorService) -> (ExpectationExecutor) new StringLengthExpectationExecutor(
+                        (StringLengthExpectation) expectation));
+
+var report = new EvalEngine(mapper, expectationExecutorFactory).run(dataset, agent);
+```
+
+For a complete working example (including multiple custom expectations), see
+`sentinel-evals/src/test/java/com/phonepe/sentinelai/evals/tests/expectations/CustomExpectationExampleTest.java`.
+
 ---
 
 ### Embedding-based metrics
@@ -115,7 +148,7 @@ Use `Expectations.*` for one-step expectation wiring, or `Metrics.*` to get a ra
 
 LLM-judged metrics delegate scoring to a judge model that receives the original request and the agent answer, then returns a structured `{"score": 0.0–1.0, "reason": "..."}` payload. They are the most capable evaluators but require a live model call per test case.
 
-Use `Expectations.answerRelevance(...)` for one-step wiring, or `Metrics.answerRelevance(...)` to get the raw metric. The judge model is injected through `DefaultMetricExecutorFactory`.
+Use `Expectations.answerRelevance(...)` for one-step wiring, or `Metrics.answerRelevance(...)` to get the raw metric. The judge model is injected through the metric executor registry.
 
 | Expectation helper | Metric class | What it measures |
 |---|---|---|
@@ -131,12 +164,13 @@ The default judge prompt evaluates three dimensions:
 Custom judge prompts must contain `{request}` and `{answer}` placeholders, which are validated at construction time.
 
 ```java
+ObjectMapper mapper = ...;
 Model judgeModel = ...;
 
 var expectation = Expectations.answerRelevance(0.85);
 
-var metricExecutorFactory = new DefaultMetricExecutorFactory(judgeModel);
-var expectationExecutorFactory = new DefaultExpectationExecutorFactory(metricExecutorFactory);
+var metricExecutorFactory = MetricExecutorRegistry.withDefaults(judgeModel, mapper);
+var expectationExecutorFactory = ExpectationExecutorRegistry.withDefaults(metricExecutorFactory, mapper);
 var evalEngine = new EvalEngine(mapper, expectationExecutorFactory);
 ```
 
@@ -177,12 +211,13 @@ Use `samplePercentage` to keep PR builds fast while running the full suite on me
 
 ## JUnit 5 integration (optional)
 
-If you want rich assertion diagnostics in JUnit 5 tests, add the helper module:
+If you want rich assertion diagnostics in JUnit 5 tests, add the `sentinel-evals` test-jar:
 
 ```xml
 <dependency>
     <groupId>com.phonepe.sentinel-ai</groupId>
-    <artifactId>sentinel-evals-junit5</artifactId>
+    <artifactId>sentinel-ai-evals</artifactId>
+    <type>test-jar</type>
     <scope>test</scope>
 </dependency>
 ```

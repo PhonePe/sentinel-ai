@@ -12,7 +12,7 @@ Sentinel AI provides OpenTelemetry support through `OpenTelemetryAgentExtension`
 ```xml
 <dependency>
     <groupId>com.phonepe.sentinel-ai</groupId>
-    <artifactId>sentinel-instrumentation</artifactId>
+    <artifactId>sentinel-ai-instrumentation-otel</artifactId>
 </dependency>
 ```
 

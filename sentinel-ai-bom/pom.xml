@@ -76,13 +76,15 @@
             <!-- evals -->
             <dependency>
                 <groupId>com.phonepe.sentinel-ai</groupId>
-                <artifactId>sentinel-evals</artifactId>
+                <artifactId>sentinel-ai-evals</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
+            <!-- instrumentation -->
             <dependency>
                 <groupId>com.phonepe.sentinel-ai</groupId>
-                <artifactId>sentinel-evals-junit5</artifactId>
-                <version>${project.version}</version>
+                <artifactId>sentinel-ai-instrumentation-otel</artifactId>
+                <version>1.1.1-alpha7</version>
             </dependency>
 
             <!-- storage -->
