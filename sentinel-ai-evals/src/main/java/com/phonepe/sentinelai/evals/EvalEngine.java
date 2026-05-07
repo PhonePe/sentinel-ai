@@ -221,6 +221,17 @@ public class EvalEngine {
                 .build();
     }
 
+    @SuppressWarnings({
+            "unchecked", "rawtypes"
+    })
+    private <R, T, A extends Agent<R, T, A>> ExpectationExecutor<T, R> createExecutor(Agent<R, T, A> agent,
+                                                                                      Expectation<T, R> expectation) {
+        return (ExpectationExecutor<T, R>) executorFactory.create((Agent) agent,
+                                                                  expectation,
+                                                                  objectMapper,
+                                                                  executorService);
+    }
+
     private <R, T> List<TestCaseReport> executeAndCollectReports(Agent<R, T, ?> agent,
                                                                  List<TestCase<R, T>> sampledCases,
                                                                  EvalRunConfig config) {
@@ -262,12 +273,7 @@ public class EvalEngine {
                     ? List.of()
                     : testCase.getExpectations();
             for (Expectation<T, R> expectation : expectations) {
-                @SuppressWarnings({
-                        "unchecked", "rawtypes"
-                }) final var executor = (ExpectationExecutor<T, R>) executorFactory.create((Agent) agent,
-                                                                                           expectation,
-                                                                                           objectMapper,
-                                                                                           executorService);
+                final var executor = createExecutor(agent, expectation);
                 final var report = executor.evaluateWithReport(output.getData(), context);
                 expectationReports.add(report);
                 if (report.getStatus() == EvalStatus.FAILED) {

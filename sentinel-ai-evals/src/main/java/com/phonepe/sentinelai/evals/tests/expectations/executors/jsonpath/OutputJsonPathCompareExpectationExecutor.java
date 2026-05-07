@@ -52,6 +52,13 @@ public class OutputJsonPathCompareExpectationExecutor<R, T> implements Expectati
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
     }
 
+    // Type erasure prevents knowing Comparable's exact type at runtime; safe because
+    // we already verified actual.getClass().equals(expected.getClass()).
+    @SuppressWarnings("unchecked")
+    private static <T extends Comparable<? super T>> int castAndCompare(Comparable<?> actual, Object expected) {
+        return ((T) actual).compareTo((T) expected);
+    }
+
     private static boolean compare(Object actualValue, Operator operator, Object expectedValue) {
         return switch (operator) {
             case EQ -> Objects.equals(actualValue, expectedValue);
@@ -65,8 +72,6 @@ public class OutputJsonPathCompareExpectationExecutor<R, T> implements Expectati
         };
     }
 
-    // Type erasure prevents knowing Comparable's exact type at runtime; safe cast from pattern match guarantee
-    @SuppressWarnings("unchecked")
     private static int compareOrder(Object actual, Object expected) {
         if (actual == null || expected == null) {
             throw new IllegalArgumentException("Both actual and expected must be non-null for ordered comparisons");
@@ -75,7 +80,7 @@ public class OutputJsonPathCompareExpectationExecutor<R, T> implements Expectati
             return new BigDecimal(actualNumber.toString()).compareTo(new BigDecimal(expectedNumber.toString()));
         }
         if (actual.getClass().equals(expected.getClass()) && actual instanceof Comparable<?> actualComparable) {
-            return ((Comparable<Object>) actualComparable).compareTo(expected);
+            return castAndCompare(actualComparable, expected);
         }
         throw new IllegalArgumentException("Unsupported ordered comparison between values");
     }

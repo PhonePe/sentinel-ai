@@ -20,6 +20,7 @@ import com.google.common.base.Preconditions;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.With;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -31,6 +32,7 @@ import java.time.temporal.ChronoUnit;
  */
 @Builder
 @Getter
+@With
 public class EvalRunConfig {
     /** Whether execution should stop after the first failed test case. */
     @Builder.Default

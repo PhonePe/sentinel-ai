@@ -110,97 +110,78 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
 
         final var registry = new ExpectationExecutorRegistry();
 
-        @SuppressWarnings("unchecked") final var outputEqualsClass = (Class<? extends Expectation<?, ?>>) (Object) OutputEqualsExpectation.class;
-        registry.register(outputEqualsClass, new ExpectationExecutorFactory() {
+        registry.registerExpectation(OutputEqualsExpectation.class, new ExpectationExecutorFactory() {
+            @Override
+            public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
+                                                                                     Expectation<R, T> expectation,
+                                                                                     ObjectMapper objectMapper,
+                                                                                     ExecutorService executorService) {
+                final var typedExpectation = (OutputEqualsExpectation<R, T>) expectation;
+                return new OutputEqualsExpectationExecutor<>(typedExpectation);
+            }
+        });
+
+        registry.registerExpectation(OutputContainsExpectation.class, new ExpectationExecutorFactory() {
             @Override
             @SuppressWarnings("unchecked")
             public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
                                                                                      Expectation<R, T> expectation,
                                                                                      ObjectMapper objectMapper,
                                                                                      ExecutorService executorService) {
-                return (ExpectationExecutor<R, T>) new OutputEqualsExpectationExecutor<>(
-                                                                                         (OutputEqualsExpectation<R, T>) expectation);
+                final var typedExpectation = (OutputContainsExpectation<T>) expectation;
+                return (ExpectationExecutor<R, T>) new OutputContainsExpectationExecutor<>(typedExpectation);
             }
         });
 
-        @SuppressWarnings("unchecked") final var outputContainsClass = (Class<? extends Expectation<?, ?>>) (Object) OutputContainsExpectation.class;
-        registry.register(outputContainsClass, new ExpectationExecutorFactory() {
+        registry.registerExpectation(ToolCalledExpectation.class, new ExpectationExecutorFactory() {
             @Override
-            @SuppressWarnings("unchecked")
             public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
                                                                                      Expectation<R, T> expectation,
                                                                                      ObjectMapper objectMapper,
                                                                                      ExecutorService executorService) {
-                return (ExpectationExecutor<R, T>) new OutputContainsExpectationExecutor<>(
-                                                                                           (OutputContainsExpectation<T>) expectation);
+                final var typedExpectation = (ToolCalledExpectation<R, T>) expectation;
+                return new ToolCalledExpectationExecutor<>(typedExpectation, agent, objectMapper);
             }
         });
 
-        @SuppressWarnings("unchecked") final var toolCalledClass = (Class<? extends Expectation<?, ?>>) (Object) ToolCalledExpectation.class;
-        registry.register(toolCalledClass, new ExpectationExecutorFactory() {
+        registry.registerExpectation(OrderedExpectation.class, new ExpectationExecutorFactory() {
             @Override
-            @SuppressWarnings("unchecked")
-            public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
-                                                                                     Expectation<R, T> expectation,
-                                                                                     ObjectMapper objectMapper,
-                                                                                     ExecutorService executorService) {
-                return (ExpectationExecutor<R, T>) new ToolCalledExpectationExecutor<>(
-                                                                                       (ToolCalledExpectation<R, T>) expectation,
-                                                                                       agent,
-                                                                                       objectMapper);
-            }
-        });
-
-        @SuppressWarnings("unchecked") final var orderedClass = (Class<? extends Expectation<?, ?>>) (Object) OrderedExpectation.class;
-        registry.register(orderedClass, new ExpectationExecutorFactory() {
-            @Override
-            @SuppressWarnings("unchecked")
             public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
                                                                                      Expectation<R, T> expectation,
                                                                                      ObjectMapper objectMapper,
                                                                                      ExecutorService executorService) {
                 final var orderedExp = (OrderedExpectation<R, T>) expectation;
-                final var messageExpectationExecutors = orderedExp.getExpectations()
-                        .stream()
-                        .map(me -> (ExpectationExecutor<Object, Object>) registry.create(agent,
-                                                                                         me,
+                final var messageExpectationExecutors = registry.resolveMessageExecutors(
+                                                                                         agent,
+                                                                                         orderedExp.getExpectations(),
                                                                                          objectMapper,
-                                                                                         executorService))
-                        .filter(ex -> ex instanceof MessageExpectationExecutor<?, ?, ?>)
-                        .map(ex -> (MessageExpectationExecutor<?, R, T>) (Object) ex)
-                        .toList();
-                return (ExpectationExecutor<R, T>) new OrderedExpectationExecutor<>(orderedExp,
-                                                                                    (List<MessageExpectationExecutor<?, R, T>>) (Object) messageExpectationExecutors);
+                                                                                         executorService);
+                return new OrderedExpectationExecutor<>(orderedExp, messageExpectationExecutors);
             }
         });
 
-        @SuppressWarnings("unchecked") final var metricExpectationClass = (Class<? extends Expectation<?, ?>>) (Object) MetricExpectation.class;
-        registry.register(metricExpectationClass, new ExpectationExecutorFactory() {
+        registry.registerExpectation(MetricExpectation.class, new ExpectationExecutorFactory() {
             @Override
-            @SuppressWarnings("unchecked")
             public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
                                                                                      Expectation<R, T> expectation,
                                                                                      ObjectMapper objectMapper,
                                                                                      ExecutorService executorService) {
-                return (ExpectationExecutor<R, T>) new MetricExpectationExecutor<>(
-                                                                                   (MetricExpectation<R, T>) expectation,
-                                                                                   metricsFactory,
-                                                                                   objectMapper,
-                                                                                   executorService);
+                final var typedExpectation = (MetricExpectation<R, T>) expectation;
+                return new MetricExpectationExecutor<>(typedExpectation,
+                                                       metricsFactory,
+                                                       objectMapper,
+                                                       executorService);
             }
         });
 
-        @SuppressWarnings("unchecked") final var jsonPathClass = (Class<? extends Expectation<?, ?>>) (Object) OutputJsonPathCompareExpectation.class;
-        registry.register(jsonPathClass, new ExpectationExecutorFactory() {
+        registry.registerExpectation(OutputJsonPathCompareExpectation.class, new ExpectationExecutorFactory() {
             @Override
-            @SuppressWarnings("unchecked")
             public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
                                                                                      Expectation<R, T> expectation,
                                                                                      ObjectMapper objectMapper,
                                                                                      ExecutorService executorService) {
-                return (ExpectationExecutor<R, T>) new OutputJsonPathCompareExpectationExecutor<>(
-                                                                                                  (OutputJsonPathCompareExpectation<R, T>) expectation,
-                                                                                                  objectMapper);
+                final var typedExpectation = (OutputJsonPathCompareExpectation<R, T>) expectation;
+                return new OutputJsonPathCompareExpectationExecutor<>(typedExpectation, objectMapper);
             }
         });
 
@@ -246,5 +227,28 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
         Objects.requireNonNull(factory, "factory cannot be null");
         registry.put(expectationClass, factory);
         return this;
+    }
+
+    private <E extends Expectation<?, ?>> void registerExpectation(Class<E> expectationClass,
+                                                                   ExpectationExecutorFactory factory) {
+        Objects.requireNonNull(expectationClass, "expectationClass cannot be null");
+        Objects.requireNonNull(factory, "factory cannot be null");
+        register((Class<? extends Expectation<?, ?>>) (Object) expectationClass, factory);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <R, T, A extends Agent<R, T, A>> List<MessageExpectationExecutor<?, R, T>> resolveMessageExecutors(
+                                                                                                               Agent<R, T, A> agent,
+                                                                                                               List<MessageExpectation<R, T>> expectations,
+                                                                                                               ObjectMapper objectMapper,
+                                                                                                               ExecutorService executorService) {
+        final List<MessageExpectationExecutor<?, R, T>> result = new java.util.ArrayList<>();
+        for (MessageExpectation<R, T> expectation : expectations) {
+            final var executor = create(agent, expectation, objectMapper, executorService);
+            if (executor instanceof MessageExpectationExecutor<?, ?, ?> msgExec) {
+                result.add((MessageExpectationExecutor<?, R, T>) msgExec);
+            }
+        }
+        return result;
     }
 }

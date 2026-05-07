@@ -150,9 +150,7 @@ class EvalEngineTest {
 
         val report = engine.run(dataset,
                                 TestFactory.testAgent("ok", 0),
-                                EvalRunConfig.builder()
-                                        .failFast(true)
-                                        .build());
+                                EvalRunConfig.defaults().withFailFast(true));
 
         assertEquals(2, report.getSampledTestCases());
         assertEquals(1, report.getExecutedTestCases());
@@ -174,8 +172,6 @@ class EvalEngineTest {
                                                                                                TestFactory.mapper());
 
             @Override
-            // Type erasure in anonymous MetricExecutor<> prevents compile-time type checking
-            @SuppressWarnings("unchecked")
             public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
                                                       ObjectMapper objectMapper,
                                                       ExecutorService executorService) {
@@ -224,10 +220,9 @@ class EvalEngineTest {
         val dataset = new Dataset<String, String>("test-dataset", tests);
         val report = engine.run(dataset,
                                 TestFactory.testAgent("ok", 0),
-                                EvalRunConfig.builder()
-                                        .samplePercentage(30)
-                                        .sampleSeed(7L)
-                                        .build());
+                                EvalRunConfig.defaults()
+                                        .withSamplePercentage(30)
+                                        .withSampleSeed(7L));
 
         assertEquals(10, report.getTotalTestCases());
         assertEquals(3, report.getSampledTestCases());

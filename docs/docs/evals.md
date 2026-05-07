@@ -201,11 +201,10 @@ Wrap the run inside a JUnit test and inspect the generated report. The test can 
 @Test
 void agentSmokeEvals() {
     var report = new EvalEngine().run(dataset, agent,
-        EvalRunConfig.builder()
-            .samplePercentage(30)   // run 30 % of cases on PRs
-            .failFast(true)
-            .defaultTestCaseTimeout(Duration.ofSeconds(15))
-            .build());
+        EvalRunConfig.defaults()
+            .withSamplePercentage(30)   // run 30 % of cases on PRs
+            .withFailFast(true)
+            .withDefaultTestCaseTimeout(Duration.ofSeconds(15)));
 
     System.out.printf("Passed=%d Failed=%d Skipped=%d%n",
         report.getPassedTestCases(), report.getFailedTestCases(), report.getSkippedTestCases());

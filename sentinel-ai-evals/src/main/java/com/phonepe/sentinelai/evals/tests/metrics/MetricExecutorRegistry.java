@@ -151,28 +151,25 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
         final List<String> skippedMetrics = new ArrayList<>();
 
         if (embeddingModel != null) {
-            @SuppressWarnings("unchecked") final var outputSimilarityClass = (Class<? extends Metric<?, ?>>) (Object) OutputSimilarityMetric.class;
-            registry.register(outputSimilarityClass, new MetricExecutorFactory() {
+            registry.registerMetric(OutputSimilarityMetric.class, new MetricExecutorFactory() {
                 @Override
                 @SuppressWarnings("unchecked")
                 public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
                                                           ObjectMapper objectMapper,
                                                           ExecutorService executorService) {
-                    return (MetricExecutor<R, T>) new OutputSimilarityMetricExecutor<>(
-                                                                                       (OutputSimilarityMetric<T>) metric,
-                                                                                       embeddingModel);
+                    final var typedMetric = (OutputSimilarityMetric<T>) metric;
+                    return (MetricExecutor<R, T>) new OutputSimilarityMetricExecutor<>(typedMetric, embeddingModel);
                 }
             });
 
-            @SuppressWarnings("unchecked") final var outputRelevanceBySimilarityClass = (Class<? extends Metric<?, ?>>) (Object) OutputRelevanceBySimilarityMetric.class;
-            registry.register(outputRelevanceBySimilarityClass, new MetricExecutorFactory() {
+            registry.registerMetric(OutputRelevanceBySimilarityMetric.class, new MetricExecutorFactory() {
                 @Override
                 @SuppressWarnings("unchecked")
                 public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
                                                           ObjectMapper objectMapper,
                                                           ExecutorService executorService) {
-                    return (MetricExecutor<R, T>) new OutputRelevanceBySimilarityMetricExecutor<>(
-                                                                                                  (OutputRelevanceBySimilarityMetric<T>) metric,
+                    final var typedMetric = (OutputRelevanceBySimilarityMetric<T>) metric;
+                    return (MetricExecutor<R, T>) new OutputRelevanceBySimilarityMetricExecutor<>(typedMetric,
                                                                                                   embeddingModel);
                 }
             });
@@ -183,15 +180,14 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
         }
 
         if (answerRelevanceModel != null) {
-            @SuppressWarnings("unchecked") final var outputRelevanceClass = (Class<? extends Metric<?, ?>>) (Object) OutputRelevanceMetric.class;
-            registry.register(outputRelevanceClass, new MetricExecutorFactory() {
+            registry.registerMetric(OutputRelevanceMetric.class, new MetricExecutorFactory() {
                 @Override
                 @SuppressWarnings("unchecked")
                 public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
                                                           ObjectMapper objectMapper,
                                                           ExecutorService executorService) {
-                    return (MetricExecutor<R, T>) new OutputRelevanceMetricExecutor<>(
-                                                                                      (OutputRelevanceMetric<T>) metric,
+                    final var typedMetric = (OutputRelevanceMetric<T>) metric;
+                    return (MetricExecutor<R, T>) new OutputRelevanceMetricExecutor<>(typedMetric,
                                                                                       answerRelevanceModel,
                                                                                       objectMapper,
                                                                                       executorService);
@@ -246,5 +242,11 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
         Objects.requireNonNull(factory, "factory cannot be null");
         registry.put(metricClass, factory);
         return this;
+    }
+
+    private <M extends Metric<?, ?>> void registerMetric(Class<M> metricClass, MetricExecutorFactory factory) {
+        Objects.requireNonNull(metricClass, "metricClass cannot be null");
+        Objects.requireNonNull(factory, "factory cannot be null");
+        register((Class<? extends Metric<?, ?>>) (Object) metricClass, factory);
     }
 }
