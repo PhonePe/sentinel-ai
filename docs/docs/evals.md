@@ -8,7 +8,7 @@ description: Evaluate Sentinel AI agents with datasets, expectations, and report
 Evals are structured tests for AI agents — you define a set of inputs, describe what good output looks like, and run them repeatedly to catch regressions before they reach production.
 Unlike unit tests, evals account for the non-deterministic nature of LLMs: they measure behavior across a range of inputs, track quality over time, and can use other models as judges when rule-based checks are not enough.
 
-`sentinel-evals` is the built-in eval framework for Sentinel AI agents. It is fully generic (`Agent<R, T, A>`), works for both string and structured outputs, and integrates into any CI pipeline with a single assertion.
+`sentinel-ai-evals` is the built-in eval framework for Sentinel AI agents. It is fully generic (`Agent<R, T, A>`), works for both string and structured outputs, and integrates into any CI pipeline with a single assertion.
 
 ## Why use evals?
 
@@ -47,6 +47,35 @@ var report = new EvalEngine().run(dataset, agent);
 System.out.printf("Passed=%d Failed=%d Skipped=%d%n",
     report.getPassedTestCases(), report.getFailedTestCases(), report.getSkippedTestCases());
 ```
+
+## Core concepts
+
+Before looking at the available eval types, it helps to understand the building blocks:
+
+- `Dataset<R, T>`
+  - A named collection of eval scenarios.
+  - Usually represents one suite such as a smoke test set, regression pack, or domain-specific benchmark.
+  - Contains multiple `TestCase<R, T>` entries.
+
+- `TestCase<R, T>`
+  - One concrete input/output evaluation scenario.
+  - Holds the agent input, the expectations to evaluate, and an optional per-test timeout.
+  - Example: input = `"What is the status?"`, expectations = output contains `"OK"` and tool `fetch_status` was called.
+
+- `Expectation<R, T>`
+  - A pass/fail rule applied to the agent result and execution context.
+  - Best for deterministic assertions such as exact output checks, JSONPath assertions, and tool-call verification.
+  - When an expectation fails, the test case fails.
+
+- `Metric<R, T>`
+  - A scoring-based evaluator that produces a numeric score instead of only pass/fail.
+  - Useful for similarity, topical relevance, and LLM-judge style quality checks.
+  - Metrics are usually wrapped as expectations through helpers like `Expectations.outputSimilarity(...)` or `Expectations.answerRelevance(...)`, often with a threshold.
+
+- `ExpectationReport` / `TestCaseReport` / `EvalReport`
+  - `ExpectationReport` captures the outcome of one expectation or metric.
+  - `TestCaseReport` aggregates all expectation outcomes for a single test case.
+  - `EvalReport` aggregates the full dataset run, including passed/failed/skipped counts and collected metric scores.
 
 ## Available evals
 
@@ -122,13 +151,13 @@ var report = new EvalEngine(mapper, expectationExecutorFactory).run(dataset, age
 ```
 
 For a complete working example (including multiple custom expectations), see
-`sentinel-evals/src/test/java/com/phonepe/sentinelai/evals/tests/expectations/CustomExpectationExampleTest.java`.
+`sentinel-ai-evals/src/test/java/com/phonepe/sentinelai/evals/tests/expectations/CustomExpectationExampleTest.java`.
 
 ---
 
 ### Embedding-based metrics
 
-Embedding-based metrics use vector similarity to evaluate output quality without a live model call at evaluation time — they require an `EmbeddingModel` resolved through `MetricExecutorRegistry` at runtime but are otherwise deterministic for a fixed model.
+Embedding-based metrics use vector similarity to evaluate output quality, they require an `EmbeddingModel` resolved through `MetricExecutorRegistry` at runtime but are otherwise deterministic for a fixed model.
 
 Use `Expectations.*` for one-step expectation wiring, or `Metrics.*` to get a raw `Metric<String, T>` to compose with a custom threshold via `MetricExpectation`. The embedding model is **not** passed inline — it is supplied once to `MetricExecutorRegistry.withDefaults(...)` via an `EmbeddingModelFactory`.
 
@@ -215,7 +244,7 @@ Use `samplePercentage` to keep PR builds fast while running the full suite on me
 
 ## JUnit 5 integration (optional)
 
-If you want rich assertion diagnostics in JUnit 5 tests, add the `sentinel-evals` test-jar:
+If you want rich assertion diagnostics in JUnit 5 tests, add the `sentinel-ai-evals` test-jar:
 
 ```xml
 <dependency>
@@ -241,7 +270,7 @@ void agentSmokeEvals() {
 ## Real agent integration example
 
 For end-to-end validation with a live model (no model mocking), see
-`sentinel-evals/src/test/java/com/phonepe/sentinelai/evals/integration/RealNicknameAgentExpectationsIntegrationTest.java`.
+`sentinel-ai-evals/src/test/java/com/phonepe/sentinelai/evals/integration/RealNicknameAgentExpectationsIntegrationTest.java`.
 
 This test demonstrates:
 

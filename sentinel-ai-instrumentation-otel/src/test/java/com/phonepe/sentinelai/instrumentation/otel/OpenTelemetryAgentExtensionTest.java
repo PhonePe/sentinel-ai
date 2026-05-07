@@ -310,19 +310,25 @@ class OpenTelemetryAgentExtensionTest {
 
     @Test
     void shouldMarkToolSpanErrorWhenApprovalIsDenied() {
-        final var model = mock(Model.class);
-        when(model.compute(any(), anyCollection(), anyList(), anyMap(), any(ToolRunner.class), any(), anyList()))
-                .thenAnswer(
-                            denialFlow());
-        final var tool = externalTool("transfer-funds", new ExternalTool.ExternalToolResponse("ok", ErrorType.SUCCESS));
-        final var agent = createAgent(model,
-                                      Map.of("transfer-funds", tool),
-                                      OpenTelemetryAgentExtensionSetup.builder()
-                                              .tracer(openTelemetrySdk.getTracer("sentinel.test"))
-                                              .build(),
-                                      (a, c, t) -> false);
+        final var extension = OpenTelemetryAgentExtension.<String, String, DummyAgent>builder()
+                .setup(OpenTelemetryAgentExtensionSetup.builder()
+                        .tracer(openTelemetrySdk.getTracer("sentinel.test"))
+                        .build())
+                .build();
 
-        agent.execute(agentInput("run-4", "session-4"));
+        extension.consumeEvent(new ToolCalledAgentEvent("dummy",
+                                                        "run-4",
+                                                        "session-4",
+                                                        "user",
+                                                        "call-4",
+                                                        "transfer-funds",
+                                                        "{\"amount\":5000}"));
+        extension.consumeEvent(new ToolCallApprovalDeniedAgentEvent("dummy",
+                                                                    "run-4",
+                                                                    "session-4",
+                                                                    "user",
+                                                                    "call-4",
+                                                                    "transfer-funds"));
 
         final var toolSpan = waitForSpanByName("execute_tool transfer-funds");
         assertNotNull(toolSpan);
@@ -359,30 +365,6 @@ class OpenTelemetryAgentExtensionTest {
                 .setup(otelSetup)
                 .build();
         return new DummyAgent(setup, List.of(extension), tools, toolRunApprovalSeeker);
-    }
-
-    private Answer<CompletableFuture<ModelOutput>> denialFlow() {
-        return invocation -> {
-            final var context = invocation.getArgument(0, com.phonepe.sentinelai.core.model.ModelRunContext.class);
-            context.getAgentSetup().getEventBus().notify(new ToolCalledAgentEvent("dummy",
-                                                                                  context.getRunId(),
-                                                                                  context.getSessionId(),
-                                                                                  context.getUserId(),
-                                                                                  "call-4",
-                                                                                  "transfer-funds",
-                                                                                  "{\"amount\":5000}"));
-            context.getAgentSetup().getEventBus().notify(new ToolCallApprovalDeniedAgentEvent("dummy",
-                                                                                              context.getRunId(),
-                                                                                              context.getSessionId(),
-                                                                                              context.getUserId(),
-                                                                                              "call-4",
-                                                                                              "transfer-funds"));
-            final List<AgentMessage> messages = invocation.getArgument(2);
-            return CompletableFuture.completedFuture(ModelOutput.success(outputData("ok"),
-                                                                         List.of(),
-                                                                         messages,
-                                                                         new ModelUsageStats()));
-        };
     }
 
     private ExternalTool externalTool(String toolName,
