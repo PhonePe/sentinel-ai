@@ -91,6 +91,7 @@ public class FileBasedSkillRegistry implements SkillRegistry {
     /**
      * Format catalog for injection into system prompt
      */
+    @Override
     public String formatCatalog() {
         if (skillCatalog.isEmpty()) {
             return "No skills available.";
@@ -102,6 +103,27 @@ public class FileBasedSkillRegistry implements SkillRegistry {
         skillCatalog.values().forEach(metadata -> sb.append(String.format("- **%s**: %s%n",
                                                                           metadata.getName(),
                                                                           metadata.getDescription())));
+        return sb.toString();
+    }
+
+    /** Format all loaded skills as YAML with their names and descriptions */
+    @Override
+    public String formatLoadedSkillsAsYaml() {
+        if (loadedSkills.isEmpty()) {
+            return "loaded_skills: []\n";
+        }
+
+        final var sb = new StringBuilder();
+        sb.append("loaded_skills:\n");
+        loadedSkills
+                .values()
+                .forEach(
+                        skill -> {
+                            sb.append("  - name: ").append(skill.getName()).append("\n");
+                            sb.append("    description: ")
+                                    .append(skill.getDescription())
+                                    .append("\n");
+                        });
         return sb.toString();
     }
 

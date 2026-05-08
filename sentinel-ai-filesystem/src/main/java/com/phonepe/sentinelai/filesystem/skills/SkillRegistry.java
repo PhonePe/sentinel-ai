@@ -38,4 +38,8 @@ public interface SkillRegistry {
     Optional<AgentSkill> loadSkill(String skillName);
 
     Optional<AgentSkill> loadSkillFromPath(String skillPath) throws IOException;
+
+    String formatCatalog();
+
+    String formatLoadedSkillsAsYaml();
 }

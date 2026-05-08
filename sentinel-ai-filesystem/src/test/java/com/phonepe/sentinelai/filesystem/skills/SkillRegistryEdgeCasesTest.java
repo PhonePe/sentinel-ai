@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Additional edge-case tests for {@link SkillRegistry} covering paths that are not exercised by
- * {@link SkillRegistryTest}.
+ * {@link FileBasedSkillRegistryTest}.
  */
 @DisplayName("SkillRegistry edge cases")
 class SkillRegistryEdgeCasesTest {
@@ -120,7 +120,7 @@ class SkillRegistryEdgeCasesTest {
         @Test
         @DisplayName("returns empty before any skill is loaded")
         void returnsEmptyBeforeLoad() {
-            assertTrue(registry.getLoadedSkill("anything").isEmpty());
+            assertTrue(registry.loadSkill("anything").isEmpty());
         }
 
         @Test
@@ -130,7 +130,7 @@ class SkillRegistryEdgeCasesTest {
             registry.discoverSkills(tempDir, Set.of());
             registry.loadSkill("loaded-skill");
 
-            assertTrue(registry.getLoadedSkill("loaded-skill").isPresent());
+            assertTrue(registry.loadSkill("loaded-skill").isPresent());
         }
     }
 
@@ -175,7 +175,7 @@ class SkillRegistryEdgeCasesTest {
 
             assertThrows(
                          IllegalArgumentException.class,
-                         () -> registry.loadSkillFromPath(regularFile),
+                         () -> registry.loadSkillFromPath(regularFile.toString()),
                          "Should throw when path is a regular file");
         }
     }
@@ -254,7 +254,7 @@ class SkillRegistryEdgeCasesTest {
     @BeforeEach
     void setUp() throws IOException {
         tempDir = Files.createTempDirectory("skill-registry-edge-");
-        registry = new SkillRegistry();
+        registry = new FileBasedSkillRegistry(tempDir.toString());
     }
 
     // =========================================================================

@@ -290,4 +290,10 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
     private static String skillNotFoundError(final String skillName) {
         return "Error: Skill '" + skillName + "' not found in catalog.";
     }
+
+    private void displaySkillsCatalog() {
+        if (log.isInfoEnabled()) {
+            log.info("Skills catalog:\n{}", registry.formatCatalog());
+        }
+    }
 }

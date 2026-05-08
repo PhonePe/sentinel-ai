@@ -40,7 +40,7 @@ class FileBasedSkillRegistryTest {
     @BeforeEach
     void setUp() throws IOException {
         tempDir = Files.createTempDirectory("skill-registry-test-");
-        registry = new FileBasedSkillRegistry();
+        registry = new FileBasedSkillRegistry(tempDir.toString());
     }
 
     @AfterEach
@@ -196,7 +196,7 @@ class FileBasedSkillRegistryTest {
 
         Files.writeString(skillDir.resolve("SKILL.md"), skillContent);
 
-        final var skillOpt = registry.loadSkillFromPath(skillDir);
+        final var skillOpt = registry.loadSkillFromPath(skillDir.toString());
 
         assertTrue(skillOpt.isPresent());
         assertEquals("direct-skill", skillOpt.get().getName());
@@ -206,7 +206,7 @@ class FileBasedSkillRegistryTest {
     @Test
     void testLoadSkillFromPathNotDirectory() {
         assertThrows(IllegalArgumentException.class,
-                     () -> registry.loadSkillFromPath(tempDir.resolve("nonexistent")));
+                     () -> registry.loadSkillFromPath(tempDir.resolve("nonexistent").toString()));
     }
 
     private void createTestSkill(String name, String description) throws IOException {
