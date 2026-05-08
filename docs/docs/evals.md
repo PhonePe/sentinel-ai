@@ -52,30 +52,19 @@ System.out.printf("Passed=%d Failed=%d Skipped=%d%n",
 
 Before looking at the available eval types, it helps to understand the building blocks:
 
-- `Dataset<R, T>`
-  - A named collection of eval scenarios.
-  - Usually represents one suite such as a smoke test set, regression pack, or domain-specific benchmark.
-  - Contains multiple `TestCase<R, T>` entries.
+* **Dataset** is a named collection of eval scenarios, usually representing one suite such as a smoke test set, regression pack, or domain-specific benchmark, and it contains multiple `TestCase` entries.
 
-- `TestCase<R, T>`
-  - One concrete input/output evaluation scenario.
-  - Holds the agent input, the expectations to evaluate, and an optional per-test timeout.
-  - Example: input = `"What is the status?"`, expectations = output contains `"OK"` and tool `fetch_status` was called.
+* **TestCase** represents one concrete input/output evaluation scenario by combining the agent input, the expectations to evaluate, and an optional per-test timeout; 
+  
+    for example, input = `"What is the status?"` with expectations that output contains `"OK"` and tool `fetch_status` was called.
 
-- `Expectation<R, T>`
-  - A pass/fail rule applied to the agent result and execution context.
-  - Best for deterministic assertions such as exact output checks, JSONPath assertions, and tool-call verification.
-  - When an expectation fails, the test case fails.
+* **Expectation** is a pass/fail rule applied to the agent result and execution context, best suited for deterministic assertions such as exact output checks, JSONPath assertions, and tool-call verification; when an expectation fails, the test case fails.
 
-- `Metric<R, T>`
-  - A scoring-based evaluator that produces a numeric score instead of only pass/fail.
-  - Useful for similarity, topical relevance, and LLM-judge style quality checks.
-  - Metrics are usually wrapped as expectations through helpers like `Expectations.outputSimilarity(...)` or `Expectations.answerRelevance(...)`, often with a threshold.
+* **Metric** is a scoring-based evaluator that produces a numeric score instead of only pass/fail, making it useful for similarity, topical relevance, and LLM-judge style quality checks. 
 
-- `ExpectationReport` / `TestCaseReport` / `EvalReport`
-  - `ExpectationReport` captures the outcome of one expectation or metric.
-  - `TestCaseReport` aggregates all expectation outcomes for a single test case.
-  - `EvalReport` aggregates the full dataset run, including passed/failed/skipped counts and collected metric scores.
+    Metrics are usually wrapped as expectations through helpers like `Expectations.outputSimilarity(...)` or `Expectations.answerRelevance(...)`, often with a threshold.
+
+* **Reports**   capture outcomes of a eval run: `ExpectationReport` captures one expectation or metric result, `TestCaseReport` aggregates expectation outcomes for one test case, and `EvalReport` aggregates the full dataset run including passed/failed/skipped counts and collected metric scores.
 
 ## Available evals
 
