@@ -73,8 +73,12 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
     @Builder(builderMethodName = "withMultipleSkills", builderClassName = "MultiSkillBuilder")
     public AgentSkillsExtension(@NonNull String baseDir,
                                 @NonNull List<String> skillsDirectories,
-                                Collection<String> skillsToLoad) {
-        final var registry = new FileBasedSkillRegistry(baseDir);
+                                Collection<String> skillsToLoad,
+                                SkillRegistry registry) {
+        if (registry == null) {
+            registry = new FileBasedSkillRegistry(baseDir);
+        }
+        registry = new FileBasedSkillRegistry(baseDir);
         // Discover skills from all provided directories
         registry.discoverSkills(skillsDirectories, skillsToLoad);
         this.registry = registry;
@@ -90,8 +94,12 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
      */
     @SneakyThrows
     @Builder(builderMethodName = "withSingleSkill", builderClassName = "SingleSkillBuilder")
-    public AgentSkillsExtension(@NonNull String baseDir, final String singleSkill) {
-        final var registry = new FileBasedSkillRegistry(baseDir);
+    public AgentSkillsExtension(@NonNull String baseDir,
+                                String singleSkill,
+                                SkillRegistry registry) {
+        if (registry == null) {
+            registry = new FileBasedSkillRegistry(baseDir);
+        }
         registry.loadSkillFromPath(singleSkill);
         this.registry = registry;
         registry.getSkillNames().stream().findFirst().ifPresent(activatedSkills::add);
@@ -151,7 +159,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
                                 4. You can activate multiple skills if needed
                                 5. Always prefer activating relevant skills over using general tools, as skills may provide specialized capabilities and context
                                 6. Only load skill references, assets and scripts if they are relevant and are needed to accomplish the task at hand. 
-                                Don't automatically load everything as it can lead to poor usage of tokens in the current context window.
+                                   Don't automatically load everything as it can lead to poor usage of tokens in the current context window.
                                 """)
                         .tool(tools.values()
                                 .stream()
