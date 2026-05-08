@@ -188,6 +188,7 @@ public class EventUtils {
                                                   modelRunContext.getUserId(),
                                                   List.copyOf(prevMessages),
                                                   List.copyOf(newMessages)));
+
     }
 
     public static void raiseOutputEvent(ModelRunContext context,

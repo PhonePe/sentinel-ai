@@ -10,3 +10,4 @@ nav:
   - agent-memory.md
   - observability.md
   - errors.md
+  - examples.md

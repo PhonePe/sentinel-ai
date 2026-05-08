@@ -32,26 +32,28 @@ import java.util.*;
 
 /**
  * Extension that provides Agent Skills capabilities to Sentinel AI agents.
- * <p>
- * Skills are loaded from the filesystem using a two-tier mechanism:
+ *
+ * <p>Skills are loaded from the filesystem using a two-tier mechanism:
+ *
  * <ul>
- * <li>Tier 1 (discovery): Only metadata is loaded when the extension is initialized.</li>
- * <li>Tier 2 (loading): Full instructions and assets are loaded on demand when a skill is activated.</li>
+ * <li>Tier 1 (discovery): Only metadata is loaded when the extension is initialized.
+ * <li>Tier 2 (loading): Full instructions and assets are loaded on demand when a skill is
+ * activated.
  * </ul>
- * </p>
- * <p>
- * In multi-skill mode the extension injects a skills catalog into the agent's system prompt
- * and registers {@code listSkills}, {@code activateSkill}, and {@code readSkillReference} tools.
- * In single-skill mode the skill's instructions are injected directly into the system prompt and
- * only the {@code readSkillReference} tool is registered.
- * </p>
+ *
+ * <p>In multi-skill mode the extension injects a skills catalog into the agent's system prompt and
+ * registers {@code listSkills}, {@code activateSkill}, and {@code readSkillReference} tools. In
+ * single-skill mode the skill's instructions are injected directly into the system prompt and only
+ * the {@code readSkillReference} tool is registered.
  *
  * @param <R> Request type
  * @param <T> Response type
  * @param <A> Agent type
  */
 @Slf4j
-public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
+public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
+        implements
+        AgentExtension<R, T, A> {
 
     private static final String READ_SKILL_REFERENCE_TOOL_ID = "agent_skills_extension_read_skill_reference";
     private final SkillRegistry registry;
@@ -84,13 +86,16 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
         this.registry = registry;
         this.singleSkillMode = false;
         this.tools = readTools(this);
+        displaySkillsCatalog();
     }
 
     /**
-     * Create an extension in single-skill mode. The skill is loaded immediately from the given path.
+     * Create an extension in single-skill mode. The skill is loaded immediately from the given
+     * path.
      *
      * @param baseDir     Base directory used to resolve relative paths
-     * @param singleSkill Path (absolute or relative to {@code baseDir} / cwd) to the skill directory
+     * @param singleSkill Path (absolute or relative to {@code baseDir} / cwd) to the skill
+     *                    directory
      */
     @SneakyThrows
     @Builder(builderMethodName = "withSingleSkill", builderClassName = "SingleSkillBuilder")
@@ -105,6 +110,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
         registry.getSkillNames().stream().findFirst().ifPresent(activatedSkills::add);
         this.singleSkillMode = true;
         this.tools = readTools(this);
+        displaySkillsCatalog();
     }
 
     @Tool("Activate a skill by name to access its instructions and capabilities")

@@ -26,9 +26,7 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
-/**
- * Represents the YAML frontmatter metadata in a SKILL.md file
- */
+/** Represents the YAML frontmatter metadata in a SKILL.md file */
 @Value
 @Builder
 @Jacksonized
