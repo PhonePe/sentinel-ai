@@ -5,7 +5,7 @@ description: Tracing Sentinel AI agents with OpenTelemetry GenAI semantic conven
 
 # OpenTelemetry Instrumentation
 
-Sentinel AI provides OpenTelemetry support through `OpenTelemetryAgentExtension` in the `sentinel-ai-instrumentation-otel` module.
+Sentinel AI provides OpenTelemetry support through `OpenTelemetryAgentExtension` in the `sentinel-ai-instrumentation-otel` module. The extension hooks into the Sentinel event bus and emits tracing spans for agent invocations and tool execution.
 
 ## Dependency
 
@@ -18,12 +18,15 @@ Sentinel AI provides OpenTelemetry support through `OpenTelemetryAgentExtension`
 
 ## What gets emitted
 
-The extension emits spans that align with the GenAI semantic conventions:
+The extension emits spans that align with the GenAI semantic conventions and follows the [OpenTelemetry Semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 
 - `invoke_agent {gen_ai.agent.name}` (`SpanKind.INTERNAL`)
 - `execute_tool {gen_ai.tool.name}` (`SpanKind.INTERNAL`)
 
 The extension subscribes to the existing Sentinel event bus and does not require changes in your tools, model, or session storage.
+
+!!! danger "Sensitive data risk"
+    Enabling `captureToolCallArguments` or `captureToolCallResult` can record sensitive or regulated data in traces and logs. Enable these options only when necessary, and ensure your telemetry backend has proper redaction, retention, and access controls.
 
 ## Configure and register
 
@@ -67,8 +70,6 @@ Optional attributes:
 
 ## Notes
 
-- Tool argument/result capture may include sensitive data. Keep it disabled unless needed.
-- The extension is event-driven and works with both streaming and non-streaming execution paths.
+
 - If terminal lifecycle events are missed, stale run/tool spans are force-closed after `maxActiveSpanDuration` with `error.type` set to `run_incomplete` / `tool_call_incomplete`.
 - Session storage (`SessionStore`) remains independent; only `sessionId` is used for trace correlation.
-
