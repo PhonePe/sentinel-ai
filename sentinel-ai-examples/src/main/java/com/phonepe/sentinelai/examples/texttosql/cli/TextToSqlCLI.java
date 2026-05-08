@@ -42,6 +42,8 @@ import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
 import com.phonepe.sentinelai.examples.texttosql.tools.LocalTools;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.filesystem.skills.AgentSkillsExtension;
+import com.phonepe.sentinelai.instrumentation.otel.OpenTelemetryAgentExtension;
+import com.phonepe.sentinelai.instrumentation.otel.OpenTelemetryAgentExtensionSetup;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPSSEServerConfig;
@@ -49,6 +51,8 @@ import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpToolReaders;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.InMemoryHttpToolSource;
+
+import io.opentelemetry.api.GlobalOpenTelemetry;
 
 import lombok.SneakyThrows;
 import lombok.val;
@@ -169,8 +173,8 @@ public class TextToSqlCLI implements Callable<Integer> {
                     "--mcp-port"
             }, description = "HTTP port for the MCP SSE server subprocess "
                     + "(only used when --mcp-server-mode is SSE, default: "
-                    + DEFAULT_MCP_SSE_PORT
-                    + ")", defaultValue = "" + DEFAULT_MCP_SSE_PORT)
+                    + "8766"
+                    + ")", defaultValue = "8766")
     private int mcpPort;
 
     /**
@@ -195,15 +199,34 @@ public class TextToSqlCLI implements Callable<Integer> {
     static TextToSqlAgent buildAgent(
                                      AgentSetup agentSetup,
                                      AgentSkillsExtension<String, SqlQueryResult, TextToSqlAgent> skillsExtension) {
+        return buildAgent(agentSetup, skillsExtension, buildOpenTelemetryExtension());
+    }
+
+    static TextToSqlAgent buildAgent(
+                                     AgentSetup agentSetup,
+                                     AgentSkillsExtension<String, SqlQueryResult, TextToSqlAgent> skillsExtension,
+                                     OpenTelemetryAgentExtension<String, SqlQueryResult, TextToSqlAgent> otelExtension) {
         log.info("Building Text-to-SQL agent");
         final TextToSqlAgent agent = TextToSqlAgent.builder()
                 .setup(agentSetup)
                 .extension(skillsExtension)
+                .extension(otelExtension)
                 .outputValidator(
                                  (context, agentOutput) -> OutputValidationResults.success())
                 .build();
         log.info("Text-to-SQL agent built successfully");
         return agent;
+    }
+
+    static OpenTelemetryAgentExtension<String, SqlQueryResult, TextToSqlAgent> buildOpenTelemetryExtension() {
+        return OpenTelemetryAgentExtension.<String, SqlQueryResult, TextToSqlAgent>builder()
+                .setup(OpenTelemetryAgentExtensionSetup.builder()
+                        .tracer(GlobalOpenTelemetry.getTracer("sentinel-ai.examples.text-to-sql"))
+                        .providerName("openai")
+                        .captureToolCallArguments(false)
+                        .captureToolCallResult(false)
+                        .build())
+                .build();
     }
 
     // -------------------------------------------------------------------------

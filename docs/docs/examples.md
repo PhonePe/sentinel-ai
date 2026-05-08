@@ -119,6 +119,10 @@ protocol (schema discovery, SQL generation, timestamp conversion, formatting) to
 `sql-execution` skill loaded via `AgentSkillsExtension`.  This keeps the agent class
 decoupled from protocol details and makes the workflow easy to update without touching Java code.
 
+The CLI wiring for this example also registers `OpenTelemetryAgentExtension` using
+`GlobalOpenTelemetry.getTracer(...)`, so agent runs emit tracing spans automatically whenever
+the hosting process configures an OpenTelemetry SDK/exporter.
+
 ---
 
 ### 2. The Output Type — `SqlQueryResult`
@@ -606,4 +610,3 @@ Once the banner appears, try any of the following:
 ```
 
 Type `exit` or `quit` (or press `Ctrl+D`) to stop.
-

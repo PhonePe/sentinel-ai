@@ -71,6 +71,10 @@
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-filesystem</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-instrumentation-otel</artifactId>
+        </dependency>
 
         <!-- ─── PicoCLI ─────────────────────────────────────────────────── -->
         <dependency>
@@ -179,6 +183,23 @@
             <groupId>org.wiremock</groupId>
             <artifactId>wiremock-standalone</artifactId>
             <version>${wiremock.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-evals</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk</artifactId>
+            <version>1.38.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-testing</artifactId>
+            <version>1.38.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
