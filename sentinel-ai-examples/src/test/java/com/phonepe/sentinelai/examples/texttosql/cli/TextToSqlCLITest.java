@@ -150,6 +150,70 @@ class TextToSqlCLITest {
     class BuildAgentTests {
 
         @Test
+        @DisplayName("adds skills and OpenTelemetry extensions to the agent")
+        void addsSkillsAndOpenTelemetryExtensions() throws Exception {
+            final CliConfig config = new CliConfig();
+            config.getOpenai().setApiKey("test-api-key");
+            config.getOpenai().setModel("gpt-4o");
+            config.getOpenai().setBaseUrl("https://api.openai.com/v1");
+            config.getAgent().setTemperature(0.0f);
+            config.getAgent().setMaxTokens(4096);
+            config.getAgent().setStreaming(false);
+            final ObjectMapper mapper = JsonUtils.createMapper();
+
+            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod(
+                                                                            "buildTrustedHttpClient",
+                                                                            CliConfig.class);
+            buildClient.setAccessible(true);
+            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+
+            final Method buildModel = TextToSqlCLI.class.getDeclaredMethod(
+                                                                           "buildOpenAIModel",
+                                                                           CliConfig.class,
+                                                                           OkHttpClientAdapter.class,
+                                                                           ObjectMapper.class);
+            buildModel.setAccessible(true);
+            final SimpleOpenAIModel<?> model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+
+            final Method buildSetup = TextToSqlCLI.class.getDeclaredMethod(
+                                                                           "buildAgentSetup",
+                                                                           CliConfig.class,
+                                                                           SimpleOpenAIModel.class,
+                                                                           ObjectMapper.class);
+            buildSetup.setAccessible(true);
+            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+
+            final TextToSqlCLI cli = new TextToSqlCLI();
+            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
+            buildSkills.setAccessible(true);
+            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+                    .invoke(cli);
+
+            final Method buildOtel = TextToSqlCLI.class.getDeclaredMethod("buildOpenTelemetryExtension");
+            buildOtel.setAccessible(true);
+            final Object otelExtension = buildOtel.invoke(null);
+
+            final Method buildAgent = TextToSqlCLI.class.getDeclaredMethod(
+                                                                           "buildAgent",
+                                                                           AgentSetup.class,
+                                                                           AgentSkillsExtension.class,
+                                                                           OpenTelemetryAgentExtension.class);
+            buildAgent.setAccessible(true);
+            final TextToSqlAgent agent = (TextToSqlAgent) buildAgent.invoke(null,
+                                                                            agentSetup,
+                                                                            skillsExtension,
+                                                                            otelExtension);
+
+            final Field extensionsField = agent.getClass().getSuperclass().getDeclaredField("extensions");
+            extensionsField.setAccessible(true);
+            @SuppressWarnings("unchecked") final List<Object> extensions = (List<Object>) extensionsField.get(agent);
+
+            assertEquals(2, extensions.size());
+            assertEquals("agent-skills", invokeName(extensions.get(0)));
+            assertEquals("open-telemetry-agent-extension", invokeName(extensions.get(1)));
+        }
+
+        @Test
         @DisplayName("builds a TextToSqlAgent successfully")
         void buildsAgentSuccessfully() throws Exception {
             final CliConfig config = new CliConfig();
@@ -200,67 +264,6 @@ class TextToSqlCLITest {
 
             assertNotNull(agent);
             assertInstanceOf(TextToSqlAgent.class, agent);
-        }
-
-        @Test
-        @DisplayName("adds skills and OpenTelemetry extensions to the agent")
-        void addsSkillsAndOpenTelemetryExtensions() throws Exception {
-            final CliConfig config = new CliConfig();
-            config.getOpenai().setApiKey("test-api-key");
-            config.getOpenai().setModel("gpt-4o");
-            config.getOpenai().setBaseUrl("https://api.openai.com/v1");
-            config.getAgent().setTemperature(0.0f);
-            config.getAgent().setMaxTokens(4096);
-            config.getAgent().setStreaming(false);
-            final ObjectMapper mapper = JsonUtils.createMapper();
-
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod(
-                                                                            "buildTrustedHttpClient",
-                                                                            CliConfig.class);
-            buildClient.setAccessible(true);
-            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
-
-            final Method buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildOpenAIModel",
-                                                                           CliConfig.class,
-                                                                           OkHttpClientAdapter.class,
-                                                                           ObjectMapper.class);
-            buildModel.setAccessible(true);
-            final SimpleOpenAIModel<?> model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
-
-            final Method buildSetup = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgentSetup",
-                                                                           CliConfig.class,
-                                                                           SimpleOpenAIModel.class,
-                                                                           ObjectMapper.class);
-            buildSetup.setAccessible(true);
-            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
-
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
-            buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
-                    .invoke(cli);
-
-            final Method buildOtel = TextToSqlCLI.class.getDeclaredMethod("buildOpenTelemetryExtension");
-            buildOtel.setAccessible(true);
-            final Object otelExtension = buildOtel.invoke(null);
-
-            final Method buildAgent = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgent",
-                                                                           AgentSetup.class,
-                                                                           AgentSkillsExtension.class,
-                                                                           OpenTelemetryAgentExtension.class);
-            buildAgent.setAccessible(true);
-            final TextToSqlAgent agent = (TextToSqlAgent) buildAgent.invoke(null, agentSetup, skillsExtension, otelExtension);
-
-            final Field extensionsField = agent.getClass().getSuperclass().getDeclaredField("extensions");
-            extensionsField.setAccessible(true);
-            @SuppressWarnings("unchecked") final List<Object> extensions = (List<Object>) extensionsField.get(agent);
-
-            assertEquals(2, extensions.size());
-            assertEquals("agent-skills", invokeName(extensions.get(0)));
-            assertEquals("open-telemetry-agent-extension", invokeName(extensions.get(1)));
         }
 
         private String invokeName(Object extension) throws Exception {

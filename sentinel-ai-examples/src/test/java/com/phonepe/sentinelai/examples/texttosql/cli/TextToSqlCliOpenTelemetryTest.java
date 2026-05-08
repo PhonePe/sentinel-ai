@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
@@ -38,13 +39,38 @@ import com.phonepe.sentinelai.instrumentation.otel.OpenTelemetryAgentExtension;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @DisplayName("TextToSqlCLI OpenTelemetry")
 class TextToSqlCliOpenTelemetryTest {
     private InMemorySpanExporter spanExporter;
     private SdkTracerProvider tracerProvider;
     private OpenTelemetrySdk openTelemetrySdk;
+
+    @Test
+    @DisplayName("CLI OpenTelemetry extension emits spans for agent execution")
+    void cliOpenTelemetryExtensionEmitsSpansForAgentExecution() {
+        final ObjectMapper mapper = new ObjectMapper();
+        final AgentSetup setup = AgentSetup.builder()
+                .mapper(mapper)
+                .model(new StubTextToSqlModel())
+                .build();
+        final OpenTelemetryAgentExtension<String, SqlQueryResult, TextToSqlAgent> otelExtension = TextToSqlCLI
+                .buildOpenTelemetryExtension();
+
+        final TextToSqlAgent agent = new TextToSqlAgent(
+                                                        setup,
+                                                        List.of(otelExtension),
+                                                        (context, output) -> OutputValidationResults.success());
+
+        final var output = agent.execute(new AgentInput<>("show me one row", null, null, null, null));
+
+        assertNotNull(output.getData());
+        assertEquals("SELECT 1", output.getData().generatedSql());
+        assertFalse(spanExporter.getFinishedSpanItems().isEmpty());
+    }
 
     @BeforeEach
     void setUp() {
@@ -64,27 +90,5 @@ class TextToSqlCliOpenTelemetryTest {
         GlobalOpenTelemetry.resetForTest();
         openTelemetrySdk.close();
         tracerProvider.close();
-    }
-
-    @Test
-    @DisplayName("CLI OpenTelemetry extension emits spans for agent execution")
-    void cliOpenTelemetryExtensionEmitsSpansForAgentExecution() {
-        final ObjectMapper mapper = new ObjectMapper();
-        final AgentSetup setup = AgentSetup.builder()
-                .mapper(mapper)
-                .model(new StubTextToSqlModel())
-                .build();
-        final OpenTelemetryAgentExtension<String, SqlQueryResult, TextToSqlAgent> otelExtension = TextToSqlCLI.buildOpenTelemetryExtension();
-
-        final TextToSqlAgent agent = new TextToSqlAgent(
-                setup,
-                List.of(otelExtension),
-                (context, output) -> OutputValidationResults.success());
-
-        final var output = agent.execute(new AgentInput<>("show me one row", null, null, null, null));
-
-        assertNotNull(output.getData());
-        assertEquals("SELECT 1", output.getData().generatedSql());
-        assertFalse(spanExporter.getFinishedSpanItems().isEmpty());
     }
 }

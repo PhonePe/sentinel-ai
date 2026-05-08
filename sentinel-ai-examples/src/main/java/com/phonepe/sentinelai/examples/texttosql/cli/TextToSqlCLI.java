@@ -21,6 +21,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import io.github.sashirestela.openai.SimpleOpenAI;
+import io.opentelemetry.api.GlobalOpenTelemetry;
 
 import org.eclipse.jetty.http.HttpHeader;
 import org.jspecify.annotations.NonNull;
@@ -51,8 +52,6 @@ import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpToolReaders;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.InMemoryHttpToolSource;
-
-import io.opentelemetry.api.GlobalOpenTelemetry;
 
 import lombok.SneakyThrows;
 import lombok.val;
@@ -218,21 +217,6 @@ public class TextToSqlCLI implements Callable<Integer> {
         return agent;
     }
 
-    static OpenTelemetryAgentExtension<String, SqlQueryResult, TextToSqlAgent> buildOpenTelemetryExtension() {
-        return OpenTelemetryAgentExtension.<String, SqlQueryResult, TextToSqlAgent>builder()
-                .setup(OpenTelemetryAgentExtensionSetup.builder()
-                        .tracer(GlobalOpenTelemetry.getTracer("sentinel-ai.examples.text-to-sql"))
-                        .providerName("openai")
-                        .captureToolCallArguments(false)
-                        .captureToolCallResult(false)
-                        .build())
-                .build();
-    }
-
-    // -------------------------------------------------------------------------
-    // Initialisation steps
-    // -------------------------------------------------------------------------
-
     /**
      * Creates the {@link AgentSetup} that controls model behaviour (temperature, max tokens, output
      * mode).
@@ -259,6 +243,10 @@ public class TextToSqlCLI implements Callable<Integer> {
                 .build();
     }
 
+    // -------------------------------------------------------------------------
+    // Initialisation steps
+    // -------------------------------------------------------------------------
+
     static SimpleOpenAIModel<SimpleOpenAI> buildOpenAIModel(
                                                             CliConfig config,
                                                             OkHttpClientAdapter clientAdapter,
@@ -275,6 +263,17 @@ public class TextToSqlCLI implements Callable<Integer> {
                 .build();
         log.info("OpenAI model built successfully");
         return new SimpleOpenAIModel<>(config.getOpenai().getModel(), openAI, mapper);
+    }
+
+    static OpenTelemetryAgentExtension<String, SqlQueryResult, TextToSqlAgent> buildOpenTelemetryExtension() {
+        return OpenTelemetryAgentExtension.<String, SqlQueryResult, TextToSqlAgent>builder()
+                .setup(OpenTelemetryAgentExtensionSetup.builder()
+                        .tracer(GlobalOpenTelemetry.getTracer("sentinel-ai.examples.text-to-sql"))
+                        .providerName("openai")
+                        .captureToolCallArguments(false)
+                        .captureToolCallResult(false)
+                        .build())
+                .build();
     }
 
     /**

@@ -17,9 +17,7 @@
 package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
-import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
-import lombok.extern.slf4j.Slf4j;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -29,10 +27,13 @@ import com.phonepe.sentinelai.evals.EvalEngine;
 import com.phonepe.sentinelai.evals.EvalReport;
 import com.phonepe.sentinelai.evals.tests.Dataset;
 import com.phonepe.sentinelai.evals.tests.TestCase;
-import com.phonepe.sentinelai.evals.tests.expectations.OutputEqualsExpectation;
+import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
+import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 import com.phonepe.sentinelai.examples.texttosql.agent.TextToSqlAgent;
 import com.phonepe.sentinelai.examples.texttosql.cli.support.StubTextToSqlModel;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
+
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
@@ -51,27 +52,27 @@ class TextToSqlCliEvalTest {
                 .build();
 
         final TextToSqlAgent agent = new TextToSqlAgent(
-                setup,
-                List.of(),
-                (context, output) -> OutputValidationResults.success());
+                                                        setup,
+                                                        List.of(),
+                                                        (context, output) -> OutputValidationResults.success());
 
         final Dataset<String, SqlQueryResult> dataset = new Dataset<>(
-                "text-to-sql-cli-evals",
-                List.of(new TestCase<>(
-                        "show me one row",
-                        List.of(
-                                new OutputJsonPathCompareExpectation<>(
-                                        "$.generatedSql",
-                                        Operator.EQ,
-                                        "SELECT 1"
-                                ),
-                                new OutputJsonPathCompareExpectation<>(
-                                        "$.results",
-                                        Operator.EQ,
-                                        List.of("{\"answer\":1}")
-                                )
-                        )
-                )));
+                                                                      "text-to-sql-cli-evals",
+                                                                      List.of(new TestCase<>(
+                                                                                             "show me one row",
+                                                                                             List.of(
+                                                                                                     new OutputJsonPathCompareExpectation<>(
+                                                                                                                                            "$.generatedSql",
+                                                                                                                                            Operator.EQ,
+                                                                                                                                            "SELECT 1"
+                                                                                                     ),
+                                                                                                     new OutputJsonPathCompareExpectation<>(
+                                                                                                                                            "$.results",
+                                                                                                                                            Operator.EQ,
+                                                                                                                                            List.of("{\"answer\":1}")
+                                                                                                     )
+                                                                                             )
+                                                                      )));
 
         final EvalReport report = new EvalEngine(mapper).run(dataset, agent);
 
