@@ -51,3 +51,5 @@ test_output.log
 sentinel-ai-examples/.data/
 sentinel-ai-examples/.logs/
 !sentinel-ai-examples/src/main/resources/.env
+
+.mvn/jvm.config

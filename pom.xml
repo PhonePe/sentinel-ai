@@ -136,6 +136,7 @@
         <console.disable>true</console.disable>
         <success.print>false</success.print>
         <test.thread.count>2</test.thread.count>
+        <testcontainers.ryuk.disabled>false</testcontainers.ryuk.disabled>
     </properties>
 
     <dependencyManagement>
@@ -329,7 +330,7 @@
                     </systemPropertyVariables>
 
                     <environmentVariables>
-                        <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+                        <TESTCONTAINERS_RYUK_DISABLED>${testcontainers.ryuk.disabled}</TESTCONTAINERS_RYUK_DISABLED>
                     </environmentVariables>
 
                     <!-- Parallel execution configuration -->
