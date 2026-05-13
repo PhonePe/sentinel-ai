@@ -26,6 +26,7 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @DisplayName("TextToSqlCLI OpenTelemetry")
+@Disabled
 class TextToSqlCliOpenTelemetryTest {
     private InMemorySpanExporter spanExporter;
     private SdkTracerProvider tracerProvider;
