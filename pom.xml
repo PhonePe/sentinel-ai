@@ -93,9 +93,11 @@
 
         <!-- All other modules above this -->
         <module>sentinel-ai-bom</module>
-        <module>sentinel-ai-examples</module>
         <module>sentinel-ai-evals</module>
         <module>sentinel-ai-instrumentation-otel</module>
+
+        <!-- Working end-to-end examples -->
+        <module>sentinel-ai-examples</module>
         <module>sentinel-ai-reporting</module>
     </modules>
 
