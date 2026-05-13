@@ -77,17 +77,22 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- storage -->
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-evals</artifactId>
             <version>${project.version}</version>
         </dependency>
 
-
         <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-instrumentation-otel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- examples -->
+        <dependency>
+            <groupId>com.phonepe.sentinel-ai</groupId>
+            <artifactId>sentinel-ai-examples</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

@@ -48,26 +48,28 @@ import java.util.Set;
 
 /**
  * Extension that provides Agent Skills capabilities to Sentinel AI agents.
- * <p>
- * Skills are loaded from the filesystem using a two-tier mechanism:
+ *
+ * <p>Skills are loaded from the filesystem using a two-tier mechanism:
+ *
  * <ul>
- * <li>Tier 1 (discovery): Only metadata is loaded when the extension is initialized.</li>
- * <li>Tier 2 (loading): Full instructions and assets are loaded on demand when a skill is activated.</li>
+ * <li>Tier 1 (discovery): Only metadata is loaded when the extension is initialized.
+ * <li>Tier 2 (loading): Full instructions and assets are loaded on demand when a skill is
+ * activated.
  * </ul>
- * </p>
- * <p>
- * In multi-skill mode the extension injects a skills catalog into the agent's system prompt
- * and registers {@code listSkills}, {@code activateSkill}, and {@code readSkillReference} tools.
- * In single-skill mode the skill's instructions are injected directly into the system prompt and
- * only the {@code readSkillReference} tool is registered.
- * </p>
+ *
+ * <p>In multi-skill mode the extension injects a skills catalog into the agent's system prompt and
+ * registers {@code listSkills}, {@code activateSkill}, and {@code readSkillReference} tools. In
+ * single-skill mode the skill's instructions are injected directly into the system prompt and only
+ * the {@code readSkillReference} tool is registered.
  *
  * @param <R> Request type
  * @param <T> Response type
  * @param <A> Agent type
  */
 @Slf4j
-public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
+public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
+        implements
+        AgentExtension<R, T, A> {
 
     private static final String READ_SKILL_REFERENCE_TOOL_ID = "agent_skills_extension_read_skill_reference";
     private final SkillRegistry registry = new SkillRegistry();
@@ -86,24 +88,29 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
      */
     @SneakyThrows
     @Builder(builderMethodName = "withMultipleSkills", builderClassName = "MultiSkillBuilder")
-    public AgentSkillsExtension(@NonNull String baseDir,
+    public AgentSkillsExtension(
+                                @NonNull String baseDir,
                                 @NonNull List<String> skillsDirectories,
                                 Collection<String> skillsToLoad) {
         // Discover skills from all provided directories
         final var skillsFilter = Set.copyOf(Objects.requireNonNullElseGet(skillsToLoad, Set::<String>of));
+        log.info("Discovering skills from the following directories: {}", skillsDirectories);
         for (String dirPath : skillsDirectories) {
             final var skillsDir = expandSkillDir(dirPath, baseDir);
             registry.discoverSkills(skillsDir, skillsFilter);
         }
         this.singleSkillMode = false;
         this.tools = readTools(this);
+        displaySkillsCatalog();
     }
 
     /**
-     * Create an extension in single-skill mode. The skill is loaded immediately from the given path.
+     * Create an extension in single-skill mode. The skill is loaded immediately from the given
+     * path.
      *
      * @param baseDir     Base directory used to resolve relative paths
-     * @param singleSkill Path (absolute or relative to {@code baseDir} / cwd) to the skill directory
+     * @param singleSkill Path (absolute or relative to {@code baseDir} / cwd) to the skill
+     *                    directory
      */
     @SneakyThrows
     @Builder(builderMethodName = "withSingleSkill", builderClassName = "SingleSkillBuilder")
@@ -112,9 +119,13 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
         this.registry.loadSkillFromPath(skillPath);
         this.singleSkillMode = true;
         this.tools = readTools(this);
+        displaySkillsCatalog();
     }
 
-    private static StringBuilder addSection(StringBuilder sb, String title, Collection<String> items) {
+    private static StringBuilder addSection(
+                                            StringBuilder sb,
+                                            String title,
+                                            Collection<String> items) {
         if (items.isEmpty()) {
             return sb;
         }
@@ -125,10 +136,11 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
 
     /**
      * Tries to resolve a skill directory path.
+     *
      * <ol>
-     * <li>Uses the path as-is if it is already an existing directory.</li>
-     * <li>Resolves relative to {@code baseDir}.</li>
-     * <li>Resolves relative to the current working directory.</li>
+     * <li>Uses the path as-is if it is already an existing directory.
+     * <li>Resolves relative to {@code baseDir}.
+     * <li>Resolves relative to the current working directory.
      * </ol>
      *
      * @throws IllegalArgumentException if no valid directory can be found
@@ -157,7 +169,8 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
         // In single skill mode, we won't have the list skills and activate skill tools -
         // the instructions will be injected directly via system prompts
         if (extension.singleSkillMode) {
-            return Map.copyOf(Maps.filterKeys(allTools, key -> key.equals(READ_SKILL_REFERENCE_TOOL_ID)));
+            return Map.copyOf(
+                              Maps.filterKeys(allTools, key -> key.equals(READ_SKILL_REFERENCE_TOOL_ID)));
         }
         return Map.copyOf(allTools);
     }
@@ -180,22 +193,29 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
         response.append("# Skill Activated: ").append(skill.getName()).append("\n\n");
         response.append(skill.getInstructions());
 
-        addSection(response,
+        addSection(
+                   response,
                    "Available Reference Files",
-                   Objects.requireNonNullElseGet(skill.getReferenceFiles(), Map::<String, Path>of).keySet());
-        addSection(response,
+                   Objects.requireNonNullElseGet(skill.getReferenceFiles(), Map::<String, Path>of)
+                           .keySet());
+        addSection(
+                   response,
                    "Available Scripts",
-                   Objects.requireNonNullElseGet(skill.getScriptFiles(), Map::<String, Path>of).keySet());
-        addSection(response,
+                   Objects.requireNonNullElseGet(skill.getScriptFiles(), Map::<String, Path>of)
+                           .keySet());
+        addSection(
+                   response,
                    "Available Assets",
-                   Objects.requireNonNullElseGet(skill.getAssetFiles(), Map::<String, Path>of).keySet());
+                   Objects.requireNonNullElseGet(skill.getAssetFiles(), Map::<String, Path>of)
+                           .keySet());
 
         log.info("Skill '{}' activated successfully", skillName);
         return response.toString();
     }
 
     @Override
-    public ExtensionPromptSchema additionalSystemPrompts(R request,
+    public ExtensionPromptSchema additionalSystemPrompts(
+                                                         R request,
                                                          AgentRunContext<R> metadata,
                                                          A agent,
                                                          ProcessingMode processingMode) {
@@ -207,24 +227,32 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
         if (!singleSkillMode) {
             if (registry.hasSkills()) {
                 // Add task for skill discovery and activation
-                tasks.add(SystemPrompt.Task.builder()
-                        .objective("Check if any available skills are relevant to the user's request")
-                        .instructions("""
-                                Before proceeding with the main task:
-                                1. Review the available skills catalog below
-                                2. If a skill seems relevant to the user's request, use the activate_skill tool
-                                3. Once activated, follow the skill's instructions carefully
-                                4. You can activate multiple skills if needed
-                                5. Always prefer activating relevant skills over using general tools, as skills may provide specialized capabilities and context
-                                """)
-                        .tool(tools.values()
-                                .stream()
-                                .map(tool -> SystemPrompt.ToolSummary.builder()
-                                        .name(tool.getToolDefinition().getId())
-                                        .description(tool.getToolDefinition().getDescription())
-                                        .build())
-                                .toList())
-                        .build());
+                tasks.add(
+                          SystemPrompt.Task.builder()
+                                  .objective(
+                                             "Check if any available skills are relevant to the user's request")
+                                  .instructions(
+                                                """
+                                                        Before proceeding with the main task:
+                                                        1. Review the available skills catalog below
+                                                        2. If a skill seems relevant to the user's request, use the activate_skill tool
+                                                        3. Once activated, follow the skill's instructions carefully
+                                                        4. You can activate multiple skills if needed
+                                                        5. Always prefer activating relevant skills over using general tools, as skills may provide specialized capabilities and context
+                                                        """)
+                                  .tool(
+                                        tools.values().stream()
+                                                .map(
+                                                     tool -> SystemPrompt.ToolSummary.builder()
+                                                             .name(
+                                                                   tool.getToolDefinition()
+                                                                           .getId())
+                                                             .description(
+                                                                          tool.getToolDefinition()
+                                                                                  .getDescription())
+                                                             .build())
+                                                .toList())
+                                  .build());
                 hints.add(registry.formatCatalog());
             }
         }
@@ -235,10 +263,12 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
                 log.warn("Single skill mode enabled but no skills found in registry");
                 return new ExtensionPromptSchema(tasks, hints);
             }
-            tasks.add(SystemPrompt.Task.builder()
-                    .objective("Use the provided instructions to assist with the user's request")
-                    .instructions(activateSkill(skillName))
-                    .build());
+            tasks.add(
+                      SystemPrompt.Task.builder()
+                              .objective(
+                                         "Use the provided instructions to assist with the user's request")
+                              .instructions(activateSkill(skillName))
+                              .build());
         }
         return new ExtensionPromptSchema(tasks, hints);
     }
@@ -272,7 +302,8 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
     @Tool("Read a reference file from an activated skill")
     public String readSkillReference(
                                      @JsonPropertyDescription("Name of the skill") String skillName,
-                                     @JsonPropertyDescription("Path to the reference file within the skill's references/ directory") String referenceFile) {
+                                     @JsonPropertyDescription(
+                                         "Path to the reference file within the skill's references/ directory") String referenceFile) {
 
         final var skill = registry.getLoadedSkill(skillName).orElse(null);
         if (null == skill) {
@@ -304,5 +335,11 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>> implements Age
     @Override
     public Map<String, ExecutableTool> tools() {
         return tools;
+    }
+
+    private void displaySkillsCatalog() {
+        if (log.isInfoEnabled()) {
+            log.info("Skills catalog:\n{}", registry.formatCatalog());
+        }
     }
 }

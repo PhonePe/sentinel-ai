@@ -1,0 +1,11 @@
+java_version: "17"
+maven_version: "3.9.5"
+project_name: "sentinel-ai"
+
+sonar_config:
+  vcs_platform: "github"
+  primary_branch: "master"
+  integration_branch: "master"
+  sonarqube_mcp_prefix: "sonarqube-gh"
+  sonarqube_host_url: ""
+  sonarqube_project_key: "com.phonepe.sentinel-ai:sentinel-ai"

@@ -56,7 +56,6 @@ public class HttpCallTemplateExpander {
      */
     public HttpCallSpec convert(final HttpCallTemplate template,
                                 Map<String, Object> context) {
-
         final var path = convert(template.getPath(), context);
         final var method = template.getMethod();
         final var headers = Objects.requireNonNullElseGet(template.getHeaders(),

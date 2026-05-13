@@ -62,6 +62,11 @@
             <name>Ekta Mishra</name>
             <email>ektamishra1999@gmail.com</email>
         </developer>
+        <developer>
+            <id>godofwharf</id>
+            <name>Guruprasad Sridharan</name>
+            <email>guruprasad.sridharan@gmail.com</email>
+        </developer>
     </developers>
 
     <packaging>pom</packaging>
@@ -88,9 +93,12 @@
 
         <!-- All other modules above this -->
         <module>sentinel-ai-bom</module>
-        <module>sentinel-ai-reporting</module>
         <module>sentinel-ai-evals</module>
         <module>sentinel-ai-instrumentation-otel</module>
+
+        <!-- Working end-to-end examples -->
+        <module>sentinel-ai-examples</module>
+        <module>sentinel-ai-reporting</module>
     </modules>
 
     <properties>
@@ -130,6 +138,7 @@
         <console.disable>true</console.disable>
         <success.print>false</success.print>
         <test.thread.count>2</test.thread.count>
+        <testcontainers.ryuk.disabled>false</testcontainers.ryuk.disabled>
     </properties>
 
     <dependencyManagement>
@@ -321,6 +330,10 @@
                         <sentinelai.useRealEndpoints>${sentinelai.useRealEndpoints}</sentinelai.useRealEndpoints>
                         <dotenv.file>${dotenv.file}</dotenv.file>
                     </systemPropertyVariables>
+
+                    <environmentVariables>
+                        <TESTCONTAINERS_RYUK_DISABLED>${testcontainers.ryuk.disabled}</TESTCONTAINERS_RYUK_DISABLED>
+                    </environmentVariables>
 
                     <!-- Parallel execution configuration -->
                     <parallel>classes</parallel>
