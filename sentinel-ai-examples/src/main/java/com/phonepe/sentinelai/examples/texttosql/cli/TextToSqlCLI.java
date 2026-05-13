@@ -708,12 +708,10 @@ public class TextToSqlCLI implements Callable<Integer> {
                     .build();
             CompletableFuture<AgentOutput<SqlQueryResult>> outputFuture;
             if (config.getAgent().isStreaming()) {
-                System.out.println();
-                outputFuture = agent.executeAsyncStreaming(
-                                                           agentInput,
-                                                           chunk -> System.out.print(
-                                                                                     new String(chunk,
-                                                                                                StandardCharsets.UTF_8)));
+                ConsoleUtils.printToStdout(System.lineSeparator());
+                outputFuture = agent.executeAsyncStreaming(agentInput,
+                                                           chunk -> ConsoleUtils.printToStdout(new String(chunk,
+                                                                                                          StandardCharsets.UTF_8)));
             }
             else {
                 outputFuture = agent.executeAsync(agentInput);
@@ -721,7 +719,7 @@ public class TextToSqlCLI implements Callable<Integer> {
             final AgentOutput<SqlQueryResult> output = ConsoleUtils.awaitWithSpinner(outputFuture, true);
             lastAgentOutput = output;
             output.getAllMessages();
-            System.out.println();
+            ConsoleUtils.printToStdout(System.lineSeparator());
             if (output.getData() != null) {
                 ConsoleUtils.printStructuredResult(
                                                    output.getData(),
@@ -789,7 +787,7 @@ public class TextToSqlCLI implements Callable<Integer> {
                                               ObjectMapper mapper,
                                               String line) {
         if (line == null) {
-            System.out.println("EOF encountered. Exiting!");
+            ConsoleUtils.printToStdout("EOF encountered. Exiting!" + System.lineSeparator());
             return true;
         }
 
@@ -799,7 +797,7 @@ public class TextToSqlCLI implements Callable<Integer> {
             return false;
         }
         if (trimmedLine.equalsIgnoreCase("exit") || trimmedLine.equalsIgnoreCase("quit")) {
-            System.out.println("Goodbye!");
+            ConsoleUtils.printToStdout("Goodbye!" + System.lineSeparator());
             return true;
         }
         if (trimmedLine.startsWith("/dumpMessages")) {

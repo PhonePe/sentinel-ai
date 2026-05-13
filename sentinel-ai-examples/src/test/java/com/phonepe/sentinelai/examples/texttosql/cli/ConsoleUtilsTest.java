@@ -409,7 +409,7 @@ class ConsoleUtilsTest {
 
     @BeforeEach
     void redirectStreams() {
-        originalOut = System.out;
+        originalOut = ConsoleUtils.stdout();
         originalErr = System.err;
         outCapture = new ByteArrayOutputStream();
         errCapture = new ByteArrayOutputStream();

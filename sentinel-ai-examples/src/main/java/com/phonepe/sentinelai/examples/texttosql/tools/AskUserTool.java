@@ -67,27 +67,28 @@ public class AskUserTool implements ToolBox {
 
     /** Prints a styled multiple-choice menu to stdout and the {@code >} prompt. */
     private static void printChoices(String question, List<String> choices) {
-        System.out.println();
-        System.out.println(
-                           ANSI_BOLD
-                                   + ANSI_CYAN
-                                   + "┌─ Please choose one of the following "
-                                   + "─".repeat(33)
-                                   + "┐"
-                                   + ANSI_RESET);
-        System.out.println(ANSI_BRIGHT_YELLOW + "  " + question + ANSI_RESET);
-        System.out.println();
+        ConsoleUtils.printToStdout(System.lineSeparator());
+        ConsoleUtils.printToStdout(ANSI_BOLD
+                + ANSI_CYAN
+                + "┌─ Please choose one of the following "
+                + "─".repeat(33)
+                + "┐"
+                + ANSI_RESET
+                + System.lineSeparator());
+        ConsoleUtils.printToStdout(ANSI_BRIGHT_YELLOW + "  " + question + ANSI_RESET + System.lineSeparator());
+        ConsoleUtils.printToStdout(System.lineSeparator());
         for (int i = 0; i < choices.size(); i++) {
-            System.out.printf(
-                              "  %s%s%d.%s %s%n",
-                              ANSI_BOLD,
-                              ANSI_BRIGHT_YELLOW,
-                              i + 1,
-                              ANSI_RESET,
-                              choices.get(i));
+            ConsoleUtils.printToStdout(String.format("  %s%s%d.%s %s%n",
+                                                     ANSI_BOLD,
+                                                     ANSI_BRIGHT_YELLOW,
+                                                     i + 1,
+                                                     ANSI_RESET,
+                                                     choices.get(i)));
         }
-        System.out.println(ANSI_BOLD + ANSI_CYAN + "└" + "─".repeat(70) + "┘" + ANSI_RESET);
-        System.out.println("  Enter a number (1–" + choices.size() + ") or type your answer:");
+        ConsoleUtils.printToStdout(ANSI_BOLD + ANSI_CYAN + "└" + "─".repeat(70) + "┘" + ANSI_RESET
+                + System.lineSeparator());
+        ConsoleUtils.printToStdout("  Enter a number (1–" + choices.size() + ") or type your answer:"
+                + System.lineSeparator());
         printInputPrompt();
     }
 
@@ -97,22 +98,22 @@ public class AskUserTool implements ToolBox {
 
     /** Prints the {@code >} input prompt. */
     private static void printInputPrompt() {
-        System.out.print(ANSI_BOLD + ANSI_BRIGHT_GREEN + "> " + ANSI_RESET);
-        System.out.flush();
+        ConsoleUtils.printToStdout(ANSI_BOLD + ANSI_BRIGHT_GREEN + "> " + ANSI_RESET);
     }
 
     /** Prints a styled question banner to stdout and the {@code >} prompt. */
     private static void printQuestion(String question) {
-        System.out.println();
-        System.out.println(
-                           ANSI_BOLD
-                                   + ANSI_CYAN
-                                   + "┌─ Clarification needed "
-                                   + "─".repeat(47)
-                                   + "┐"
-                                   + ANSI_RESET);
-        System.out.println(ANSI_BRIGHT_YELLOW + "  " + question + ANSI_RESET);
-        System.out.println(ANSI_BOLD + ANSI_CYAN + "└" + "─".repeat(70) + "┘" + ANSI_RESET);
+        ConsoleUtils.printToStdout(System.lineSeparator());
+        ConsoleUtils.printToStdout(ANSI_BOLD
+                + ANSI_CYAN
+                + "┌─ Clarification needed "
+                + "─".repeat(47)
+                + "┐"
+                + ANSI_RESET
+                + System.lineSeparator());
+        ConsoleUtils.printToStdout(ANSI_BRIGHT_YELLOW + "  " + question + ANSI_RESET + System.lineSeparator());
+        ConsoleUtils.printToStdout(ANSI_BOLD + ANSI_CYAN + "└" + "─".repeat(70) + "┘" + ANSI_RESET
+                + System.lineSeparator());
         printInputPrompt();
     }
 

@@ -345,7 +345,7 @@ public class SqliteMcpServer implements Callable<Integer> {
         final ObjectMapper mapper = JsonUtils.createMapper();
         final var jsonMapper = new JacksonMcpJsonMapper(mapper);
 
-        // stdio transport: reads MCP requests from System.in, writes responses to System.out
+        // stdio transport: reads MCP requests from System.in, writes responses to stdout
         final var transportProvider = new StdioServerTransportProvider(jsonMapper);
 
         final McpSyncServer server = McpServer.sync(transportProvider)

@@ -199,7 +199,7 @@ class AskUserToolTest {
     @BeforeEach
     void setUp() {
         tool = new AskUserTool();
-        originalOut = System.out;
+        originalOut = ConsoleUtils.stdout();
         originalErr = System.err;
         outCapture = new ByteArrayOutputStream();
         System.setOut(new PrintStream(outCapture));

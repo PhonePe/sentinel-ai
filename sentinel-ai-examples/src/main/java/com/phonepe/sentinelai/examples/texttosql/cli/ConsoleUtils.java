@@ -25,6 +25,7 @@ import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.PrintStream;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -36,12 +37,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Terminal output helpers for the Text-to-SQL CLI.
  *
- * <p>All ANSI colour codes, the progress-spinner logic, and every formatted {@code System.out} /
- * {@code System.err} print statement live here so that {@link TextToSqlCLI} stays focused on
- * orchestration.
+ * <p>All ANSI colour codes, the progress-spinner logic, and every formatted stdout/stderr print
+ * statement live here so that {@link TextToSqlCLI} stays focused on orchestration.
  */
-@Slf4j
 @UtilityClass
+@Slf4j
 public class ConsoleUtils {
 
     // -------------------------------------------------------------------------
@@ -128,8 +128,7 @@ public class ConsoleUtils {
                 final T result = future.get(DEFAULT_FUTURE_TIMEOUT, TimeUnit.MILLISECONDS);
                 if (showSpinner && SPINNER_ENABLED.get()) {
                     // Erase the spinner line before the caller prints the result.
-                    System.out.print("\r" + " ".repeat(80) + "\r");
-                    System.out.flush();
+                    printToStdout("\r" + " ".repeat(80) + "\r");
                 }
                 return result;
             }
@@ -141,8 +140,7 @@ public class ConsoleUtils {
                                                              // or cryptographic purpose whatsoever.
                                                              ThreadLocalRandom.current().nextInt(PROCESSING_VERBS
                                                                      .size()));
-                    System.out.print("\r" + BOLD + YELLOW + verb + "..." + RESET);
-                    System.out.flush();
+                    printToStdout("\r" + BOLD + YELLOW + verb + "..." + RESET);
                 }
             }
         }
@@ -177,21 +175,26 @@ public class ConsoleUtils {
 
     /** Prints the welcome banner in bright cyan. */
     public static void printBanner() {
-        System.out.println(
-                           BRIGHT_CYAN
-                                   + """
-
-                                           ╔════════════════════════════════════════════════════╗
-                                           ║   Sentinel AI — Text-to-SQL Agent (e-commerce DB)  ║
-                                           ╠════════════════════════════════════════════════════╣
-                                           ║  Ask questions in plain English about:             ║
-                                           ║    • users, sellers, catalog, inventory, orders    ║
-                                           ║  Commands:                                         ║
-                                           ║    /dumpMessages [file]  — export all messages     ║
-                                           ║  Type 'exit' or 'quit' to stop, Ctrl+D to EOF.     ║
-                                           ╚════════════════════════════════════════════════════╝
-                                           """
-                                   + RESET);
+        printToStdout(BRIGHT_CYAN
+                + System.lineSeparator()
+                + "╔════════════════════════════════════════════════════╗"
+                + System.lineSeparator()
+                + "║   Sentinel AI — Text-to-SQL Agent (e-commerce DB)  ║"
+                + System.lineSeparator()
+                + "╠════════════════════════════════════════════════════╣"
+                + System.lineSeparator()
+                + "║  Ask questions in plain English about:             ║"
+                + System.lineSeparator()
+                + "║    • users, sellers, catalog, inventory, orders    ║"
+                + System.lineSeparator()
+                + "║  Commands:                                         ║"
+                + System.lineSeparator()
+                + "║    /dumpMessages [file]  — export all messages     ║"
+                + System.lineSeparator()
+                + "║  Type 'exit' or 'quit' to stop, Ctrl+D to EOF.     ║"
+                + System.lineSeparator()
+                + "╚════════════════════════════════════════════════════╝"
+                + RESET);
     }
 
     /**
@@ -201,17 +204,17 @@ public class ConsoleUtils {
      * @param messageCount number of messages serialized
      */
     public static void printDumpSuccess(String path, int messageCount) {
-        System.out.println(
-                           BOLD
-                                   + GREEN
-                                   + "[Dump] "
-                                   + RESET
-                                   + GREEN
-                                   + "Exported "
-                                   + messageCount
-                                   + " message(s) → "
-                                   + path
-                                   + RESET);
+        printToStdout(BOLD
+                + GREEN
+                + "[Dump] "
+                + RESET
+                + GREEN
+                + "Exported "
+                + messageCount
+                + " message(s) → "
+                + path
+                + RESET
+                + System.lineSeparator());
     }
 
     // -------------------------------------------------------------------------
@@ -233,21 +236,17 @@ public class ConsoleUtils {
 
     /** Prints a short list of starter prompts to help the user get going. */
     public static void printExamples() {
-        System.out.println(CYAN + "Try one of these example prompts to get started:" + RESET);
-        System.out.println();
-        System.out.println(BOLD + YELLOW + "  1. " + RESET + "List top 3 sellers by order volume");
-        System.out.println(
-                           BOLD + YELLOW + "  2. " + RESET + "Find the user with the most number of orders");
-        System.out.println(BOLD + YELLOW + "  3. " + RESET + "Find out top cities by shoe sales");
-        System.out.println(
-                           BOLD
-                                   + YELLOW
-                                   + "  4. "
-                                   + RESET
-                                   + "What are the top 5 best-selling products this month?");
-        System.out.println(
-                           BOLD + YELLOW + "  5. " + RESET + "Show total revenue per product category");
-        System.out.println();
+        printToStdout(CYAN + "Try one of these example prompts to get started:" + RESET + System.lineSeparator());
+        printToStdout(System.lineSeparator());
+        printToStdout(BOLD + YELLOW + "  1. " + RESET + "List top 3 sellers by order volume" + System.lineSeparator());
+        printToStdout(BOLD + YELLOW + "  2. " + RESET + "Find the user with the most number of orders"
+                + System.lineSeparator());
+        printToStdout(BOLD + YELLOW + "  3. " + RESET + "Find out top cities by shoe sales" + System.lineSeparator());
+        printToStdout(BOLD + YELLOW + "  4. " + RESET + "What are the top 5 best-selling products this month?"
+                + System.lineSeparator());
+        printToStdout(BOLD + YELLOW + "  5. " + RESET + "Show total revenue per product category"
+                + System.lineSeparator());
+        printToStdout(System.lineSeparator());
     }
 
     // -------------------------------------------------------------------------
@@ -256,8 +255,7 @@ public class ConsoleUtils {
 
     /** Prints the {@code >} input prompt in bold bright-green. */
     public static void printPrompt() {
-        System.out.print(BOLD + BRIGHT_GREEN + "\n> " + RESET);
-        System.out.flush();
+        printToStdout(BOLD + BRIGHT_GREEN + "\n> " + RESET);
     }
 
     /**
@@ -274,36 +272,40 @@ public class ConsoleUtils {
      * @param wallClockMs total elapsed time since the query was dispatched
      */
     public static void printStructuredResult(SqlQueryResult result, long wallClockMs) {
-        System.out.println();
+        printToStdout(System.lineSeparator());
 
         // ── Generated SQL ─────────────────────────────────────────────────
-        System.out.println(CYAN + "┌─ Generated SQL " + "─".repeat(54) + "┐" + RESET);
+        printToStdout(CYAN + "┌─ Generated SQL " + "─".repeat(54) + "┐" + RESET + System.lineSeparator());
         final String formattedSql = formatSql(result.generatedSql());
         for (final String line : formattedSql.split("\n")) {
-            System.out.println(GREEN + "│  " + line + RESET);
+            printToStdout(GREEN + "│  " + line + RESET + System.lineSeparator());
         }
-        System.out.println(CYAN + "└" + "─".repeat(70) + "┘" + RESET);
-        System.out.println();
+        printToStdout(CYAN + "└" + "─".repeat(70) + "┘" + RESET + System.lineSeparator());
+        printToStdout(System.lineSeparator());
 
         // ── Timing ────────────────────────────────────────────────────────
-        System.out.println(BOLD + BRIGHT_YELLOW + "── Timing Info " + "─".repeat(55) + RESET);
-        System.out.printf(
-                          DIM + "Query execution: %d ms  │  Wall clock: %d ms" + RESET + "%n",
-                          result.executionTimeMs(),
-                          wallClockMs);
-        System.out.println();
+        printToStdout(BOLD + BRIGHT_YELLOW + "── Timing Info " + "─".repeat(55) + RESET + System.lineSeparator());
+        printToStdout(String.format(DIM + "Query execution: %d ms  │  Wall clock: %d ms" + RESET + "%n",
+                                    result.executionTimeMs(),
+                                    wallClockMs));
+        printToStdout(System.lineSeparator());
 
         // ── Explanation ───────────────────────────────────────────────────
         if (result.explanation() != null && !result.explanation().isBlank()) {
-            System.out.println(
-                               BOLD + BRIGHT_YELLOW + "── Verbal Explanation " + "─".repeat(55) + RESET);
-            System.out.println(result.explanation());
-            System.out.println();
+            printToStdout(BOLD + BRIGHT_YELLOW + "── Verbal Explanation " + "─".repeat(55) + RESET
+                    + System.lineSeparator());
+            printToStdout(result.explanation() + System.lineSeparator());
+            printToStdout(System.lineSeparator());
         }
 
         // ── Result rows ───────────────────────────────────────────────────
-        System.out.println(BOLD + BRIGHT_YELLOW + "── Query Result " + "─".repeat(55) + RESET);
-        System.out.println(LocalTools.formatResultsAsTable(result));
+        printToStdout(BOLD + BRIGHT_YELLOW + "── Query Result " + "─".repeat(55) + RESET + System.lineSeparator());
+        printToStdout(LocalTools.formatResultsAsTable(result) + System.lineSeparator());
+    }
+
+    @SuppressWarnings("java:S106")
+    public static void printToStdout(String output) {
+        System.out.println(output);
     }
 
     /**
@@ -319,40 +321,37 @@ public class ConsoleUtils {
         if (usage == null) {
             return;
         }
-        System.out.println(BOLD + BRIGHT_YELLOW + "── Usage Stats " + "─".repeat(55) + RESET);
-        System.out.printf(
-                          DIM
-                                  + "   Total: %d tokens  │  Request: %d  │  Response: %d"
-                                  + "  │  Tool calls: %d  │  LLM requests: %d"
-                                  + RESET
-                                  + "%n",
-                          usage.getTotalTokens(),
-                          usage.getRequestTokens(),
-                          usage.getResponseTokens(),
-                          usage.getToolCallsForRun(),
-                          usage.getRequestsForRun());
+        printToStdout(BOLD + BRIGHT_YELLOW + "── Usage Stats " + "─".repeat(55) + RESET + System.lineSeparator());
+        printToStdout(String.format(DIM
+                + "   Total: %d tokens  │  Request: %d  │  Response: %d"
+                + "  │  Tool calls: %d  │  LLM requests: %d"
+                + RESET
+                + "%n",
+                                    usage.getTotalTokens(),
+                                    usage.getRequestTokens(),
+                                    usage.getResponseTokens(),
+                                    usage.getToolCallsForRun(),
+                                    usage.getRequestsForRun()));
 
         // ── Request token breakdown ───────────────────────────────────────
         final var req = usage.getRequestTokenDetails();
-        System.out.printf(
-                          DIM + "   Request breakdown:   cached: %d  │  audio: %d" + RESET + "%n",
-                          req.getCachedTokens(),
-                          req.getAudioTokens());
+        printToStdout(String.format(DIM + "   Request breakdown:   cached: %d  │  audio: %d" + RESET + "%n",
+                                    req.getCachedTokens(),
+                                    req.getAudioTokens()));
 
         // ── Response token breakdown ──────────────────────────────────────
         final var resp = usage.getResponseTokenDetails();
-        System.out.printf(
-                          DIM
-                                  + "   Response breakdown:  reasoning: %d  │  accepted predictions: %d"
-                                  + "  │  rejected predictions: %d  │  audio: %d"
-                                  + RESET
-                                  + "%n",
-                          resp.getReasoningTokens(),
-                          resp.getAcceptedPredictionTokens(),
-                          resp.getRejectedPredictionTokens(),
-                          resp.getAudioTokens());
+        printToStdout(String.format(DIM
+                + "   Response breakdown:  reasoning: %d  │  accepted predictions: %d"
+                + "  │  rejected predictions: %d  │  audio: %d"
+                + RESET
+                + "%n",
+                                    resp.getReasoningTokens(),
+                                    resp.getAcceptedPredictionTokens(),
+                                    resp.getRejectedPredictionTokens(),
+                                    resp.getAudioTokens()));
 
-        System.out.println();
+        printToStdout(System.lineSeparator());
     }
 
     /**
@@ -361,7 +360,16 @@ public class ConsoleUtils {
      * @param message the warning description
      */
     public static void printWarning(String message) {
-        System.out.println(YELLOW + "[Warning] " + message + RESET);
+        printToStdout(YELLOW + "[Warning] " + message + RESET + System.lineSeparator());
+    }
+
+    public static PrintStream stdout() {
+        try {
+            return (PrintStream) System.class.getField("out").get(null);
+        }
+        catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Unable to access stdout", e);
+        }
     }
 
     // -------------------------------------------------------------------------
