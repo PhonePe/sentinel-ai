@@ -19,7 +19,6 @@ package com.phonepe.sentinelai.examples.texttosql.server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -43,7 +42,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Tests for {@link SqliteRestResource} exercising all eight endpoints by calling them directly
  * (no embedded HTTP server required).
  */
-@DisplayName("SqliteRestResource")
 class SqliteRestResourceTest {
 
     @TempDir
@@ -57,14 +55,12 @@ class SqliteRestResourceTest {
      * {@code connect()} fails and each endpoint's {@code catch(Exception e)} branch is covered.
      */
     @Nested
-    @DisplayName("error paths with broken DB")
     class BrokenDbTests {
 
         private final SqliteRestResource broken = new SqliteRestResource("/nonexistent/path/to/broken.db",
                                                                          new ObjectMapper());
 
         @Test
-        @DisplayName("createRecord returns 500 when DB path is invalid")
         void createRecordReturns500() {
             Map<String, Object> body = new HashMap<>();
             body.put("data", Map.of("seller_name", "test"));
@@ -73,7 +69,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("deleteRecords returns 500 when DB path is invalid")
         void deleteRecordsReturns500() {
             Map<String, Object> body = new HashMap<>();
             body.put("conditions", Map.of("user_id", "1"));
@@ -82,42 +77,36 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("executeQuery returns 500 when DB path is invalid")
         void executeQueryReturns500() {
             Response resp = broken.executeQuery(Map.of("sql", "SELECT 1"));
             assertEquals(500, resp.getStatus());
         }
 
         @Test
-        @DisplayName("getDatabaseInfo returns 500 when DB path is invalid")
         void getDatabaseInfoReturns500() {
             Response resp = broken.getDatabaseInfo();
             assertEquals(500, resp.getStatus());
         }
 
         @Test
-        @DisplayName("getTableSchema returns 500 when DB path is invalid")
         void getTableSchemaReturns500() {
             Response resp = broken.getTableSchema("users");
             assertEquals(500, resp.getStatus());
         }
 
         @Test
-        @DisplayName("listTables returns 500 when DB path is invalid")
         void listTablesReturns500() {
             Response resp = broken.listTables();
             assertEquals(500, resp.getStatus());
         }
 
         @Test
-        @DisplayName("readRecords returns 500 when DB path is invalid")
         void readRecordsReturns500() {
             Response resp = broken.readRecords("users", null, null, null);
             assertEquals(500, resp.getStatus());
         }
 
         @Test
-        @DisplayName("updateRecords returns 500 when DB path is invalid")
         void updateRecordsReturns500() {
             Map<String, Object> body = new HashMap<>();
             body.put("data", Map.of("city", "Mumbai"));
@@ -132,11 +121,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("POST /records/{table} — happy path")
     class CreateRecordHappyPathTests {
 
         @Test
-        @DisplayName("inserting a seller returns 200 and affectedRows=1")
         void insertSellerReturns200(@org.junit.jupiter.api.io.TempDir Path dir) {
             Path db = dir.resolve("crud.db");
             DatabaseInitializer.ensureInitialised(db);
@@ -168,11 +155,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("POST /records/{table}")
     class CreateRecordTests {
 
         @Test
-        @DisplayName("returns 400 when data map is empty")
         void returns400WhenDataEmpty() {
             Map<String, Object> body = new HashMap<>();
             body.put("data", Map.of());
@@ -181,7 +166,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("returns 400 when data field is missing")
         void returns400WhenDataMissing() {
             Response resp = resource.createRecord("users", Map.of());
             assertEquals(400, resp.getStatus());
@@ -193,11 +177,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("DELETE /records/{table} — happy path")
     class DeleteRecordsHappyPathTests {
 
         @Test
-        @DisplayName("deleting a non-existent record returns 200 with affectedRows=0")
         void deleteNonExistentRowReturns200(@org.junit.jupiter.api.io.TempDir Path dir) {
             Path db = dir.resolve("crud.db");
             DatabaseInitializer.ensureInitialised(db);
@@ -218,11 +200,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("DELETE /records/{table}")
     class DeleteRecordsTests {
 
         @Test
-        @DisplayName("returns 400 when conditions map is empty")
         void returns400WhenConditionsEmpty() {
             Map<String, Object> body = new HashMap<>();
             body.put("conditions", Map.of());
@@ -231,7 +211,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("returns 400 when conditions is missing")
         void returns400WhenConditionsMissing() {
             Response resp = resource.deleteRecords("users", Map.of());
             assertEquals(400, resp.getStatus());
@@ -243,11 +222,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("POST /query")
     class ExecuteQueryTests {
 
         @Test
-        @DisplayName("PRAGMA statement is allowed")
         void pragmaIsAllowed() {
             Map<String, Object> body = Map.of("sql", "PRAGMA table_info(users)");
             Response resp = resource.executeQuery(body);
@@ -255,7 +232,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("returns 400 when sql field is missing")
         void returns400WhenSqlMissing() {
             Response resp = resource.executeQuery(Map.of());
             assertEquals(400, resp.getStatus());
@@ -266,7 +242,6 @@ class SqliteRestResourceTest {
                 "SELECT 1 AS one,200",
                 "'   ',400"
         })
-        @DisplayName("returns expected status for simple query inputs")
         void returnsExpectedStatusForSimpleQueryInputs(String sql, int expectedStatus) {
             Map<String, Object> body = Map.of("sql", sql);
             Response resp = resource.executeQuery(body);
@@ -274,7 +249,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("returns rows for SELECT from users table")
         void returnsRowsForUsersSelect() {
             Map<String, Object> body = Map.of("sql", "SELECT user_id FROM users LIMIT 3");
             Response resp = resource.executeQuery(body);
@@ -290,7 +264,6 @@ class SqliteRestResourceTest {
                 "UPDATE users SET id = 0 WHERE id = 999999",
                 "DROP TABLE users"
         })
-        @DisplayName("throws WriteQueryNotAllowedException for write statements")
         void throwsForWriteStatements(String sql) {
             Map<String, Object> body = Map.of("sql", sql);
             assertThrows(
@@ -299,7 +272,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("WITH (CTE) statement is allowed")
         void withStatementIsAllowed() {
             Map<String, Object> body = Map.of("sql", "WITH cte AS (SELECT 1 AS x) SELECT * FROM cte");
             Response resp = resource.executeQuery(body);
@@ -312,11 +284,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("GET /info")
     class GetDatabaseInfoTests {
 
         @Test
-        @DisplayName("returns 200 with database metadata")
         void returns200WithMetadata() {
             Response resp = resource.getDatabaseInfo();
             assertEquals(200, resp.getStatus());
@@ -326,7 +296,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("tableCount is at least 5")
         void tableCountAtLeastFive() throws java.io.IOException {
             Response resp = resource.getDatabaseInfo();
             String body = (String) resp.getEntity();
@@ -341,11 +310,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("GET /schema/{tableName}")
     class GetTableSchemaTests {
 
         @Test
-        @DisplayName("returns 200 with columns for existing table")
         void returns200ForExistingTable() {
             Response resp = resource.getTableSchema("users");
             assertEquals(200, resp.getStatus());
@@ -355,7 +322,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("returns 404 for unknown table")
         void returns404ForUnknownTable() {
             Response resp = resource.getTableSchema("nonexistent_table_xyz");
             assertEquals(404, resp.getStatus());
@@ -367,20 +333,17 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("identifier validation")
     class IdentifierValidationTests {
 
         @Test
-        @DisplayName("getTableSchema with invalid identifier throws IllegalArgumentException")
         void invalidIdentifierThrows() {
-            final IllegalArgumentException exception = assertThrows(
-                                                                    IllegalArgumentException.class,
-                                                                    () -> resource.getTableSchema("bad table; DROP"));
+            final var exception = assertThrows(
+                                               IllegalArgumentException.class,
+                                               () -> resource.getTableSchema("bad table; DROP"));
             assertEquals("Invalid table name: bad table; DROP", exception.getMessage());
         }
 
         @Test
-        @DisplayName("getTableSchema with valid identifier returns 200 or 404")
         void validIdentifierPassesValidation() {
             Response resp = resource.getTableSchema("valid_table_name");
             assertTrue(resp.getStatus() == 200 || resp.getStatus() == 404,
@@ -393,11 +356,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("GET /tables")
     class ListTablesTests {
 
         @Test
-        @DisplayName("tables list contains expected e-commerce tables")
         void containsExpectedTables() {
             Response resp = resource.listTables();
             String body = (String) resp.getEntity();
@@ -409,7 +370,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("returns 200 with tables list")
         void returns200WithTablesList() {
             Response resp = resource.listTables();
             assertEquals(200, resp.getStatus());
@@ -423,11 +383,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("GET /records/{table}")
     class ReadRecordsTests {
 
         @Test
-        @DisplayName("returns 500 for invalid table identifier")
         void invalidTableIdentifierReturns500() {
             // Identifier with spaces — fails the SAFE_IDENTIFIER check and triggers exception
             assertThrows(Exception.class,
@@ -435,7 +393,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("limit and offset parameters are respected")
         void limitAndOffsetRespected() throws java.io.IOException {
             Response resp = resource.readRecords("users", 3, 0, null);
             assertEquals(200, resp.getStatus());
@@ -446,7 +403,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("returns rows for existing table")
         void returnsRowsForExistingTable() {
             Response resp = resource.readRecords("users", 5, 0, null);
             assertEquals(200, resp.getStatus());
@@ -459,7 +415,6 @@ class SqliteRestResourceTest {
                 "{},2,0",
                 "{\"id\":\"99999999\"},,"
         })
-        @DisplayName("supports conditions JSON")
         void supportsConditionsJson(String conditionsJson, Integer limit, Integer offset) {
             Response resp = resource.readRecords("users", limit, offset, conditionsJson);
             assertEquals(200, resp.getStatus());
@@ -473,11 +428,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("PUT /records/{table} — happy path")
     class UpdateRecordsHappyPathTests {
 
         @Test
-        @DisplayName("updating a non-existent record returns 200 with affectedRows=0")
         void updateNonExistentRowReturns200(@org.junit.jupiter.api.io.TempDir Path dir) {
             Path db = dir.resolve("crud.db");
             DatabaseInitializer.ensureInitialised(db);
@@ -499,11 +452,9 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("PUT /records/{table}")
     class UpdateRecordsTests {
 
         @Test
-        @DisplayName("returns 400 when conditions is missing")
         void returns400WhenConditionsMissing() {
             Map<String, Object> data = Map.of("username", "newname");
             Map<String, Object> body = new HashMap<>();
@@ -513,7 +464,6 @@ class SqliteRestResourceTest {
         }
 
         @Test
-        @DisplayName("returns 400 when data is missing")
         void returns400WhenDataMissing() {
             Map<String, Object> body = Map.of("conditions", Map.of("id", "1"));
             Response resp = resource.updateRecords("users", body);
@@ -526,18 +476,15 @@ class SqliteRestResourceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("WriteQueryNotAllowedException")
     class WriteQueryNotAllowedExceptionTests {
 
         @Test
-        @DisplayName("exception message is preserved")
         void exceptionMessagePreserved() {
             SqliteRestResource.WriteQueryNotAllowedException ex = new SqliteRestResource.WriteQueryNotAllowedException("test message");
             assertEquals("test message", ex.getMessage());
         }
 
         @Test
-        @DisplayName("exception is a RuntimeException")
         void isRuntimeException() {
             SqliteRestResource.WriteQueryNotAllowedException ex = new SqliteRestResource.WriteQueryNotAllowedException("test");
             assertInstanceOf(RuntimeException.class, ex);

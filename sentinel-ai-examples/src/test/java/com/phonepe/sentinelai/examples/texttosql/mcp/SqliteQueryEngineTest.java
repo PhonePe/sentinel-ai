@@ -22,7 +22,6 @@ import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -47,7 +46,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>All handler methods are public, so no reflection is required.
  */
-@DisplayName("SqliteQueryEngine")
 class SqliteQueryEngineTest {
 
     @TempDir
@@ -58,19 +56,17 @@ class SqliteQueryEngineTest {
     static ObjectMapper mapper;
 
     @Nested
-    @DisplayName("executeQuery")
     class ExecuteQueryTests {
 
         @Test
-        @DisplayName("executes query with bound parameter values")
         void executesQueryWithBoundParams() {
-            final McpSchema.CallToolResult result = engine.executeQuery(
-                                                                        Map.of(
-                                                                               "sql",
-                                                                               "SELECT user_id FROM users WHERE user_id = ?",
-                                                                               "values",
-                                                                               List.of(1)),
-                                                                        mapper);
+            final var result = engine.executeQuery(
+                                                   Map.of(
+                                                          "sql",
+                                                          "SELECT user_id FROM users WHERE user_id = ?",
+                                                          "values",
+                                                          List.of(1)),
+                                                   mapper);
             assertNotNull(result);
             // May or may not find rows depending on seeded data — just assert no error from JDBC
             assertFalse(
@@ -79,14 +75,13 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("executes with explicit empty values list")
         void executesWithEmptyValuesList() {
-            final McpSchema.CallToolResult result = engine.executeQuery(
-                                                                        Map.of("sql",
-                                                                               "SELECT COUNT(*) FROM users",
-                                                                               "values",
-                                                                               List.of()),
-                                                                        mapper);
+            final var result = engine.executeQuery(
+                                                   Map.of("sql",
+                                                          "SELECT COUNT(*) FROM users",
+                                                          "values",
+                                                          List.of()),
+                                                   mapper);
             assertNotEquals(Boolean.TRUE, result.isError());
         }
 
@@ -103,9 +98,8 @@ class SqliteQueryEngineTest {
                 "REPLACE INTO users (id) VALUES (1)",
                 "SELECT FROM INVALID SYNTAX !!!"
         })
-        @DisplayName("rejects invalid SQL statements")
         void rejectsInvalidStatements(String sql) {
-            final McpSchema.CallToolResult result = engine.executeQuery(Map.of("sql", sql), mapper);
+            final var result = engine.executeQuery(Map.of("sql", sql), mapper);
             assertEquals(Boolean.TRUE, result.isError());
             if (sql.startsWith("INSERT")) {
                 assertTrue(firstText(result).contains("INSERT"));
@@ -113,42 +107,37 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() {
-            final McpSchema.CallToolResult result = badEngine.executeQuery(Map.of("sql", "SELECT 1"), mapper);
+            final var result = badEngine.executeQuery(Map.of("sql", "SELECT 1"), mapper);
             assertEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
-        @DisplayName("returns error when sql field is absent")
         void returnsErrorWhenSqlAbsent() {
-            final McpSchema.CallToolResult result = engine.executeQuery(Map.of(), mapper);
+            final var result = engine.executeQuery(Map.of(), mapper);
             assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("'sql' is required"));
         }
 
         @Test
-        @DisplayName("returns error when sql field is blank")
         void returnsErrorWhenSqlBlank() {
-            final McpSchema.CallToolResult result = engine.executeQuery(Map.of("sql", "   "), mapper);
+            final var result = engine.executeQuery(Map.of("sql", "   "), mapper);
             assertEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
-        @DisplayName("returns rows for a valid SELECT statement")
         void returnsRowsForValidSelect() {
-            final McpSchema.CallToolResult result = engine.executeQuery(Map.of("sql", "SELECT 1 AS one"), mapper);
+            final var result = engine.executeQuery(Map.of("sql", "SELECT 1 AS one"), mapper);
             assertNotNull(result);
             assertNotEquals(Boolean.TRUE, result.isError(), "Valid SELECT should succeed");
             assertTrue(firstText(result).contains("rows"));
         }
 
         @Test
-        @DisplayName("returns rows for a SELECT from the users table")
         void returnsRowsFromUsersTable() {
-            final McpSchema.CallToolResult result = engine.executeQuery(Map.of("sql",
-                                                                               "SELECT user_id FROM users LIMIT 3"),
-                                                                        mapper);
+            final var result = engine.executeQuery(Map.of("sql",
+                                                          "SELECT user_id FROM users LIMIT 3"),
+                                                   mapper);
             assertNotNull(result);
             assertNotEquals(Boolean.TRUE, result.isError(), "SELECT from users should succeed");
             assertTrue(firstText(result).contains("rows"));
@@ -156,30 +145,26 @@ class SqliteQueryEngineTest {
     }
 
     @Nested
-    @DisplayName("getDatabaseInfo")
     class GetDatabaseInfoTests {
 
         @Test
-        @DisplayName("returns approximateSizeBytes in the response")
         void returnsApproximateSizeBytes() {
-            final McpSchema.CallToolResult result = engine.getDatabaseInfo(mapper);
+            final var result = engine.getDatabaseInfo(mapper);
             assertNotEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("approximateSizeBytes"));
         }
 
         @Test
-        @DisplayName("returns database metadata including tableCount")
         void returnsDatabaseMetadata() {
-            final McpSchema.CallToolResult result = engine.getDatabaseInfo(mapper);
+            final var result = engine.getDatabaseInfo(mapper);
             assertNotNull(result);
             assertNotEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("tableCount"));
         }
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() {
-            final McpSchema.CallToolResult result = badEngine.getDatabaseInfo(mapper);
+            final var result = badEngine.getDatabaseInfo(mapper);
             assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("Failed to get database info"));
         }
@@ -190,53 +175,46 @@ class SqliteQueryEngineTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("getTableSchema")
     class GetTableSchemaTests {
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() {
-            final McpSchema.CallToolResult result = badEngine.getTableSchema(Map.of("tableName", "users"), mapper);
+            final var result = badEngine.getTableSchema(Map.of("tableName", "users"), mapper);
             assertEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
-        @DisplayName("returns error for unknown table")
         void returnsErrorForUnknownTable() {
-            final McpSchema.CallToolResult result = engine.getTableSchema(Map.of("tableName", "nonexistent_xyz"),
-                                                                          mapper);
+            final var result = engine.getTableSchema(Map.of("tableName", "nonexistent_xyz"),
+                                                     mapper);
             assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("Table not found"));
         }
 
         @Test
-        @DisplayName("returns error when tableName is absent")
         void returnsErrorWhenTableNameAbsent() {
-            final McpSchema.CallToolResult result = engine.getTableSchema(Map.of(), mapper);
+            final var result = engine.getTableSchema(Map.of(), mapper);
             assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("'tableName' is required"));
         }
 
         @Test
-        @DisplayName("returns error when tableName is blank")
         void returnsErrorWhenTableNameBlank() {
-            final McpSchema.CallToolResult result = engine.getTableSchema(Map.of("tableName", "   "), mapper);
+            final var result = engine.getTableSchema(Map.of("tableName", "   "), mapper);
             assertEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
-        @DisplayName("returns error when tableName is an invalid identifier")
         void returnsErrorWhenTableNameInvalid() {
-            final McpSchema.CallToolResult result = engine.getTableSchema(Map.of("tableName", "bad table; DROP"),
-                                                                          mapper);
+            final var result = engine.getTableSchema(Map.of("tableName", "bad table; DROP"),
+                                                     mapper);
             assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("Invalid table name"));
         }
 
         @Test
-        @DisplayName("returns schema for an existing table")
         void returnsSchemaForExistingTable() {
-            final McpSchema.CallToolResult result = engine.getTableSchema(Map.of("tableName", "users"), mapper);
+            final var result = engine.getTableSchema(Map.of("tableName", "users"), mapper);
             assertNotNull(result);
             assertNotEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("users"));
@@ -248,21 +226,18 @@ class SqliteQueryEngineTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("listTables")
     class ListTablesTests {
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() {
-            final McpSchema.CallToolResult result = badEngine.listTables(mapper);
+            final var result = badEngine.listTables(mapper);
             assertEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("Failed to list tables"));
         }
 
         @Test
-        @DisplayName("returns a non-error result containing a tables list")
         void returnsTablesList() {
-            final McpSchema.CallToolResult result = engine.listTables(mapper);
+            final var result = engine.listTables(mapper);
             assertNotNull(result);
             assertNotEquals(Boolean.TRUE, result.isError());
             assertTrue(firstText(result).contains("tables"));
@@ -275,7 +250,7 @@ class SqliteQueryEngineTest {
 
     @BeforeAll
     static void setUp() {
-        final Path dbPath = tempDir.resolve("query-engine-test.db");
+        final var dbPath = tempDir.resolve("query-engine-test.db");
         DatabaseInitializer.ensureInitialised(dbPath);
 
         engine = new SqliteQueryEngine(dbPath.toAbsolutePath().toString());
@@ -292,7 +267,7 @@ class SqliteQueryEngineTest {
         if (result.content() == null || result.content().isEmpty()) {
             return "";
         }
-        final McpSchema.Content first = result.content().get(0);
+        final var first = result.content().get(0);
         if (first instanceof TextContent tc) {
             return tc.text() != null ? tc.text() : "";
         }

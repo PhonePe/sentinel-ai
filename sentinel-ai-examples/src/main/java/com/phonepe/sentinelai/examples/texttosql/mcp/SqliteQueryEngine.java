@@ -29,7 +29,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,35 +60,35 @@ public class SqliteQueryEngine {
      */
     @SneakyThrows
     public McpSchema.CallToolResult executeQuery(Map<String, Object> args, ObjectMapper mapper) {
-        final String sql = (String) args.get("sql");
+        final var sql = (String) args.get("sql");
         if (sql == null || sql.isBlank()) {
             return error("Field 'sql' is required");
         }
 
-        final String disallowedKeyword = SqlValidationUtils.findDisallowedWriteKeyword(sql);
+        final var disallowedKeyword = SqlValidationUtils.findDisallowedWriteKeyword(sql);
         if (disallowedKeyword != null) {
             return error(
                          "Write DML statements are not allowed via this endpoint. Statement starts with: "
                                  + disallowedKeyword);
         }
 
-        @SuppressWarnings("unchecked") final List<Object> values = args.containsKey("values") ? (List<Object>) args.get(
-                                                                                                                        "values")
+        @SuppressWarnings("unchecked") final var values = args.containsKey("values") ? (List<Object>) args.get(
+                                                                                                               "values")
                 : List.of();
 
         log.info("Executing SQL: {}", sql);
-        final long startMs = System.currentTimeMillis();
+        final var startMs = System.currentTimeMillis();
 
         try (Connection conn = connect()) {
-            final List<Map<String, Object>> rows = executeSelect(conn, sql, values);
-            final long elapsed = System.currentTimeMillis() - startMs;
+            final var rows = executeSelect(conn, sql, values);
+            final var elapsed = System.currentTimeMillis() - startMs;
 
             final List<String> jsonRows = new ArrayList<>(rows.size());
-            for (final Map<String, Object> row : rows) {
+            for (final var row : rows) {
                 jsonRows.add(mapper.writeValueAsString(row));
             }
 
-            final Map<String, Object> result = new LinkedHashMap<>();
+            final var result = new LinkedHashMap<>();
             result.put("sql", sql);
             result.put("rows", jsonRows);
             result.put("rowCount", rows.size());
@@ -106,22 +105,22 @@ public class SqliteQueryEngine {
     @SneakyThrows
     public McpSchema.CallToolResult getDatabaseInfo(ObjectMapper mapper) {
         try (Connection conn = connect()) {
-            final List<Map<String, Object>> tables = executeSelect(
-                                                                   conn,
-                                                                   "SELECT name FROM sqlite_master WHERE type='table' "
-                                                                           + "AND name NOT LIKE 'sqlite_%'",
-                                                                   List.of());
-            final List<Map<String, Object>> pageSize = executeSelect(conn, "PRAGMA page_size", List.of());
-            final List<Map<String, Object>> pageCount = executeSelect(conn, "PRAGMA page_count", List.of());
+            final var tables = executeSelect(
+                                             conn,
+                                             "SELECT name FROM sqlite_master WHERE type='table' "
+                                                     + "AND name NOT LIKE 'sqlite_%'",
+                                             List.of());
+            final var pageSize = executeSelect(conn, "PRAGMA page_size", List.of());
+            final var pageCount = executeSelect(conn, "PRAGMA page_count", List.of());
 
-            final long ps = pageSize.isEmpty()
+            final var ps = pageSize.isEmpty()
                     ? 0L
                     : Long.parseLong(String.valueOf(pageSize.get(0).get("page_size")));
-            final long pc = pageCount.isEmpty()
+            final var pc = pageCount.isEmpty()
                     ? 0L
                     : Long.parseLong(String.valueOf(pageCount.get(0).get("page_count")));
 
-            final Map<String, Object> info = new LinkedHashMap<>();
+            final var info = new LinkedHashMap<>();
             info.put("databasePath", dbPath);
             info.put("tableCount", tables.size());
             info.put("tables", tables.stream().map(r -> r.get("name")).toList());
@@ -136,7 +135,7 @@ public class SqliteQueryEngine {
     /** Returns the column definitions for a specific table. */
     @SneakyThrows
     public McpSchema.CallToolResult getTableSchema(Map<String, Object> args, ObjectMapper mapper) {
-        final String tableName = (String) args.get("tableName");
+        final var tableName = (String) args.get("tableName");
         if (tableName == null || tableName.isBlank()) {
             return error("Field 'tableName' is required");
         }
@@ -147,9 +146,9 @@ public class SqliteQueryEngine {
             return error(e.getMessage());
         }
         try (Connection conn = connect()) {
-            final List<Map<String, Object>> columns = executeSelect(conn,
-                                                                    "PRAGMA table_info(\"" + tableName + "\")",
-                                                                    List.of());
+            final var columns = executeSelect(conn,
+                                              "PRAGMA table_info(\"" + tableName + "\")",
+                                              List.of());
             if (columns.isEmpty()) {
                 return error("Table not found: " + tableName);
             }
@@ -165,12 +164,12 @@ public class SqliteQueryEngine {
     @SneakyThrows
     public McpSchema.CallToolResult listTables(ObjectMapper mapper) {
         try (Connection conn = connect()) {
-            final List<Map<String, Object>> rows = executeSelect(
-                                                                 conn,
-                                                                 "SELECT name FROM sqlite_master WHERE type='table' "
-                                                                         + "AND name NOT LIKE 'sqlite_%' ORDER BY name",
-                                                                 List.of());
-            final List<String> tables = rows.stream().map(r -> (String) r.get("name")).toList();
+            final var rows = executeSelect(
+                                           conn,
+                                           "SELECT name FROM sqlite_master WHERE type='table' "
+                                                   + "AND name NOT LIKE 'sqlite_%' ORDER BY name",
+                                           List.of());
+            final var tables = rows.stream().map(r -> (String) r.get("name")).toList();
             return success(mapper.writeValueAsString(Map.of("tables", tables)));
         }
         catch (Exception e) {
@@ -209,11 +208,11 @@ public class SqliteQueryEngine {
                 stmt.setObject(i + 1, params.get(i));
             }
             try (ResultSet rs = stmt.executeQuery()) {
-                final ResultSetMetaData meta = rs.getMetaData();
-                final int cols = meta.getColumnCount();
+                final var meta = rs.getMetaData();
+                final var cols = meta.getColumnCount();
                 final List<Map<String, Object>> rows = new ArrayList<>();
                 while (rs.next()) {
-                    final Map<String, Object> row = new LinkedHashMap<>();
+                    final LinkedHashMap<String, Object> row = new LinkedHashMap<>();
                     for (int c = 1; c <= cols; c++) {
                         row.put(meta.getColumnName(c), rs.getObject(c));
                     }

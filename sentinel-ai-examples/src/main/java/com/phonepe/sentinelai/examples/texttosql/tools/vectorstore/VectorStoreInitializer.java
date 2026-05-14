@@ -76,7 +76,7 @@ public class VectorStoreInitializer {
     }
 
     public static void main(String[] args) throws Exception {
-        final Path dataDir = Path.of("sentinel-ai-examples/.data");
+        final var dataDir = Path.of("sentinel-ai-examples/.data");
         try (SchemaVectorStore vectorStore = VectorStoreInitializer.ensureInitialized(dataDir)) {
             // ignored
         }

@@ -67,7 +67,7 @@ public class DatabaseInitializer {
      */
     @SneakyThrows
     public static void ensureInitialised(Path dbPath) {
-        final boolean fileExists = Files.exists(dbPath) && Files.size(dbPath) > 0;
+        final var fileExists = Files.exists(dbPath) && Files.size(dbPath) > 0;
         if (fileExists && isDatabasePopulated(dbPath)) {
             log.info("Database already exists at {} — skipping initialisation", dbPath);
             return;
@@ -83,7 +83,7 @@ public class DatabaseInitializer {
         try (Connection conn = connect(dbPath)) {
             conn.setAutoCommit(false);
             createSchema(conn);
-            for (final String table : TABLE_ORDER) {
+            for (final var table : TABLE_ORDER) {
                 loadCsvData(conn, table);
             }
             conn.commit();
@@ -96,7 +96,7 @@ public class DatabaseInitializer {
     // -------------------------------------------------------------------------
 
     public static void main(String[] args) {
-        final Path dbPath = Path.of("sentinel-ai-examples/.data/ecommerce.db");
+        final var dbPath = Path.of("sentinel-ai-examples/.data/ecommerce.db");
         ensureInitialised(dbPath);
     }
 
@@ -109,11 +109,11 @@ public class DatabaseInitializer {
      */
     static List<String> parseCsvLine(String line) {
         final List<String> tokens = new ArrayList<>();
-        final StringBuilder current = new StringBuilder();
+        final var current = new StringBuilder();
         boolean inQuotes = false;
         int i = 0;
         while (i < line.length()) {
-            final char c = line.charAt(i);
+            final var c = line.charAt(i);
             if (inQuotes) {
                 if (c == '"' && i + 1 < line.length() && line.charAt(i + 1) == '"') {
                     // Doubled quote inside quoted field — emit a literal quote, skip both chars
@@ -159,13 +159,13 @@ public class DatabaseInitializer {
         final var schemaStream = openResource("/db/schema.sql");
         Objects.requireNonNull(schemaStream, "Bundled schema.sql not found on classpath");
 
-        final String schemaSql = new String(schemaStream.readAllBytes(), StandardCharsets.UTF_8);
+        final var schemaSql = new String(schemaStream.readAllBytes(), StandardCharsets.UTF_8);
 
         // Split on semicolons to execute each statement individually
         try (Statement stmt = conn.createStatement()) {
-            for (final String sql : schemaSql.split(";")) {
-                final String trimmed = sql.trim();
-                final StringBuilder sb = new StringBuilder();
+            for (final var sql : schemaSql.split(";")) {
+                final var trimmed = sql.trim();
+                final var sb = new StringBuilder();
                 Stream.of(trimmed.split("\n"))
                         .filter(line -> !line.trim().startsWith("--")) // skip comment lines
                         .forEach(line -> sb.append(line).append("\n"));
@@ -195,7 +195,7 @@ public class DatabaseInitializer {
     // PreparedStatement parameters; only identifiers (table/column names) are interpolated.
     @SuppressWarnings("java:S2077")
     private static void loadCsvData(Connection conn, String table) {
-        final String resource = "/db/ecommerce-data/" + table + ".csv";
+        final var resource = "/db/ecommerce-data/" + table + ".csv";
         final var stream = openResource(resource);
         if (stream == null) {
             throw new IllegalStateException(
@@ -204,16 +204,16 @@ public class DatabaseInitializer {
 
         try (var reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             // First line = column headers
-            final String headerLine = reader.readLine();
+            final var headerLine = reader.readLine();
             if (headerLine == null) {
                 log.warn("Empty CSV file for table '{}'", table);
                 return;
             }
 
-            final List<String> headers = parseCsvLine(headerLine);
-            final int colCount = headers.size();
-            final String placeholders = "?,".repeat(colCount).replaceAll(",$", "");
-            final String insertSql = "INSERT OR IGNORE INTO \""
+            final var headers = parseCsvLine(headerLine);
+            final var colCount = headers.size();
+            final var placeholders = "?,".repeat(colCount).replaceAll(",$", "");
+            final var insertSql = "INSERT OR IGNORE INTO \""
                     + table
                     + "\" (\""
                     + String.join("\", \"", headers)
@@ -225,13 +225,13 @@ public class DatabaseInitializer {
                 String csvLine;
                 int count = 0;
                 while ((csvLine = reader.readLine()) != null) {
-                    final String trimmedLine = csvLine.trim();
+                    final var trimmedLine = csvLine.trim();
                     if (trimmedLine.isEmpty()) {
                         continue;
                     }
-                    final List<String> row = parseCsvLine(trimmedLine);
+                    final var row = parseCsvLine(trimmedLine);
                     for (int i = 0; i < colCount; i++) {
-                        final String val = i < row.size() ? row.get(i).trim() : "";
+                        final var val = i < row.size() ? row.get(i).trim() : "";
                         if (val.isEmpty()) {
                             pstmt.setNull(i + 1, java.sql.Types.NULL);
                         }
@@ -256,7 +256,7 @@ public class DatabaseInitializer {
     private static java.io.InputStream openResource(String path) {
         final var tccl = Thread.currentThread().getContextClassLoader();
         // Strip the leading '/' that getResourceAsStream expects but ClassLoader does not
-        final String stripped = path.startsWith("/") ? path.substring(1) : path;
+        final var stripped = path.startsWith("/") ? path.substring(1) : path;
         if (tccl != null) {
             final var stream = tccl.getResourceAsStream(stripped);
             if (stream != null) {

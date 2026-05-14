@@ -19,7 +19,6 @@ package com.phonepe.sentinelai.examples.texttosql.agent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agent.AgentSetup;
@@ -32,19 +31,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
-@DisplayName("TextToSqlAgent")
 class TextToSqlAgentTest {
 
     private TextToSqlAgent agent;
 
     @Test
-    @DisplayName("agent is non-null after construction")
     void agentIsNonNull() {
         assertNotNull(agent);
     }
 
     @Test
-    @DisplayName("builder throws NullPointerException when setup is null")
     void builderThrowsWhenSetupIsNull() {
         final var builder = TextToSqlAgent.builder();
         builder.outputValidator((ctx, out) -> OutputValidationResults.success());
@@ -52,16 +48,15 @@ class TextToSqlAgentTest {
     }
 
     @Test
-    @DisplayName("builder with no extensions builds successfully")
     void builderWithNoExtensionsSucceeds() {
-        final Model model = mock(Model.class);
-        final AgentSetup setup = AgentSetup.builder()
+        final var model = mock(Model.class);
+        final var setup = AgentSetup.builder()
                 .mapper(new ObjectMapper())
                 .model(model)
                 .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
                 .outputGenerationTool(result -> result)
                 .build();
-        final TextToSqlAgent a = TextToSqlAgent.builder()
+        final var a = TextToSqlAgent.builder()
                 .setup(setup)
                 .outputValidator((ctx, out) -> OutputValidationResults.success())
                 .build();
@@ -70,10 +65,9 @@ class TextToSqlAgentTest {
     }
 
     @Test
-    @DisplayName("builder throws NullPointerException when outputValidator is null — uses default")
     void builderWithNullOutputValidatorUsesDefault() {
-        final Model model = mock(Model.class);
-        final AgentSetup setup = AgentSetup.builder()
+        final var model = mock(Model.class);
+        final var setup = AgentSetup.builder()
                 .mapper(new ObjectMapper())
                 .model(model)
                 .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
@@ -85,15 +79,14 @@ class TextToSqlAgentTest {
     }
 
     @Test
-    @DisplayName("name() returns 'text-to-sql-agent'")
     void nameReturnsExpected() {
         assertEquals("text-to-sql-agent", agent.name());
     }
 
     @BeforeEach
     void setUp() {
-        final Model model = mock(Model.class);
-        final AgentSetup setup = AgentSetup.builder()
+        final var model = mock(Model.class);
+        final var setup = AgentSetup.builder()
                 .mapper(new ObjectMapper())
                 .model(model)
                 .outputGenerationMode(OutputGenerationMode.TOOL_BASED)

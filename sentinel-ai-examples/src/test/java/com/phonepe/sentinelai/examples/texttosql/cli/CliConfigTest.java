@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.examples.texttosql.cli;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -26,36 +25,30 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("CliConfig")
 class CliConfigTest {
 
     @Nested
-    @DisplayName("AgentConfig defaults")
     class AgentConfigDefaults {
 
         @Test
-        @DisplayName("default maxTokens is 4096")
         void defaultMaxTokensIs4096() {
             CliConfig.AgentConfig cfg = new CliConfig.AgentConfig();
             assertEquals(4096, cfg.getMaxTokens());
         }
 
         @Test
-        @DisplayName("default streaming is true")
         void defaultStreamingIsTrue() {
             CliConfig.AgentConfig cfg = new CliConfig.AgentConfig();
             assertTrue(cfg.isStreaming());
         }
 
         @Test
-        @DisplayName("default temperature is 0.0")
         void defaultTemperatureIsZero() {
             CliConfig.AgentConfig cfg = new CliConfig.AgentConfig();
             assertEquals(0.0f, cfg.getTemperature(), 1e-6f);
         }
 
         @Test
-        @DisplayName("setters and getters work")
         void settersWork() {
             CliConfig.AgentConfig cfg = new CliConfig.AgentConfig();
             cfg.setTemperature(0.7f);
@@ -69,18 +62,15 @@ class CliConfigTest {
     }
 
     @Nested
-    @DisplayName("DatabaseConfig defaults")
     class DatabaseConfigDefaults {
 
         @Test
-        @DisplayName("default path is ./ecommerce.db")
         void defaultPath() {
             CliConfig.DatabaseConfig cfg = new CliConfig.DatabaseConfig();
             assertEquals("./ecommerce.db", cfg.getPath());
         }
 
         @Test
-        @DisplayName("path setter works")
         void pathSetterWorks() {
             CliConfig.DatabaseConfig cfg = new CliConfig.DatabaseConfig();
             cfg.setPath("/tmp/test.db");
@@ -89,11 +79,9 @@ class CliConfigTest {
     }
 
     @Nested
-    @DisplayName("OpenAIConfig defaults")
     class OpenAIConfigDefaults {
 
         @Test
-        @DisplayName("default apiKey and baseUrl are null")
         void defaultApiKeyAndBaseUrlAreNull() {
             CliConfig.OpenAIConfig cfg = new CliConfig.OpenAIConfig();
             assertNull(cfg.getApiKey());
@@ -101,21 +89,18 @@ class CliConfigTest {
         }
 
         @Test
-        @DisplayName("default bearerPrefix is 'Bearer '")
         void defaultBearerPrefix() {
             CliConfig.OpenAIConfig cfg = new CliConfig.OpenAIConfig();
             assertEquals("Bearer ", cfg.getBearerPrefix());
         }
 
         @Test
-        @DisplayName("default model is gpt-4o")
         void defaultModelIsGpt4o() {
             CliConfig.OpenAIConfig cfg = new CliConfig.OpenAIConfig();
             assertEquals("gpt-4o", cfg.getModel());
         }
 
         @Test
-        @DisplayName("setters work")
         void settersWork() {
             CliConfig.OpenAIConfig cfg = new CliConfig.OpenAIConfig();
             cfg.setApiKey("sk-test");
@@ -130,24 +115,26 @@ class CliConfigTest {
         }
     }
 
-    @Test
-    @DisplayName("default construction produces expected defaults")
-    void defaultConstructionProducesDefaults() {
-        CliConfig config = new CliConfig();
+    @Nested
+    class TopLevelDefaultsTests {
 
-        assertNotNull(config.getOpenai());
-        assertNotNull(config.getDatabase());
-        assertNotNull(config.getAgent());
-    }
+        @Test
+        void defaultConstructionProducesDefaults() {
+            CliConfig config = new CliConfig();
 
-    @Test
-    @DisplayName("top-level setters wire sub-configs")
-    void topLevelSetters() {
-        CliConfig config = new CliConfig();
-        CliConfig.OpenAIConfig openai = new CliConfig.OpenAIConfig();
-        openai.setApiKey("my-key");
-        config.setOpenai(openai);
+            assertNotNull(config.getOpenai());
+            assertNotNull(config.getDatabase());
+            assertNotNull(config.getAgent());
+        }
 
-        assertEquals("my-key", config.getOpenai().getApiKey());
+        @Test
+        void topLevelSetters() {
+            CliConfig config = new CliConfig();
+            CliConfig.OpenAIConfig openai = new CliConfig.OpenAIConfig();
+            openai.setApiKey("my-key");
+            config.setOpenai(openai);
+
+            assertEquals("my-key", config.getOpenai().getApiKey());
+        }
     }
 }

@@ -18,13 +18,11 @@ package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
 import com.phonepe.sentinelai.evals.EvalEngine;
-import com.phonepe.sentinelai.evals.EvalReport;
 import com.phonepe.sentinelai.evals.tests.Dataset;
 import com.phonepe.sentinelai.evals.tests.TestCase;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
@@ -40,21 +38,19 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
-@DisplayName("TextToSqlCLI evals")
 class TextToSqlCliEvalTest {
     @Test
-    @DisplayName("eval run passes for CLI-style text-to-sql agent")
     void evalRunPassesForCliStyleTextToSqlAgent() {
-        final ObjectMapper mapper = new ObjectMapper();
-        final AgentSetup setup = AgentSetup.builder()
+        final var mapper = new ObjectMapper();
+        final var setup = AgentSetup.builder()
                 .mapper(mapper)
                 .model(new StubTextToSqlModel())
                 .build();
 
-        final TextToSqlAgent agent = new TextToSqlAgent(
-                                                        setup,
-                                                        List.of(),
-                                                        (context, output) -> OutputValidationResults.success());
+        final var agent = new TextToSqlAgent(
+                                             setup,
+                                             List.of(),
+                                             (context, output) -> OutputValidationResults.success());
 
         final Dataset<String, SqlQueryResult> dataset = new Dataset<>(
                                                                       "text-to-sql-cli-evals",
@@ -74,7 +70,7 @@ class TextToSqlCliEvalTest {
                                                                                              )
                                                                       )));
 
-        final EvalReport report = new EvalEngine(mapper).run(dataset, agent);
+        final var report = new EvalEngine(mapper).run(dataset, agent);
 
         log.info("Eval report: {}", report);
         assertEquals(1, report.getExecutedTestCases());

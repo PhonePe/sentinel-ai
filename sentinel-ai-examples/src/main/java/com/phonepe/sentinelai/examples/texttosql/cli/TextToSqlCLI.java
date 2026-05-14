@@ -206,7 +206,7 @@ public class TextToSqlCLI implements Callable<Integer> {
                                      AgentSkillsExtension<String, SqlQueryResult, TextToSqlAgent> skillsExtension,
                                      OpenTelemetryAgentExtension<String, SqlQueryResult, TextToSqlAgent> otelExtension) {
         log.info("Building Text-to-SQL agent");
-        final TextToSqlAgent agent = TextToSqlAgent.builder()
+        final var agent = TextToSqlAgent.builder()
                 .setup(agentSetup)
                 .extension(skillsExtension)
                 .extension(otelExtension)
@@ -255,7 +255,7 @@ public class TextToSqlCLI implements Callable<Integer> {
                  "Building OpenAI model [name={}, baseUrl={}]",
                  config.getOpenai().getModel(),
                  config.getOpenai().getBaseUrl());
-        final SimpleOpenAI openAI = SimpleOpenAI.builder()
+        final var openAI = SimpleOpenAI.builder()
                 .baseUrl(config.getOpenai().getBaseUrl())
                 .apiKey(config.getOpenai().getApiKey())
                 .objectMapper(new ObjectMapper())
@@ -284,8 +284,8 @@ public class TextToSqlCLI implements Callable<Integer> {
     static OkHttpClientAdapter buildTrustedHttpClient(CliConfig config) {
         log.info("Building HTTP client");
 
-        final String apiKey = config.getOpenai().getApiKey();
-        final OkHttpClient httpClient = new OkHttpClient.Builder()
+        final var apiKey = config.getOpenai().getApiKey();
+        final var httpClient = new OkHttpClient.Builder()
                 .addInterceptor(
                                 new Interceptor() {
                                     @Override
@@ -327,7 +327,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      */
     @SneakyThrows
     static Path initializeDatabase(CliConfig config) {
-        final Path dbPath = Paths.get(config.getDatabase().getPath()).toAbsolutePath();
+        final var dbPath = Paths.get(config.getDatabase().getPath()).toAbsolutePath();
         log.info("Initialising database at {}", dbPath);
         DatabaseInitializer.ensureInitialised(dbPath);
         log.info("Database initialised successfully at {}", dbPath);
@@ -336,7 +336,7 @@ public class TextToSqlCLI implements Callable<Integer> {
 
     @SneakyThrows
     static CliConfig loadConfig(String configPath) {
-        final Path path = Paths.get(configPath);
+        final var path = Paths.get(configPath);
         if (!Files.exists(path)) {
             System.err.println("Config file not found: " + path.toAbsolutePath());
             System.err.println(
@@ -399,7 +399,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      */
     @SneakyThrows
     static void registerLocalTools(TextToSqlAgent agent, Path dbPath) {
-        final Path dataDir = dbPath.getParent();
+        final var dataDir = dbPath.getParent();
         log.info("Registering local SQL tools for database: {} (dataDir: {})", dbPath, dataDir);
         agent.registerTools(ToolUtils.readTools(new LocalTools(dbPath.toString(), dataDir)));
         log.info("Local SQL tools registered successfully");
@@ -413,8 +413,8 @@ public class TextToSqlCLI implements Callable<Integer> {
      * no separate JAR distribution is required.
      */
     static void registerMcpToolbox(TextToSqlAgent agent, Path dbPath, ObjectMapper mapper) {
-        final String javaCmd = ProcessHandle.current().info().command().orElse("java");
-        final String classpath = System.getProperty("java.class.path");
+        final var javaCmd = ProcessHandle.current().info().command().orElse("java");
+        final var classpath = System.getProperty("java.class.path");
         log.info("Registering MCP toolbox [javaCmd={}, dbPath={}]", javaCmd, dbPath);
 
         final var mcpConfig = MCPStdioServerConfig.builder()
@@ -452,8 +452,8 @@ public class TextToSqlCLI implements Callable<Integer> {
                                       Path dbPath,
                                       ObjectMapper mapper,
                                       int port) {
-        final String javaCmd = ProcessHandle.current().info().command().orElse("java");
-        final String classpath = System.getProperty("java.class.path");
+        final var javaCmd = ProcessHandle.current().info().command().orElse("java");
+        final var classpath = System.getProperty("java.class.path");
         log.info(
                  "Launching MCP SSE server subprocess [javaCmd={}, dbPath={}, port={}]",
                  javaCmd,
@@ -496,7 +496,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      * one.
      */
     static String resolveSessionId(String sessionId) {
-        final String resolved = (sessionId == null || sessionId.isBlank())
+        final var resolved = (sessionId == null || sessionId.isBlank())
                 ? UUID.randomUUID().toString()
                 : sessionId;
         log.info("Session ID resolved to: {}", resolved);
@@ -511,8 +511,8 @@ public class TextToSqlCLI implements Callable<Integer> {
     @SneakyThrows
     static String startRestServer(Path dbPath, ObjectMapper mapper) {
         log.info("Starting embedded SQLite REST server for database {}", dbPath);
-        final int port = SqliteRestServer.findFreePort();
-        final String baseUrl = SqliteRestServer.startEmbedded(dbPath.toString(), port, mapper);
+        final var port = SqliteRestServer.findFreePort();
+        final var baseUrl = SqliteRestServer.startEmbedded(dbPath.toString(), port, mapper);
         log.info("SQLite REST server ready at {}", baseUrl);
         return baseUrl;
     }
@@ -534,7 +534,7 @@ public class TextToSqlCLI implements Callable<Integer> {
     @SneakyThrows
     static void waitForMcpSseServer(String host, int port, long timeoutMs)
             throws InterruptedException {
-        final long deadline = System.currentTimeMillis() + timeoutMs;
+        final var deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
             try (var socket = new Socket()) {
                 socket.connect(new InetSocketAddress(host, port), 500);
@@ -559,20 +559,20 @@ public class TextToSqlCLI implements Callable<Integer> {
     public Integer call() {
         log.info("Starting Text-to-SQL CLI initialisation [toolboxMode={}]", toolboxMode);
 
-        final CliConfig config = loadConfig(configPath);
+        final var config = loadConfig(configPath);
         validateConfig(config);
 
-        final String effectiveSessionId = resolveSessionId(sessionId);
-        final ObjectMapper mapper = JsonUtils.createMapper();
+        final var effectiveSessionId = resolveSessionId(sessionId);
+        final var mapper = JsonUtils.createMapper();
 
-        final Path dbPath = initializeDatabase(config);
+        final var dbPath = initializeDatabase(config);
 
-        final OkHttpClientAdapter clientAdapter = buildTrustedHttpClient(config);
-        final SimpleOpenAIModel<SimpleOpenAI> model = buildOpenAIModel(config, clientAdapter, mapper);
-        final AgentSetup agentSetup = buildAgentSetup(config, model, mapper);
+        final var clientAdapter = buildTrustedHttpClient(config);
+        final var model = buildOpenAIModel(config, clientAdapter, mapper);
+        final var agentSetup = buildAgentSetup(config, model, mapper);
 
-        final AgentSkillsExtension<String, SqlQueryResult, TextToSqlAgent> skillsExtension = buildSkillsExtension();
-        final TextToSqlAgent agent = buildAgent(agentSetup, skillsExtension);
+        final var skillsExtension = buildSkillsExtension();
+        final var agent = buildAgent(agentSetup, skillsExtension);
 
         registerLocalTools(agent, dbPath);
         registerAskUserTool(agent);
@@ -589,7 +589,7 @@ public class TextToSqlCLI implements Callable<Integer> {
         }
         else {
             log.info("Registering HTTP toolbox (embedded REST server)");
-            final String baseUrl = startRestServer(dbPath, mapper);
+            final var baseUrl = startRestServer(dbPath, mapper);
             registerHttpToolbox(agent, baseUrl, mapper);
         }
 
@@ -610,7 +610,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      */
     @SneakyThrows
     AgentSkillsExtension<String, SqlQueryResult, TextToSqlAgent> buildSkillsExtension() {
-        final String resolvedSkillsDir = resolveSkillsDir();
+        final var resolvedSkillsDir = resolveSkillsDir();
         log.info("Building skills extension from directory: {}", resolvedSkillsDir);
         return AgentSkillsExtension.<String, SqlQueryResult, TextToSqlAgent>withMultipleSkills()
                 .baseDir(".")
@@ -637,10 +637,10 @@ public class TextToSqlCLI implements Callable<Integer> {
         // race conditions on filenames in publicly writable directories.
         final var ownerOnly = PosixFilePermissions.asFileAttribute(
                                                                    PosixFilePermissions.fromString("rwx------"));
-        final Path tempSkillsDir = Files.createTempDirectory(null, ownerOnly);
+        final var tempSkillsDir = Files.createTempDirectory(null, ownerOnly);
         tempSkillsDir.toFile().deleteOnExit();
 
-        final Path skillDir = tempSkillsDir.resolve("sql-execution");
+        final var skillDir = tempSkillsDir.resolve("sql-execution");
         Files.createDirectories(skillDir);
 
         final var skillStream = getClass().getResourceAsStream("/skills/sql-execution/SKILL.md");
@@ -649,7 +649,7 @@ public class TextToSqlCLI implements Callable<Integer> {
                      "Bundled skill SKILL.md not found on classpath — skills extension may have no skills");
         }
         else {
-            final Path skillFile = skillDir.resolve("SKILL.md");
+            final var skillFile = skillDir.resolve("SKILL.md");
             Files.write(skillFile, skillStream.readAllBytes());
             log.info("Extracted bundled skill to {}", skillFile);
         }
@@ -674,9 +674,9 @@ public class TextToSqlCLI implements Callable<Integer> {
             return;
         }
         final var messages = lastAgentOutput.getAllMessages();
-        final Path filePath = Path.of(filename);
-        final Path finalOutputPath = Path.of(".logs").resolve(filePath);
-        final String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(messages);
+        final var filePath = Path.of(filename);
+        final var finalOutputPath = Path.of(".logs").resolve(filePath);
+        final var json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(messages);
         Files.writeString(finalOutputPath, json, StandardCharsets.UTF_8);
         log.info("Dumped {} messages to {}", messages.size(), finalOutputPath.toAbsolutePath());
         ConsoleUtils.printDumpSuccess(finalOutputPath.toAbsolutePath().toString(), messages.size());
@@ -691,7 +691,7 @@ public class TextToSqlCLI implements Callable<Integer> {
                              CliConfig config,
                              String question,
                              String effectiveSessionId) {
-        final long startMs = System.currentTimeMillis();
+        final var startMs = System.currentTimeMillis();
         log.debug(
                   "Handling query [streaming={}, sessionId={}]: {}",
                   config.getAgent().isStreaming(),
@@ -716,7 +716,7 @@ public class TextToSqlCLI implements Callable<Integer> {
             else {
                 outputFuture = agent.executeAsync(agentInput);
             }
-            final AgentOutput<SqlQueryResult> output = ConsoleUtils.awaitWithSpinner(outputFuture, true);
+            final var output = ConsoleUtils.awaitWithSpinner(outputFuture, true);
             lastAgentOutput = output;
             output.getAllMessages();
             ConsoleUtils.printToStdout(System.lineSeparator());
@@ -750,7 +750,7 @@ public class TextToSqlCLI implements Callable<Integer> {
     // -------------------------------------------------------------------------
 
     private String resolveDumpMessagesFilename(String line) {
-        final String[] parts = line.split("\\s+", 2);
+        final var parts = line.split("\\s+", 2);
         return parts.length > 1 && !parts[1].isBlank()
                 ? parts[1].trim()
                 : "messages-" + System.currentTimeMillis() + ".json";
@@ -791,7 +791,7 @@ public class TextToSqlCLI implements Callable<Integer> {
             return true;
         }
 
-        final String trimmedLine = line.trim();
+        final var trimmedLine = line.trim();
         if (trimmedLine.isEmpty()) {
             ConsoleUtils.printWarning("Empty input — please provide a prompt.");
             return false;

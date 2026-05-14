@@ -18,7 +18,6 @@ package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -41,16 +40,16 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("ConsoleUtils")
+
 @ResourceLock(value = Resources.SYSTEM_OUT, mode = ResourceAccessMode.READ_WRITE)
 @ResourceLock(value = Resources.SYSTEM_ERR, mode = ResourceAccessMode.READ_WRITE)
 class ConsoleUtilsTest {
 
     @Nested
-    @DisplayName("awaitWithSpinner — delayed future")
     @Execution(ExecutionMode.SAME_THREAD)
     class AwaitWithSpinnerDelayedTests {
 
@@ -59,7 +58,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("spinner disabled: delayed future resolves without printing spinner")
         void spinnerDisabledDelayedFuture() throws Exception {
             ConsoleUtils.disableSpinner();
             ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -76,7 +74,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("spinner path: resolves future that completes after a short delay")
         void spinnerPathWithShortDelay() throws Exception {
             ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
             CompletableFuture<String> future = new CompletableFuture<>();
@@ -92,11 +89,9 @@ class ConsoleUtilsTest {
     }
 
     @Nested
-    @DisplayName("printBanner")
     class PrintBannerTests {
 
         @Test
-        @DisplayName("banner contains 'Sentinel AI' text")
         void bannerContainsSentinelAI() {
             ConsoleUtils.printBanner();
             String out = outCapture.toString();
@@ -104,7 +99,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("prints something to stdout")
         void printsSomethingToStdout() {
             ConsoleUtils.printBanner();
             String out = outCapture.toString();
@@ -113,11 +107,9 @@ class ConsoleUtilsTest {
     }
 
     @Nested
-    @DisplayName("printDumpSuccess")
     class PrintDumpSuccessTests {
 
         @Test
-        @DisplayName("includes path and message count")
         void includesPathAndCount() {
             ConsoleUtils.printDumpSuccess("/tmp/dump.json", 7);
             String out = outCapture.toString();
@@ -126,7 +118,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("writes [Dump] to stdout")
         void writesDumpToStdout() {
             ConsoleUtils.printDumpSuccess("/tmp/dump.json", 5);
             String out = outCapture.toString();
@@ -135,11 +126,9 @@ class ConsoleUtilsTest {
     }
 
     @Nested
-    @DisplayName("printError")
     class PrintErrorTests {
 
         @Test
-        @DisplayName("includes error message in stderr output")
         void includesMessageInStderr() {
             ConsoleUtils.printError("disk is full");
             String err = errCapture.toString();
@@ -147,7 +136,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("writes [Error] to stderr")
         void writesErrorToStderr() {
             ConsoleUtils.printError("something went wrong");
             String err = errCapture.toString();
@@ -156,11 +144,9 @@ class ConsoleUtilsTest {
     }
 
     @Nested
-    @DisplayName("printExamples")
     class PrintExamplesTests {
 
         @Test
-        @DisplayName("prints example prompts to stdout")
         void printsExamplesToStdout() {
             ConsoleUtils.printExamples();
             String out = outCapture.toString();
@@ -169,18 +155,38 @@ class ConsoleUtilsTest {
     }
 
     @Nested
-    @DisplayName("printStructuredResult")
+    class PrintPromptAndNullUsageTests {
+
+        @Test
+        void printPromptWritesPrompt() {
+            ConsoleUtils.printPrompt();
+            String out = outCapture.toString();
+            assertTrue(out.contains(">"), "Prompt should contain '>'");
+        }
+
+        @Test
+        void printUsageStatsNullUsageDoesNothing() {
+            assertDoesNotThrow(() -> ConsoleUtils.printUsageStats(null));
+            // Nothing should be written to stdout
+            String out = outCapture.toString();
+            assertTrue(out.isEmpty(), "Null usage should produce no output");
+        }
+    }
+
+    // =========================================================================
+    // Spinner toggle
+    // =========================================================================
+
+    @Nested
     class PrintStructuredResultTests {
 
         @Test
-        @DisplayName("handles blank generatedSql without throwing — covers isBlank branch")
         void handlesBlankSqlWithoutThrowing() {
             SqlQueryResult result = new SqlQueryResult("   ", List.of(), null, 0L);
             assertDoesNotThrow(() -> ConsoleUtils.printStructuredResult(result, 0L));
         }
 
         @Test
-        @DisplayName("handles null generatedSql without throwing")
         void handlesNullSqlWithoutThrowing() {
             // ConsoleUtils.formatSql returns null for null input; printStructuredResult
             // calls formattedSql.split("\n") which NPEs on null — this is a known behaviour.
@@ -192,7 +198,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("handles unparseable SQL gracefully — covers formatSql catch branch")
         void handlesUnparseableSqlGracefully() {
             SqlQueryResult result = new SqlQueryResult(
                                                        "THIS IS DELIBERATELY @BROKEN% SQL !!!",
@@ -203,7 +208,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("omits explanation section when explanation is blank")
         void omitsExplanationWhenBlank() {
             SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), "  ", 10L);
             ConsoleUtils.printStructuredResult(result, 50L);
@@ -213,7 +217,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("omits explanation section when explanation is null")
         void omitsExplanationWhenNull() {
             SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), null, 10L);
             ConsoleUtils.printStructuredResult(result, 50L);
@@ -223,7 +226,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("prints explanation when present")
         void printsExplanationWhenPresent() {
             SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), "This is the explanation.", 10L);
             ConsoleUtils.printStructuredResult(result, 50L);
@@ -233,7 +235,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("prints result rows section")
         void printsResultRowsSection() {
             SqlQueryResult result = new SqlQueryResult(
                                                        "SELECT user_id FROM users LIMIT 1",
@@ -246,7 +247,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("prints SQL and timing info to stdout")
         void printsSqlAndTimingInfo() {
             SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), "no rows found", 42L);
             ConsoleUtils.printStructuredResult(result, 100L);
@@ -257,15 +257,13 @@ class ConsoleUtilsTest {
     }
 
     // =========================================================================
-    // Spinner toggle
+    // printBanner
     // =========================================================================
 
     @Nested
-    @DisplayName("printUsageStats (non-null)")
     class PrintUsageStatsNonNullTests {
 
         @Test
-        @DisplayName("writes token counts to stdout")
         void writesTokenCounts() {
             ModelUsageStats usage = new ModelUsageStats();
             usage.incrementTotalTokens(100)
@@ -279,7 +277,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("writes Usage Stats header to stdout")
         void writesUsageStatsHeader() {
             ModelUsageStats usage = new ModelUsageStats();
             ConsoleUtils.printUsageStats(usage);
@@ -289,15 +286,13 @@ class ConsoleUtilsTest {
     }
 
     // =========================================================================
-    // printBanner
+    // printExamples
     // =========================================================================
 
     @Nested
-    @DisplayName("printWarning")
     class PrintWarningTests {
 
         @Test
-        @DisplayName("includes warning message in stdout")
         void includesMessageInStdout() {
             ConsoleUtils.printWarning("something suspicious");
             String out = outCapture.toString();
@@ -305,7 +300,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("writes [Warning] to stdout")
         void writesWarningToStdout() {
             ConsoleUtils.printWarning("low memory");
             String out = outCapture.toString();
@@ -314,15 +308,13 @@ class ConsoleUtilsTest {
     }
 
     // =========================================================================
-    // printExamples
+    // printPrompt
     // =========================================================================
 
     @Nested
-    @DisplayName("spinner toggle")
     class SpinnerToggleTests {
 
         @Test
-        @DisplayName("awaitWithSpinner resolves an already-completed future instantly")
         void awaitWithSpinnerCompletedFuture() throws Exception {
             CompletableFuture<String> future = CompletableFuture.completedFuture("done");
             String result = ConsoleUtils.awaitWithSpinner(future, false);
@@ -330,7 +322,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("awaitWithSpinner with spinner disabled resolves a completed future")
         void awaitWithSpinnerDisabled() throws Exception {
             ConsoleUtils.disableSpinner();
             CompletableFuture<String> future = CompletableFuture.completedFuture("hello");
@@ -339,7 +330,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("awaitWithSpinner with showSpinner=true resolves a completed future")
         void awaitWithSpinnerShowSpinnerTrue() throws Exception {
             CompletableFuture<Integer> future = CompletableFuture.completedFuture(42);
             Integer result = ConsoleUtils.awaitWithSpinner(future, true);
@@ -347,7 +337,6 @@ class ConsoleUtilsTest {
         }
 
         @Test
-        @DisplayName("disableSpinner / enableSpinner do not throw")
         void toggleDoesNotThrow() {
             assertDoesNotThrow(ConsoleUtils::disableSpinner);
             assertDoesNotThrow(ConsoleUtils::enableSpinner);
@@ -355,57 +344,42 @@ class ConsoleUtilsTest {
     }
 
     // =========================================================================
-    // printPrompt
-    // =========================================================================
-
-    private PrintStream originalOut;
-
-    // =========================================================================
     // printError
     // =========================================================================
 
-    private PrintStream originalErr;
+    @Nested
+    class StdoutTests {
+
+        @Test
+        void returnsNonNullPrintStream() {
+            final var stream = ConsoleUtils.stdout();
+            assertNotNull(stream, "stdout() should return a non-null PrintStream");
+        }
+    }
 
     // =========================================================================
     // printWarning
     // =========================================================================
 
-    private ByteArrayOutputStream outCapture;
+    private PrintStream originalOut;
 
     // =========================================================================
     // printDumpSuccess
     // =========================================================================
 
-    private ByteArrayOutputStream errCapture;
+    private PrintStream originalErr;
 
     // =========================================================================
     // printUsageStats
     // =========================================================================
 
-    @Test
-    @DisplayName("printPrompt writes '>' to stdout")
-    void printPromptWritesPrompt() {
-        ConsoleUtils.printPrompt();
-        String out = outCapture.toString();
-        assertTrue(out.contains(">"), "Prompt should contain '>'");
-    }
+    private ByteArrayOutputStream outCapture;
 
     // =========================================================================
     // printUsageStats with real ModelUsageStats
     // =========================================================================
 
-    @Test
-    @DisplayName("printUsageStats with null usage does nothing")
-    void printUsageStatsNullUsageDoesNothing() {
-        assertDoesNotThrow(() -> ConsoleUtils.printUsageStats(null));
-        // Nothing should be written to stdout
-        String out = outCapture.toString();
-        assertTrue(out.isEmpty(), "Null usage should produce no output");
-    }
-
-    // =========================================================================
-    // printStructuredResult
-    // =========================================================================
+    private ByteArrayOutputStream errCapture;
 
     @BeforeEach
     void redirectStreams() {
@@ -418,10 +392,6 @@ class ConsoleUtilsTest {
         // Ensure spinner is always re-enabled before each test
         ConsoleUtils.enableSpinner();
     }
-
-    // =========================================================================
-    // awaitWithSpinner — delayed future (covers TimeoutException spinner path)
-    // =========================================================================
 
     @AfterEach
     void restoreStreams() {

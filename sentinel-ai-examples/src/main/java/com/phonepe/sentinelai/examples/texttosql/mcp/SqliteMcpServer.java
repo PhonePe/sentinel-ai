@@ -20,7 +20,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpServer;
-import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -134,11 +133,11 @@ public class SqliteMcpServer implements Callable<Integer> {
      * connection.
      */
     private static void redirectLoggingToStderr() {
-        final LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
-        final ch.qos.logback.classic.Logger root = context.getLogger(Logger.ROOT_LOGGER_NAME);
+        final var context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        final var root = context.getLogger(Logger.ROOT_LOGGER_NAME);
         root.detachAndStopAllAppenders();
 
-        final PatternLayoutEncoder encoder = new PatternLayoutEncoder();
+        final var encoder = new PatternLayoutEncoder();
         encoder.setContext(context);
         encoder.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} — %msg%n");
         encoder.start();
@@ -275,7 +274,7 @@ public class SqliteMcpServer implements Callable<Integer> {
      */
     @SneakyThrows
     private Integer runSseMode() {
-        final ObjectMapper mapper = JsonUtils.createMapper();
+        final var mapper = JsonUtils.createMapper();
         final var jsonMapper = new JacksonMcpJsonMapper(mapper);
 
         final var transportProvider = HttpServletSseServerTransportProvider.builder()
@@ -284,7 +283,7 @@ public class SqliteMcpServer implements Callable<Integer> {
                 .messageEndpoint("/sse")
                 .build();
 
-        final McpSyncServer server = McpServer.sync(transportProvider)
+        final var server = McpServer.sync(transportProvider)
                 .serverInfo("sqlite-mcp-server", "1.0.0")
                 .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
                 .toolCall(
@@ -342,13 +341,13 @@ public class SqliteMcpServer implements Callable<Integer> {
      */
     @SneakyThrows
     private Integer runStdioMode() {
-        final ObjectMapper mapper = JsonUtils.createMapper();
+        final var mapper = JsonUtils.createMapper();
         final var jsonMapper = new JacksonMcpJsonMapper(mapper);
 
         // stdio transport: reads MCP requests from System.in, writes responses to stdout
         final var transportProvider = new StdioServerTransportProvider(jsonMapper);
 
-        final McpSyncServer server = McpServer.sync(transportProvider)
+        final var server = McpServer.sync(transportProvider)
                 .serverInfo("sqlite-mcp-server", "1.0.0")
                 .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
                 .toolCall(

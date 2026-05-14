@@ -22,7 +22,6 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -34,7 +33,6 @@ import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
-import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.examples.texttosql.agent.TextToSqlAgent;
@@ -48,9 +46,7 @@ import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -86,7 +82,6 @@ import static org.mockito.Mockito.when;
  * database, and several external services — these are covered by end-to-end / integration tests.
  * Here we focus on the public API surface that can be exercised without infrastructure.
  */
-@DisplayName("TextToSqlCLI")
 class TextToSqlCLITest {
 
     // =========================================================================
@@ -94,13 +89,11 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("buildAgentSetup")
     class BuildAgentSetupTests {
 
         @Test
-        @DisplayName("returns a non-null AgentSetup")
         void returnsNonNullAgentSetup() throws Exception {
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("https://api.openai.com/v1");
@@ -108,105 +101,103 @@ class TextToSqlCLITest {
             config.getAgent().setMaxTokens(4096);
             config.getAgent().setStreaming(false);
 
-            final ObjectMapper mapper = JsonUtils.createMapper();
-            final OkHttpClientAdapter clientAdapter = (OkHttpClientAdapter) invokeStaticMethod(
-                                                                                               "buildTrustedHttpClient",
-                                                                                               new Class<?>[]{
-                                                                                                       CliConfig.class
-                                                                                               },
-                                                                                               config);
-            final Object model = invokeStaticMethod(
-                                                    "buildOpenAIModel",
-                                                    new Class<?>[]{
-                                                            CliConfig.class,
-                                                            OkHttpClientAdapter.class,
-                                                            ObjectMapper.class
-                                                    },
-                                                    config,
-                                                    clientAdapter,
-                                                    mapper);
+            final var mapper = JsonUtils.createMapper();
+            final var clientAdapter = (OkHttpClientAdapter) invokeStaticMethod(
+                                                                               "buildTrustedHttpClient",
+                                                                               new Class<?>[]{
+                                                                                       CliConfig.class
+                                                                               },
+                                                                               config);
+            final var model = invokeStaticMethod(
+                                                 "buildOpenAIModel",
+                                                 new Class<?>[]{
+                                                         CliConfig.class,
+                                                         OkHttpClientAdapter.class,
+                                                         ObjectMapper.class
+                                                 },
+                                                 config,
+                                                 clientAdapter,
+                                                 mapper);
 
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "buildAgentSetup",
-                                                                  CliConfig.class,
-                                                                  com.phonepe.sentinelai.models.SimpleOpenAIModel.class,
-                                                                  ObjectMapper.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "buildAgentSetup",
+                                                               CliConfig.class,
+                                                               com.phonepe.sentinelai.models.SimpleOpenAIModel.class,
+                                                               ObjectMapper.class);
             m.setAccessible(true);
-            final Object agentSetup = m.invoke(null, config, model, mapper);
+            final var agentSetup = m.invoke(null, config, model, mapper);
 
             assertNotNull(agentSetup);
         }
 
         private Object invokeStaticMethod(String name, Class<?>[] paramTypes, Object... args)
                 throws Exception {
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(name, paramTypes);
+            final var m = TextToSqlCLI.class.getDeclaredMethod(name, paramTypes);
             m.setAccessible(true);
             return m.invoke(null, args);
         }
     }
 
     @Nested
-    @DisplayName("buildAgent")
     class BuildAgentTests {
 
         @Test
-        @DisplayName("adds skills and OpenTelemetry extensions to the agent")
         void addsSkillsAndOpenTelemetryExtensions() throws Exception {
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("https://api.openai.com/v1");
             config.getAgent().setTemperature(0.0f);
             config.getAgent().setMaxTokens(4096);
             config.getAgent().setStreaming(false);
-            final ObjectMapper mapper = JsonUtils.createMapper();
+            final var mapper = JsonUtils.createMapper();
 
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod(
-                                                                            "buildTrustedHttpClient",
-                                                                            CliConfig.class);
+            final var buildClient = TextToSqlCLI.class.getDeclaredMethod(
+                                                                         "buildTrustedHttpClient",
+                                                                         CliConfig.class);
             buildClient.setAccessible(true);
-            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
 
-            final Method buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildOpenAIModel",
-                                                                           CliConfig.class,
-                                                                           OkHttpClientAdapter.class,
-                                                                           ObjectMapper.class);
+            final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildOpenAIModel",
+                                                                        CliConfig.class,
+                                                                        OkHttpClientAdapter.class,
+                                                                        ObjectMapper.class);
             buildModel.setAccessible(true);
-            final SimpleOpenAIModel<?> model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
 
-            final Method buildSetup = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgentSetup",
-                                                                           CliConfig.class,
-                                                                           SimpleOpenAIModel.class,
-                                                                           ObjectMapper.class);
+            final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgentSetup",
+                                                                        CliConfig.class,
+                                                                        SimpleOpenAIModel.class,
+                                                                        ObjectMapper.class);
             buildSetup.setAccessible(true);
-            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+            final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
 
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
+            final var cli = new TextToSqlCLI();
+            final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
-            final Method buildOtel = TextToSqlCLI.class.getDeclaredMethod("buildOpenTelemetryExtension");
+            final var buildOtel = TextToSqlCLI.class.getDeclaredMethod("buildOpenTelemetryExtension");
             buildOtel.setAccessible(true);
-            final Object otelExtension = buildOtel.invoke(null);
+            final var otelExtension = buildOtel.invoke(null);
 
-            final Method buildAgent = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgent",
-                                                                           AgentSetup.class,
-                                                                           AgentSkillsExtension.class,
-                                                                           OpenTelemetryAgentExtension.class);
+            final var buildAgent = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgent",
+                                                                        AgentSetup.class,
+                                                                        AgentSkillsExtension.class,
+                                                                        OpenTelemetryAgentExtension.class);
             buildAgent.setAccessible(true);
-            final TextToSqlAgent agent = (TextToSqlAgent) buildAgent.invoke(null,
-                                                                            agentSetup,
-                                                                            skillsExtension,
-                                                                            otelExtension);
+            final var agent = (TextToSqlAgent) buildAgent.invoke(null,
+                                                                 agentSetup,
+                                                                 skillsExtension,
+                                                                 otelExtension);
 
-            final Field extensionsField = agent.getClass().getSuperclass().getDeclaredField("extensions");
+            final var extensionsField = agent.getClass().getSuperclass().getDeclaredField("extensions");
             extensionsField.setAccessible(true);
-            @SuppressWarnings("unchecked") final List<Object> extensions = (List<Object>) extensionsField.get(agent);
+            @SuppressWarnings("unchecked") final var extensions = (List<Object>) extensionsField.get(agent);
 
             assertEquals(2, extensions.size());
             assertEquals("agent-skills", invokeName(extensions.get(0)));
@@ -214,60 +205,59 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("builds a TextToSqlAgent successfully")
         void buildsAgentSuccessfully() throws Exception {
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("https://api.openai.com/v1");
             config.getAgent().setTemperature(0.0f);
             config.getAgent().setMaxTokens(4096);
             config.getAgent().setStreaming(false);
-            final ObjectMapper mapper = JsonUtils.createMapper();
+            final var mapper = JsonUtils.createMapper();
 
             // build prerequisites
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod(
-                                                                            "buildTrustedHttpClient",
-                                                                            CliConfig.class);
+            final var buildClient = TextToSqlCLI.class.getDeclaredMethod(
+                                                                         "buildTrustedHttpClient",
+                                                                         CliConfig.class);
             buildClient.setAccessible(true);
-            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
 
-            final Method buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildOpenAIModel",
-                                                                           CliConfig.class,
-                                                                           OkHttpClientAdapter.class,
-                                                                           ObjectMapper.class);
+            final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildOpenAIModel",
+                                                                        CliConfig.class,
+                                                                        OkHttpClientAdapter.class,
+                                                                        ObjectMapper.class);
             buildModel.setAccessible(true);
-            final SimpleOpenAIModel<?> model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
 
-            final Method buildSetup = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgentSetup",
-                                                                           CliConfig.class,
-                                                                           SimpleOpenAIModel.class,
-                                                                           ObjectMapper.class);
+            final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgentSetup",
+                                                                        CliConfig.class,
+                                                                        SimpleOpenAIModel.class,
+                                                                        ObjectMapper.class);
             buildSetup.setAccessible(true);
-            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+            final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
 
             // build skills extension via instance method
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
+            final var cli = new TextToSqlCLI();
+            final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
-            final Method buildAgent = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgent",
-                                                                           AgentSetup.class,
-                                                                           AgentSkillsExtension.class);
+            final var buildAgent = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgent",
+                                                                        AgentSetup.class,
+                                                                        AgentSkillsExtension.class);
             buildAgent.setAccessible(true);
-            final Object agent = buildAgent.invoke(null, agentSetup, skillsExtension);
+            final var agent = buildAgent.invoke(null, agentSetup, skillsExtension);
 
             assertNotNull(agent);
             assertInstanceOf(TextToSqlAgent.class, agent);
         }
 
         private String invokeName(Object extension) throws Exception {
-            final Method nameMethod = extension.getClass().getDeclaredMethod("name");
+            final var nameMethod = extension.getClass().getDeclaredMethod("name");
             nameMethod.setAccessible(true);
             return (String) nameMethod.invoke(extension);
         }
@@ -278,31 +268,29 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("buildOpenAIModel")
     class BuildOpenAIModelTests {
 
         @Test
-        @DisplayName("returns a non-null SimpleOpenAIModel")
         void returnsNonNullModel() throws Exception {
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("https://api.openai.com/v1");
 
-            final ObjectMapper mapper = JsonUtils.createMapper();
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod(
-                                                                            "buildTrustedHttpClient",
-                                                                            CliConfig.class);
+            final var mapper = JsonUtils.createMapper();
+            final var buildClient = TextToSqlCLI.class.getDeclaredMethod(
+                                                                         "buildTrustedHttpClient",
+                                                                         CliConfig.class);
             buildClient.setAccessible(true);
-            final OkHttpClientAdapter clientAdapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var clientAdapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
 
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "buildOpenAIModel",
-                                                                  CliConfig.class,
-                                                                  OkHttpClientAdapter.class,
-                                                                  ObjectMapper.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "buildOpenAIModel",
+                                                               CliConfig.class,
+                                                               OkHttpClientAdapter.class,
+                                                               ObjectMapper.class);
             m.setAccessible(true);
-            final Object model = m.invoke(null, config, clientAdapter, mapper);
+            final var model = m.invoke(null, config, clientAdapter, mapper);
 
             assertNotNull(model);
             assertInstanceOf(SimpleOpenAIModel.class, model);
@@ -310,33 +298,31 @@ class TextToSqlCLITest {
     }
 
     @Nested
-    @DisplayName("buildTrustedHttpClient interceptor")
     @WireMockTest
     class BuildTrustedHttpClientInterceptorTests {
 
         @Test
-        @DisplayName("interceptor replaces the Authorization header with the configured bearer token")
         void interceptorInjectsBearerToken(WireMockRuntimeInfo wmInfo) throws Exception {
             // Arrange: stub WireMock to accept any GET and return 200
             stubFor(get(anyUrl()).willReturn(aResponse().withStatus(200).withBody("ok")));
 
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("secret-key");
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("http://localhost:" + wmInfo.getHttpPort());
 
             // Build the adapter via reflection (static method)
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
+            final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
 
             // Extract the private OkHttpClient from the adapter via reflection
-            final Field okHttpClientField = OkHttpClientAdapter.class.getDeclaredField("okHttpClient");
+            final var okHttpClientField = OkHttpClientAdapter.class.getDeclaredField("okHttpClient");
             okHttpClientField.setAccessible(true);
-            final OkHttpClient okHttpClient = (OkHttpClient) okHttpClientField.get(adapter);
+            final var okHttpClient = (OkHttpClient) okHttpClientField.get(adapter);
 
             // Make a real HTTP call to WireMock — this triggers the interceptor
-            final Request request = new Request.Builder()
+            final var request = new Request.Builder()
                     .url("http://localhost:" + wmInfo.getHttpPort() + "/test")
                     .addHeader("Authorization", "old-value")
                     .build();
@@ -360,21 +346,19 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("buildTrustedHttpClient")
     class BuildTrustedHttpClientTests {
 
         @Test
-        @DisplayName("returns a non-null OkHttpClientAdapter")
         void returnsNonNullAdapter() throws Exception {
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
             config.getOpenai().setBearerPrefix("Bearer ");
 
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "buildTrustedHttpClient",
-                                                                  CliConfig.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "buildTrustedHttpClient",
+                                                               CliConfig.class);
             m.setAccessible(true);
-            final Object result = m.invoke(null, config);
+            final var result = m.invoke(null, config);
 
             assertNotNull(result);
             assertInstanceOf(OkHttpClientAdapter.class, result);
@@ -386,50 +370,95 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("dumpMessages")
+    class ConstantsAndEnumsTests {
+
+        @Test
+        void canBeInstantiatedWithoutThrowing() {
+            assertDoesNotThrow(TextToSqlCLI::new);
+        }
+
+        @Test
+        void defaultMcpSsePortMatchesSqliteMcpServerDefault() {
+            assertEquals(SqliteMcpServer.DEFAULT_SSE_PORT, TextToSqlCLI.DEFAULT_MCP_SSE_PORT);
+        }
+
+        @Test
+        void mcpServerModeEnumValues() {
+            final var values = TextToSqlCLI.McpServerMode.values();
+            assertEquals(2, values.length);
+            assertEquals(TextToSqlCLI.McpServerMode.STDIO, values[0]);
+            assertEquals(TextToSqlCLI.McpServerMode.SSE, values[1]);
+        }
+
+        @Test
+        void mcpServerModeValueOf() {
+            assertEquals(
+                         TextToSqlCLI.McpServerMode.STDIO,
+                         TextToSqlCLI.McpServerMode.valueOf("STDIO"));
+            assertEquals(TextToSqlCLI.McpServerMode.SSE, TextToSqlCLI.McpServerMode.valueOf("SSE"));
+        }
+
+        @Test
+        void toolboxModeEnumValues() {
+            final var values = TextToSqlCLI.ToolboxMode.values();
+            assertEquals(2, values.length);
+            assertEquals(TextToSqlCLI.ToolboxMode.HTTP, values[0]);
+            assertEquals(TextToSqlCLI.ToolboxMode.MCP, values[1]);
+        }
+
+        @Test
+        void toolboxModeValueOf() {
+            assertEquals(TextToSqlCLI.ToolboxMode.HTTP, TextToSqlCLI.ToolboxMode.valueOf("HTTP"));
+            assertEquals(TextToSqlCLI.ToolboxMode.MCP, TextToSqlCLI.ToolboxMode.valueOf("MCP"));
+        }
+    }
+
+    // =========================================================================
+    // resolveSessionId (via reflection)
+    // =========================================================================
+
+    @Nested
     class DumpMessagesTests {
 
         @Test
-        @DisplayName("prints warning when lastAgentOutput is null")
         void printsWarningWhenNoOutput() throws Exception {
-            final TextToSqlCLI cli = new TextToSqlCLI();
+            final var cli = new TextToSqlCLI();
             // lastAgentOutput is null by default — exercising the early-return branch
-            final ObjectMapper mapper = JsonUtils.createMapper();
+            final var mapper = JsonUtils.createMapper();
 
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "dumpMessages",
-                                                                  String.class,
-                                                                  ObjectMapper.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "dumpMessages",
+                                                               String.class,
+                                                               ObjectMapper.class);
             m.setAccessible(true);
             // Should not throw; just prints a warning
             assertDoesNotThrow(() -> m.invoke(cli, "messages-test.json", mapper));
         }
 
         @Test
-        @DisplayName("writes messages to .logs/ when lastAgentOutput is set")
         void writesMessagesToLogsDirectory() throws Exception {
             // Ensure .logs/ directory exists (it's created by the production code)
-            final Path logsDir = Path.of(".logs");
+            final var logsDir = Path.of(".logs");
             Files.createDirectories(logsDir);
 
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            final ObjectMapper mapper = JsonUtils.createMapper();
+            final var cli = new TextToSqlCLI();
+            final var mapper = JsonUtils.createMapper();
 
             // Inject a non-null AgentOutput via reflection
-            @SuppressWarnings("unchecked") final AgentOutput<Object> output = new AgentOutput<>(null,
-                                                                                                List.of(),
-                                                                                                List.of(),
-                                                                                                null,
-                                                                                                null);
-            final Field lastOutputField = TextToSqlCLI.class.getDeclaredField("lastAgentOutput");
+            final AgentOutput<SqlQueryResult> output = new AgentOutput<>(null,
+                                                                         List.of(),
+                                                                         List.of(),
+                                                                         null,
+                                                                         null);
+            final var lastOutputField = TextToSqlCLI.class.getDeclaredField("lastAgentOutput");
             lastOutputField.setAccessible(true);
             lastOutputField.set(cli, output);
 
-            final String filename = "test-dump-" + System.nanoTime() + ".json";
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "dumpMessages",
-                                                                  String.class,
-                                                                  ObjectMapper.class);
+            final var filename = "test-dump-" + System.nanoTime() + ".json";
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "dumpMessages",
+                                                               String.class,
+                                                               ObjectMapper.class);
             m.setAccessible(true);
             assertDoesNotThrow(() -> m.invoke(cli, filename, mapper));
 
@@ -440,20 +469,17 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // resolveSessionId (via reflection)
+    // resolveSkillsDir (via reflection)
     // =========================================================================
 
     @Nested
-    @DisplayName("handleQuery")
     class HandleQueryTests {
 
         private static final String SESSION = "test-session";
 
         @Test
-        @DisplayName("exception during executeAsync is caught and error is printed")
-        @SuppressWarnings("unchecked")
         void exceptionIsCaughtAndPrinted() {
-            final TextToSqlAgent agent = mock(TextToSqlAgent.class);
+            final var agent = mock(TextToSqlAgent.class);
             when(agent.executeAsync(any()))
                     .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));
 
@@ -462,23 +488,9 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("non-streaming: both data and error null triggers printWarning")
-        @SuppressWarnings("unchecked")
-        void nonStreamingEmptyResult() {
-            final TextToSqlAgent agent = mock(TextToSqlAgent.class);
-            final AgentOutput<SqlQueryResult> output = new AgentOutput<>(null, List.of(), List.of(), null, null);
-            when(agent.executeAsync(any()))
-                    .thenReturn(CompletableFuture.completedFuture(output));
-
-            assertDoesNotThrow(() -> invokeHandleQuery(new TextToSqlCLI(), agent, buildConfig(false), "any query"));
-        }
-
-        @Test
-        @DisplayName("non-streaming: null data + error triggers printError")
-        @SuppressWarnings("unchecked")
         void nonStreamingErrorResult() {
-            final TextToSqlAgent agent = mock(TextToSqlAgent.class);
-            final SentinelError err = SentinelError.error(ErrorType.NO_RESPONSE);
+            final var agent = mock(TextToSqlAgent.class);
+            final var err = SentinelError.error(ErrorType.NO_RESPONSE);
             final AgentOutput<SqlQueryResult> output = new AgentOutput<>(null, List.of(), List.of(), null, err);
             when(agent.executeAsync(any()))
                     .thenReturn(CompletableFuture.completedFuture(output));
@@ -487,12 +499,10 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("non-streaming: data result triggers printStructuredResult")
-        @SuppressWarnings("unchecked")
         void nonStreamingSuccessWithData() {
-            final TextToSqlAgent agent = mock(TextToSqlAgent.class);
-            final SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of("{\"x\":1}"), "one row", 42L);
-            final AgentOutput<SqlQueryResult> output = new AgentOutput<>(result, List.of(), List.of(), null, null);
+            final var agent = mock(TextToSqlAgent.class);
+            final var result = new SqlQueryResult("SELECT 1", List.of("{\"x\":1}"), "one row", 42L);
+            final var output = new AgentOutput<>(result, List.of(), List.of(), null, null);
             when(agent.executeAsync(any()))
                     .thenReturn(CompletableFuture.completedFuture(output));
 
@@ -500,12 +510,11 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("streaming: executeAsyncStreaming is called and result is handled")
         @SuppressWarnings("unchecked")
         void streamingSuccessWithData() {
-            final TextToSqlAgent agent = mock(TextToSqlAgent.class);
-            final SqlQueryResult result = new SqlQueryResult("SELECT 2", List.of(), "no rows", 10L);
-            final AgentOutput<SqlQueryResult> output = new AgentOutput<>(result, List.of(), List.of(), null, null);
+            final var agent = mock(TextToSqlAgent.class);
+            final var result = new SqlQueryResult("SELECT 2", List.of(), "no rows", 10L);
+            final var output = new AgentOutput<>(result, List.of(), List.of(), null, null);
             when(agent.executeAsyncStreaming(any(), any(Consumer.class)))
                     .thenReturn(CompletableFuture.completedFuture(output));
 
@@ -513,7 +522,7 @@ class TextToSqlCLITest {
         }
 
         private CliConfig buildConfig(boolean streaming) {
-            final CliConfig cfg = new CliConfig();
+            final var cfg = new CliConfig();
             cfg.getOpenai().setApiKey("test-key");
             cfg.getOpenai().setModel("gpt-4o");
             cfg.getOpenai().setBaseUrl("https://api.openai.com/v1");
@@ -530,12 +539,12 @@ class TextToSqlCLITest {
                                        CliConfig config,
                                        String question)
                 throws Exception {
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "handleQuery",
-                                                                  TextToSqlAgent.class,
-                                                                  CliConfig.class,
-                                                                  String.class,
-                                                                  String.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "handleQuery",
+                                                               TextToSqlAgent.class,
+                                                               CliConfig.class,
+                                                               String.class,
+                                                               String.class);
             m.setAccessible(true);
             try {
                 m.invoke(cli, agent, config, question, SESSION);
@@ -549,26 +558,24 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // resolveSkillsDir (via reflection)
+    // loadConfig (via reflection) — success and missing-file branches
     // =========================================================================
 
     @Nested
-    @DisplayName("initializeDatabase")
     class InitializeDatabaseTests {
 
         @TempDir
         Path tempDir;
 
         @Test
-        @DisplayName("initialises the SQLite database and returns the absolute path")
         void initialisesDatabase() throws Exception {
-            final Path dbFile = tempDir.resolve("test.db");
-            final CliConfig config = new CliConfig();
+            final var dbFile = tempDir.resolve("test.db");
+            final var config = new CliConfig();
             config.getDatabase().setPath(dbFile.toAbsolutePath().toString());
 
-            final Method m = TextToSqlCLI.class.getDeclaredMethod("initializeDatabase", CliConfig.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod("initializeDatabase", CliConfig.class);
             m.setAccessible(true);
-            final Path result = (Path) m.invoke(null, config);
+            final var result = (Path) m.invoke(null, config);
 
             assertNotNull(result);
             assertTrue(result.isAbsolute(), "Returned path must be absolute");
@@ -577,132 +584,127 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // loadConfig (via reflection) — success and missing-file branches
+    // initializeDatabase (via reflection)
     // =========================================================================
 
     @Nested
-    @DisplayName("Lambda coverage")
     class LambdaCoverageTests {
 
         @Test
-        @DisplayName("outputGenerationTool lambda returns the input unchanged")
         void outputGenerationToolLambdaReturnsInput() throws Exception {
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("test-key");
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("https://api.openai.com/v1");
             config.getAgent().setTemperature(0.0f);
             config.getAgent().setMaxTokens(4096);
             config.getAgent().setStreaming(false);
-            final ObjectMapper mapper = JsonUtils.createMapper();
+            final var mapper = JsonUtils.createMapper();
 
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
+            final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
 
-            final Method buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildOpenAIModel",
-                                                                           CliConfig.class,
-                                                                           OkHttpClientAdapter.class,
-                                                                           ObjectMapper.class);
+            final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildOpenAIModel",
+                                                                        CliConfig.class,
+                                                                        OkHttpClientAdapter.class,
+                                                                        ObjectMapper.class);
             buildModel.setAccessible(true);
-            final SimpleOpenAIModel<?> model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
 
-            final Method buildSetup = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgentSetup",
-                                                                           CliConfig.class,
-                                                                           SimpleOpenAIModel.class,
-                                                                           ObjectMapper.class);
+            final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgentSetup",
+                                                                        CliConfig.class,
+                                                                        SimpleOpenAIModel.class,
+                                                                        ObjectMapper.class);
             buildSetup.setAccessible(true);
-            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+            final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
 
             // Directly invoke the outputGenerationTool lambda
-            final Field toolField = AgentSetup.class.getDeclaredField("outputGenerationTool");
+            final var toolField = AgentSetup.class.getDeclaredField("outputGenerationTool");
             toolField.setAccessible(true);
-            @SuppressWarnings("unchecked") final UnaryOperator<String> tool = (UnaryOperator<String>) toolField.get(
-                                                                                                                    agentSetup);
+            @SuppressWarnings("unchecked") final var tool = (UnaryOperator<String>) toolField.get(
+                                                                                                  agentSetup);
             assertNotNull(tool);
             assertEquals("hello", tool.apply("hello"));
         }
 
         @Test
-        @DisplayName("outputValidator lambda returns success")
         @SuppressWarnings("unchecked")
         void outputValidatorLambdaReturnsSuccess() throws Exception {
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("test-key");
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("https://api.openai.com/v1");
             config.getAgent().setTemperature(0.0f);
             config.getAgent().setMaxTokens(4096);
             config.getAgent().setStreaming(false);
-            final ObjectMapper mapper = JsonUtils.createMapper();
+            final var mapper = JsonUtils.createMapper();
 
-            final TextToSqlAgent agent = buildAgent(config, mapper);
+            final var agent = buildAgent(config, mapper);
 
             // Get the outputValidator field from Agent superclass
-            final Field validatorField = agent.getClass().getSuperclass().getDeclaredField("outputValidator");
+            final var validatorField = agent.getClass().getSuperclass().getDeclaredField("outputValidator");
             validatorField.setAccessible(true);
-            final OutputValidator<String, ?> validator = (OutputValidator<String, ?>) validatorField.get(agent);
+            final var validator = (OutputValidator<String, ?>) validatorField.get(agent);
             assertNotNull(validator);
 
             // Invoke with null context and null output — the lambda ignores both args
-            final OutputValidationResults result = validator.validate(null, null);
+            final var result = validator.validate(null, null);
             assertNotNull(result);
             assertTrue(result.isSuccessful(), "outputValidator lambda should always return success");
         }
 
         private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
+            final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
 
-            final Method buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildOpenAIModel",
-                                                                           CliConfig.class,
-                                                                           OkHttpClientAdapter.class,
-                                                                           ObjectMapper.class);
+            final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildOpenAIModel",
+                                                                        CliConfig.class,
+                                                                        OkHttpClientAdapter.class,
+                                                                        ObjectMapper.class);
             buildModel.setAccessible(true);
-            final SimpleOpenAIModel<?> model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
 
-            final Method buildSetup = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgentSetup",
-                                                                           CliConfig.class,
-                                                                           SimpleOpenAIModel.class,
-                                                                           ObjectMapper.class);
+            final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgentSetup",
+                                                                        CliConfig.class,
+                                                                        SimpleOpenAIModel.class,
+                                                                        ObjectMapper.class);
             buildSetup.setAccessible(true);
-            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+            final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
 
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
+            final var cli = new TextToSqlCLI();
+            final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
-            final Method buildAgentMethod = TextToSqlCLI.class.getDeclaredMethod(
-                                                                                 "buildAgent",
-                                                                                 AgentSetup.class,
-                                                                                 AgentSkillsExtension.class);
+            final var buildAgentMethod = TextToSqlCLI.class.getDeclaredMethod(
+                                                                              "buildAgent",
+                                                                              AgentSetup.class,
+                                                                              AgentSkillsExtension.class);
             buildAgentMethod.setAccessible(true);
             return (TextToSqlAgent) buildAgentMethod.invoke(null, agentSetup, skillsExtension);
         }
     }
 
     // =========================================================================
-    // initializeDatabase (via reflection)
+    // buildTrustedHttpClient (via reflection)
     // =========================================================================
 
     @Nested
-    @DisplayName("loadConfig")
     class LoadConfigTests {
 
         @TempDir
         Path tempDir;
 
         @Test
-        @DisplayName("loads a valid YAML config file successfully")
         void loadsValidYamlConfig() throws Exception {
-            final Path configFile = tempDir.resolve("agent-config.yml");
+            final var configFile = tempDir.resolve("agent-config.yml");
             Files.writeString(
                               configFile,
                               """
@@ -718,75 +720,10 @@ class TextToSqlCLITest {
                                       """,
                               StandardCharsets.UTF_8);
 
-            final Method m = TextToSqlCLI.class.getDeclaredMethod("loadConfig", String.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod("loadConfig", String.class);
             m.setAccessible(true);
-            final Object config = m.invoke(null, configFile.toAbsolutePath().toString());
+            final var config = m.invoke(null, configFile.toAbsolutePath().toString());
             assertNotNull(config);
-        }
-    }
-
-    // =========================================================================
-    // buildTrustedHttpClient (via reflection)
-    // =========================================================================
-
-    @Nested
-    @DisplayName("registerAskUserTool")
-    class RegisterAskUserToolTests {
-
-        @Test
-        @DisplayName("registers ask-user tool without throwing")
-        void registersWithoutThrowing() throws Exception {
-            final CliConfig config = new CliConfig();
-            config.getOpenai().setApiKey("test-api-key");
-            config.getOpenai().setModel("gpt-4o");
-            config.getOpenai().setBaseUrl("https://api.openai.com/v1");
-            config.getAgent().setTemperature(0.0f);
-            config.getAgent().setMaxTokens(4096);
-            config.getAgent().setStreaming(false);
-            final ObjectMapper mapper = JsonUtils.createMapper();
-
-            final TextToSqlAgent agent = buildAgent(config, mapper);
-
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "registerAskUserTool",
-                                                                  TextToSqlAgent.class);
-            m.setAccessible(true);
-            assertDoesNotThrow(() -> m.invoke(null, agent));
-        }
-
-        private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
-            buildClient.setAccessible(true);
-            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
-
-            final Method buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildOpenAIModel",
-                                                                           CliConfig.class,
-                                                                           OkHttpClientAdapter.class,
-                                                                           ObjectMapper.class);
-            buildModel.setAccessible(true);
-            final SimpleOpenAIModel<?> model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
-
-            final Method buildSetup = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgentSetup",
-                                                                           CliConfig.class,
-                                                                           SimpleOpenAIModel.class,
-                                                                           ObjectMapper.class);
-            buildSetup.setAccessible(true);
-            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
-
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
-            buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
-                    .invoke(cli);
-
-            final Method buildAgent = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgent",
-                                                                           AgentSetup.class,
-                                                                           AgentSkillsExtension.class);
-            buildAgent.setAccessible(true);
-            return (TextToSqlAgent) buildAgent.invoke(null, agentSetup, skillsExtension);
         }
     }
 
@@ -795,62 +732,123 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("registerHttpToolbox")
+    class RegisterAskUserToolTests {
+
+        @Test
+        void registersWithoutThrowing() throws Exception {
+            final var config = new CliConfig();
+            config.getOpenai().setApiKey("test-api-key");
+            config.getOpenai().setModel("gpt-4o");
+            config.getOpenai().setBaseUrl("https://api.openai.com/v1");
+            config.getAgent().setTemperature(0.0f);
+            config.getAgent().setMaxTokens(4096);
+            config.getAgent().setStreaming(false);
+            final var mapper = JsonUtils.createMapper();
+
+            final var agent = buildAgent(config, mapper);
+
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "registerAskUserTool",
+                                                               TextToSqlAgent.class);
+            m.setAccessible(true);
+            assertDoesNotThrow(() -> m.invoke(null, agent));
+        }
+
+        private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
+            final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
+            buildClient.setAccessible(true);
+            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+
+            final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildOpenAIModel",
+                                                                        CliConfig.class,
+                                                                        OkHttpClientAdapter.class,
+                                                                        ObjectMapper.class);
+            buildModel.setAccessible(true);
+            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+
+            final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgentSetup",
+                                                                        CliConfig.class,
+                                                                        SimpleOpenAIModel.class,
+                                                                        ObjectMapper.class);
+            buildSetup.setAccessible(true);
+            final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+
+            final var cli = new TextToSqlCLI();
+            final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
+            buildSkills.setAccessible(true);
+            @SuppressWarnings("unchecked") final var skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+                    .invoke(cli);
+
+            final var buildAgent = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgent",
+                                                                        AgentSetup.class,
+                                                                        AgentSkillsExtension.class);
+            buildAgent.setAccessible(true);
+            return (TextToSqlAgent) buildAgent.invoke(null, agentSetup, skillsExtension);
+        }
+    }
+
+    // =========================================================================
+    // waitForMcpSseServer (via reflection) — timeout branch
+    // =========================================================================
+
+    @Nested
     class RegisterHttpToolboxTests {
 
         @Test
-        @DisplayName("registers HTTP toolbox without throwing")
         void registersWithoutThrowing() throws Exception {
-            final CliConfig config = buildConfig();
-            final ObjectMapper mapper = JsonUtils.createMapper();
-            final TextToSqlAgent agent = buildAgent(config, mapper);
+            final var config = buildConfig();
+            final var mapper = JsonUtils.createMapper();
+            final var agent = buildAgent(config, mapper);
 
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "registerHttpToolbox",
-                                                                  TextToSqlAgent.class,
-                                                                  String.class,
-                                                                  ObjectMapper.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "registerHttpToolbox",
+                                                               TextToSqlAgent.class,
+                                                               String.class,
+                                                               ObjectMapper.class);
             m.setAccessible(true);
             assertDoesNotThrow(() -> m.invoke(null, agent, "http://localhost:19999", mapper));
         }
 
         private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
+            final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
 
-            final Method buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildOpenAIModel",
-                                                                           CliConfig.class,
-                                                                           OkHttpClientAdapter.class,
-                                                                           ObjectMapper.class);
+            final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildOpenAIModel",
+                                                                        CliConfig.class,
+                                                                        OkHttpClientAdapter.class,
+                                                                        ObjectMapper.class);
             buildModel.setAccessible(true);
-            final SimpleOpenAIModel<?> model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
 
-            final Method buildSetup = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgentSetup",
-                                                                           CliConfig.class,
-                                                                           SimpleOpenAIModel.class,
-                                                                           ObjectMapper.class);
+            final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgentSetup",
+                                                                        CliConfig.class,
+                                                                        SimpleOpenAIModel.class,
+                                                                        ObjectMapper.class);
             buildSetup.setAccessible(true);
-            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+            final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
 
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
+            final var cli = new TextToSqlCLI();
+            final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> ext = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var ext = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
-            final Method buildAgentM = TextToSqlCLI.class.getDeclaredMethod(
-                                                                            "buildAgent",
-                                                                            AgentSetup.class,
-                                                                            AgentSkillsExtension.class);
+            final var buildAgentM = TextToSqlCLI.class.getDeclaredMethod(
+                                                                         "buildAgent",
+                                                                         AgentSetup.class,
+                                                                         AgentSkillsExtension.class);
             buildAgentM.setAccessible(true);
             return (TextToSqlAgent) buildAgentM.invoke(null, agentSetup, ext);
         }
 
         private CliConfig buildConfig() {
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("https://api.openai.com/v1");
@@ -862,114 +860,72 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // waitForMcpSseServer (via reflection) — timeout branch
+    // buildOpenAIModel (via reflection)
     // =========================================================================
 
     @Nested
-    @DisplayName("registerLocalTools")
     class RegisterLocalToolsTests {
 
         @TempDir
         Path tempDir;
 
         @Test
-        @DisplayName("registers local tools without throwing")
         void registersWithoutThrowing() throws Exception {
-            final Path dbPath = tempDir.resolve("local-tools-test.db");
+            final var dbPath = tempDir.resolve("local-tools-test.db");
             DatabaseInitializer.ensureInitialised(dbPath);
 
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("https://api.openai.com/v1");
             config.getAgent().setTemperature(0.0f);
             config.getAgent().setMaxTokens(4096);
             config.getAgent().setStreaming(false);
-            final ObjectMapper mapper = JsonUtils.createMapper();
+            final var mapper = JsonUtils.createMapper();
 
-            final TextToSqlAgent agent = buildAgent(config, mapper);
+            final var agent = buildAgent(config, mapper);
 
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "registerLocalTools",
-                                                                  TextToSqlAgent.class,
-                                                                  Path.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "registerLocalTools",
+                                                               TextToSqlAgent.class,
+                                                               Path.class);
             m.setAccessible(true);
             assertDoesNotThrow(() -> m.invoke(null, agent, dbPath));
         }
 
         private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
+            final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
 
-            final Method buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildOpenAIModel",
-                                                                           CliConfig.class,
-                                                                           OkHttpClientAdapter.class,
-                                                                           ObjectMapper.class);
+            final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildOpenAIModel",
+                                                                        CliConfig.class,
+                                                                        OkHttpClientAdapter.class,
+                                                                        ObjectMapper.class);
             buildModel.setAccessible(true);
-            final SimpleOpenAIModel<?> model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
 
-            final Method buildSetup = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgentSetup",
-                                                                           CliConfig.class,
-                                                                           SimpleOpenAIModel.class,
-                                                                           ObjectMapper.class);
+            final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgentSetup",
+                                                                        CliConfig.class,
+                                                                        SimpleOpenAIModel.class,
+                                                                        ObjectMapper.class);
             buildSetup.setAccessible(true);
-            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+            final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
 
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
+            final var cli = new TextToSqlCLI();
+            final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
-            final Method buildAgent = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgent",
-                                                                           AgentSetup.class,
-                                                                           AgentSkillsExtension.class);
+            final var buildAgent = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgent",
+                                                                        AgentSetup.class,
+                                                                        AgentSkillsExtension.class);
             buildAgent.setAccessible(true);
             return (TextToSqlAgent) buildAgent.invoke(null, agentSetup, skillsExtension);
-        }
-    }
-
-    // =========================================================================
-    // buildOpenAIModel (via reflection)
-    // =========================================================================
-
-    @Nested
-    @DisplayName("resolveSessionId")
-    class ResolveSessionIdTests {
-
-        @Test
-        @DisplayName("returns the provided sessionId when it is non-blank")
-        void returnsProvidedSessionId() throws Exception {
-            final Method m = TextToSqlCLI.class.getDeclaredMethod("resolveSessionId", String.class);
-            m.setAccessible(true);
-            final String result = (String) m.invoke(null, "my-session-123");
-            assertEquals("my-session-123", result);
-        }
-
-        @Test
-        @DisplayName("returns a UUID when sessionId is blank")
-        void returnsUuidForBlankSessionId() throws Exception {
-            final Method m = TextToSqlCLI.class.getDeclaredMethod("resolveSessionId", String.class);
-            m.setAccessible(true);
-            final String result = (String) m.invoke(null, "   ");
-            assertNotNull(result);
-            assertEquals(36, result.length());
-        }
-
-        @Test
-        @DisplayName("returns a UUID when sessionId is null")
-        void returnsUuidForNullSessionId() throws Exception {
-            final Method m = TextToSqlCLI.class.getDeclaredMethod("resolveSessionId", String.class);
-            m.setAccessible(true);
-            final String result = (String) m.invoke(null, (Object) null);
-            assertNotNull(result);
-            assertFalse(result.isBlank());
-            // Should be a valid UUID-ish string (36 chars with dashes)
-            assertEquals(36, result.length());
         }
     }
 
@@ -978,37 +934,26 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("resolveSkillsDir")
-    class ResolveSkillsDirTests {
+    class ResolveDumpMessagesFilenameTests {
 
         @Test
-        @DisplayName("creates a temp directory with extracted skill when skillsDir is null")
-        void createsTempDirWhenSkillsDirIsNull() throws Exception {
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            // skillsDir field is null by default
-
-            final Method m = TextToSqlCLI.class.getDeclaredMethod("resolveSkillsDir");
+        void returnsExplicitFilename() throws Exception {
+            final var cli = new TextToSqlCLI();
+            final var m = TextToSqlCLI.class.getDeclaredMethod("resolveDumpMessagesFilename", String.class);
             m.setAccessible(true);
-            final String result = (String) m.invoke(cli);
-            assertNotNull(result);
-            assertFalse(result.isBlank());
-            assertTrue(
-                       java.nio.file.Files.isDirectory(java.nio.file.Paths.get(result)),
-                       "Should return a path to an existing temp directory");
+            final var result = (String) m.invoke(cli, "/dumpMessages myfile.json");
+            assertEquals("myfile.json", result);
         }
 
         @Test
-        @DisplayName("returns provided skillsDir when it is set")
-        void returnsProvidedSkillsDir() throws Exception {
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            final Field skillsDirField = TextToSqlCLI.class.getDeclaredField("skillsDir");
-            skillsDirField.setAccessible(true);
-            skillsDirField.set(cli, "/custom/skills");
-
-            final Method m = TextToSqlCLI.class.getDeclaredMethod("resolveSkillsDir");
+        void returnsTimestampedFilenameWhenNoArg() throws Exception {
+            final var cli = new TextToSqlCLI();
+            final var m = TextToSqlCLI.class.getDeclaredMethod("resolveDumpMessagesFilename", String.class);
             m.setAccessible(true);
-            final String result = (String) m.invoke(cli);
-            assertEquals("/custom/skills", result);
+            final var result = (String) m.invoke(cli, "/dumpMessages");
+            assertNotNull(result);
+            assertTrue(result.startsWith("messages-"), "Default filename should start with 'messages-'");
+            assertTrue(result.endsWith(".json"), "Default filename should end with '.json'");
         }
     }
 
@@ -1017,7 +962,78 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("runInteractiveLoop")
+    class ResolveSessionIdTests {
+
+        @Test
+        void returnsProvidedSessionId() throws Exception {
+            final var m = TextToSqlCLI.class.getDeclaredMethod("resolveSessionId", String.class);
+            m.setAccessible(true);
+            final var result = (String) m.invoke(null, "my-session-123");
+            assertEquals("my-session-123", result);
+        }
+
+        @Test
+        void returnsUuidForBlankSessionId() throws Exception {
+            final var m = TextToSqlCLI.class.getDeclaredMethod("resolveSessionId", String.class);
+            m.setAccessible(true);
+            final var result = (String) m.invoke(null, "   ");
+            assertNotNull(result);
+            assertEquals(36, result.length());
+        }
+
+        @Test
+        void returnsUuidForNullSessionId() throws Exception {
+            final var m = TextToSqlCLI.class.getDeclaredMethod("resolveSessionId", String.class);
+            m.setAccessible(true);
+            final var result = (String) m.invoke(null, (Object) null);
+            assertNotNull(result);
+            assertFalse(result.isBlank());
+            // Should be a valid UUID-ish string (36 chars with dashes)
+            assertEquals(36, result.length());
+        }
+    }
+
+    // =========================================================================
+    // registerLocalTools (via reflection)
+    // =========================================================================
+
+    @Nested
+    class ResolveSkillsDirTests {
+
+        @Test
+        void createsTempDirWhenSkillsDirIsNull() throws Exception {
+            final var cli = new TextToSqlCLI();
+            // skillsDir field is null by default
+
+            final var m = TextToSqlCLI.class.getDeclaredMethod("resolveSkillsDir");
+            m.setAccessible(true);
+            final var result = (String) m.invoke(cli);
+            assertNotNull(result);
+            assertFalse(result.isBlank());
+            assertTrue(
+                       java.nio.file.Files.isDirectory(java.nio.file.Paths.get(result)),
+                       "Should return a path to an existing temp directory");
+        }
+
+        @Test
+        void returnsProvidedSkillsDir() throws Exception {
+            final var cli = new TextToSqlCLI();
+            final var skillsDirField = TextToSqlCLI.class.getDeclaredField("skillsDir");
+            skillsDirField.setAccessible(true);
+            skillsDirField.set(cli, "/custom/skills");
+
+            final var m = TextToSqlCLI.class.getDeclaredMethod("resolveSkillsDir");
+            m.setAccessible(true);
+            final var result = (String) m.invoke(cli);
+            assertEquals("/custom/skills", result);
+        }
+    }
+
+    // =========================================================================
+    // validateConfig (via reflection) — non-exit branch
+    // =========================================================================
+
+    @Nested
     class RunInteractiveLoopTests {
 
         private static final class SystemInOverride implements AutoCloseable {
@@ -1046,22 +1062,21 @@ class TextToSqlCLITest {
 
         @ParameterizedTest
         @MethodSource("runInteractiveLoopInputs")
-        @DisplayName("returns 0 for exit and non-query control inputs")
         void returnsZeroForExitAndControlInputs(String input) throws Exception {
-            final CliConfig config = buildConfig();
-            final ObjectMapper mapper = JsonUtils.createMapper();
-            final TextToSqlAgent agent = buildAgent(config, mapper);
+            final var config = buildConfig();
+            final var mapper = JsonUtils.createMapper();
+            final var agent = buildAgent(config, mapper);
 
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "runInteractiveLoop",
-                                                                  TextToSqlAgent.class,
-                                                                  CliConfig.class,
-                                                                  String.class,
-                                                                  ObjectMapper.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "runInteractiveLoop",
+                                                               TextToSqlAgent.class,
+                                                               CliConfig.class,
+                                                               String.class,
+                                                               ObjectMapper.class);
             m.setAccessible(true);
 
             try (var ignored = new SystemInOverride(input)) {
-                final int result = (int) m.invoke(
+                final var result = (int) m.invoke(
                                                   new TextToSqlCLI(),
                                                   agent,
                                                   config,
@@ -1072,42 +1087,42 @@ class TextToSqlCLITest {
         }
 
         private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
-            final Method buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
+            final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final OkHttpClientAdapter adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
 
-            final Method buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildOpenAIModel",
-                                                                           CliConfig.class,
-                                                                           OkHttpClientAdapter.class,
-                                                                           ObjectMapper.class);
+            final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildOpenAIModel",
+                                                                        CliConfig.class,
+                                                                        OkHttpClientAdapter.class,
+                                                                        ObjectMapper.class);
             buildModel.setAccessible(true);
-            final SimpleOpenAIModel<?> model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
 
-            final Method buildSetup = TextToSqlCLI.class.getDeclaredMethod(
-                                                                           "buildAgentSetup",
-                                                                           CliConfig.class,
-                                                                           SimpleOpenAIModel.class,
-                                                                           ObjectMapper.class);
+            final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
+                                                                        "buildAgentSetup",
+                                                                        CliConfig.class,
+                                                                        SimpleOpenAIModel.class,
+                                                                        ObjectMapper.class);
             buildSetup.setAccessible(true);
-            final AgentSetup agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
+            final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
 
-            final TextToSqlCLI cli = new TextToSqlCLI();
-            final Method buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
+            final var cli = new TextToSqlCLI();
+            final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> ext = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var ext = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
-            final Method buildAgentM = TextToSqlCLI.class.getDeclaredMethod(
-                                                                            "buildAgent",
-                                                                            AgentSetup.class,
-                                                                            AgentSkillsExtension.class);
+            final var buildAgentM = TextToSqlCLI.class.getDeclaredMethod(
+                                                                         "buildAgent",
+                                                                         AgentSetup.class,
+                                                                         AgentSkillsExtension.class);
             buildAgentM.setAccessible(true);
             return (TextToSqlAgent) buildAgentM.invoke(null, agentSetup, ext);
         }
 
         private CliConfig buildConfig() {
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("https://api.openai.com/v1");
@@ -1119,43 +1134,92 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // registerLocalTools (via reflection)
+    // dumpMessages (via reflection) — null-output branch and non-null branch
     // =========================================================================
 
     @Nested
-    @DisplayName("validateConfig")
+    class RunInteractiveLoopWithQueryTests {
+
+        private static final class SystemInOverride implements AutoCloseable {
+            private final java.io.InputStream original;
+
+            private SystemInOverride(String input) {
+                this.original = System.in;
+                System.setIn(new java.io.ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
+            }
+
+            @Override
+            public void close() {
+                System.setIn(original);
+            }
+        }
+
+        @Test
+        void realQueryThenExit() throws Exception {
+            final var agent = mock(TextToSqlAgent.class);
+            final var result = new SqlQueryResult("SELECT 1", List.of(), "ok", 1L);
+            final var output = new AgentOutput<>(result, List.of(), List.of(), null, null);
+            when(agent.executeAsync(any())).thenReturn(CompletableFuture.completedFuture(output));
+
+            final var config = buildConfig();
+            final var mapper = JsonUtils.createMapper();
+
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "runInteractiveLoop",
+                                                               TextToSqlAgent.class,
+                                                               CliConfig.class,
+                                                               String.class,
+                                                               ObjectMapper.class);
+            m.setAccessible(true);
+
+            try (var ignored = new SystemInOverride("show tables\nexit\n")) {
+                final var exitCode = (int) m.invoke(new TextToSqlCLI(), agent, config, "test-session", mapper);
+                assertEquals(0, exitCode);
+            }
+        }
+
+        private CliConfig buildConfig() {
+            final var config = new CliConfig();
+            config.getOpenai().setApiKey("test-api-key");
+            config.getOpenai().setModel("gpt-4o");
+            config.getOpenai().setBaseUrl("https://api.openai.com/v1");
+            config.getAgent().setTemperature(0.0f);
+            config.getAgent().setMaxTokens(4096);
+            config.getAgent().setStreaming(false);
+            return config;
+        }
+    }
+
+    // =========================================================================
+    // Lambda coverage — outputGenerationTool and outputValidator
+    // =========================================================================
+
+    @Nested
     class ValidateConfigTests {
 
         @Test
-        @DisplayName("does not throw when apiKey is set")
         void doesNotThrowWhenApiKeyIsSet() throws Exception {
-            final CliConfig config = new CliConfig();
+            final var config = new CliConfig();
             config.getOpenai().setApiKey("a-real-key");
 
-            final Method m = TextToSqlCLI.class.getDeclaredMethod("validateConfig", CliConfig.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod("validateConfig", CliConfig.class);
             m.setAccessible(true);
             assertDoesNotThrow(() -> m.invoke(null, config));
         }
     }
 
-    // =========================================================================
-    // validateConfig (via reflection) — non-exit branch
-    // =========================================================================
-
     @Nested
-    @DisplayName("waitForMcpSseServer")
     class WaitForMcpSseServerTests {
 
         @Test
-        @DisplayName("returns normally when the port becomes reachable")
         void returnsWhenPortReachable() throws Exception {
             try (var ss = new java.net.ServerSocket(0)) {
-                final int port = ss.getLocalPort();
-                final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                      "waitForMcpSseServer",
-                                                                      String.class,
-                                                                      int.class,
-                                                                      long.class);
+                final var port = ss.getLocalPort();
+                final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                                   "waitForMcpSseServer",
+                                                                   String.class,
+                                                                   int.class,
+                                                                   long.class);
                 m.setAccessible(true);
                 assertDoesNotThrow(
                                    () -> m.invoke(null, "localhost", port, 5_000L),
@@ -1164,91 +1228,20 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("throws IllegalStateException when port is not reachable within timeout")
         void throwsWhenPortNotReachable() throws Exception {
             // Use port 1 — guaranteed to be unused/unreachable in test environments
-            final Method m = TextToSqlCLI.class.getDeclaredMethod(
-                                                                  "waitForMcpSseServer",
-                                                                  String.class,
-                                                                  int.class,
-                                                                  long.class);
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "waitForMcpSseServer",
+                                                               String.class,
+                                                               int.class,
+                                                               long.class);
             m.setAccessible(true);
 
-            final InvocationTargetException ex = assertThrows(
-                                                              InvocationTargetException.class,
-                                                              () -> m.invoke(null, "localhost", 1, 300L));
+            final var ex = assertThrows(
+                                        InvocationTargetException.class,
+                                        () -> m.invoke(null, "localhost", 1, 300L));
             assertInstanceOf(IllegalStateException.class, ex.getCause());
             assertTrue(ex.getCause().getMessage().contains("did not start"));
         }
-    }
-
-    // =========================================================================
-    // dumpMessages (via reflection) — null-output branch and non-null branch
-    // =========================================================================
-
-    @Test
-    @DisplayName("TextToSqlCLI can be instantiated without throwing")
-    void canBeInstantiatedWithoutThrowing() {
-        assertDoesNotThrow(TextToSqlCLI::new);
-    }
-
-    // =========================================================================
-    // Lambda coverage — outputGenerationTool and outputValidator
-    // =========================================================================
-
-    @Test
-    @DisplayName("DEFAULT_MCP_SSE_PORT equals SqliteMcpServer.DEFAULT_SSE_PORT")
-    void defaultMcpSsePortMatchesSqliteMcpServerDefault() {
-        assertEquals(SqliteMcpServer.DEFAULT_SSE_PORT, TextToSqlCLI.DEFAULT_MCP_SSE_PORT);
-    }
-
-    // =========================================================================
-    // registerHttpToolbox (via reflection)
-    // =========================================================================
-
-    @Test
-    @DisplayName("McpServerMode enum has STDIO and SSE values")
-    void mcpServerModeEnumValues() {
-        final TextToSqlCLI.McpServerMode[] values = TextToSqlCLI.McpServerMode.values();
-        assertEquals(2, values.length);
-        assertEquals(TextToSqlCLI.McpServerMode.STDIO, values[0]);
-        assertEquals(TextToSqlCLI.McpServerMode.SSE, values[1]);
-    }
-
-    // =========================================================================
-    // runInteractiveLoop (via reflection) — exit and EOF paths
-    // =========================================================================
-
-    @Test
-    @DisplayName("McpServerMode valueOf works for STDIO and SSE")
-    void mcpServerModeValueOf() {
-        assertEquals(
-                     TextToSqlCLI.McpServerMode.STDIO,
-                     TextToSqlCLI.McpServerMode.valueOf("STDIO"));
-        assertEquals(TextToSqlCLI.McpServerMode.SSE, TextToSqlCLI.McpServerMode.valueOf("SSE"));
-    }
-
-    // =========================================================================
-    // handleQuery — private method exercised via reflection with mocked agent
-    // =========================================================================
-
-    @Test
-    @DisplayName("ToolboxMode enum has HTTP and MCP values")
-    void toolboxModeEnumValues() {
-        final TextToSqlCLI.ToolboxMode[] values = TextToSqlCLI.ToolboxMode.values();
-        assertEquals(2, values.length);
-        assertEquals(TextToSqlCLI.ToolboxMode.HTTP, values[0]);
-        assertEquals(TextToSqlCLI.ToolboxMode.MCP, values[1]);
-    }
-
-    // =========================================================================
-    // buildTrustedHttpClient interceptor
-    // =========================================================================
-
-    @Test
-    @DisplayName("ToolboxMode valueOf works for HTTP and MCP")
-    void toolboxModeValueOf() {
-        assertEquals(TextToSqlCLI.ToolboxMode.HTTP, TextToSqlCLI.ToolboxMode.valueOf("HTTP"));
-        assertEquals(TextToSqlCLI.ToolboxMode.MCP, TextToSqlCLI.ToolboxMode.valueOf("MCP"));
     }
 }

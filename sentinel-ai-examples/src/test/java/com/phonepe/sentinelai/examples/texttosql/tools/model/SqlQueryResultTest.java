@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.examples.texttosql.tools.model;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -25,11 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("SqlQueryResult")
 class SqlQueryResultTest {
 
     @Test
-    @DisplayName("record construction stores all fields correctly")
     void constructorStoresFields() {
         List<String> rows = List.of("{\"id\":1}", "{\"id\":2}");
         SqlQueryResult result = new SqlQueryResult("SELECT * FROM users", rows, "Found 2 users", 42L);
@@ -41,14 +38,12 @@ class SqlQueryResultTest {
     }
 
     @Test
-    @DisplayName("record allows empty results list")
     void emptyResultsAllowed() {
         SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), "no rows", 5L);
         assertTrue(result.results().isEmpty());
     }
 
     @Test
-    @DisplayName("record hashCode is consistent with equals")
     void hashCodeConsistentWithEquals() {
         List<String> rows = List.of("{\"x\":1}");
         SqlQueryResult a = new SqlQueryResult("SELECT 1", rows, "ok", 10L);
@@ -57,14 +52,12 @@ class SqlQueryResultTest {
     }
 
     @Test
-    @DisplayName("record allows null explanation")
     void nullExplanationAllowed() {
         SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), null, 0L);
         assertNull(result.explanation());
     }
 
     @Test
-    @DisplayName("record equality is value-based")
     void recordEquality() {
         List<String> rows = List.of("{\"x\":1}");
         SqlQueryResult a = new SqlQueryResult("SELECT 1", rows, "ok", 10L);
@@ -73,7 +66,6 @@ class SqlQueryResultTest {
     }
 
     @Test
-    @DisplayName("toString includes field values")
     void toStringIncludesFields() {
         SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), "explanation", 99L);
         String s = result.toString();

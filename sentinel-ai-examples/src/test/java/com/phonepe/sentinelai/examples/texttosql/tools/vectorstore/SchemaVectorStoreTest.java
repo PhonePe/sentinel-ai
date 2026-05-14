@@ -18,7 +18,6 @@ package com.phonepe.sentinelai.examples.texttosql.tools.vectorstore;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -43,7 +42,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>A single Lucene index is built once per test class via {@link VectorStoreInitializer} into a
  * JUnit-managed {@link TempDir}, keeping the suite fast while exercising the full indexing path.
  */
-@DisplayName("SchemaVectorStore")
 class SchemaVectorStoreTest {
 
     @TempDir
@@ -52,11 +50,9 @@ class SchemaVectorStoreTest {
     static SchemaVectorStore store;
 
     @Nested
-    @DisplayName("buildIndex")
     class BuildIndexTests {
 
         @Test
-        @DisplayName("buildIndex with a document that has no columnName stores correctly")
         void buildIndexDocWithNullColumnName(@org.junit.jupiter.api.io.TempDir Path dir)
                 throws IOException {
             try (SchemaVectorStore s = new SchemaVectorStore(dir)) {
@@ -74,7 +70,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("buildIndex with empty document list succeeds and produces empty index")
         void buildIndexWithEmptyDocsSucceeds(@org.junit.jupiter.api.io.TempDir Path emptyDir)
                 throws IOException {
             try (SchemaVectorStore emptyStore = new SchemaVectorStore(emptyDir)) {
@@ -84,7 +79,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("hybridSearch falls back to MatchAllDocs on malformed Lucene query")
         void hybridSearchFallsBackToMatchAllDocs(@org.junit.jupiter.api.io.TempDir Path dir)
                 throws IOException {
             try (SchemaVectorStore s = new SchemaVectorStore(dir)) {
@@ -101,7 +95,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("keywordSearch falls back to MatchAllDocs on malformed Lucene query")
         void keywordSearchFallsBackToMatchAllDocs(@org.junit.jupiter.api.io.TempDir Path dir)
                 throws IOException {
             // Index a small set of documents
@@ -123,11 +116,9 @@ class SchemaVectorStoreTest {
     }
 
     @Nested
-    @DisplayName("hybridSearch")
     class HybridSearchTests {
 
         @Test
-        @DisplayName("combined scores are in [0, 1] range")
         void combinedScoresInValidRange() throws IOException {
             List<SchemaSearchResult> results = store.hybridSearch("user email login active", 10);
             for (SchemaSearchResult r : results) {
@@ -137,7 +128,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("hybrid results cover both BM25-strong and vector-strong documents")
         void hybridCoversBothSignals() throws IOException {
             // "epoch seconds" is an exact keyword; "time of purchase" paraphrases the description.
             // Hybrid should surface results that at least one mode would rank highly.
@@ -161,7 +151,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("hybrid search returns more candidates than keyword alone for vague query")
         void hybridReturnsMoreCandidatesThanKeyword() throws IOException {
             // "account status active deactivated" — these words appear in multiple tables
             // Hybrid should pull at least as many docs as keyword alone
@@ -177,7 +166,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("query for merchant products hits sellers and catalog")
         void merchantQueryHitsSellersAndCatalog() throws IOException {
             List<SchemaSearchResult> results = store.hybridSearch("merchant seller product listing", 10);
             Set<String> tables = results.stream()
@@ -189,7 +177,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("result fields are fully populated for every hit")
         void resultFieldsArePopulated() throws IOException {
             List<SchemaSearchResult> results = store.hybridSearch("unique identifier auto increment", 8);
             for (SchemaSearchResult r : results) {
@@ -204,7 +191,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("results are ordered by descending combined score")
         void resultsAreSortedDescending() throws IOException {
             List<SchemaSearchResult> results = store.hybridSearch("seller rating contact", 10);
             for (int i = 0; i < results.size() - 1; i++) {
@@ -215,14 +201,12 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("returns results for a mixed keyword+semantic query")
         void returnsResultsForMixedQuery() throws IOException {
             List<SchemaSearchResult> results = store.hybridSearch("order delivery timestamp epoch", 5);
             assertFalse(results.isEmpty(), "Hybrid search should return results");
         }
 
         @Test
-        @DisplayName("query for shipped delivered hits orders table")
         void shippingQueryHitsOrders() throws IOException {
             List<SchemaSearchResult> results = store.hybridSearch("shipped delivered order status", 8);
             assertTrue(
@@ -231,7 +215,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("topK limit is respected")
         void topKLimitIsRespected() throws IOException {
             List<SchemaSearchResult> results = store.hybridSearch("id primary key", 2);
             assertTrue(results.size() <= 2, "Should return at most topK=2 results");
@@ -243,11 +226,9 @@ class SchemaVectorStoreTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("VectorStoreInitializer")
     class InitializerTests {
 
         @Test
-        @DisplayName("all five e-commerce tables are indexed")
         void allTablesAreIndexed() throws IOException {
             // The index has ~55 documents (5 tables + ~10 columns each). Retrieve all via a broad
             // query with a topK larger than the total doc count so every table-type document is
@@ -266,7 +247,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("index directory is non-empty after first run")
         void indexDirectoryHasFiles() {
             Path indexPath = tempDir.resolve(VectorStoreInitializer.INDEX_DIR_NAME);
             String[] files = indexPath.toFile().list();
@@ -275,7 +255,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("creates index directory on first run")
         void indexDirectoryIsCreated() {
             Path indexPath = tempDir.resolve(VectorStoreInitializer.INDEX_DIR_NAME);
             assertTrue(indexPath.toFile().exists(), "Index directory should exist after init");
@@ -283,7 +262,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("re-opening existing index returns a usable store")
         void reopenExistingIndexSucceeds() throws IOException {
             // Calling ensureInitialized a second time should skip building and open the index
             try (SchemaVectorStore reopened = VectorStoreInitializer.ensureInitialized(tempDir)) {
@@ -298,11 +276,9 @@ class SchemaVectorStoreTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("keywordSearch")
     class KeywordSearchTests {
 
         @Test
-        @DisplayName("column documents have columnName populated")
         void columnResultsHaveColumnName() throws IOException {
             List<SchemaSearchResult> results = store.keywordSearch("epoch seconds timestamp", 10);
             boolean foundColumn = results.stream().anyMatch(r -> "column".equals(r.docType()));
@@ -316,7 +292,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("top result for 'email' is in users or sellers table")
         void emailTopResultIsUserOrSeller() throws IOException {
             List<SchemaSearchResult> results = store.keywordSearch("email", 5);
             assertFalse(results.isEmpty());
@@ -327,14 +302,12 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("returns results for an exact term present in content")
         void exactTermReturnsResults() throws IOException {
             List<SchemaSearchResult> results = store.keywordSearch("warehouse", 5);
             assertFalse(results.isEmpty(), "Exact keyword 'warehouse' should match");
         }
 
         @Test
-        @DisplayName("query for 'rating reviews' hits sellers table")
         void ratingQueryHitsSellers() throws IOException {
             List<SchemaSearchResult> results = store.keywordSearch("rating reviews", 5);
             assertTrue(
@@ -343,7 +316,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("each result has docType, tableName, and content populated")
         void resultFieldsArePopulated() throws IOException {
             List<SchemaSearchResult> results = store.keywordSearch("buyer seller", 5);
             for (SchemaSearchResult r : results) {
@@ -355,7 +327,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("results are ordered by descending score")
         void resultsAreSortedDescending() throws IOException {
             List<SchemaSearchResult> results = store.keywordSearch("price purchase order", 8);
             for (int i = 0; i < results.size() - 1; i++) {
@@ -366,7 +337,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("query for 'status lifecycle' hits orders table")
         void statusQueryHitsOrders() throws IOException {
             List<SchemaSearchResult> results = store.keywordSearch("status lifecycle", 5);
             assertTrue(
@@ -375,14 +345,12 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("topK limit is respected")
         void topKLimitIsRespected() throws IOException {
             List<SchemaSearchResult> results = store.keywordSearch("id", 3);
             assertTrue(results.size() <= 3, "Should return at most topK=3 results");
         }
 
         @Test
-        @DisplayName("top result for 'warehouse' belongs to inventory table")
         void warehouseTopResultIsInventory() throws IOException {
             List<SchemaSearchResult> results = store.keywordSearch("warehouse", 5);
             SchemaSearchResult top = results.get(0);
@@ -397,11 +365,9 @@ class SchemaVectorStoreTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("semanticSearch")
     class SemanticSearchTests {
 
         @Test
-        @DisplayName("query about buyers hits users table")
         void buyerQueryHitsUsers() throws IOException {
             List<SchemaSearchResult> results = store.semanticSearch("registered buyer account timezone", 8);
             assertTrue(
@@ -410,14 +376,12 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("returns results for a natural-language phrase")
         void naturalLanguageQueryReturnsResults() throws IOException {
             List<SchemaSearchResult> results = store.semanticSearch("when was the account created", 5);
             assertFalse(results.isEmpty(), "Semantic search should return results");
         }
 
         @Test
-        @DisplayName("query about product listings hits catalog table")
         void productQueryHitsCatalog() throws IOException {
             List<SchemaSearchResult> results = store.semanticSearch("product category brand listing price", 8);
             assertTrue(
@@ -426,7 +390,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("result fields are fully populated")
         void resultFieldsArePopulated() throws IOException {
             List<SchemaSearchResult> results = store.semanticSearch("purchase transaction amount", 5);
             for (SchemaSearchResult r : results) {
@@ -438,7 +401,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("results are ordered by descending cosine score")
         void resultsAreSortedDescending() throws IOException {
             List<SchemaSearchResult> results = store.semanticSearch("product available for purchase", 8);
             for (int i = 0; i < results.size() - 1; i++) {
@@ -449,7 +411,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("scores are in (0, 1] range for cosine similarity")
         void scoresAreInValidRange() throws IOException {
             List<SchemaSearchResult> results = store.semanticSearch("order shipment delivery status", 10);
             for (SchemaSearchResult r : results) {
@@ -459,7 +420,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("query about stock levels hits inventory table")
         void stockQueryHitsInventory() throws IOException {
             List<SchemaSearchResult> results = store.semanticSearch("current stock level quantity warehouse", 8);
             assertTrue(
@@ -468,7 +428,6 @@ class SchemaVectorStoreTest {
         }
 
         @Test
-        @DisplayName("topK limit is respected")
         void topKLimitIsRespected() throws IOException {
             List<SchemaSearchResult> results = store.semanticSearch("user contact details", 4);
             assertTrue(results.size() <= 4, "Should return at most topK=4 results");

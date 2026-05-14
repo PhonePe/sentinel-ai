@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.examples.texttosql.tools.model;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -25,25 +24,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("TableDescRequest")
 class TableDescRequestTest {
 
     @Test
-    @DisplayName("record allows empty tableNames list")
     void allowsEmptyTableNames() {
         TableDescRequest req = new TableDescRequest(List.of());
         assertTrue(req.tableNames().isEmpty());
     }
 
     @Test
-    @DisplayName("record allows null tableNames")
     void allowsNullTableNames() {
         TableDescRequest req = new TableDescRequest(null);
         assertNull(req.tableNames());
     }
 
     @Test
-    @DisplayName("record equality is value-based")
     void recordEquality() {
         TableDescRequest a = new TableDescRequest(List.of("users"));
         TableDescRequest b = new TableDescRequest(List.of("users"));
@@ -51,7 +46,6 @@ class TableDescRequestTest {
     }
 
     @Test
-    @DisplayName("record stores tableNames correctly")
     void storesTableNames() {
         List<String> names = List.of("users", "orders");
         TableDescRequest req = new TableDescRequest(names);
@@ -59,7 +53,6 @@ class TableDescRequestTest {
     }
 
     @Test
-    @DisplayName("toString includes tableNames")
     void toStringIncludesTableNames() {
         TableDescRequest req = new TableDescRequest(List.of("catalog"));
         String s = req.toString();
