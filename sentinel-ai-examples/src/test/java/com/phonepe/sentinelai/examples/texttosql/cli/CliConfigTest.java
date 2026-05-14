@@ -115,22 +115,26 @@ class CliConfigTest {
         }
     }
 
-    @Test
-    void defaultConstructionProducesDefaults() {
-        CliConfig config = new CliConfig();
+    @Nested
+    class TopLevelDefaultsTests {
 
-        assertNotNull(config.getOpenai());
-        assertNotNull(config.getDatabase());
-        assertNotNull(config.getAgent());
-    }
+        @Test
+        void defaultConstructionProducesDefaults() {
+            CliConfig config = new CliConfig();
 
-    @Test
-    void topLevelSetters() {
-        CliConfig config = new CliConfig();
-        CliConfig.OpenAIConfig openai = new CliConfig.OpenAIConfig();
-        openai.setApiKey("my-key");
-        config.setOpenai(openai);
+            assertNotNull(config.getOpenai());
+            assertNotNull(config.getDatabase());
+            assertNotNull(config.getAgent());
+        }
 
-        assertEquals("my-key", config.getOpenai().getApiKey());
+        @Test
+        void topLevelSetters() {
+            CliConfig config = new CliConfig();
+            CliConfig.OpenAIConfig openai = new CliConfig.OpenAIConfig();
+            openai.setApiKey("my-key");
+            config.setOpenai(openai);
+
+            assertEquals("my-key", config.getOpenai().getApiKey());
+        }
     }
 }

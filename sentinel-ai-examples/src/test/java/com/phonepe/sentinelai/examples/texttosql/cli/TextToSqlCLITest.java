@@ -370,6 +370,54 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
+    class ConstantsAndEnumsTests {
+
+        @Test
+        void canBeInstantiatedWithoutThrowing() {
+            assertDoesNotThrow(TextToSqlCLI::new);
+        }
+
+        @Test
+        void defaultMcpSsePortMatchesSqliteMcpServerDefault() {
+            assertEquals(SqliteMcpServer.DEFAULT_SSE_PORT, TextToSqlCLI.DEFAULT_MCP_SSE_PORT);
+        }
+
+        @Test
+        void mcpServerModeEnumValues() {
+            final var values = TextToSqlCLI.McpServerMode.values();
+            assertEquals(2, values.length);
+            assertEquals(TextToSqlCLI.McpServerMode.STDIO, values[0]);
+            assertEquals(TextToSqlCLI.McpServerMode.SSE, values[1]);
+        }
+
+        @Test
+        void mcpServerModeValueOf() {
+            assertEquals(
+                         TextToSqlCLI.McpServerMode.STDIO,
+                         TextToSqlCLI.McpServerMode.valueOf("STDIO"));
+            assertEquals(TextToSqlCLI.McpServerMode.SSE, TextToSqlCLI.McpServerMode.valueOf("SSE"));
+        }
+
+        @Test
+        void toolboxModeEnumValues() {
+            final var values = TextToSqlCLI.ToolboxMode.values();
+            assertEquals(2, values.length);
+            assertEquals(TextToSqlCLI.ToolboxMode.HTTP, values[0]);
+            assertEquals(TextToSqlCLI.ToolboxMode.MCP, values[1]);
+        }
+
+        @Test
+        void toolboxModeValueOf() {
+            assertEquals(TextToSqlCLI.ToolboxMode.HTTP, TextToSqlCLI.ToolboxMode.valueOf("HTTP"));
+            assertEquals(TextToSqlCLI.ToolboxMode.MCP, TextToSqlCLI.ToolboxMode.valueOf("MCP"));
+        }
+    }
+
+    // =========================================================================
+    // resolveSessionId (via reflection)
+    // =========================================================================
+
+    @Nested
     class DumpMessagesTests {
 
         @Test
@@ -421,7 +469,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // resolveSessionId (via reflection)
+    // resolveSkillsDir (via reflection)
     // =========================================================================
 
     @Nested
@@ -510,7 +558,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // resolveSkillsDir (via reflection)
+    // loadConfig (via reflection) — success and missing-file branches
     // =========================================================================
 
     @Nested
@@ -536,7 +584,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // loadConfig (via reflection) — success and missing-file branches
+    // initializeDatabase (via reflection)
     // =========================================================================
 
     @Nested
@@ -645,7 +693,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // initializeDatabase (via reflection)
+    // buildTrustedHttpClient (via reflection)
     // =========================================================================
 
     @Nested
@@ -680,7 +728,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // buildTrustedHttpClient (via reflection)
+    // buildAgentSetup (via reflection)
     // =========================================================================
 
     @Nested
@@ -743,7 +791,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // buildAgentSetup (via reflection)
+    // waitForMcpSseServer (via reflection) — timeout branch
     // =========================================================================
 
     @Nested
@@ -812,7 +860,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // waitForMcpSseServer (via reflection) — timeout branch
+    // buildOpenAIModel (via reflection)
     // =========================================================================
 
     @Nested
@@ -882,7 +930,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // buildOpenAIModel (via reflection)
+    // buildAgent (via reflection)
     // =========================================================================
 
     @Nested
@@ -910,7 +958,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // buildAgent (via reflection)
+    // registerAskUserTool (via reflection)
     // =========================================================================
 
     @Nested
@@ -946,7 +994,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // registerAskUserTool (via reflection)
+    // registerLocalTools (via reflection)
     // =========================================================================
 
     @Nested
@@ -982,7 +1030,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // registerLocalTools (via reflection)
+    // validateConfig (via reflection) — non-exit branch
     // =========================================================================
 
     @Nested
@@ -1086,7 +1134,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // validateConfig (via reflection) — non-exit branch
+    // dumpMessages (via reflection) — null-output branch and non-null branch
     // =========================================================================
 
     @Nested
@@ -1143,7 +1191,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // dumpMessages (via reflection) — null-output branch and non-null branch
+    // Lambda coverage — outputGenerationTool and outputValidator
     // =========================================================================
 
     @Nested
@@ -1159,10 +1207,6 @@ class TextToSqlCLITest {
             assertDoesNotThrow(() -> m.invoke(null, config));
         }
     }
-
-    // =========================================================================
-    // Lambda coverage — outputGenerationTool and outputValidator
-    // =========================================================================
 
     @Nested
     class WaitForMcpSseServerTests {
@@ -1199,70 +1243,5 @@ class TextToSqlCLITest {
             assertInstanceOf(IllegalStateException.class, ex.getCause());
             assertTrue(ex.getCause().getMessage().contains("did not start"));
         }
-    }
-
-    // =========================================================================
-    // registerHttpToolbox (via reflection)
-    // =========================================================================
-
-    @Test
-    void canBeInstantiatedWithoutThrowing() {
-        assertDoesNotThrow(TextToSqlCLI::new);
-    }
-
-    // =========================================================================
-    // runInteractiveLoop (via reflection) — exit and EOF paths
-    // =========================================================================
-
-    @Test
-    void defaultMcpSsePortMatchesSqliteMcpServerDefault() {
-        assertEquals(SqliteMcpServer.DEFAULT_SSE_PORT, TextToSqlCLI.DEFAULT_MCP_SSE_PORT);
-    }
-
-    // =========================================================================
-    // handleQuery — private method exercised via reflection with mocked agent
-    // =========================================================================
-
-    @Test
-    void mcpServerModeEnumValues() {
-        final var values = TextToSqlCLI.McpServerMode.values();
-        assertEquals(2, values.length);
-        assertEquals(TextToSqlCLI.McpServerMode.STDIO, values[0]);
-        assertEquals(TextToSqlCLI.McpServerMode.SSE, values[1]);
-    }
-
-    // =========================================================================
-    // buildTrustedHttpClient interceptor
-    // =========================================================================
-
-    @Test
-    void mcpServerModeValueOf() {
-        assertEquals(
-                     TextToSqlCLI.McpServerMode.STDIO,
-                     TextToSqlCLI.McpServerMode.valueOf("STDIO"));
-        assertEquals(TextToSqlCLI.McpServerMode.SSE, TextToSqlCLI.McpServerMode.valueOf("SSE"));
-    }
-
-    // =========================================================================
-    // resolveDumpMessagesFilename (via reflection)
-    // =========================================================================
-
-    @Test
-    void toolboxModeEnumValues() {
-        final var values = TextToSqlCLI.ToolboxMode.values();
-        assertEquals(2, values.length);
-        assertEquals(TextToSqlCLI.ToolboxMode.HTTP, values[0]);
-        assertEquals(TextToSqlCLI.ToolboxMode.MCP, values[1]);
-    }
-
-    // =========================================================================
-    // runInteractiveLoop with real query — covers shouldExitInteractiveLoop
-    // handleQuery call path (lines 808-809)
-    // =========================================================================
-
-    @Test
-    void toolboxModeValueOf() {
-        assertEquals(TextToSqlCLI.ToolboxMode.HTTP, TextToSqlCLI.ToolboxMode.valueOf("HTTP"));
-        assertEquals(TextToSqlCLI.ToolboxMode.MCP, TextToSqlCLI.ToolboxMode.valueOf("MCP"));
     }
 }

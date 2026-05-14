@@ -163,17 +163,22 @@ class AskUserToolTest {
         }
     }
 
+    @Nested
+    class NameTests {
+
+        @Test
+        void nameReturnsExpected() {
+            assertEquals("ask_user_tool", tool.name());
+        }
+    }
+
     private AskUserTool tool;
+
     private PrintStream originalOut;
 
     private PrintStream originalErr;
 
     private ByteArrayOutputStream outCapture;
-
-    @Test
-    void nameReturnsExpected() {
-        assertEquals("ask_user_tool", tool.name());
-    }
 
     @BeforeEach
     void setUp() {

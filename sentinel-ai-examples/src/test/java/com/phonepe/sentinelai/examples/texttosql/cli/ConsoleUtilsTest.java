@@ -155,6 +155,29 @@ class ConsoleUtilsTest {
     }
 
     @Nested
+    class PrintPromptAndNullUsageTests {
+
+        @Test
+        void printPromptWritesPrompt() {
+            ConsoleUtils.printPrompt();
+            String out = outCapture.toString();
+            assertTrue(out.contains(">"), "Prompt should contain '>'");
+        }
+
+        @Test
+        void printUsageStatsNullUsageDoesNothing() {
+            assertDoesNotThrow(() -> ConsoleUtils.printUsageStats(null));
+            // Nothing should be written to stdout
+            String out = outCapture.toString();
+            assertTrue(out.isEmpty(), "Null usage should produce no output");
+        }
+    }
+
+    // =========================================================================
+    // Spinner toggle
+    // =========================================================================
+
+    @Nested
     class PrintStructuredResultTests {
 
         @Test
@@ -234,7 +257,7 @@ class ConsoleUtilsTest {
     }
 
     // =========================================================================
-    // Spinner toggle
+    // printBanner
     // =========================================================================
 
     @Nested
@@ -263,7 +286,7 @@ class ConsoleUtilsTest {
     }
 
     // =========================================================================
-    // printBanner
+    // printExamples
     // =========================================================================
 
     @Nested
@@ -285,7 +308,7 @@ class ConsoleUtilsTest {
     }
 
     // =========================================================================
-    // printExamples
+    // printPrompt
     // =========================================================================
 
     @Nested
@@ -321,7 +344,7 @@ class ConsoleUtilsTest {
     }
 
     // =========================================================================
-    // printPrompt
+    // printError
     // =========================================================================
 
     @Nested
@@ -335,56 +358,28 @@ class ConsoleUtilsTest {
     }
 
     // =========================================================================
-    // printError
+    // printWarning
     // =========================================================================
 
     private PrintStream originalOut;
 
     // =========================================================================
-    // printWarning
+    // printDumpSuccess
     // =========================================================================
 
     private PrintStream originalErr;
 
     // =========================================================================
-    // printDumpSuccess
+    // printUsageStats
     // =========================================================================
 
     private ByteArrayOutputStream outCapture;
 
     // =========================================================================
-    // printUsageStats
-    // =========================================================================
-
-    private ByteArrayOutputStream errCapture;
-
-    // =========================================================================
     // printUsageStats with real ModelUsageStats
     // =========================================================================
 
-    @Test
-    void printPromptWritesPrompt() {
-        ConsoleUtils.printPrompt();
-        String out = outCapture.toString();
-        assertTrue(out.contains(">"), "Prompt should contain '>'");
-    }
-
-    // =========================================================================
-    // printStructuredResult
-    // =========================================================================
-
-    @Test
-    void printUsageStatsNullUsageDoesNothing() {
-        assertDoesNotThrow(() -> ConsoleUtils.printUsageStats(null));
-        // Nothing should be written to stdout
-        String out = outCapture.toString();
-        assertTrue(out.isEmpty(), "Null usage should produce no output");
-    }
-
-
-    // =========================================================================
-    // stdout
-    // =========================================================================
+    private ByteArrayOutputStream errCapture;
 
     @BeforeEach
     void redirectStreams() {

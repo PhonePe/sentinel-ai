@@ -345,6 +345,19 @@ class LocalToolsTest {
     // =========================================================================
 
     @Nested
+    class NameTests {
+
+        @Test
+        void nameReturnsExpected() {
+            assertEquals("local_sql_tools", localTools.name());
+        }
+    }
+
+    // =========================================================================
+    // formatResultsAsTable (static)
+    // =========================================================================
+
+    @Nested
     class SearchSchemaTests {
 
         @Test
@@ -380,24 +393,11 @@ class LocalToolsTest {
         }
     }
 
-    // =========================================================================
-    // formatResultsAsTable (static)
-    // =========================================================================
-
     @BeforeAll
     static void setUp() throws IOException {
         dbPath = tempDir.resolve("test.db");
         // Seed the database so LocalTools can connect to it
         DatabaseInitializer.ensureInitialised(dbPath);
         localTools = new LocalTools(dbPath.toAbsolutePath().toString(), tempDir);
-    }
-
-    // =========================================================================
-    // appendTableDdl (private method — covered via reflection)
-    // =========================================================================
-
-    @Test
-    void nameReturnsExpected() {
-        assertEquals("local_sql_tools", localTools.name());
     }
 }

@@ -64,6 +64,33 @@ class SqliteMcpServerTest {
     static ObjectMapper mapper;
 
     @Nested
+    class ConstantsAndEnumsTests {
+
+        @Test
+        void defaultSsePort() {
+            assertEquals(8766, SqliteMcpServer.DEFAULT_SSE_PORT);
+        }
+
+        @Test
+        void transportModeEnumValues() {
+            final var values = SqliteMcpServer.TransportMode.values();
+            assertEquals(2, values.length);
+            assertEquals(SqliteMcpServer.TransportMode.STDIO, values[0]);
+            assertEquals(SqliteMcpServer.TransportMode.SSE, values[1]);
+        }
+
+        @Test
+        void transportModeValueOf() {
+            assertEquals(
+                         SqliteMcpServer.TransportMode.STDIO,
+                         SqliteMcpServer.TransportMode.valueOf("STDIO"));
+            assertEquals(
+                         SqliteMcpServer.TransportMode.SSE,
+                         SqliteMcpServer.TransportMode.valueOf("SSE"));
+        }
+    }
+
+    @Nested
     class HandleExecuteQueryAdditionalTests {
 
         @ParameterizedTest
@@ -85,6 +112,10 @@ class SqliteMcpServerTest {
             assertEquals(Boolean.TRUE, result.isError(), "Failing query should return error");
         }
     }
+
+    // =========================================================================
+    // Constants / enum
+    // =========================================================================
 
     @Nested
     class HandleExecuteQueryTests {
@@ -172,10 +203,6 @@ class SqliteMcpServerTest {
         }
     }
 
-    // =========================================================================
-    // Constants / enum
-    // =========================================================================
-
     @Nested
     class HandleGetDatabaseInfoTests {
 
@@ -220,6 +247,10 @@ class SqliteMcpServerTest {
             assertEquals(Boolean.TRUE, result.isError(), "Blank tableName should return an error");
         }
     }
+
+    // =========================================================================
+    // handleListTables (via reflection)
+    // =========================================================================
 
     @Nested
     class HandleGetTableSchemaTests {
@@ -285,7 +316,7 @@ class SqliteMcpServerTest {
     }
 
     // =========================================================================
-    // handleListTables (via reflection)
+    // handleGetTableSchema (via reflection)
     // =========================================================================
 
     @Nested
@@ -318,7 +349,7 @@ class SqliteMcpServerTest {
     }
 
     // =========================================================================
-    // handleGetTableSchema (via reflection)
+    // handleGetDatabaseInfo (via reflection)
     // =========================================================================
 
     @Nested
@@ -333,7 +364,7 @@ class SqliteMcpServerTest {
     }
 
     // =========================================================================
-    // handleGetDatabaseInfo (via reflection)
+    // handleExecuteQuery (via reflection)
     // =========================================================================
 
     @Nested
@@ -359,7 +390,7 @@ class SqliteMcpServerTest {
     }
 
     // =========================================================================
-    // handleExecuteQuery (via reflection)
+    // Tool definition methods (via reflection)
     // =========================================================================
 
     @BeforeAll
@@ -381,10 +412,6 @@ class SqliteMcpServerTest {
         mapper = JsonUtils.createMapper();
     }
 
-    // =========================================================================
-    // Tool definition methods (via reflection)
-    // =========================================================================
-
     /** Extracts the text from the first content element of a {@link McpSchema.CallToolResult}. */
     private static String firstText(McpSchema.CallToolResult result) {
         if (result.content() == null || result.content().isEmpty()) {
@@ -395,40 +422,5 @@ class SqliteMcpServerTest {
             return tc.text() != null ? tc.text() : "";
         }
         return first.toString();
-    }
-
-    // =========================================================================
-    // redirectLoggingToStderr (via reflection)
-    // =========================================================================
-
-    @Test
-    void defaultSsePort() {
-        assertEquals(8766, SqliteMcpServer.DEFAULT_SSE_PORT);
-    }
-
-    // =========================================================================
-    // handleExecuteQuery — exception path (bad SQL syntax)
-    // =========================================================================
-
-    @Test
-    void transportModeEnumValues() {
-        final var values = SqliteMcpServer.TransportMode.values();
-        assertEquals(2, values.length);
-        assertEquals(SqliteMcpServer.TransportMode.STDIO, values[0]);
-        assertEquals(SqliteMcpServer.TransportMode.SSE, values[1]);
-    }
-
-    // =========================================================================
-    // handleGetTableSchema — additional cases
-    // =========================================================================
-
-    @Test
-    void transportModeValueOf() {
-        assertEquals(
-                     SqliteMcpServer.TransportMode.STDIO,
-                     SqliteMcpServer.TransportMode.valueOf("STDIO"));
-        assertEquals(
-                     SqliteMcpServer.TransportMode.SSE,
-                     SqliteMcpServer.TransportMode.valueOf("SSE"));
     }
 }
