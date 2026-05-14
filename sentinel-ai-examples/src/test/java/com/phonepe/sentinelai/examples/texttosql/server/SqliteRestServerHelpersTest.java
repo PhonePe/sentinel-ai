@@ -49,7 +49,7 @@ class SqliteRestServerHelpersTest {
         @Test
         @DisplayName("admin port is port + 1")
         void adminPortIsPortPlusOne() throws java.io.IOException {
-            final int port = 7777;
+            final var port = 7777;
             final var configPath = SqliteRestServer.buildInlineConfig(port);
             final var content = Files.readString(Path.of(configPath));
             assertTrue(
@@ -81,7 +81,7 @@ class SqliteRestServerHelpersTest {
         @Test
         @DisplayName("substitutes port into the generated config file content")
         void substitutesPortInContent() throws java.io.IOException {
-            final int port = 12345;
+            final var port = 12345;
             final var configPath = SqliteRestServer.buildInlineConfig(port);
             final var content = Files.readString(Path.of(configPath));
             assertTrue(
@@ -113,7 +113,7 @@ class SqliteRestServerHelpersTest {
         @DisplayName("returns normally when the port becomes reachable")
         void returnsNormallyWhenPortReachable() throws Exception {
             try (var serverSocket = new ServerSocket(0)) {
-                final int port = serverSocket.getLocalPort();
+                final var port = serverSocket.getLocalPort();
                 assertDoesNotThrow(
                                    () -> SqliteRestServer.waitForPort("localhost", port, 5_000L),
                                    "waitForPort should succeed when the port is already listening");

@@ -203,7 +203,7 @@ public class AskUserTool implements ToolBox {
 
             // Try to interpret the input as a 1-based index first.
             try {
-                final int idx = Integer.parseInt(raw.trim());
+                final var idx = Integer.parseInt(raw.trim());
                 if (idx >= 1 && idx <= choiceList.size()) {
                     final var selected = choiceList.get(idx - 1);
                     log.debug("User selected choice #{}: {}", idx, selected);
@@ -215,7 +215,7 @@ public class AskUserTool implements ToolBox {
             }
 
             // Check if the raw input matches one of the choice labels (case-insensitive).
-            for (final String choice : choiceList) {
+            for (final var choice : choiceList) {
                 if (choice.equalsIgnoreCase(raw.trim())) {
                     log.debug("User matched choice by label: {}", choice);
                     return choice;

@@ -67,7 +67,7 @@ public class DatabaseInitializer {
      */
     @SneakyThrows
     public static void ensureInitialised(Path dbPath) {
-        final boolean fileExists = Files.exists(dbPath) && Files.size(dbPath) > 0;
+        final var fileExists = Files.exists(dbPath) && Files.size(dbPath) > 0;
         if (fileExists && isDatabasePopulated(dbPath)) {
             log.info("Database already exists at {} — skipping initialisation", dbPath);
             return;
@@ -83,7 +83,7 @@ public class DatabaseInitializer {
         try (Connection conn = connect(dbPath)) {
             conn.setAutoCommit(false);
             createSchema(conn);
-            for (final String table : TABLE_ORDER) {
+            for (final var table : TABLE_ORDER) {
                 loadCsvData(conn, table);
             }
             conn.commit();
@@ -113,7 +113,7 @@ public class DatabaseInitializer {
         boolean inQuotes = false;
         int i = 0;
         while (i < line.length()) {
-            final char c = line.charAt(i);
+            final var c = line.charAt(i);
             if (inQuotes) {
                 if (c == '"' && i + 1 < line.length() && line.charAt(i + 1) == '"') {
                     // Doubled quote inside quoted field — emit a literal quote, skip both chars
@@ -163,7 +163,7 @@ public class DatabaseInitializer {
 
         // Split on semicolons to execute each statement individually
         try (Statement stmt = conn.createStatement()) {
-            for (final String sql : schemaSql.split(";")) {
+            for (final var sql : schemaSql.split(";")) {
                 final var trimmed = sql.trim();
                 final var sb = new StringBuilder();
                 Stream.of(trimmed.split("\n"))
@@ -211,7 +211,7 @@ public class DatabaseInitializer {
             }
 
             final var headers = parseCsvLine(headerLine);
-            final int colCount = headers.size();
+            final var colCount = headers.size();
             final var placeholders = "?,".repeat(colCount).replaceAll(",$", "");
             final var insertSql = "INSERT OR IGNORE INTO \""
                     + table

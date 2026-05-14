@@ -511,7 +511,7 @@ public class TextToSqlCLI implements Callable<Integer> {
     @SneakyThrows
     static String startRestServer(Path dbPath, ObjectMapper mapper) {
         log.info("Starting embedded SQLite REST server for database {}", dbPath);
-        final int port = SqliteRestServer.findFreePort();
+        final var port = SqliteRestServer.findFreePort();
         final var baseUrl = SqliteRestServer.startEmbedded(dbPath.toString(), port, mapper);
         log.info("SQLite REST server ready at {}", baseUrl);
         return baseUrl;
@@ -534,7 +534,7 @@ public class TextToSqlCLI implements Callable<Integer> {
     @SneakyThrows
     static void waitForMcpSseServer(String host, int port, long timeoutMs)
             throws InterruptedException {
-        final long deadline = System.currentTimeMillis() + timeoutMs;
+        final var deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
             try (var socket = new Socket()) {
                 socket.connect(new InetSocketAddress(host, port), 500);
@@ -691,7 +691,7 @@ public class TextToSqlCLI implements Callable<Integer> {
                              CliConfig config,
                              String question,
                              String effectiveSessionId) {
-        final long startMs = System.currentTimeMillis();
+        final var startMs = System.currentTimeMillis();
         log.debug(
                   "Handling query [streaming={}, sessionId={}]: {}",
                   config.getAgent().isStreaming(),

@@ -183,7 +183,7 @@ class TextToSqlCLITest {
             final var cli = new TextToSqlCLI();
             final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
             final var buildOtel = TextToSqlCLI.class.getDeclaredMethod("buildOpenTelemetryExtension");
@@ -203,7 +203,7 @@ class TextToSqlCLITest {
 
             final var extensionsField = agent.getClass().getSuperclass().getDeclaredField("extensions");
             extensionsField.setAccessible(true);
-            @SuppressWarnings("unchecked") final List<Object> extensions = (List<Object>) extensionsField.get(agent);
+            @SuppressWarnings("unchecked") final var extensions = (List<Object>) extensionsField.get(agent);
 
             assertEquals(2, extensions.size());
             assertEquals("agent-skills", invokeName(extensions.get(0)));
@@ -249,7 +249,7 @@ class TextToSqlCLITest {
             final var cli = new TextToSqlCLI();
             final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
             final var buildAgent = TextToSqlCLI.class.getDeclaredMethod(
@@ -614,8 +614,8 @@ class TextToSqlCLITest {
             // Directly invoke the outputGenerationTool lambda
             final var toolField = AgentSetup.class.getDeclaredField("outputGenerationTool");
             toolField.setAccessible(true);
-            @SuppressWarnings("unchecked") final UnaryOperator<String> tool = (UnaryOperator<String>) toolField.get(
-                                                                                                                    agentSetup);
+            @SuppressWarnings("unchecked") final var tool = (UnaryOperator<String>) toolField.get(
+                                                                                                  agentSetup);
             assertNotNull(tool);
             assertEquals("hello", tool.apply("hello"));
         }
@@ -671,7 +671,7 @@ class TextToSqlCLITest {
             final var cli = new TextToSqlCLI();
             final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
             final var buildAgentMethod = TextToSqlCLI.class.getDeclaredMethod(
@@ -773,7 +773,7 @@ class TextToSqlCLITest {
             final var cli = new TextToSqlCLI();
             final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
             final var buildAgent = TextToSqlCLI.class.getDeclaredMethod(
@@ -833,7 +833,7 @@ class TextToSqlCLITest {
             final var cli = new TextToSqlCLI();
             final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> ext = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var ext = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
             final var buildAgentM = TextToSqlCLI.class.getDeclaredMethod(
@@ -916,7 +916,7 @@ class TextToSqlCLITest {
             final var cli = new TextToSqlCLI();
             final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var skillsExtension = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
             final var buildAgent = TextToSqlCLI.class.getDeclaredMethod(
@@ -1087,7 +1087,7 @@ class TextToSqlCLITest {
             m.setAccessible(true);
 
             try (var ignored = new SystemInOverride(input)) {
-                final int result = (int) m.invoke(
+                final var result = (int) m.invoke(
                                                   new TextToSqlCLI(),
                                                   agent,
                                                   config,
@@ -1121,7 +1121,7 @@ class TextToSqlCLITest {
             final var cli = new TextToSqlCLI();
             final var buildSkills = TextToSqlCLI.class.getDeclaredMethod("buildSkillsExtension");
             buildSkills.setAccessible(true);
-            @SuppressWarnings("unchecked") final AgentSkillsExtension<String, ?, TextToSqlAgent> ext = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
+            @SuppressWarnings("unchecked") final var ext = (AgentSkillsExtension<String, ?, TextToSqlAgent>) buildSkills
                     .invoke(cli);
 
             final var buildAgentM = TextToSqlCLI.class.getDeclaredMethod(
@@ -1187,7 +1187,7 @@ class TextToSqlCLITest {
             m.setAccessible(true);
 
             try (var ignored = new SystemInOverride("show tables\nexit\n")) {
-                final int exitCode = (int) m.invoke(new TextToSqlCLI(), agent, config, "test-session", mapper);
+                final var exitCode = (int) m.invoke(new TextToSqlCLI(), agent, config, "test-session", mapper);
                 assertEquals(0, exitCode);
             }
         }
@@ -1236,7 +1236,7 @@ class TextToSqlCLITest {
         @DisplayName("returns normally when the port becomes reachable")
         void returnsWhenPortReachable() throws Exception {
             try (var ss = new java.net.ServerSocket(0)) {
-                final int port = ss.getLocalPort();
+                final var port = ss.getLocalPort();
                 final var m = TextToSqlCLI.class.getDeclaredMethod(
                                                                    "waitForMcpSseServer",
                                                                    String.class,

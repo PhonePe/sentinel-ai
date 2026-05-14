@@ -72,19 +72,19 @@ public class SqliteQueryEngine {
                                  + disallowedKeyword);
         }
 
-        @SuppressWarnings("unchecked") final List<Object> values = args.containsKey("values") ? (List<Object>) args.get(
-                                                                                                                        "values")
+        @SuppressWarnings("unchecked") final var values = args.containsKey("values") ? (List<Object>) args.get(
+                                                                                                               "values")
                 : List.of();
 
         log.info("Executing SQL: {}", sql);
-        final long startMs = System.currentTimeMillis();
+        final var startMs = System.currentTimeMillis();
 
         try (Connection conn = connect()) {
             final var rows = executeSelect(conn, sql, values);
-            final long elapsed = System.currentTimeMillis() - startMs;
+            final var elapsed = System.currentTimeMillis() - startMs;
 
             final List<String> jsonRows = new ArrayList<>(rows.size());
-            for (final Map<String, Object> row : rows) {
+            for (final var row : rows) {
                 jsonRows.add(mapper.writeValueAsString(row));
             }
 
@@ -113,10 +113,10 @@ public class SqliteQueryEngine {
             final var pageSize = executeSelect(conn, "PRAGMA page_size", List.of());
             final var pageCount = executeSelect(conn, "PRAGMA page_count", List.of());
 
-            final long ps = pageSize.isEmpty()
+            final var ps = pageSize.isEmpty()
                     ? 0L
                     : Long.parseLong(String.valueOf(pageSize.get(0).get("page_size")));
-            final long pc = pageCount.isEmpty()
+            final var pc = pageCount.isEmpty()
                     ? 0L
                     : Long.parseLong(String.valueOf(pageCount.get(0).get("page_count")));
 
@@ -209,7 +209,7 @@ public class SqliteQueryEngine {
             }
             try (ResultSet rs = stmt.executeQuery()) {
                 final var meta = rs.getMetaData();
-                final int cols = meta.getColumnCount();
+                final var cols = meta.getColumnCount();
                 final List<Map<String, Object>> rows = new ArrayList<>();
                 while (rs.next()) {
                     final LinkedHashMap<String, Object> row = new LinkedHashMap<>();

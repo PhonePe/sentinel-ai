@@ -66,8 +66,8 @@ class SqliteRestServerTest {
         void returnsDifferentPortsOnSuccessiveCalls() {
             // This is probabilistic — two random free ports are highly unlikely to be equal.
             // We just verify that both calls succeed.
-            final int port1 = SqliteRestServer.findFreePort();
-            final int port2 = SqliteRestServer.findFreePort();
+            final var port1 = SqliteRestServer.findFreePort();
+            final var port2 = SqliteRestServer.findFreePort();
             assertTrue(port1 > 0);
             assertTrue(port2 > 0);
         }
@@ -75,14 +75,14 @@ class SqliteRestServerTest {
         @Test
         @DisplayName("returns a port in the valid TCP range")
         void returnsPortInValidRange() {
-            final int port = SqliteRestServer.findFreePort();
+            final var port = SqliteRestServer.findFreePort();
             assertTrue(port <= 65535, "Port should be <= 65535");
         }
 
         @Test
         @DisplayName("returns a positive port number")
         void returnsPositivePort() {
-            final int port = SqliteRestServer.findFreePort();
+            final var port = SqliteRestServer.findFreePort();
             assertTrue(port > 0, "Port should be positive");
         }
     }
@@ -145,7 +145,7 @@ class SqliteRestServerTest {
             final var dbPath = tempDir.resolve("smoke.db");
             DatabaseInitializer.ensureInitialised(dbPath);
 
-            final int port = SqliteRestServer.findFreePort();
+            final var port = SqliteRestServer.findFreePort();
             final var baseUrl = SqliteRestServer.startEmbedded(
                                                                dbPath.toAbsolutePath().toString(),
                                                                port,

@@ -108,7 +108,7 @@ public class LocalTools implements ToolBox {
             final TypeReference<LinkedHashMap<String, Object>> rowType = new TypeReference<>() {
             };
             final List<Map<String, Object>> rows = new ArrayList<>(jsonRows.size());
-            for (final String jsonRow : jsonRows) {
+            for (final var jsonRow : jsonRows) {
                 rows.add(MAPPER.readValue(jsonRow, rowType));
             }
 
@@ -309,7 +309,7 @@ public class LocalTools implements ToolBox {
     public String getTableRowCounts() {
         try (Connection conn = connect()) {
             final var sb = new StringBuilder("## Row counts per table\n\n");
-            for (final String table : getTables(conn)) {
+            for (final var table : getTables(conn)) {
                 try (var stmt = conn.createStatement();
                      ResultSet rs = stmt.executeQuery(
                                                       "SELECT COUNT(*) AS cnt FROM \"" + table + "\"")) {

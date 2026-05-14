@@ -277,7 +277,7 @@ public class ConsoleUtils {
         // ── Generated SQL ─────────────────────────────────────────────────
         printToStdout(CYAN + "┌─ Generated SQL " + "─".repeat(54) + "┐" + RESET + System.lineSeparator());
         final var formattedSql = formatSql(result.generatedSql());
-        for (final String line : formattedSql.split("\n")) {
+        for (final var line : formattedSql.split("\n")) {
             printToStdout(GREEN + "│  " + line + RESET + System.lineSeparator());
         }
         printToStdout(CYAN + "└" + "─".repeat(70) + "┘" + RESET + System.lineSeparator());

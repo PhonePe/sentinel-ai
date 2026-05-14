@@ -103,7 +103,7 @@ public class SqliteRestResource {
     @Path("/records/{table}")
     @SneakyThrows
     public Response createRecord(@PathParam("table") String table, Map<String, Object> body) {
-        @SuppressWarnings("unchecked") final Map<String, Object> data = (Map<String, Object>) body.get("data");
+        @SuppressWarnings("unchecked") final var data = (Map<String, Object>) body.get("data");
         if (data == null || data.isEmpty()) {
             return error(400, "Field 'data' (non-empty object) is required");
         }
@@ -122,7 +122,7 @@ public class SqliteRestResource {
         final var params = cols.stream().map(data::get).toList();
 
         try (Connection conn = connect()) {
-            final int affected = executeDml(conn, sql, params);
+            final var affected = executeDml(conn, sql, params);
             return ok(Map.of(AFFECTED_ROWS, affected));
         }
         catch (Exception e) {
@@ -138,8 +138,8 @@ public class SqliteRestResource {
     @Path("/records/{table}")
     @SneakyThrows
     public Response deleteRecords(@PathParam("table") String table, Map<String, Object> body) {
-        @SuppressWarnings("unchecked") final Map<String, Object> conditions = (Map<String, Object>) body.get(
-                                                                                                             "conditions");
+        @SuppressWarnings("unchecked") final var conditions = (Map<String, Object>) body.get(
+                                                                                             "conditions");
         if (conditions == null || conditions.isEmpty()) {
             return error(
                          400,
@@ -159,7 +159,7 @@ public class SqliteRestResource {
         final var sql = "DELETE FROM \"" + table + "\" WHERE " + String.join(AND_SEPARATOR, whereClauses);
 
         try (Connection conn = connect()) {
-            final int affected = executeDml(conn, sql, params);
+            final var affected = executeDml(conn, sql, params);
             return ok(Map.of(AFFECTED_ROWS, affected));
         }
         catch (Exception e) {
@@ -199,18 +199,18 @@ public class SqliteRestResource {
                                                             + disallowedKeyword);
         }
 
-        @SuppressWarnings("unchecked") final List<Object> values = body.containsKey("values") ? (List<Object>) body.get(
-                                                                                                                        "values")
+        @SuppressWarnings("unchecked") final var values = body.containsKey("values") ? (List<Object>) body.get(
+                                                                                                               "values")
                 : List.of();
 
         log.debug("Executing SQL Query: {}", sql);
 
-        final long startMs = System.currentTimeMillis();
+        final var startMs = System.currentTimeMillis();
         try (Connection conn = connect()) {
             final var rows = executeSelect(conn, sql, values);
-            final long executionTimeMs = System.currentTimeMillis() - startMs;
+            final var executionTimeMs = System.currentTimeMillis() - startMs;
             final List<String> jsonRows = new ArrayList<>(rows.size());
-            for (final Map<String, Object> row : rows) {
+            for (final var row : rows) {
                 jsonRows.add(mapper.writeValueAsString(row));
             }
             final var result = new SqlQueryResult(sql, jsonRows, null, executionTimeMs);
@@ -245,7 +245,7 @@ public class SqliteRestResource {
             else {
                 ps = Long.parseLong(String.valueOf(pageSize.get(0).get("page_size")));
             }
-            final long pc = pageCount.isEmpty()
+            final var pc = pageCount.isEmpty()
                     ? 0
                     : Long.parseLong(String.valueOf(pageCount.get(0).get("page_count")));
 
@@ -357,9 +357,9 @@ public class SqliteRestResource {
     @Path("/records/{table}")
     @SneakyThrows
     public Response updateRecords(@PathParam("table") String table, Map<String, Object> body) {
-        @SuppressWarnings("unchecked") final Map<String, Object> data = (Map<String, Object>) body.get("data");
-        @SuppressWarnings("unchecked") final Map<String, Object> conditions = (Map<String, Object>) body.get(
-                                                                                                             "conditions");
+        @SuppressWarnings("unchecked") final var data = (Map<String, Object>) body.get("data");
+        @SuppressWarnings("unchecked") final var conditions = (Map<String, Object>) body.get(
+                                                                                             "conditions");
         if (data == null || data.isEmpty()) {
             return error(400, "Field 'data' is required");
         }
@@ -394,7 +394,7 @@ public class SqliteRestResource {
                 + String.join(AND_SEPARATOR, whereClauses);
 
         try (Connection conn = connect()) {
-            final int affected = executeDml(conn, sql, params);
+            final var affected = executeDml(conn, sql, params);
             return ok(Map.of(AFFECTED_ROWS, affected));
         }
         catch (Exception e) {
@@ -447,7 +447,7 @@ public class SqliteRestResource {
             }
             try (ResultSet rs = stmt.executeQuery()) {
                 final var meta = rs.getMetaData();
-                final int cols = meta.getColumnCount();
+                final var cols = meta.getColumnCount();
                 final List<Map<String, Object>> rows = new ArrayList<>();
                 while (rs.next()) {
                     final LinkedHashMap<String, Object> row = new LinkedHashMap<>();

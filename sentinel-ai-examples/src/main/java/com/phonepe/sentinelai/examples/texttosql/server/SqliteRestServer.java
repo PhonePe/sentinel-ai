@@ -177,7 +177,7 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
     @SneakyThrows
     static void waitForPort(String host, int port, long timeoutMs)
             throws InterruptedException {
-        final long deadline = System.currentTimeMillis() + timeoutMs;
+        final var deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
             try (var socket = new Socket()) {
                 socket.connect(new InetSocketAddress(host, port), 500);

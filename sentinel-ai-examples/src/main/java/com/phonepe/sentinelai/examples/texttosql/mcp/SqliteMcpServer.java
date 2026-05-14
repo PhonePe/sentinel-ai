@@ -134,7 +134,7 @@ public class SqliteMcpServer implements Callable<Integer> {
      */
     private static void redirectLoggingToStderr() {
         final var context = (LoggerContext) LoggerFactory.getILoggerFactory();
-        final ch.qos.logback.classic.Logger root = context.getLogger(Logger.ROOT_LOGGER_NAME);
+        final var root = (ch.qos.logback.classic.Logger) context.getLogger(Logger.ROOT_LOGGER_NAME);
         root.detachAndStopAllAppenders();
 
         final var encoder = new PatternLayoutEncoder();
