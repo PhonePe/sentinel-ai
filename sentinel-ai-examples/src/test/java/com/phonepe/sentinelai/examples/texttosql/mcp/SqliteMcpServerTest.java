@@ -23,7 +23,6 @@ import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -55,7 +54,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <li>Error / validation branches in each handler
  * </ul>
  */
-@DisplayName("SqliteMcpServer")
 class SqliteMcpServerTest {
 
     @TempDir
@@ -66,7 +64,6 @@ class SqliteMcpServerTest {
     static ObjectMapper mapper;
 
     @Nested
-    @DisplayName("handleExecuteQuery — additional cases")
     class HandleExecuteQueryAdditionalTests {
 
         @ParameterizedTest
@@ -74,7 +71,6 @@ class SqliteMcpServerTest {
                 "server,SELECT FROM INVALID SYNTAX !!!",
                 "badServer,SELECT 1"
         })
-        @DisplayName("returns error for failing queries")
         void returnsErrorForFailingQueries(String target, String sql) throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleExecuteQuery",
@@ -91,11 +87,9 @@ class SqliteMcpServerTest {
     }
 
     @Nested
-    @DisplayName("handleExecuteQuery")
     class HandleExecuteQueryTests {
 
         @Test
-        @DisplayName("executes query with explicit empty values list")
         void executesQueryWithEmptyValues() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleExecuteQuery",
@@ -114,7 +108,6 @@ class SqliteMcpServerTest {
         }
 
         @Test
-        @DisplayName("executes SELECT from users table successfully")
         void executesSelectFromUsers() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleExecuteQuery",
@@ -137,7 +130,6 @@ class SqliteMcpServerTest {
                 "DELETE FROM users WHERE id = 99999,DELETE should be rejected",
                 "UPDATE users SET id = 0 WHERE id = 99999,UPDATE should be rejected"
         })
-        @DisplayName("returns error for write statements")
         void returnsErrorForWriteStatements(String sql, String message) throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleExecuteQuery",
@@ -152,7 +144,6 @@ class SqliteMcpServerTest {
         }
 
         @Test
-        @DisplayName("returns error when sql field is missing")
         void returnsErrorWhenSqlMissing() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleExecuteQuery",
@@ -165,7 +156,6 @@ class SqliteMcpServerTest {
         }
 
         @Test
-        @DisplayName("returns rows for a valid SELECT statement")
         void returnsRowsForValidSelect() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleExecuteQuery",
@@ -187,11 +177,9 @@ class SqliteMcpServerTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("handleGetDatabaseInfo")
     class HandleGetDatabaseInfoTests {
 
         @Test
-        @DisplayName("returns database metadata successfully")
         void returnsDatabaseMetadata() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleGetDatabaseInfo",
@@ -204,7 +192,6 @@ class SqliteMcpServerTest {
         }
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleGetDatabaseInfo",
@@ -217,11 +204,9 @@ class SqliteMcpServerTest {
     }
 
     @Nested
-    @DisplayName("handleGetTableSchema — additional cases")
     class HandleGetTableSchemaAdditionalTests {
 
         @Test
-        @DisplayName("returns error for blank tableName")
         void returnsErrorForBlankTableName() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleGetTableSchema",
@@ -237,11 +222,9 @@ class SqliteMcpServerTest {
     }
 
     @Nested
-    @DisplayName("handleGetTableSchema")
     class HandleGetTableSchemaTests {
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleGetTableSchema",
@@ -257,7 +240,6 @@ class SqliteMcpServerTest {
         }
 
         @Test
-        @DisplayName("returns error for unknown table")
         void returnsErrorForUnknownTable() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleGetTableSchema",
@@ -274,7 +256,6 @@ class SqliteMcpServerTest {
         }
 
         @Test
-        @DisplayName("returns error when tableName is missing")
         void returnsErrorWhenTableNameMissing() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleGetTableSchema",
@@ -287,7 +268,6 @@ class SqliteMcpServerTest {
         }
 
         @Test
-        @DisplayName("returns schema for an existing table")
         void returnsSchemaForExistingTable() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleGetTableSchema",
@@ -309,11 +289,9 @@ class SqliteMcpServerTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("handleListTables")
     class HandleListTablesTests {
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleListTables",
@@ -325,7 +303,6 @@ class SqliteMcpServerTest {
         }
 
         @Test
-        @DisplayName("returns success result with tables list")
         void returnsTablesSuccessfully() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod(
                                                                        "handleListTables",
@@ -345,11 +322,9 @@ class SqliteMcpServerTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("redirectLoggingToStderr")
     class RedirectLoggingTests {
 
         @Test
-        @DisplayName("redirectLoggingToStderr does not throw")
         void redirectLoggingToStderrDoesNotThrow() throws Exception {
             final var method = SqliteMcpServer.class.getDeclaredMethod("redirectLoggingToStderr");
             method.setAccessible(true);
@@ -362,7 +337,6 @@ class SqliteMcpServerTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("tool definitions")
     class ToolDefinitionTests {
 
         @ParameterizedTest
@@ -372,7 +346,6 @@ class SqliteMcpServerTest {
                 "getTableSchemaTool,get_table_schema",
                 "getDatabaseInfoTool,get_database_info"
         })
-        @DisplayName("tool definition methods return tools with expected names")
         void toolDefinitionMethodsHaveCorrectNames(String methodName, String expectedName)
                 throws Exception {
             final var jsonMapper = new JacksonMcpJsonMapper(mapper);
@@ -429,7 +402,6 @@ class SqliteMcpServerTest {
     // =========================================================================
 
     @Test
-    @DisplayName("DEFAULT_SSE_PORT is 8766")
     void defaultSsePort() {
         assertEquals(8766, SqliteMcpServer.DEFAULT_SSE_PORT);
     }
@@ -439,7 +411,6 @@ class SqliteMcpServerTest {
     // =========================================================================
 
     @Test
-    @DisplayName("TransportMode enum has STDIO and SSE values")
     void transportModeEnumValues() {
         final var values = SqliteMcpServer.TransportMode.values();
         assertEquals(2, values.length);
@@ -452,7 +423,6 @@ class SqliteMcpServerTest {
     // =========================================================================
 
     @Test
-    @DisplayName("TransportMode valueOf works for STDIO and SSE")
     void transportModeValueOf() {
         assertEquals(
                      SqliteMcpServer.TransportMode.STDIO,

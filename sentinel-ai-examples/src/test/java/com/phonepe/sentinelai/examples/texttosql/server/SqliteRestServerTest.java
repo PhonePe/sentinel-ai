@@ -23,7 +23,6 @@ import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jersey.setup.JerseyEnvironment;
 
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -50,7 +49,6 @@ import static org.mockito.Mockito.when;
  * <p>The heavy {@code startEmbedded} path (Dropwizard startup) is covered by one smoke test that
  * verifies the server can serve a real HTTP request. All other tests cover the static helpers.
  */
-@DisplayName("SqliteRestServer")
 class SqliteRestServerTest {
 
     // =========================================================================
@@ -58,11 +56,9 @@ class SqliteRestServerTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("findFreePort")
     class FindFreePortTests {
 
         @Test
-        @DisplayName("returns different ports on successive calls (usually)")
         void returnsDifferentPortsOnSuccessiveCalls() {
             // This is probabilistic — two random free ports are highly unlikely to be equal.
             // We just verify that both calls succeed.
@@ -73,14 +69,12 @@ class SqliteRestServerTest {
         }
 
         @Test
-        @DisplayName("returns a port in the valid TCP range")
         void returnsPortInValidRange() {
             final var port = SqliteRestServer.findFreePort();
             assertTrue(port <= 65535, "Port should be <= 65535");
         }
 
         @Test
-        @DisplayName("returns a positive port number")
         void returnsPositivePort() {
             final var port = SqliteRestServer.findFreePort();
             assertTrue(port > 0, "Port should be positive");
@@ -92,11 +86,9 @@ class SqliteRestServerTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("initialize and run")
     class InitializeAndRunTests {
 
         @Test
-        @DisplayName("initialize does not throw and ignores the bootstrap argument")
         @SuppressWarnings("unchecked")
         void initializeDoesNotThrow() {
             final var server = new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
@@ -106,7 +98,6 @@ class SqliteRestServerTest {
         }
 
         @Test
-        @DisplayName("run registers the SqliteRestResource with jersey environment")
         void runRegistersResource() {
             final var server = new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
             final var environment = mock(Environment.class);
@@ -130,7 +121,6 @@ class SqliteRestServerTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("startEmbedded")
     @Disabled("Dropwizard lifecycle calls System.exit() which crashes the test JVM")
     class StartEmbeddedTests {
 
@@ -140,7 +130,6 @@ class SqliteRestServerTest {
          * requests.
          */
         @Test
-        @DisplayName("server starts and responds to GET /api/sqlite/tables")
         void serverStartsAndServesTables(@TempDir Path tempDir) {
             final var dbPath = tempDir.resolve("smoke.db");
             DatabaseInitializer.ensureInitialised(dbPath);
@@ -159,11 +148,9 @@ class SqliteRestServerTest {
     }
 
     @Nested
-    @DisplayName("waitForPort")
     class WaitForPortTests {
 
         @Test
-        @DisplayName("throws IllegalStateException when port is not reachable within timeout")
         void throwsWhenPortNotReachable() throws Exception {
             final var m = SqliteRestServer.class.getDeclaredMethod(
                                                                    "waitForPort",

@@ -22,7 +22,6 @@ import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -47,7 +46,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>All handler methods are public, so no reflection is required.
  */
-@DisplayName("SqliteQueryEngine")
 class SqliteQueryEngineTest {
 
     @TempDir
@@ -58,11 +56,9 @@ class SqliteQueryEngineTest {
     static ObjectMapper mapper;
 
     @Nested
-    @DisplayName("executeQuery")
     class ExecuteQueryTests {
 
         @Test
-        @DisplayName("executes query with bound parameter values")
         void executesQueryWithBoundParams() {
             final var result = engine.executeQuery(
                                                    Map.of(
@@ -79,7 +75,6 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("executes with explicit empty values list")
         void executesWithEmptyValuesList() {
             final var result = engine.executeQuery(
                                                    Map.of("sql",
@@ -103,7 +98,6 @@ class SqliteQueryEngineTest {
                 "REPLACE INTO users (id) VALUES (1)",
                 "SELECT FROM INVALID SYNTAX !!!"
         })
-        @DisplayName("rejects invalid SQL statements")
         void rejectsInvalidStatements(String sql) {
             final var result = engine.executeQuery(Map.of("sql", sql), mapper);
             assertEquals(Boolean.TRUE, result.isError());
@@ -113,14 +107,12 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() {
             final var result = badEngine.executeQuery(Map.of("sql", "SELECT 1"), mapper);
             assertEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
-        @DisplayName("returns error when sql field is absent")
         void returnsErrorWhenSqlAbsent() {
             final var result = engine.executeQuery(Map.of(), mapper);
             assertEquals(Boolean.TRUE, result.isError());
@@ -128,14 +120,12 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("returns error when sql field is blank")
         void returnsErrorWhenSqlBlank() {
             final var result = engine.executeQuery(Map.of("sql", "   "), mapper);
             assertEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
-        @DisplayName("returns rows for a valid SELECT statement")
         void returnsRowsForValidSelect() {
             final var result = engine.executeQuery(Map.of("sql", "SELECT 1 AS one"), mapper);
             assertNotNull(result);
@@ -144,7 +134,6 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("returns rows for a SELECT from the users table")
         void returnsRowsFromUsersTable() {
             final var result = engine.executeQuery(Map.of("sql",
                                                           "SELECT user_id FROM users LIMIT 3"),
@@ -156,11 +145,9 @@ class SqliteQueryEngineTest {
     }
 
     @Nested
-    @DisplayName("getDatabaseInfo")
     class GetDatabaseInfoTests {
 
         @Test
-        @DisplayName("returns approximateSizeBytes in the response")
         void returnsApproximateSizeBytes() {
             final var result = engine.getDatabaseInfo(mapper);
             assertNotEquals(Boolean.TRUE, result.isError());
@@ -168,7 +155,6 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("returns database metadata including tableCount")
         void returnsDatabaseMetadata() {
             final var result = engine.getDatabaseInfo(mapper);
             assertNotNull(result);
@@ -177,7 +163,6 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() {
             final var result = badEngine.getDatabaseInfo(mapper);
             assertEquals(Boolean.TRUE, result.isError());
@@ -190,18 +175,15 @@ class SqliteQueryEngineTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("getTableSchema")
     class GetTableSchemaTests {
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() {
             final var result = badEngine.getTableSchema(Map.of("tableName", "users"), mapper);
             assertEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
-        @DisplayName("returns error for unknown table")
         void returnsErrorForUnknownTable() {
             final var result = engine.getTableSchema(Map.of("tableName", "nonexistent_xyz"),
                                                      mapper);
@@ -210,7 +192,6 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("returns error when tableName is absent")
         void returnsErrorWhenTableNameAbsent() {
             final var result = engine.getTableSchema(Map.of(), mapper);
             assertEquals(Boolean.TRUE, result.isError());
@@ -218,14 +199,12 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("returns error when tableName is blank")
         void returnsErrorWhenTableNameBlank() {
             final var result = engine.getTableSchema(Map.of("tableName", "   "), mapper);
             assertEquals(Boolean.TRUE, result.isError());
         }
 
         @Test
-        @DisplayName("returns error when tableName is an invalid identifier")
         void returnsErrorWhenTableNameInvalid() {
             final var result = engine.getTableSchema(Map.of("tableName", "bad table; DROP"),
                                                      mapper);
@@ -234,7 +213,6 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("returns schema for an existing table")
         void returnsSchemaForExistingTable() {
             final var result = engine.getTableSchema(Map.of("tableName", "users"), mapper);
             assertNotNull(result);
@@ -248,11 +226,9 @@ class SqliteQueryEngineTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("listTables")
     class ListTablesTests {
 
         @Test
-        @DisplayName("returns error when database is not accessible")
         void returnsErrorForBadDbPath() {
             final var result = badEngine.listTables(mapper);
             assertEquals(Boolean.TRUE, result.isError());
@@ -260,7 +236,6 @@ class SqliteQueryEngineTest {
         }
 
         @Test
-        @DisplayName("returns a non-error result containing a tables list")
         void returnsTablesList() {
             final var result = engine.listTables(mapper);
             assertNotNull(result);

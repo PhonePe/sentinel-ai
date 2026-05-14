@@ -22,7 +22,6 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -83,7 +82,6 @@ import static org.mockito.Mockito.when;
  * database, and several external services — these are covered by end-to-end / integration tests.
  * Here we focus on the public API surface that can be exercised without infrastructure.
  */
-@DisplayName("TextToSqlCLI")
 class TextToSqlCLITest {
 
     // =========================================================================
@@ -91,11 +89,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("buildAgentSetup")
     class BuildAgentSetupTests {
 
         @Test
-        @DisplayName("returns a non-null AgentSetup")
         void returnsNonNullAgentSetup() throws Exception {
             final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
@@ -143,11 +139,9 @@ class TextToSqlCLITest {
     }
 
     @Nested
-    @DisplayName("buildAgent")
     class BuildAgentTests {
 
         @Test
-        @DisplayName("adds skills and OpenTelemetry extensions to the agent")
         void addsSkillsAndOpenTelemetryExtensions() throws Exception {
             final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
@@ -211,7 +205,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("builds a TextToSqlAgent successfully")
         void buildsAgentSuccessfully() throws Exception {
             final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
@@ -275,11 +268,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("buildOpenAIModel")
     class BuildOpenAIModelTests {
 
         @Test
-        @DisplayName("returns a non-null SimpleOpenAIModel")
         void returnsNonNullModel() throws Exception {
             final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
@@ -307,12 +298,10 @@ class TextToSqlCLITest {
     }
 
     @Nested
-    @DisplayName("buildTrustedHttpClient interceptor")
     @WireMockTest
     class BuildTrustedHttpClientInterceptorTests {
 
         @Test
-        @DisplayName("interceptor replaces the Authorization header with the configured bearer token")
         void interceptorInjectsBearerToken(WireMockRuntimeInfo wmInfo) throws Exception {
             // Arrange: stub WireMock to accept any GET and return 200
             stubFor(get(anyUrl()).willReturn(aResponse().withStatus(200).withBody("ok")));
@@ -357,11 +346,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("buildTrustedHttpClient")
     class BuildTrustedHttpClientTests {
 
         @Test
-        @DisplayName("returns a non-null OkHttpClientAdapter")
         void returnsNonNullAdapter() throws Exception {
             final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
@@ -383,11 +370,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("dumpMessages")
     class DumpMessagesTests {
 
         @Test
-        @DisplayName("prints warning when lastAgentOutput is null")
         void printsWarningWhenNoOutput() throws Exception {
             final var cli = new TextToSqlCLI();
             // lastAgentOutput is null by default — exercising the early-return branch
@@ -403,7 +388,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("writes messages to .logs/ when lastAgentOutput is set")
         void writesMessagesToLogsDirectory() throws Exception {
             // Ensure .logs/ directory exists (it's created by the production code)
             final var logsDir = Path.of(".logs");
@@ -441,14 +425,11 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("handleQuery")
     class HandleQueryTests {
 
         private static final String SESSION = "test-session";
 
         @Test
-        @DisplayName("exception during executeAsync is caught and error is printed")
-        @SuppressWarnings("unchecked")
         void exceptionIsCaughtAndPrinted() {
             final var agent = mock(TextToSqlAgent.class);
             when(agent.executeAsync(any()))
@@ -459,18 +440,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("non-streaming: both data and error null triggers printWarning")
-        @SuppressWarnings("unchecked")
-        void nonStreamingEmptyResult() {
-            final var agent = mock(TextToSqlAgent.class);
-            final AgentOutput<SqlQueryResult> output = new AgentOutput<>(null, List.of(), List.of(), null, null);
-            when(agent.executeAsync(any()))
-                    .thenReturn(CompletableFuture.completedFuture(output));
-        }
-
-        @Test
-        @DisplayName("non-streaming: null data + error triggers printError")
-        @SuppressWarnings("unchecked")
         void nonStreamingErrorResult() {
             final var agent = mock(TextToSqlAgent.class);
             final var err = SentinelError.error(ErrorType.NO_RESPONSE);
@@ -482,8 +451,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("non-streaming: data result triggers printStructuredResult")
-        @SuppressWarnings("unchecked")
         void nonStreamingSuccessWithData() {
             final var agent = mock(TextToSqlAgent.class);
             final var result = new SqlQueryResult("SELECT 1", List.of("{\"x\":1}"), "one row", 42L);
@@ -495,7 +462,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("streaming: executeAsyncStreaming is called and result is handled")
         @SuppressWarnings("unchecked")
         void streamingSuccessWithData() {
             final var agent = mock(TextToSqlAgent.class);
@@ -548,14 +514,12 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("initializeDatabase")
     class InitializeDatabaseTests {
 
         @TempDir
         Path tempDir;
 
         @Test
-        @DisplayName("initialises the SQLite database and returns the absolute path")
         void initialisesDatabase() throws Exception {
             final var dbFile = tempDir.resolve("test.db");
             final var config = new CliConfig();
@@ -576,11 +540,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("Lambda coverage")
     class LambdaCoverageTests {
 
         @Test
-        @DisplayName("outputGenerationTool lambda returns the input unchanged")
         void outputGenerationToolLambdaReturnsInput() throws Exception {
             final var config = new CliConfig();
             config.getOpenai().setApiKey("test-key");
@@ -621,7 +583,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("outputValidator lambda returns success")
         @SuppressWarnings("unchecked")
         void outputValidatorLambdaReturnsSuccess() throws Exception {
             final var config = new CliConfig();
@@ -688,14 +649,12 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("loadConfig")
     class LoadConfigTests {
 
         @TempDir
         Path tempDir;
 
         @Test
-        @DisplayName("loads a valid YAML config file successfully")
         void loadsValidYamlConfig() throws Exception {
             final var configFile = tempDir.resolve("agent-config.yml");
             Files.writeString(
@@ -725,11 +684,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("registerAskUserTool")
     class RegisterAskUserToolTests {
 
         @Test
-        @DisplayName("registers ask-user tool without throwing")
         void registersWithoutThrowing() throws Exception {
             final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
@@ -790,11 +747,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("registerHttpToolbox")
     class RegisterHttpToolboxTests {
 
         @Test
-        @DisplayName("registers HTTP toolbox without throwing")
         void registersWithoutThrowing() throws Exception {
             final var config = buildConfig();
             final var mapper = JsonUtils.createMapper();
@@ -861,14 +816,12 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("registerLocalTools")
     class RegisterLocalToolsTests {
 
         @TempDir
         Path tempDir;
 
         @Test
-        @DisplayName("registers local tools without throwing")
         void registersWithoutThrowing() throws Exception {
             final var dbPath = tempDir.resolve("local-tools-test.db");
             DatabaseInitializer.ensureInitialised(dbPath);
@@ -933,11 +886,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("resolveDumpMessagesFilename")
     class ResolveDumpMessagesFilenameTests {
 
         @Test
-        @DisplayName("returns explicit filename when one is provided after /dumpMessages")
         void returnsExplicitFilename() throws Exception {
             final var cli = new TextToSqlCLI();
             final var m = TextToSqlCLI.class.getDeclaredMethod("resolveDumpMessagesFilename", String.class);
@@ -947,7 +898,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("returns timestamped filename when no explicit filename is given")
         void returnsTimestampedFilenameWhenNoArg() throws Exception {
             final var cli = new TextToSqlCLI();
             final var m = TextToSqlCLI.class.getDeclaredMethod("resolveDumpMessagesFilename", String.class);
@@ -964,11 +914,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("resolveSessionId")
     class ResolveSessionIdTests {
 
         @Test
-        @DisplayName("returns the provided sessionId when it is non-blank")
         void returnsProvidedSessionId() throws Exception {
             final var m = TextToSqlCLI.class.getDeclaredMethod("resolveSessionId", String.class);
             m.setAccessible(true);
@@ -977,7 +925,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("returns a UUID when sessionId is blank")
         void returnsUuidForBlankSessionId() throws Exception {
             final var m = TextToSqlCLI.class.getDeclaredMethod("resolveSessionId", String.class);
             m.setAccessible(true);
@@ -987,7 +934,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("returns a UUID when sessionId is null")
         void returnsUuidForNullSessionId() throws Exception {
             final var m = TextToSqlCLI.class.getDeclaredMethod("resolveSessionId", String.class);
             m.setAccessible(true);
@@ -1004,11 +950,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("resolveSkillsDir")
     class ResolveSkillsDirTests {
 
         @Test
-        @DisplayName("creates a temp directory with extracted skill when skillsDir is null")
         void createsTempDirWhenSkillsDirIsNull() throws Exception {
             final var cli = new TextToSqlCLI();
             // skillsDir field is null by default
@@ -1024,7 +968,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("returns provided skillsDir when it is set")
         void returnsProvidedSkillsDir() throws Exception {
             final var cli = new TextToSqlCLI();
             final var skillsDirField = TextToSqlCLI.class.getDeclaredField("skillsDir");
@@ -1043,7 +986,6 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("runInteractiveLoop")
     class RunInteractiveLoopTests {
 
         private static final class SystemInOverride implements AutoCloseable {
@@ -1072,7 +1014,6 @@ class TextToSqlCLITest {
 
         @ParameterizedTest
         @MethodSource("runInteractiveLoopInputs")
-        @DisplayName("returns 0 for exit and non-query control inputs")
         void returnsZeroForExitAndControlInputs(String input) throws Exception {
             final var config = buildConfig();
             final var mapper = JsonUtils.createMapper();
@@ -1149,7 +1090,6 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("runInteractiveLoop with query")
     class RunInteractiveLoopWithQueryTests {
 
         private static final class SystemInOverride implements AutoCloseable {
@@ -1167,8 +1107,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("sends a real query to mocked agent then exits — covers handleQuery path")
-        @SuppressWarnings("unchecked")
         void realQueryThenExit() throws Exception {
             final var agent = mock(TextToSqlAgent.class);
             final var result = new SqlQueryResult("SELECT 1", List.of(), "ok", 1L);
@@ -1209,11 +1147,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("validateConfig")
     class ValidateConfigTests {
 
         @Test
-        @DisplayName("does not throw when apiKey is set")
         void doesNotThrowWhenApiKeyIsSet() throws Exception {
             final var config = new CliConfig();
             config.getOpenai().setApiKey("a-real-key");
@@ -1229,11 +1165,9 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
-    @DisplayName("waitForMcpSseServer")
     class WaitForMcpSseServerTests {
 
         @Test
-        @DisplayName("returns normally when the port becomes reachable")
         void returnsWhenPortReachable() throws Exception {
             try (var ss = new java.net.ServerSocket(0)) {
                 final var port = ss.getLocalPort();
@@ -1250,7 +1184,6 @@ class TextToSqlCLITest {
         }
 
         @Test
-        @DisplayName("throws IllegalStateException when port is not reachable within timeout")
         void throwsWhenPortNotReachable() throws Exception {
             // Use port 1 — guaranteed to be unused/unreachable in test environments
             final var m = TextToSqlCLI.class.getDeclaredMethod(
@@ -1273,7 +1206,6 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Test
-    @DisplayName("TextToSqlCLI can be instantiated without throwing")
     void canBeInstantiatedWithoutThrowing() {
         assertDoesNotThrow(TextToSqlCLI::new);
     }
@@ -1283,7 +1215,6 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Test
-    @DisplayName("DEFAULT_MCP_SSE_PORT equals SqliteMcpServer.DEFAULT_SSE_PORT")
     void defaultMcpSsePortMatchesSqliteMcpServerDefault() {
         assertEquals(SqliteMcpServer.DEFAULT_SSE_PORT, TextToSqlCLI.DEFAULT_MCP_SSE_PORT);
     }
@@ -1293,7 +1224,6 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Test
-    @DisplayName("McpServerMode enum has STDIO and SSE values")
     void mcpServerModeEnumValues() {
         final var values = TextToSqlCLI.McpServerMode.values();
         assertEquals(2, values.length);
@@ -1306,7 +1236,6 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Test
-    @DisplayName("McpServerMode valueOf works for STDIO and SSE")
     void mcpServerModeValueOf() {
         assertEquals(
                      TextToSqlCLI.McpServerMode.STDIO,
@@ -1319,7 +1248,6 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Test
-    @DisplayName("ToolboxMode enum has HTTP and MCP values")
     void toolboxModeEnumValues() {
         final var values = TextToSqlCLI.ToolboxMode.values();
         assertEquals(2, values.length);
@@ -1333,7 +1261,6 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Test
-    @DisplayName("ToolboxMode valueOf works for HTTP and MCP")
     void toolboxModeValueOf() {
         assertEquals(TextToSqlCLI.ToolboxMode.HTTP, TextToSqlCLI.ToolboxMode.valueOf("HTTP"));
         assertEquals(TextToSqlCLI.ToolboxMode.MCP, TextToSqlCLI.ToolboxMode.valueOf("MCP"));

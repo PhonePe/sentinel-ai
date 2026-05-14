@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.examples.texttosql.server;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -35,7 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>These helpers are directly accessible from the same package — no reflection needed.
  */
-@DisplayName("SqliteRestServer helpers")
 class SqliteRestServerHelpersTest {
 
     // =========================================================================
@@ -43,11 +41,9 @@ class SqliteRestServerHelpersTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("buildInlineConfig")
     class BuildInlineConfigTests {
 
         @Test
-        @DisplayName("admin port is port + 1")
         void adminPortIsPortPlusOne() throws java.io.IOException {
             final var port = 7777;
             final var configPath = SqliteRestServer.buildInlineConfig(port);
@@ -58,7 +54,6 @@ class SqliteRestServerHelpersTest {
         }
 
         @Test
-        @DisplayName("does not contain shell-style placeholder tokens after substitution")
         void noUnresolvedPlaceholders() throws java.io.IOException {
             final var configPath = SqliteRestServer.buildInlineConfig(8080);
             final var content = Files.readString(Path.of(configPath));
@@ -71,7 +66,6 @@ class SqliteRestServerHelpersTest {
         }
 
         @Test
-        @DisplayName("returns path to a temp file that exists on disk")
         void returnsTempFileThatExists() {
             final var configPath = SqliteRestServer.buildInlineConfig(9876);
             assertNotNull(configPath);
@@ -79,7 +73,6 @@ class SqliteRestServerHelpersTest {
         }
 
         @Test
-        @DisplayName("substitutes port into the generated config file content")
         void substitutesPortInContent() throws java.io.IOException {
             final var port = 12345;
             final var configPath = SqliteRestServer.buildInlineConfig(port);
@@ -95,11 +88,9 @@ class SqliteRestServerHelpersTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("waitForPort")
     class WaitForPortTests {
 
         @Test
-        @DisplayName("error message mentions the timeout duration")
         void errorMessageMentionsTimeout() {
             final var ex = assertThrows(
                                         IllegalStateException.class,
@@ -110,7 +101,6 @@ class SqliteRestServerHelpersTest {
         }
 
         @Test
-        @DisplayName("returns normally when the port becomes reachable")
         void returnsNormallyWhenPortReachable() throws Exception {
             try (var serverSocket = new ServerSocket(0)) {
                 final var port = serverSocket.getLocalPort();
@@ -121,7 +111,6 @@ class SqliteRestServerHelpersTest {
         }
 
         @Test
-        @DisplayName("throws IllegalStateException when port is not reachable within timeout")
         void throwsWhenPortNotReachable() {
             assertThrows(
                          IllegalStateException.class,

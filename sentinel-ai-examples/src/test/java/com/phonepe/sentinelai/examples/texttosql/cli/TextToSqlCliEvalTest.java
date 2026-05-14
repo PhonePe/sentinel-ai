@@ -18,7 +18,6 @@ package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agent.AgentSetup;
@@ -39,10 +38,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
-@DisplayName("TextToSqlCLI evals")
 class TextToSqlCliEvalTest {
     @Test
-    @DisplayName("eval run passes for CLI-style text-to-sql agent")
     void evalRunPassesForCliStyleTextToSqlAgent() {
         final var mapper = new ObjectMapper();
         final var setup = AgentSetup.builder()

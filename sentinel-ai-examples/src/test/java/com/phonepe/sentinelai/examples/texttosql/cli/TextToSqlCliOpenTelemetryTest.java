@@ -27,7 +27,6 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agent.AgentInput;
@@ -42,7 +41,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@DisplayName("TextToSqlCLI OpenTelemetry")
 @Disabled
 class TextToSqlCliOpenTelemetryTest {
     private InMemorySpanExporter spanExporter;
@@ -50,7 +48,6 @@ class TextToSqlCliOpenTelemetryTest {
     private OpenTelemetrySdk openTelemetrySdk;
 
     @Test
-    @DisplayName("CLI OpenTelemetry extension emits spans for agent execution")
     void cliOpenTelemetryExtensionEmitsSpansForAgentExecution() {
         final var mapper = new ObjectMapper();
         final var setup = AgentSetup.builder()

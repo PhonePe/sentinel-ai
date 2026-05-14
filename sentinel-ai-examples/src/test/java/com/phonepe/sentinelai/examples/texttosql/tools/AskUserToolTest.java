@@ -18,7 +18,6 @@ package com.phonepe.sentinelai.examples.texttosql.tools;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -42,15 +41,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@link ByteArrayInputStream} via reflection so that tests are fully deterministic and do not
  * block waiting for terminal input.
  */
-@DisplayName("AskUserTool")
 class AskUserToolTest {
 
     @Nested
-    @DisplayName("askUserQuestion")
     class AskUserQuestionTests {
 
         @Test
-        @DisplayName("returns '<no input>' when user presses Enter with no text")
         void emptyLineReturnsNoInput() throws Exception {
             injectStdin("");
             final var result = tool.askUserQuestion("Any preferences?");
@@ -58,7 +54,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("returns '<no input>' on EOF")
         void eofReturnsNoInput() throws Exception {
             injectEof();
             final var result = tool.askUserQuestion("Hello?");
@@ -66,7 +61,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("prints question banner to stdout")
         void printsBannerToStdout() throws Exception {
             injectStdin("answer");
             tool.askUserQuestion("What color?");
@@ -76,7 +70,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("returns trimmed user input")
         void returnsTrimmedInput() throws Exception {
             injectStdin("  hello world  ");
             final var result = tool.askUserQuestion("What is your name?");
@@ -84,7 +77,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("spinner is re-enabled after call")
         void spinnerReEnabledAfterCall() throws Exception {
             ConsoleUtils.disableSpinner();
             injectStdin("ok");
@@ -96,11 +88,9 @@ class AskUserToolTest {
     }
 
     @Nested
-    @DisplayName("askUserToChoose")
     class AskUserToChooseTests {
 
         @Test
-        @DisplayName("choices with only semicolons (all empty tokens) falls back to free-form")
         void allEmptyTokensFallsBack() throws Exception {
             injectStdin("ok");
             final var result = tool.askUserToChoose("Pick?", ";;;");
@@ -108,7 +98,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("blank choices falls back to free-form question")
         void blankChoicesFallsBackToFreeForm() throws Exception {
             injectStdin("my answer");
             final var result = tool.askUserToChoose("What do you want?", "   ");
@@ -116,7 +105,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("returns '<no input>' on EOF inside choices")
         void eofInsideChoicesReturnsNoInput() throws Exception {
             injectEof();
             final var result = tool.askUserToChoose("Choose?", "A;B;C");
@@ -124,7 +112,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("typing free text that doesn't match any choice returns raw input")
         void freeTextReturnsRaw() throws Exception {
             injectStdin("something else entirely");
             final var result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
@@ -132,7 +119,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("null choices falls back to free-form question")
         void nullChoicesFallsBackToFreeForm() throws Exception {
             injectStdin("free text answer");
             final var result = tool.askUserToChoose("What do you want?", null);
@@ -140,7 +126,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("selecting out-of-range number returns raw input")
         void outOfRangeIndexReturnsRaw() throws Exception {
             injectStdin("99");
             final var result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
@@ -148,7 +133,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("prints numbered choices to stdout")
         void printsNumberedChoices() throws Exception {
             injectStdin("1");
             tool.askUserToChoose("Which?", "OptionA;OptionB");
@@ -158,7 +142,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("selecting by 1-based index returns corresponding choice")
         void selectByIndex() throws Exception {
             injectStdin("2");
             final var result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
@@ -166,7 +149,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("selecting by exact label (case-insensitive) returns that choice")
         void selectByLabel() throws Exception {
             injectStdin("gamma");
             final var result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
@@ -174,7 +156,6 @@ class AskUserToolTest {
         }
 
         @Test
-        @DisplayName("selecting by first index returns first choice")
         void selectFirstByIndex() throws Exception {
             injectStdin("1");
             final var result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
@@ -190,7 +171,6 @@ class AskUserToolTest {
     private ByteArrayOutputStream outCapture;
 
     @Test
-    @DisplayName("name() returns 'ask_user_tool'")
     void nameReturnsExpected() {
         assertEquals("ask_user_tool", tool.name());
     }

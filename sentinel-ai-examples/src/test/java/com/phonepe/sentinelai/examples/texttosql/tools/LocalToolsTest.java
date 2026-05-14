@@ -17,7 +17,6 @@
 package com.phonepe.sentinelai.examples.texttosql.tools;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -38,7 +37,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("LocalTools")
 class LocalToolsTest {
 
     @TempDir
@@ -48,11 +46,9 @@ class LocalToolsTest {
     static Path dbPath;
 
     @Nested
-    @DisplayName("appendTableDdl")
     class AppendTableDdlTests {
 
         @Test
-        @DisplayName("appends DDL and column info for an existing table")
         void appendsDdlForExistingTable() throws Exception {
             Method method = LocalTools.class.getDeclaredMethod(
                                                                "appendTableDdl",
@@ -72,7 +68,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("appends column info for orders table")
         void appendsDdlForOrdersTable() throws Exception {
             Method method = LocalTools.class.getDeclaredMethod(
                                                                "appendTableDdl",
@@ -90,7 +85,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("handles non-existent table gracefully")
         void handlesNonExistentTable() throws Exception {
             Method method = LocalTools.class.getDeclaredMethod(
                                                                "appendTableDdl",
@@ -112,18 +106,15 @@ class LocalToolsTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("convertEpochToLocalDateTime")
     class ConvertEpochTests {
 
         @Test
-        @DisplayName("converts epoch 0 to 1970-01-01 in UTC")
         void epochZeroInUtc() {
             String result = localTools.convertEpochToLocalDateTime(0L, "UTC");
             assertEquals("1970/01/01 00:00:00", result);
         }
 
         @Test
-        @DisplayName("returns error string for invalid timezone")
         void invalidTimezoneReturnsError() {
             String result = localTools.convertEpochToLocalDateTime(0L, "Invalid/Zone");
             assertTrue(result.startsWith("Invalid epoch or timezone"),
@@ -131,7 +122,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("converts a known epoch in Asia/Kolkata")
         void knownEpochInKolkata() {
             // 2024-01-01 00:00:00 UTC = 2024-01-01 05:30:00 IST
             long epoch = 1704067200L;
@@ -145,11 +135,9 @@ class LocalToolsTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("formatResultsAsTable")
     class FormatResultsAsTableTests {
 
         @Test
-        @DisplayName("returns 'No results found' for empty results")
         void emptyResultsReturnsNoResults() {
             SqlQueryResult result = new SqlQueryResult("SELECT 1", List.of(), null, 0L);
             String table = LocalTools.formatResultsAsTable(result);
@@ -157,7 +145,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("returns error message for malformed JSON row")
         void malformedJsonReturnsError() {
             SqlQueryResult result = new SqlQueryResult(
                                                        "SELECT 1",
@@ -171,7 +158,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("handles null column value gracefully (renders as NULL)")
         void nullColumnValueRenderedAsNull() {
             SqlQueryResult result = new SqlQueryResult(
                                                        "SELECT id, name FROM users",
@@ -183,7 +169,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("returns 'No results found' for null results")
         void nullResultsReturnsNoResults() {
             SqlQueryResult result = new SqlQueryResult("SELECT 1", null, null, 0L);
             String table = LocalTools.formatResultsAsTable(result);
@@ -191,7 +176,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("renders ASCII table for a valid JSON row")
         void rendersAsciiTableForValidRow() {
             SqlQueryResult result = new SqlQueryResult(
                                                        "SELECT id, name FROM users",
@@ -207,7 +191,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("renders multiple rows correctly")
         void rendersMultipleRows() {
             SqlQueryResult result = new SqlQueryResult(
                                                        "SELECT id FROM users",
@@ -228,11 +211,9 @@ class LocalToolsTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("getColumnDescription")
     class GetColumnDescTests {
 
         @Test
-        @DisplayName("returns description for existing column")
         void returnsDescriptionForExistingColumn() {
             String result = localTools.getColumnDescription("users", "email");
             assertNotNull(result);
@@ -245,14 +226,12 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("returns error for unknown column in existing table")
         void returnsErrorForUnknownColumn() {
             String result = localTools.getColumnDescription("users", "nonexistent_column");
             assertTrue(result.startsWith("Column not found"));
         }
 
         @Test
-        @DisplayName("returns error for unknown table")
         void returnsErrorForUnknownTable() {
             String result = localTools.getColumnDescription("nonexistent", "col");
             assertTrue(result.startsWith("Table not found"));
@@ -264,11 +243,9 @@ class LocalToolsTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("getCurrentDateTime")
     class GetCurrentDateTimeTests {
 
         @Test
-        @DisplayName("returns error string for invalid timezone")
         void invalidTimezoneReturnsError() {
             String result = localTools.getCurrentDateTime("Not/AZone");
             assertTrue(result.startsWith("Invalid timezone"),
@@ -276,7 +253,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("result contains epoch seconds")
         void resultContainsEpochSeconds() {
             String result = localTools.getCurrentDateTime("UTC");
             assertTrue(result.contains("epoch seconds"),
@@ -284,7 +260,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("result contains timezone name")
         void resultContainsTimezone() {
             String result = localTools.getCurrentDateTime("Asia/Kolkata");
             assertTrue(result.contains("Asia/Kolkata"),
@@ -292,7 +267,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("returns non-null, non-blank string for valid timezone")
         void returnsNonBlankForValidTimezone() {
             String result = localTools.getCurrentDateTime("UTC");
             assertNotNull(result);
@@ -305,11 +279,9 @@ class LocalToolsTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("getTableDescription")
     class GetTableDescTests {
 
         @Test
-        @DisplayName("handles multiple table names")
         void multipleTableNames() {
             TableDescRequest req = new TableDescRequest(List.of("users", "orders"));
             String result = localTools.getTableDescription(req);
@@ -318,7 +290,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("returns message when tableNames is null")
         void nullTableNamesReturnsMessage() {
             TableDescRequest req = new TableDescRequest(null);
             String result = localTools.getTableDescription(req);
@@ -327,7 +298,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("returns description for existing table")
         void returnsDescriptionForExistingTable() {
             TableDescRequest req = new TableDescRequest(List.of("users"));
             String result = localTools.getTableDescription(req);
@@ -336,7 +306,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("returns 'Not found' for unknown table")
         void returnsNotFoundForUnknownTable() {
             TableDescRequest req = new TableDescRequest(List.of("nonexistent_table"));
             String result = localTools.getTableDescription(req);
@@ -350,11 +319,9 @@ class LocalToolsTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("getTableRowCounts")
     class GetTableRowCountsTests {
 
         @Test
-        @DisplayName("result contains all expected tables")
         void containsAllTables() {
             String result = localTools.getTableRowCounts();
             assertTrue(result.contains("users"));
@@ -365,7 +332,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("returns non-blank result with row count header")
         void returnsRowCountHeader() {
             String result = localTools.getTableRowCounts();
             assertNotNull(result);
@@ -379,11 +345,9 @@ class LocalToolsTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("searchSchema")
     class SearchSchemaTests {
 
         @Test
-        @DisplayName("query with no matches returns informative message")
         void noMatchesReturnsMessage() {
             // Extremely unusual query unlikely to match anything
             String result = localTools.searchSchema("xyzzy_nonexistent_term_12345", 5);
@@ -393,7 +357,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("topK <= 0 is treated as default (8)")
         void nonPositiveTopKUsesDefault() {
             String result = localTools.searchSchema("catalog product", 0);
             assertNotNull(result);
@@ -401,7 +364,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("result contains table and column entries")
         void resultContainsEntries() {
             String result = localTools.searchSchema("orders delivery status", 8);
             assertTrue(result.contains("TABLE") || result.contains("COLUMN"),
@@ -409,7 +371,6 @@ class LocalToolsTest {
         }
 
         @Test
-        @DisplayName("returns schema results for a relevant query")
         void returnsResultsForRelevantQuery() {
             String result = localTools.searchSchema("user email address", 5);
             assertNotNull(result);
@@ -436,7 +397,6 @@ class LocalToolsTest {
     // =========================================================================
 
     @Test
-    @DisplayName("name() returns expected toolbox name")
     void nameReturnsExpected() {
         assertEquals("local_sql_tools", localTools.name());
     }

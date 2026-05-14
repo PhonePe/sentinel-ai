@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.examples.texttosql.sql;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
@@ -27,14 +26,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@DisplayName("SqlValidationUtils")
 class SqlValidationUtilsTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
             "analytics", "main_db", "warehouse_01"
     })
-    @DisplayName("accepts valid database names")
     void acceptsValidDatabaseNames(String databaseName) {
         assertDoesNotThrow(() -> SqlValidationUtils.validateDatabaseName(databaseName));
     }
@@ -43,13 +40,11 @@ class SqlValidationUtilsTest {
     @ValueSource(strings = {
             "users", "orders_2025", "inventory_archive"
     })
-    @DisplayName("accepts valid table names")
     void acceptsValidTableNames(String tableName) {
         assertDoesNotThrow(() -> SqlValidationUtils.validateTableName(tableName));
     }
 
     @Test
-    @DisplayName("finds disallowed write keyword in sql")
     void findsDisallowedWriteKeywordInSql() {
         assertEquals("INSERT", SqlValidationUtils.findDisallowedWriteKeyword("INSERT INTO users(id) VALUES(1)"));
     }
@@ -58,7 +53,6 @@ class SqlValidationUtilsTest {
     @ValueSource(strings = {
             "", "bad db", "../prod", "1primary"
     })
-    @DisplayName("rejects invalid database names")
     void rejectsInvalidDatabaseNames(String databaseName) {
         final var exception = assertThrows(
                                            IllegalArgumentException.class,
@@ -72,7 +66,6 @@ class SqlValidationUtilsTest {
     @ValueSource(strings = {
             "", "bad table", "users;DROP", "123users", "../users"
     })
-    @DisplayName("rejects invalid table names")
     void rejectsInvalidTableNames(String tableName) {
         final var exception = assertThrows(
                                            IllegalArgumentException.class,
@@ -82,7 +75,6 @@ class SqlValidationUtilsTest {
 
     @ParameterizedTest
     @NullSource
-    @DisplayName("rejects null database names")
     void rejectsNullDatabaseNames(String databaseName) {
         final var exception = assertThrows(
                                            IllegalArgumentException.class,
@@ -92,7 +84,6 @@ class SqlValidationUtilsTest {
     }
 
     @Test
-    @DisplayName("returns null when sql has no disallowed write keyword")
     void returnsNullWhenSqlHasNoDisallowedWriteKeyword() {
         assertNull(SqlValidationUtils.findDisallowedWriteKeyword("WITH cte AS (SELECT 1) SELECT * FROM cte"));
         assertNull(SqlValidationUtils.findDisallowedWriteKeyword("PRAGMA table_info(users)"));
