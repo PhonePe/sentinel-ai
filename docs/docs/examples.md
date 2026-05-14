@@ -9,7 +9,7 @@ description: End-to-end example — Text-to-SQL interactive CLI agent
 
 The `sentinel-ai-examples` module ships a fully working **Text-to-SQL CLI agent** that lets
 you query an e-commerce SQLite database in plain English.  All source files live under
-[`sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/`](https://github.com/PhonePe/sentinel-ai/tree/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql).
+[`sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/`](https://github.com/PhonePe/sentinel-ai/tree/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql).
 
 > NOTE: <br>
 >   This agent is not production ready and is only used for demonstration purpose for understanding the capabilities
@@ -102,7 +102,7 @@ The agent has **three tool layers** on top of the same SQLite database:
 
 ### 1. The Agent — `TextToSqlAgent`
 
-**File:** [`agent/TextToSqlAgent.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/agent/TextToSqlAgent.java)
+**File:** [`agent/TextToSqlAgent.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/agent/TextToSqlAgent.java)
 
 Every Sentinel AI agent extends `Agent<R, T, A>`:
 
@@ -147,7 +147,7 @@ the hosting process configures an OpenTelemetry SDK/exporter.
 
 ### 2. The Output Type — `SqlQueryResult`
 
-**File:** [`agent/SqlQueryResult.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/agent/SqlQueryResult.java)
+**File:** [`agent/SqlQueryResult.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/agent/SqlQueryResult.java)
 
 The agent's structured output is a plain Java record annotated for JSON Schema generation:
 
@@ -175,7 +175,7 @@ no manual schema authoring required.
 
 ### 3. Local Tools — `LocalSqlTools`
 
-**File:** [`tools/LocalSqlTools.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/LocalSqlTools.java)
+**File:** [`tools/LocalSqlTools.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/LocalSqlTools.java)
 
 `LocalSqlTools` implements `ToolBox` and exposes seven tools via `@Tool`-annotated methods.
 Each method's `name` attribute becomes the tool name the model sees:
@@ -222,7 +222,7 @@ agent.registerTools(ToolUtils.readTools(new LocalSqlTools(dbPath.toString(), dat
 
 ### 4. Hybrid Schema Search — `SchemaVectorStore`
 
-**Files:** [`tools/vectorstore/SchemaVectorStore.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/vectorstore/SchemaVectorStore.java), `HashTextEmbedder.java`, `VectorStoreInitializer.java`
+**Files:** [`tools/vectorstore/SchemaVectorStore.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/vectorstore/SchemaVectorStore.java), `HashTextEmbedder.java`, `VectorStoreInitializer.java`
 
 Instead of a monolithic `get_db_schema` call that dumps the entire schema on every query,
 the agent uses a **hybrid search** approach to retrieve only the tables and columns relevant
@@ -279,7 +279,7 @@ full column metadata before writing any SQL.
 
 ### 5. Remote-HTTP Toolbox — `sqlite-api.yml` (default)
 
-**File:** [`resources/http-tools/sqlite-api.yml`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/resources/http-tools/sqlite-api.yml)
+**File:** [`resources/http-tools/sqlite-api.yml`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/resources/http-tools/sqlite-api.yml)
 
 The HTTP toolbox is declared in YAML and backed by the embedded Dropwizard server.
 Each entry under `sqlite-api.tools` maps to an HTTP endpoint:
@@ -335,7 +335,7 @@ agent.registerToolbox(httpToolBox);
 
 ### 6. The Embedded REST Server — `SqliteRestServer`
 
-**File:** [`server/SqliteRestServer.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/server/SqliteRestServer.java)
+**File:** [`server/SqliteRestServer.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/server/SqliteRestServer.java)
 
 The CLI starts a Dropwizard application in a background daemon thread on a
 dynamically chosen free port. This exposes the same SQLite database over HTTP so
@@ -364,7 +364,7 @@ method returns the server is ready to accept requests.
 
 ### 7. MCP Server — `SqliteMcpServer`
 
-**File:** [`mcp/SqliteMcpServer.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/mcp/SqliteMcpServer.java)
+**File:** [`mcp/SqliteMcpServer.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/mcp/SqliteMcpServer.java)
 
 `SqliteMcpServer` is an alternative to the embedded Dropwizard server.  It implements the
 **Model Context Protocol (MCP)** and exposes the same SQLite operations as MCP tools.
@@ -415,7 +415,7 @@ paths are handled transparently by the skill — the agent calls whichever varia
 
 ### 8. Database Initialisation — `DatabaseInitializer`
 
-**File:** [`tools/DatabaseInitializer.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/DatabaseInitializer.java)
+**File:** [`tools/DatabaseInitializer.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/DatabaseInitializer.java)
 
 On first launch the database file does not exist. `DatabaseInitializer.ensureInitialised()`
 creates it, applies the bundled DDL, and seeds all five tables from CSV files:
@@ -433,7 +433,7 @@ Subsequent runs detect that the file already contains tables and skip the step.
 
 ### 9. Configuration — `CliConfig`
 
-**File:** [`cli/CliConfig.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/cli/CliConfig.java)
+**File:** [`cli/CliConfig.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/cli/CliConfig.java)
 
 All settings live in a YAML file (default: `.env/agent-config.yml`):
 
@@ -457,7 +457,7 @@ An example file is bundled at
 
 ### 10. CLI Orchestration — `TextToSqlCLI`
 
-**File:** [`cli/TextToSqlCLI.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/cli/TextToSqlCLI.java)
+**File:** [`cli/TextToSqlCLI.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/cli/TextToSqlCLI.java)
 
 `TextToSqlCLI` implements `Callable<Integer>` (picocli) and is the entry point.
 The `call()` method is a pure orchestration sequence — each step is delegated to
