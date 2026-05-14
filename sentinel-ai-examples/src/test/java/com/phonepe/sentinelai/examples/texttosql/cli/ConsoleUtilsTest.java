@@ -41,8 +41,10 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
 
 @DisplayName("ConsoleUtils")
 @ResourceLock(value = Resources.SYSTEM_OUT, mode = ResourceAccessMode.READ_WRITE)
@@ -358,28 +360,44 @@ class ConsoleUtilsTest {
     // printPrompt
     // =========================================================================
 
-    private PrintStream originalOut;
+    @Nested
+    @DisplayName("stdout")
+    class StdoutTests {
+
+        @Test
+        @DisplayName("returns a non-null PrintStream")
+        void returnsNonNullPrintStream() {
+            final var stream = ConsoleUtils.stdout();
+            assertNotNull(stream, "stdout() should return a non-null PrintStream");
+        }
+    }
 
     // =========================================================================
     // printError
     // =========================================================================
 
-    private PrintStream originalErr;
+    private PrintStream originalOut;
 
     // =========================================================================
     // printWarning
     // =========================================================================
 
-    private ByteArrayOutputStream outCapture;
+    private PrintStream originalErr;
 
     // =========================================================================
     // printDumpSuccess
     // =========================================================================
 
-    private ByteArrayOutputStream errCapture;
+    private ByteArrayOutputStream outCapture;
 
     // =========================================================================
     // printUsageStats
+    // =========================================================================
+
+    private ByteArrayOutputStream errCapture;
+
+    // =========================================================================
+    // printUsageStats with real ModelUsageStats
     // =========================================================================
 
     @Test
@@ -391,7 +409,7 @@ class ConsoleUtilsTest {
     }
 
     // =========================================================================
-    // printUsageStats with real ModelUsageStats
+    // printStructuredResult
     // =========================================================================
 
     @Test
@@ -403,8 +421,9 @@ class ConsoleUtilsTest {
         assertTrue(out.isEmpty(), "Null usage should produce no output");
     }
 
+
     // =========================================================================
-    // printStructuredResult
+    // stdout
     // =========================================================================
 
     @BeforeEach
@@ -418,10 +437,6 @@ class ConsoleUtilsTest {
         // Ensure spinner is always re-enabled before each test
         ConsoleUtils.enableSpinner();
     }
-
-    // =========================================================================
-    // awaitWithSpinner — delayed future (covers TimeoutException spinner path)
-    // =========================================================================
 
     @AfterEach
     void restoreStreams() {

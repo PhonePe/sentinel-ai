@@ -20,9 +20,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -105,6 +107,17 @@ class SqliteRestServerHelpersTest {
             assertTrue(
                        ex.getMessage().contains("did not start"),
                        "Error should say server did not start");
+        }
+
+        @Test
+        @DisplayName("returns normally when the port becomes reachable")
+        void returnsNormallyWhenPortReachable() throws Exception {
+            try (var serverSocket = new ServerSocket(0)) {
+                final int port = serverSocket.getLocalPort();
+                assertDoesNotThrow(
+                                   () -> SqliteRestServer.waitForPort("localhost", port, 5_000L),
+                                   "waitForPort should succeed when the port is already listening");
+            }
         }
 
         @Test

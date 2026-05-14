@@ -933,6 +933,37 @@ class TextToSqlCLITest {
     // =========================================================================
 
     @Nested
+    @DisplayName("resolveDumpMessagesFilename")
+    class ResolveDumpMessagesFilenameTests {
+
+        @Test
+        @DisplayName("returns explicit filename when one is provided after /dumpMessages")
+        void returnsExplicitFilename() throws Exception {
+            final var cli = new TextToSqlCLI();
+            final var m = TextToSqlCLI.class.getDeclaredMethod("resolveDumpMessagesFilename", String.class);
+            m.setAccessible(true);
+            final var result = (String) m.invoke(cli, "/dumpMessages myfile.json");
+            assertEquals("myfile.json", result);
+        }
+
+        @Test
+        @DisplayName("returns timestamped filename when no explicit filename is given")
+        void returnsTimestampedFilenameWhenNoArg() throws Exception {
+            final var cli = new TextToSqlCLI();
+            final var m = TextToSqlCLI.class.getDeclaredMethod("resolveDumpMessagesFilename", String.class);
+            m.setAccessible(true);
+            final var result = (String) m.invoke(cli, "/dumpMessages");
+            assertNotNull(result);
+            assertTrue(result.startsWith("messages-"), "Default filename should start with 'messages-'");
+            assertTrue(result.endsWith(".json"), "Default filename should end with '.json'");
+        }
+    }
+
+    // =========================================================================
+    // buildAgent (via reflection)
+    // =========================================================================
+
+    @Nested
     @DisplayName("resolveSessionId")
     class ResolveSessionIdTests {
 
@@ -969,7 +1000,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // buildAgent (via reflection)
+    // registerAskUserTool (via reflection)
     // =========================================================================
 
     @Nested
@@ -1008,7 +1039,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // registerAskUserTool (via reflection)
+    // registerLocalTools (via reflection)
     // =========================================================================
 
     @Nested
@@ -1114,7 +1145,67 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // registerLocalTools (via reflection)
+    // validateConfig (via reflection) — non-exit branch
+    // =========================================================================
+
+    @Nested
+    @DisplayName("runInteractiveLoop with query")
+    class RunInteractiveLoopWithQueryTests {
+
+        private static final class SystemInOverride implements AutoCloseable {
+            private final java.io.InputStream original;
+
+            private SystemInOverride(String input) {
+                this.original = System.in;
+                System.setIn(new java.io.ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
+            }
+
+            @Override
+            public void close() {
+                System.setIn(original);
+            }
+        }
+
+        @Test
+        @DisplayName("sends a real query to mocked agent then exits — covers handleQuery path")
+        @SuppressWarnings("unchecked")
+        void realQueryThenExit() throws Exception {
+            final var agent = mock(TextToSqlAgent.class);
+            final var result = new SqlQueryResult("SELECT 1", List.of(), "ok", 1L);
+            final var output = new AgentOutput<>(result, List.of(), List.of(), null, null);
+            when(agent.executeAsync(any())).thenReturn(CompletableFuture.completedFuture(output));
+
+            final var config = buildConfig();
+            final var mapper = JsonUtils.createMapper();
+
+            final var m = TextToSqlCLI.class.getDeclaredMethod(
+                                                               "runInteractiveLoop",
+                                                               TextToSqlAgent.class,
+                                                               CliConfig.class,
+                                                               String.class,
+                                                               ObjectMapper.class);
+            m.setAccessible(true);
+
+            try (var ignored = new SystemInOverride("show tables\nexit\n")) {
+                final int exitCode = (int) m.invoke(new TextToSqlCLI(), agent, config, "test-session", mapper);
+                assertEquals(0, exitCode);
+            }
+        }
+
+        private CliConfig buildConfig() {
+            final var config = new CliConfig();
+            config.getOpenai().setApiKey("test-api-key");
+            config.getOpenai().setModel("gpt-4o");
+            config.getOpenai().setBaseUrl("https://api.openai.com/v1");
+            config.getAgent().setTemperature(0.0f);
+            config.getAgent().setMaxTokens(4096);
+            config.getAgent().setStreaming(false);
+            return config;
+        }
+    }
+
+    // =========================================================================
+    // dumpMessages (via reflection) — null-output branch and non-null branch
     // =========================================================================
 
     @Nested
@@ -1134,7 +1225,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // validateConfig (via reflection) — non-exit branch
+    // Lambda coverage — outputGenerationTool and outputValidator
     // =========================================================================
 
     @Nested
@@ -1178,7 +1269,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // dumpMessages (via reflection) — null-output branch and non-null branch
+    // registerHttpToolbox (via reflection)
     // =========================================================================
 
     @Test
@@ -1188,7 +1279,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // Lambda coverage — outputGenerationTool and outputValidator
+    // runInteractiveLoop (via reflection) — exit and EOF paths
     // =========================================================================
 
     @Test
@@ -1198,7 +1289,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // registerHttpToolbox (via reflection)
+    // handleQuery — private method exercised via reflection with mocked agent
     // =========================================================================
 
     @Test
@@ -1211,7 +1302,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // runInteractiveLoop (via reflection) — exit and EOF paths
+    // buildTrustedHttpClient interceptor
     // =========================================================================
 
     @Test
@@ -1224,7 +1315,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // handleQuery — private method exercised via reflection with mocked agent
+    // resolveDumpMessagesFilename (via reflection)
     // =========================================================================
 
     @Test
@@ -1237,7 +1328,8 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // buildTrustedHttpClient interceptor
+    // runInteractiveLoop with real query — covers shouldExitInteractiveLoop
+    // handleQuery call path (lines 808-809)
     // =========================================================================
 
     @Test
