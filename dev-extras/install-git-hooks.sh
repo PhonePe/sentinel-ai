@@ -18,7 +18,7 @@ repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
 printf "Running Spotless check before push..."
-mvn -Pspotless spotless:check
+mvn spotless:check
 EOF
 
 chmod +x "${PRE_PUSH_HOOK}"
