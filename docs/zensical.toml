@@ -14,21 +14,23 @@ nav = [
   {"Home" = "index.md"},
   {"Agents" = "agents.md"},
   {"Tools" = [
-    {"Overview" = "tools.md"},
-    {"Using MCP Servers" = "using-mcp-servers.md"},
-    {"Calling Remote Services" = "calling-remote-services.md"}
+      {"Overview" = "tools.md"},
+      {"Using MCP Servers" = "using-mcp-servers.md"},
+      {"Calling Remote Services" = "calling-remote-services.md"}
   ]},
   {"Extensions" = [
-    {"Messages & Session" = "messages-session.md"},
-    {"Agent Skills" = "agent-skills-extension.md"},
-    {"Agent Registry" = "agent-registry.md"},
-    {"Agent Memory" = "agent-memory.md"}
+      {"Messages & Session" = "messages-session.md"},
+      {"Agent Skills" = "agent-skills-extension.md"},
+      {"Agent Registry" = "agent-registry.md"},
+      {"Agent Memory" = "agent-memory.md"}
   ]},
   {"Observability" = [
-    {"Overview" = "observability.md"},
-    {"OpenTelemetry" = "opentelemetry.md"}
+      {"Overview" = "observability.md"},
+      {"OpenTelemetry" = "opentelemetry.md"}
   ]},
-  {"Testing" = [{"Evals" = "evals.md"}]},
+  {"Testing" = [
+      {"Evals" = "evals.md"}
+  ]},
   {"Errors" = "errors.md"},
   {"Examples" = "examples.md"}
 ]
@@ -98,6 +100,8 @@ name = "Switch to system preference"
 # ── Extra ────────────────────────────────────────────────────────────────────
 [project.extra]
 generator = false
+repo_blob_base_url = "https://github.com/PhonePe/sentinel-ai/blob/master"
+repo_tree_base_url = "https://github.com/PhonePe/sentinel-ai/tree/master"
 
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
@@ -105,6 +109,8 @@ link = "https://github.com/PhonePe/sentinel-ai"
 
 # ── Markdown extensions ──────────────────────────────────────────────────────
 [project.markdown_extensions.abbr]
+
+[project.markdown_extensions.zensical.extensions.macros]
 
 [project.markdown_extensions.admonition]
 
