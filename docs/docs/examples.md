@@ -9,7 +9,7 @@ description: End-to-end example — Text-to-SQL interactive CLI agent
 
 The `sentinel-ai-examples` module ships a fully working **Text-to-SQL CLI agent** that lets
 you query an e-commerce SQLite database in plain English.  All source files live under
-[`sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/`](https://github.com/PhonePe/sentinel-ai/tree/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql).
+[`sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/`]({{ config.extra.repo_tree_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/).
 
 > NOTE: <br>
 >   This agent is not production ready and is only used for demonstration purpose for understanding the capabilities
@@ -94,15 +94,19 @@ The agent has **three tool layers** on top of the same SQLite database:
 
 | Layer | Class / File | Description |
 |---|---|---|
-| Local | `LocalSqlTools.java` | In-process tools — hybrid schema search (Lucene), timestamp conversion, ASCII table rendering |
+| Local | `LocalTools.java` | In-process tools — hybrid schema search (Lucene), timestamp conversion, schema descriptions, ASCII table rendering |
 | Remote-HTTP | `sqlite-api.yml` + `SqliteRestServer.java` | HTTP calls to an embedded Dropwizard server exposing a REST CRUD API (default toolbox mode) |
-| MCP | `SqliteMcpServer.java` | MCP server launched as a subprocess, accessed via stdio or SSE transport (enabled with `--toolbox-mode MCP`) |
+| MCP | `SqliteMcpServer.java` + `SqliteQueryEngine.java` | MCP server launched as a subprocess, accessed via stdio or SSE transport (enabled with `--toolbox-mode MCP`) |
+
+The CLI also registers `AskUserTool`, which lets the model pause and ask the human operator
+for clarification when a prompt is ambiguous. This tool is orthogonal to the three
+database-access layers above.
 
 ## Code Walkthrough
 
 ### 1. The Agent — `TextToSqlAgent`
 
-**File:** [`agent/TextToSqlAgent.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/agent/TextToSqlAgent.java)
+**File:** [`agent/TextToSqlAgent.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/agent/TextToSqlAgent.java)
 
 Every Sentinel AI agent extends `Agent<R, T, A>`:
 
@@ -147,7 +151,7 @@ the hosting process configures an OpenTelemetry SDK/exporter.
 
 ### 2. The Output Type — `SqlQueryResult`
 
-**File:** [`agent/SqlQueryResult.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/agent/SqlQueryResult.java)
+**File:** [`tools/model/SqlQueryResult.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/model/SqlQueryResult.java)
 
 The agent's structured output is a plain Java record annotated for JSON Schema generation:
 
@@ -173,11 +177,11 @@ Sentinel AI uses the `@JsonClassDescription` / `@JsonPropertyDescription` annota
 derive the JSON Schema that is sent to the model as the output tool definition —
 no manual schema authoring required.
 
-### 3. Local Tools — `LocalSqlTools`
+### 3. Local Tools — `LocalTools`
 
-**File:** [`tools/LocalSqlTools.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/LocalSqlTools.java)
+**File:** [`tools/LocalTools.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/LocalTools.java)
 
-`LocalSqlTools` implements `ToolBox` and exposes seven tools via `@Tool`-annotated methods.
+`LocalTools` implements `ToolBox` and exposes seven tools via `@Tool`-annotated methods.
 Each method's `name` attribute becomes the tool name the model sees:
 
 | `@Tool` name | Method | What it does |
@@ -217,12 +221,12 @@ These tools are registered with the agent at runtime:
 ```java
 // in TextToSqlCLI.registerLocalTools()
 final Path dataDir = dbPath.getParent();
-agent.registerTools(ToolUtils.readTools(new LocalSqlTools(dbPath.toString(), dataDir)));
+agent.registerTools(ToolUtils.readTools(new LocalTools(dbPath.toString(), dataDir)));
 ```
 
 ### 4. Hybrid Schema Search — `SchemaVectorStore`
 
-**Files:** [`tools/vectorstore/SchemaVectorStore.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/vectorstore/SchemaVectorStore.java), `HashTextEmbedder.java`, `VectorStoreInitializer.java`
+**Files:** [`tools/vectorstore/SchemaVectorStore.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/vectorstore/SchemaVectorStore.java), [`tools/vectorstore/HashTextEmbedder.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/vectorstore/HashTextEmbedder.java), [`tools/vectorstore/VectorStoreInitializer.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/vectorstore/VectorStoreInitializer.java)
 
 Instead of a monolithic `get_db_schema` call that dumps the entire schema on every query,
 the agent uses a **hybrid search** approach to retrieve only the tables and columns relevant
@@ -279,10 +283,19 @@ full column metadata before writing any SQL.
 
 ### 5. Remote-HTTP Toolbox — `sqlite-api.yml` (default)
 
-**File:** [`resources/http-tools/sqlite-api.yml`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/resources/http-tools/sqlite-api.yml)
+**File:** [`resources/http-tools/sqlite-api.yml`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/resources/http-tools/sqlite-api.yml)
 
 The HTTP toolbox is declared in YAML and backed by the embedded Dropwizard server.
-Each entry under `sqlite-api.tools` maps to an HTTP endpoint:
+Each entry under `sqlite-api.tools` maps to an HTTP endpoint. At runtime, the toolbox
+name is set to `"sqlite-api"`, so the model sees tool names such as
+`sqlite-api_execute_query`, `sqlite-api_list_tables`, and `sqlite-api_get_table_schema`.
+
+The query tool posts to `/api/sqlite/query`, whose backing resource returns a
+`SqlQueryResult`-shaped JSON payload for read-only SQL. Write operations are handled by
+separate CRUD-style HTTP tools such as `insert_record` and `update_records` rather than by
+the generic query endpoint.
+
+Example YAML entry:
 
 ```yaml
 sqlite-api:
@@ -291,7 +304,7 @@ sqlite-api:
         name: execute_query           # → model sees "sqlite-api_execute_query"
         description: >
           Execute a raw SQL query against the SQLite e-commerce database.
-          Returns rows for SELECT or affectedRows for DML.
+          The backing REST endpoint permits read-only SQL only.
         parameters:
           sql:
             description: The complete SQL statement to execute
@@ -335,20 +348,21 @@ agent.registerToolbox(httpToolBox);
 
 ### 6. The Embedded REST Server — `SqliteRestServer`
 
-**File:** [`server/SqliteRestServer.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/server/SqliteRestServer.java)
+**Files:** [`server/SqliteRestServer.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/server/SqliteRestServer.java), [`server/SqliteRestResource.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/server/SqliteRestResource.java)
 
 The CLI starts a Dropwizard application in a background daemon thread on a
 dynamically chosen free port. This exposes the same SQLite database over HTTP so
 that the `HttpToolBox` tools can call it:
 
 ```
-POST /api/sqlite/query          — execute arbitrary SQL
+POST /api/sqlite/query          — execute read-only SQL (SELECT / WITH / PRAGMA)
 GET  /api/sqlite/tables         — list all tables
 GET  /api/sqlite/schema/{table} — column definitions
 GET  /api/sqlite/info           — database metadata
 GET  /api/sqlite/records/{tbl}  — read rows (optional filters)
 POST /api/sqlite/records/{tbl}  — insert a record
 PUT  /api/sqlite/records/{tbl}  — update matching rows
+DELETE /api/sqlite/records/{tbl} — delete matching rows
 ```
 
 ```java
@@ -364,11 +378,15 @@ method returns the server is ready to accept requests.
 
 ### 7. MCP Server — `SqliteMcpServer`
 
-**File:** [`mcp/SqliteMcpServer.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/mcp/SqliteMcpServer.java)
+**File:** [`mcp/SqliteMcpServer.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/mcp/SqliteMcpServer.java)
 
 `SqliteMcpServer` is an alternative to the embedded Dropwizard server.  It implements the
 **Model Context Protocol (MCP)** and exposes the same SQLite operations as MCP tools.
 The CLI launches it as a subprocess when `--toolbox-mode MCP` is specified.
+
+The MCP tool-handler logic itself now lives in
+[`mcp/SqliteQueryEngine.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/mcp/SqliteQueryEngine.java),
+which keeps the server class focused on transport wiring.
 
 #### MCP tools exposed
 
@@ -415,7 +433,7 @@ paths are handled transparently by the skill — the agent calls whichever varia
 
 ### 8. Database Initialisation — `DatabaseInitializer`
 
-**File:** [`tools/DatabaseInitializer.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/DatabaseInitializer.java)
+**File:** [`tools/DatabaseInitializer.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/DatabaseInitializer.java)
 
 On first launch the database file does not exist. `DatabaseInitializer.ensureInitialised()`
 creates it, applies the bundled DDL, and seeds all five tables from CSV files:
@@ -433,15 +451,17 @@ Subsequent runs detect that the file already contains tables and skip the step.
 
 ### 9. Configuration — `CliConfig`
 
-**File:** [`cli/CliConfig.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/cli/CliConfig.java)
+**File:** [`cli/CliConfig.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/cli/CliConfig.java)
 
-All settings live in a YAML file (default: `.env/agent-config.yml`):
+All settings live in a YAML file (default: `.env/agent-config.yml`).
+The bundled example file is `sentinel-ai-examples/src/main/resources/.env/agent-config.yml.example`:
 
 ```yaml
 openai:
-  baseUrl: https://api.openai.com     # or your proxy / Azure endpoint
   apiKey:  sk-...
   model:   gpt-4o
+  bearerPrefix: "Bearer "
+  # baseUrl: https://api.openai.com   # optional override for proxies / compatible endpoints
 
 database:
   path: ./ecommerce.db                # created automatically on first run
@@ -452,12 +472,9 @@ agent:
   streaming:   true                   # stream tokens to stdout as they arrive
 ```
 
-An example file is bundled at
-`sentinel-ai-examples/src/main/resources/.env/agent-config.yml.example`.
-
 ### 10. CLI Orchestration — `TextToSqlCLI`
 
-**File:** [`cli/TextToSqlCLI.java`](https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/cli/TextToSqlCLI.java)
+**File:** [`cli/TextToSqlCLI.java`]({{ config.extra.repo_blob_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/cli/TextToSqlCLI.java)
 
 `TextToSqlCLI` implements `Callable<Integer>` (picocli) and is the entry point.
 The `call()` method is a pure orchestration sequence — each step is delegated to
@@ -466,54 +483,56 @@ its own private method:
 ```java
 @Override
 public Integer call() {
-    final CliConfig config         = loadConfig(configPath);
+    final CliConfig config = loadConfig(configPath);
     validateConfig(config);
 
     final String effectiveSessionId = resolveSessionId(sessionId);
-    final ObjectMapper mapper       = JsonUtils.createMapper();
+    final ObjectMapper mapper = JsonUtils.createMapper();
 
-    final Path dbPath = initializeDatabase(config);              // (1)
+    final Path dbPath = initializeDatabase(config);                          // (1)
 
-    final OkHttpClientAdapter http  = buildTrustedHttpClient(config);        // (2)
-    final var model                 = buildOpenAIModel(config, http, mapper); // (3)
-    final AgentSetup agentSetup     = buildAgentSetup(config, model, mapper); // (4)
+    final OkHttpClientAdapter clientAdapter = buildTrustedHttpClient(config); // (2)
+    final var model = buildOpenAIModel(config, clientAdapter, mapper);       // (3)
+    final AgentSetup agentSetup = buildAgentSetup(config, model, mapper);    // (4)
 
-    final var skills = buildSkillsExtension();                               // (5)
-    final TextToSqlAgent agent = buildAgent(agentSetup, skills);             // (6)
+    final var skillsExtension = buildSkillsExtension();                      // (5)
+    final TextToSqlAgent agent = buildAgent(agentSetup, skillsExtension);    // (6)
 
     registerLocalTools(agent, dbPath);                                       // (7)
+    registerAskUserTool(agent);                                              // (8)
 
     if (toolboxMode == ToolboxMode.MCP) {
         if (mcpServerMode == McpServerMode.SSE) {
-            registerMcpToolboxSse(agent, dbPath, mapper, mcpPort);           // (8a)
+            registerMcpToolboxSse(agent, dbPath, mapper, mcpPort);           // (9a)
         } else {
-            registerMcpToolbox(agent, dbPath, mapper);                       // (8b)
+            registerMcpToolbox(agent, dbPath, mapper);                       // (9b)
         }
     } else {
         final String baseUrl = startRestServer(dbPath, mapper);
-        registerHttpToolbox(agent, baseUrl, mapper);                         // (8c)
+        registerHttpToolbox(agent, baseUrl, mapper);                         // (9c)
     }
 
     ConsoleUtils.printBanner();
     ConsoleUtils.printExamples();
 
-    return runInteractiveLoop(agent, config, effectiveSessionId, mapper);    // (9)
+    return runInteractiveLoop(agent, config, effectiveSessionId, mapper);    // (10)
 }
 ```
 
 | Step | Method | What it does |
 |---|---|---|
 | 1 | `initializeDatabase` | Creates + seeds the SQLite file if absent |
-| 2 | `buildTrustedHttpClient` | Builds an `OkHttpClient` with a trust-all SSL context and an auth-injection interceptor |
+| 2 | `buildTrustedHttpClient` | Builds an `OkHttpClient` with an auth-injection interceptor for the configured provider |
 | 3 | `buildOpenAIModel` | Creates a `SimpleOpenAIModel<SqlQueryResult>` wired to the configured endpoint |
 | 4 | `buildAgentSetup` | Sets temperature, max tokens, and `TOOL_BASED` output mode |
 | 5 | `buildSkillsExtension` | Extracts bundled `SKILL.md` to a temp dir (or uses `--skills-dir`) and builds `AgentSkillsExtension` |
-| 6 | `buildAgent` | Constructs `TextToSqlAgent` with the skills extension and a pass-through output validator |
-| 7 | `registerLocalTools` | Initialises `LocalSqlTools` (including the Lucene vector store) and registers all `@Tool` methods |
-| 8a | `registerMcpToolboxSse` | Launches `SqliteMcpServer` subprocess in SSE mode; waits for port to open; registers `MCPToolBox` |
-| 8b | `registerMcpToolbox` | Launches `SqliteMcpServer` subprocess in stdio mode; registers `MCPToolBox` |
-| 8c | `startRestServer` + `registerHttpToolbox` | Starts embedded Dropwizard server and registers `HttpToolBox` (default) |
-| 9 | `runInteractiveLoop` | Enters the read-eval-print loop |
+| 6 | `buildAgent` | Constructs `TextToSqlAgent` with the skills extension, OpenTelemetry extension, and a pass-through output validator |
+| 7 | `registerLocalTools` | Initialises `LocalTools` (including the Lucene vector store) and registers all `@Tool` methods |
+| 8 | `registerAskUserTool` | Registers the clarification toolbox so the model can ask follow-up questions interactively |
+| 9a | `registerMcpToolboxSse` | Launches `SqliteMcpServer` subprocess in SSE mode; waits for port to open; registers `MCPToolBox` |
+| 9b | `registerMcpToolbox` | Launches `SqliteMcpServer` subprocess in stdio mode; registers `MCPToolBox` |
+| 9c | `startRestServer` + `registerHttpToolbox` | Starts embedded Dropwizard server and registers `HttpToolBox` (default) |
+| 10 | `runInteractiveLoop` | Enters the read-eval-print loop |
 
 ### 11. Interactive Loop
 
@@ -527,29 +546,37 @@ Special commands are handled before the query is sent to the agent:
 | `/dumpMessages [filename]` | Serialise all agent messages from the last query to a JSON file under `.logs/` |
 | *(any other text)* | Forwarded to the agent as a natural-language question |
 
+Because `AskUserTool` is also registered, a running query may pause and render an interactive
+clarification prompt when the model needs more information from the user.
+
 `handleQuery` drives the agent in **streaming** or **non-streaming** mode
 depending on `config.getAgent().isStreaming()`:
 
 ```java
-// Streaming mode — tokens arrive in real time
-final var future = agent.executeAsyncStreaming(
-        AgentInput.<String>builder()
-                .request(question)
-                .requestMetadata(AgentRequestMetadata.builder()
-                        .sessionId(effectiveSessionId)
-                        .userId("cli-user")
-                        .build())
-                .build(),
-        chunk -> System.out.print(new String(chunk, StandardCharsets.UTF_8)));
-final AgentOutput<SqlQueryResult> output = ConsoleUtils.awaitWithSpinner(future, true);
+final var agentInput = AgentInput.<String>builder()
+        .request(question)
+        .requestMetadata(AgentRequestMetadata.builder()
+                .sessionId(effectiveSessionId)
+                .userId("cli-user")
+                .build())
+        .build();
 
-// Non-streaming mode — wait for the full structured result
-final AgentOutput<SqlQueryResult> output =
-        ConsoleUtils.awaitWithSpinner(agent.executeAsync(agentInput), true);
+CompletableFuture<AgentOutput<SqlQueryResult>> outputFuture;
+if (config.getAgent().isStreaming()) {
+    ConsoleUtils.printToStdout(System.lineSeparator());
+    outputFuture = agent.executeAsyncStreaming(
+            agentInput,
+            chunk -> ConsoleUtils.printToStdout(new String(chunk, StandardCharsets.UTF_8)));
+} else {
+    outputFuture = agent.executeAsync(agentInput);
+}
+
+final AgentOutput<SqlQueryResult> output = ConsoleUtils.awaitWithSpinner(outputFuture, true);
+lastAgentOutput = output;
 ConsoleUtils.printStructuredResult(output.getData(), wallClockMs);
+ConsoleUtils.printUsageStats(output.getUsage());
 ```
 
 The session ID threads through every call so the model retains conversation
 history within a session. A new random UUID is generated if `--session-id` is
 not provided on the command line.
-

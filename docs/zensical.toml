@@ -100,6 +100,8 @@ name = "Switch to system preference"
 # ── Extra ────────────────────────────────────────────────────────────────────
 [project.extra]
 generator = false
+repo_blob_base_url = "https://github.com/PhonePe/sentinel-ai/blob/master"
+repo_tree_base_url = "https://github.com/PhonePe/sentinel-ai/tree/master"
 
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
@@ -107,6 +109,8 @@ link = "https://github.com/PhonePe/sentinel-ai"
 
 # ── Markdown extensions ──────────────────────────────────────────────────────
 [project.markdown_extensions.abbr]
+
+[project.markdown_extensions.zensical.extensions.macros]
 
 [project.markdown_extensions.admonition]
 
