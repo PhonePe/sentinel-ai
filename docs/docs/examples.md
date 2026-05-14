@@ -211,7 +211,7 @@ public String searchSchema(String query, int topK) {
       value = "Convert a Unix epoch timestamp (seconds) to a formatted date-time string "
             + "in the given IANA timezone.")
 public String convertEpochToLocalDateTime(long epochSeconds, String timezone) {
-    final ZonedDateTime zdt = Instant.ofEpochSecond(epochSeconds).atZone(ZoneId.of(timezone));
+    final var zdt = Instant.ofEpochSecond(epochSeconds).atZone(ZoneId.of(timezone));
     return zdt.format(DISPLAY_FORMAT); // yyyy/MM/dd HH:mm:ss
 }
 ```
@@ -220,7 +220,7 @@ These tools are registered with the agent at runtime:
 
 ```java
 // in TextToSqlCLI.registerLocalTools()
-final Path dataDir = dbPath.getParent();
+final var dataDir = dbPath.getParent();
 agent.registerTools(ToolUtils.readTools(new LocalTools(dbPath.toString(), dataDir)));
 ```
 
@@ -367,8 +367,8 @@ DELETE /api/sqlite/records/{tbl} — delete matching rows
 
 ```java
 // in TextToSqlCLI.startRestServer()
-final int port    = SqliteRestServer.findFreePort();
-final String url  = SqliteRestServer.startEmbedded(dbPath.toString(), port, mapper);
+final var port    = SqliteRestServer.findFreePort();
+final var url  = SqliteRestServer.startEmbedded(dbPath.toString(), port, mapper);
 // url → "http://localhost:<port>"
 ```
 
@@ -483,56 +483,56 @@ its own private method:
 ```java
 @Override
 public Integer call() {
-    final CliConfig config = loadConfig(configPath);
+    final var config = loadConfig(configPath);
     validateConfig(config);
 
-    final String effectiveSessionId = resolveSessionId(sessionId);
-    final ObjectMapper mapper = JsonUtils.createMapper();
+    final var effectiveSessionId = resolveSessionId(sessionId);
+    final var mapper = JsonUtils.createMapper();
 
-    final Path dbPath = initializeDatabase(config);                          // (1)
+    final var dbPath = initializeDatabase(config);//(1)!
 
-    final OkHttpClientAdapter clientAdapter = buildTrustedHttpClient(config); // (2)
-    final var model = buildOpenAIModel(config, clientAdapter, mapper);       // (3)
-    final AgentSetup agentSetup = buildAgentSetup(config, model, mapper);    // (4)
+    final var clientAdapter = buildTrustedHttpClient(config);//(2)!
+    final var model = buildOpenAIModel(config, clientAdapter, mapper);//(3)!
+    final var agentSetup = buildAgentSetup(config, model, mapper);//(4)!
 
-    final var skillsExtension = buildSkillsExtension();                      // (5)
-    final TextToSqlAgent agent = buildAgent(agentSetup, skillsExtension);    // (6)
+    final var skillsExtension = buildSkillsExtension();//(5)!
+    final var agent = buildAgent(agentSetup, skillsExtension);//(6)!
 
-    registerLocalTools(agent, dbPath);                                       // (7)
-    registerAskUserTool(agent);                                              // (8)
+    registerLocalTools(agent, dbPath);//(7)!
+    registerAskUserTool(agent);//(8)!
 
     if (toolboxMode == ToolboxMode.MCP) {
         if (mcpServerMode == McpServerMode.SSE) {
-            registerMcpToolboxSse(agent, dbPath, mapper, mcpPort);           // (9a)
-        } else {
-            registerMcpToolbox(agent, dbPath, mapper);                       // (9b)
+            registerMcpToolboxSse(agent, dbPath, mapper, mcpPort);// (9)!
         }
-    } else {
-        final String baseUrl = startRestServer(dbPath, mapper);
-        registerHttpToolbox(agent, baseUrl, mapper);                         // (9c)
+        else {
+            registerMcpToolbox(agent, dbPath, mapper);// (10)!
+        }
+    }
+    else {
+        final var baseUrl = startRestServer(dbPath, mapper);
+        registerHttpToolbox(agent, baseUrl, mapper);// (11)!
     }
 
     ConsoleUtils.printBanner();
     ConsoleUtils.printExamples();
 
-    return runInteractiveLoop(agent, config, effectiveSessionId, mapper);    // (10)
+    return runInteractiveLoop(agent, config, effectiveSessionId, mapper);//(12)!
 }
 ```
 
-| Step | Method | What it does |
-|---|---|---|
-| 1 | `initializeDatabase` | Creates + seeds the SQLite file if absent |
-| 2 | `buildTrustedHttpClient` | Builds an `OkHttpClient` with an auth-injection interceptor for the configured provider |
-| 3 | `buildOpenAIModel` | Creates a `SimpleOpenAIModel<SqlQueryResult>` wired to the configured endpoint |
-| 4 | `buildAgentSetup` | Sets temperature, max tokens, and `TOOL_BASED` output mode |
-| 5 | `buildSkillsExtension` | Extracts bundled `SKILL.md` to a temp dir (or uses `--skills-dir`) and builds `AgentSkillsExtension` |
-| 6 | `buildAgent` | Constructs `TextToSqlAgent` with the skills extension, OpenTelemetry extension, and a pass-through output validator |
-| 7 | `registerLocalTools` | Initialises `LocalTools` (including the Lucene vector store) and registers all `@Tool` methods |
-| 8 | `registerAskUserTool` | Registers the clarification toolbox so the model can ask follow-up questions interactively |
-| 9a | `registerMcpToolboxSse` | Launches `SqliteMcpServer` subprocess in SSE mode; waits for port to open; registers `MCPToolBox` |
-| 9b | `registerMcpToolbox` | Launches `SqliteMcpServer` subprocess in stdio mode; registers `MCPToolBox` |
-| 9c | `startRestServer` + `registerHttpToolbox` | Starts embedded Dropwizard server and registers `HttpToolBox` (default) |
-| 10 | `runInteractiveLoop` | Enters the read-eval-print loop |
+1. **`initializeDatabase`** — Creates + seeds the SQLite file if absent
+2. **`buildTrustedHttpClient`** — Builds an `OkHttpClient` with an auth-injection interceptor for the configured provider
+3. **`buildOpenAIModel`** — Creates a `SimpleOpenAIModel<SqlQueryResult>` wired to the configured endpoint
+4. **`buildAgentSetup`** — Sets temperature, max tokens, and `TOOL_BASED` output mode
+5. **`buildSkillsExtension`** — Extracts bundled `SKILL.md` to a temp dir (or uses `--skills-dir`) and builds `AgentSkillsExtension`
+6. **`buildAgent`** — Constructs `TextToSqlAgent` with the skills extension, OpenTelemetry extension, and a pass-through output validator
+7. **`registerLocalTools`** — Initialises `LocalTools` (including the Lucene vector store) and registers all `@Tool` methods
+8. **`registerAskUserTool`** — Registers the clarification toolbox so the model can ask follow-up questions interactively
+9. **`registerMcpToolboxSse`** *(SSE mode)* — Launches `SqliteMcpServer` subprocess in SSE mode; waits for port to open; registers `MCPToolBox`
+10. **`registerMcpToolbox`** *(stdio mode)* — Launches `SqliteMcpServer` subprocess in stdio mode; registers `MCPToolBox`
+11. **`startRestServer` + `registerHttpToolbox`** *(default)* — Starts embedded Dropwizard server and registers `HttpToolBox`
+12. **`runInteractiveLoop`** — Enters the read-eval-print loop
 
 ### 11. Interactive Loop
 
@@ -571,7 +571,7 @@ if (config.getAgent().isStreaming()) {
     outputFuture = agent.executeAsync(agentInput);
 }
 
-final AgentOutput<SqlQueryResult> output = ConsoleUtils.awaitWithSpinner(outputFuture, true);
+final var output = ConsoleUtils.awaitWithSpinner(outputFuture, true);
 lastAgentOutput = output;
 ConsoleUtils.printStructuredResult(output.getData(), wallClockMs);
 ConsoleUtils.printUsageStats(output.getUsage());
