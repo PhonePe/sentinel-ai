@@ -60,10 +60,10 @@ class SqlValidationUtilsTest {
     })
     @DisplayName("rejects invalid database names")
     void rejectsInvalidDatabaseNames(String databaseName) {
-        final IllegalArgumentException exception = assertThrows(
-                                                                IllegalArgumentException.class,
-                                                                () -> SqlValidationUtils.validateDatabaseName(
-                                                                                                              databaseName));
+        final var exception = assertThrows(
+                                           IllegalArgumentException.class,
+                                           () -> SqlValidationUtils.validateDatabaseName(
+                                                                                         databaseName));
         assertEquals("Invalid database name: " + databaseName, exception.getMessage());
     }
 
@@ -74,9 +74,9 @@ class SqlValidationUtilsTest {
     })
     @DisplayName("rejects invalid table names")
     void rejectsInvalidTableNames(String tableName) {
-        final IllegalArgumentException exception = assertThrows(
-                                                                IllegalArgumentException.class,
-                                                                () -> SqlValidationUtils.validateTableName(tableName));
+        final var exception = assertThrows(
+                                           IllegalArgumentException.class,
+                                           () -> SqlValidationUtils.validateTableName(tableName));
         assertEquals("Invalid table name: " + tableName, exception.getMessage());
     }
 
@@ -84,10 +84,10 @@ class SqlValidationUtilsTest {
     @NullSource
     @DisplayName("rejects null database names")
     void rejectsNullDatabaseNames(String databaseName) {
-        final IllegalArgumentException exception = assertThrows(
-                                                                IllegalArgumentException.class,
-                                                                () -> SqlValidationUtils.validateDatabaseName(
-                                                                                                              databaseName));
+        final var exception = assertThrows(
+                                           IllegalArgumentException.class,
+                                           () -> SqlValidationUtils.validateDatabaseName(
+                                                                                         databaseName));
         assertEquals("Invalid database name: null", exception.getMessage());
     }
 

@@ -48,8 +48,8 @@ class SqliteRestServerHelpersTest {
         @DisplayName("admin port is port + 1")
         void adminPortIsPortPlusOne() throws java.io.IOException {
             final int port = 7777;
-            final String configPath = SqliteRestServer.buildInlineConfig(port);
-            final String content = Files.readString(Path.of(configPath));
+            final var configPath = SqliteRestServer.buildInlineConfig(port);
+            final var content = Files.readString(Path.of(configPath));
             assertTrue(
                        content.contains(String.valueOf(port + 1)),
                        "Generated config should contain the admin port (port + 1)");
@@ -58,8 +58,8 @@ class SqliteRestServerHelpersTest {
         @Test
         @DisplayName("does not contain shell-style placeholder tokens after substitution")
         void noUnresolvedPlaceholders() throws java.io.IOException {
-            final String configPath = SqliteRestServer.buildInlineConfig(8080);
-            final String content = Files.readString(Path.of(configPath));
+            final var configPath = SqliteRestServer.buildInlineConfig(8080);
+            final var content = Files.readString(Path.of(configPath));
             assertFalse(
                         content.contains("${DW_PORT"),
                         "Generated config must not contain unresolved DW_PORT placeholder");
@@ -71,7 +71,7 @@ class SqliteRestServerHelpersTest {
         @Test
         @DisplayName("returns path to a temp file that exists on disk")
         void returnsTempFileThatExists() {
-            final String configPath = SqliteRestServer.buildInlineConfig(9876);
+            final var configPath = SqliteRestServer.buildInlineConfig(9876);
             assertNotNull(configPath);
             assertTrue(Files.exists(Path.of(configPath)), "Temp config file should exist");
         }
@@ -80,8 +80,8 @@ class SqliteRestServerHelpersTest {
         @DisplayName("substitutes port into the generated config file content")
         void substitutesPortInContent() throws java.io.IOException {
             final int port = 12345;
-            final String configPath = SqliteRestServer.buildInlineConfig(port);
-            final String content = Files.readString(Path.of(configPath));
+            final var configPath = SqliteRestServer.buildInlineConfig(port);
+            final var content = Files.readString(Path.of(configPath));
             assertTrue(
                        content.contains(String.valueOf(port)),
                        "Generated config should contain the requested port number");
@@ -99,9 +99,9 @@ class SqliteRestServerHelpersTest {
         @Test
         @DisplayName("error message mentions the timeout duration")
         void errorMessageMentionsTimeout() {
-            final IllegalStateException ex = assertThrows(
-                                                          IllegalStateException.class,
-                                                          () -> SqliteRestServer.waitForPort("localhost", 1, 300L));
+            final var ex = assertThrows(
+                                        IllegalStateException.class,
+                                        () -> SqliteRestServer.waitForPort("localhost", 1, 300L));
             assertTrue(
                        ex.getMessage().contains("did not start"),
                        "Error should say server did not start");

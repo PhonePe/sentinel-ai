@@ -39,7 +39,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -113,14 +112,14 @@ public class SqliteRestResource {
         final var cols = new ArrayList<>(data.keySet());
         cols.forEach(col -> SqlValidationUtils.validateIdentifier(col, COLUMN_NAME_LABEL));
         final var placeholders = cols.stream().map(c -> "?").toList();
-        final String sql = "INSERT INTO \""
+        final var sql = "INSERT INTO \""
                 + table
                 + "\" (\""
                 + String.join("\", \"", cols)
                 + "\") VALUES ("
                 + String.join(", ", placeholders)
                 + ")";
-        final List<Object> params = cols.stream().map(data::get).toList();
+        final var params = cols.stream().map(data::get).toList();
 
         try (Connection conn = connect()) {
             final int affected = executeDml(conn, sql, params);
@@ -157,7 +156,7 @@ public class SqliteRestResource {
                                params.add(v);
                            });
 
-        final String sql = "DELETE FROM \"" + table + "\" WHERE " + String.join(AND_SEPARATOR, whereClauses);
+        final var sql = "DELETE FROM \"" + table + "\" WHERE " + String.join(AND_SEPARATOR, whereClauses);
 
         try (Connection conn = connect()) {
             final int affected = executeDml(conn, sql, params);
@@ -188,12 +187,12 @@ public class SqliteRestResource {
     @Path("/query")
     @SneakyThrows
     public Response executeQuery(Map<String, Object> body) {
-        final String sql = (String) body.get("sql");
+        final var sql = (String) body.get("sql");
         if (sql == null || sql.isBlank()) {
             return error(400, "Field 'sql' is required");
         }
 
-        final String disallowedKeyword = SqlValidationUtils.findDisallowedWriteKeyword(sql);
+        final var disallowedKeyword = SqlValidationUtils.findDisallowedWriteKeyword(sql);
         if (disallowedKeyword != null) {
             throw new WriteQueryNotAllowedException(
                                                     "Write DML statements are not allowed via this endpoint. Offending statement starts with: "
@@ -293,10 +292,10 @@ public class SqliteRestResource {
     @Path("/tables")
     @SneakyThrows
     public Response listTables() {
-        final String sql = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
+        final var sql = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
         try (Connection conn = connect()) {
             final var rows = executeSelect(conn, sql, List.of());
-            final List<String> tables = rows.stream().map(r -> (String) r.get("name")).toList();
+            final var tables = rows.stream().map(r -> (String) r.get("name")).toList();
             return ok(Map.of("tables", tables));
         }
         catch (Exception e) {
@@ -320,7 +319,7 @@ public class SqliteRestResource {
         SqlValidationUtils.validateTableName(table);
         try (Connection conn = connect()) {
             final var sb = new StringBuilder("SELECT * FROM \"").append(table).append("\"");
-            final List<Object> params = new ArrayList<>();
+            final var params = new ArrayList<>();
 
             if (conditionsJson != null && !conditionsJson.isBlank()) {
                 @SuppressWarnings("unchecked") final Map<String, Object> conditions = mapper.readValue(conditionsJson,
@@ -387,7 +386,7 @@ public class SqliteRestResource {
                                params.add(v);
                            });
 
-        final String sql = "UPDATE \""
+        final var sql = "UPDATE \""
                 + table
                 + "\" SET "
                 + String.join(", ", setClauses)
@@ -447,11 +446,11 @@ public class SqliteRestResource {
                 stmt.setObject(i + 1, params.get(i));
             }
             try (ResultSet rs = stmt.executeQuery()) {
-                final ResultSetMetaData meta = rs.getMetaData();
+                final var meta = rs.getMetaData();
                 final int cols = meta.getColumnCount();
                 final List<Map<String, Object>> rows = new ArrayList<>();
                 while (rs.next()) {
-                    final Map<String, Object> row = new LinkedHashMap<>();
+                    final LinkedHashMap<String, Object> row = new LinkedHashMap<>();
                     for (int c = 1; c <= cols; c++) {
                         row.put(meta.getColumnName(c), rs.getObject(c));
                     }

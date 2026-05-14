@@ -31,7 +31,6 @@ import org.junit.jupiter.api.io.TempDir;
 import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -100,8 +99,8 @@ class SqliteRestServerTest {
         @DisplayName("initialize does not throw and ignores the bootstrap argument")
         @SuppressWarnings("unchecked")
         void initializeDoesNotThrow() {
-            final SqliteRestServer server = new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
-            final Bootstrap<SqliteRestConfig> bootstrap = mock(Bootstrap.class);
+            final var server = new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
+            final var bootstrap = mock(Bootstrap.class);
             // initialize() is a no-op — just confirm it doesn't throw
             assertDoesNotThrow(() -> server.initialize(bootstrap));
         }
@@ -109,12 +108,12 @@ class SqliteRestServerTest {
         @Test
         @DisplayName("run registers the SqliteRestResource with jersey environment")
         void runRegistersResource() {
-            final SqliteRestServer server = new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
-            final Environment environment = mock(Environment.class);
-            final JerseyEnvironment jersey = mock(JerseyEnvironment.class);
+            final var server = new SqliteRestServer("/tmp/test.db", 8888, new ObjectMapper());
+            final var environment = mock(Environment.class);
+            final var jersey = mock(JerseyEnvironment.class);
             when(environment.jersey()).thenReturn(jersey);
 
-            final SqliteRestConfig config = new SqliteRestConfig();
+            final var config = new SqliteRestConfig();
             server.run(config, environment);
 
             verify(jersey, times(1)).register(any(SqliteRestResource.class));
@@ -143,14 +142,14 @@ class SqliteRestServerTest {
         @Test
         @DisplayName("server starts and responds to GET /api/sqlite/tables")
         void serverStartsAndServesTables(@TempDir Path tempDir) {
-            final Path dbPath = tempDir.resolve("smoke.db");
+            final var dbPath = tempDir.resolve("smoke.db");
             DatabaseInitializer.ensureInitialised(dbPath);
 
             final int port = SqliteRestServer.findFreePort();
-            final String baseUrl = SqliteRestServer.startEmbedded(
-                                                                  dbPath.toAbsolutePath().toString(),
-                                                                  port,
-                                                                  new ObjectMapper());
+            final var baseUrl = SqliteRestServer.startEmbedded(
+                                                               dbPath.toAbsolutePath().toString(),
+                                                               port,
+                                                               new ObjectMapper());
 
             assertNotNull(baseUrl, "Base URL should not be null");
             assertTrue(
@@ -166,17 +165,17 @@ class SqliteRestServerTest {
         @Test
         @DisplayName("throws IllegalStateException when port is not reachable within timeout")
         void throwsWhenPortNotReachable() throws Exception {
-            final Method m = SqliteRestServer.class.getDeclaredMethod(
-                                                                      "waitForPort",
-                                                                      String.class,
-                                                                      int.class,
-                                                                      long.class);
+            final var m = SqliteRestServer.class.getDeclaredMethod(
+                                                                   "waitForPort",
+                                                                   String.class,
+                                                                   int.class,
+                                                                   long.class);
             m.setAccessible(true);
 
             // Port 1 is unreachable; 300 ms timeout guarantees a quick failure
-            final InvocationTargetException ex = assertThrows(
-                                                              InvocationTargetException.class,
-                                                              () -> m.invoke(null, "localhost", 1, 300L));
+            final var ex = assertThrows(
+                                        InvocationTargetException.class,
+                                        () -> m.invoke(null, "localhost", 1, 300L));
             assertInstanceOf(IllegalStateException.class, ex.getCause());
             assertTrue(ex.getCause().getMessage().contains("did not start"));
         }

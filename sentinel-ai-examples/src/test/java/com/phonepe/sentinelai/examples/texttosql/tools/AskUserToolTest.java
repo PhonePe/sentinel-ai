@@ -29,7 +29,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -54,7 +53,7 @@ class AskUserToolTest {
         @DisplayName("returns '<no input>' when user presses Enter with no text")
         void emptyLineReturnsNoInput() throws Exception {
             injectStdin("");
-            final String result = tool.askUserQuestion("Any preferences?");
+            final var result = tool.askUserQuestion("Any preferences?");
             assertEquals("<no input>", result);
         }
 
@@ -62,7 +61,7 @@ class AskUserToolTest {
         @DisplayName("returns '<no input>' on EOF")
         void eofReturnsNoInput() throws Exception {
             injectEof();
-            final String result = tool.askUserQuestion("Hello?");
+            final var result = tool.askUserQuestion("Hello?");
             assertEquals("<no input>", result);
         }
 
@@ -71,7 +70,7 @@ class AskUserToolTest {
         void printsBannerToStdout() throws Exception {
             injectStdin("answer");
             tool.askUserQuestion("What color?");
-            final String out = outCapture.toString();
+            final var out = outCapture.toString();
             assertTrue(out.contains("Clarification needed"), "Should print question banner");
             assertTrue(out.contains("What color?"), "Should echo the question text");
         }
@@ -80,7 +79,7 @@ class AskUserToolTest {
         @DisplayName("returns trimmed user input")
         void returnsTrimmedInput() throws Exception {
             injectStdin("  hello world  ");
-            final String result = tool.askUserQuestion("What is your name?");
+            final var result = tool.askUserQuestion("What is your name?");
             assertEquals("hello world", result);
         }
 
@@ -104,7 +103,7 @@ class AskUserToolTest {
         @DisplayName("choices with only semicolons (all empty tokens) falls back to free-form")
         void allEmptyTokensFallsBack() throws Exception {
             injectStdin("ok");
-            final String result = tool.askUserToChoose("Pick?", ";;;");
+            final var result = tool.askUserToChoose("Pick?", ";;;");
             assertEquals("ok", result);
         }
 
@@ -112,7 +111,7 @@ class AskUserToolTest {
         @DisplayName("blank choices falls back to free-form question")
         void blankChoicesFallsBackToFreeForm() throws Exception {
             injectStdin("my answer");
-            final String result = tool.askUserToChoose("What do you want?", "   ");
+            final var result = tool.askUserToChoose("What do you want?", "   ");
             assertEquals("my answer", result);
         }
 
@@ -120,7 +119,7 @@ class AskUserToolTest {
         @DisplayName("returns '<no input>' on EOF inside choices")
         void eofInsideChoicesReturnsNoInput() throws Exception {
             injectEof();
-            final String result = tool.askUserToChoose("Choose?", "A;B;C");
+            final var result = tool.askUserToChoose("Choose?", "A;B;C");
             assertEquals("<no input>", result);
         }
 
@@ -128,7 +127,7 @@ class AskUserToolTest {
         @DisplayName("typing free text that doesn't match any choice returns raw input")
         void freeTextReturnsRaw() throws Exception {
             injectStdin("something else entirely");
-            final String result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
+            final var result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
             assertEquals("something else entirely", result);
         }
 
@@ -136,7 +135,7 @@ class AskUserToolTest {
         @DisplayName("null choices falls back to free-form question")
         void nullChoicesFallsBackToFreeForm() throws Exception {
             injectStdin("free text answer");
-            final String result = tool.askUserToChoose("What do you want?", null);
+            final var result = tool.askUserToChoose("What do you want?", null);
             assertEquals("free text answer", result);
         }
 
@@ -144,7 +143,7 @@ class AskUserToolTest {
         @DisplayName("selecting out-of-range number returns raw input")
         void outOfRangeIndexReturnsRaw() throws Exception {
             injectStdin("99");
-            final String result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
+            final var result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
             assertEquals("99", result);
         }
 
@@ -153,7 +152,7 @@ class AskUserToolTest {
         void printsNumberedChoices() throws Exception {
             injectStdin("1");
             tool.askUserToChoose("Which?", "OptionA;OptionB");
-            final String out = outCapture.toString();
+            final var out = outCapture.toString();
             assertTrue(out.contains("OptionA"), "Should list OptionA");
             assertTrue(out.contains("OptionB"), "Should list OptionB");
         }
@@ -162,7 +161,7 @@ class AskUserToolTest {
         @DisplayName("selecting by 1-based index returns corresponding choice")
         void selectByIndex() throws Exception {
             injectStdin("2");
-            final String result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
+            final var result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
             assertEquals("Beta", result);
         }
 
@@ -170,7 +169,7 @@ class AskUserToolTest {
         @DisplayName("selecting by exact label (case-insensitive) returns that choice")
         void selectByLabel() throws Exception {
             injectStdin("gamma");
-            final String result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
+            final var result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
             assertEquals("Gamma", result);
         }
 
@@ -178,7 +177,7 @@ class AskUserToolTest {
         @DisplayName("selecting by first index returns first choice")
         void selectFirstByIndex() throws Exception {
             injectStdin("1");
-            final String result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
+            final var result = tool.askUserToChoose("Pick one:", "Alpha;Beta;Gamma");
             assertEquals("Alpha", result);
         }
     }
@@ -224,11 +223,11 @@ class AskUserToolTest {
 
     /** Injects a stdin reader that immediately returns EOF (simulates Ctrl-D). */
     private void injectEof() throws Exception {
-        final BufferedReader reader = new BufferedReader(
-                                                         new InputStreamReader(
-                                                                               new ByteArrayInputStream(new byte[0]),
-                                                                               StandardCharsets.UTF_8));
-        final Field stdinField = AskUserTool.class.getDeclaredField("stdin");
+        final var reader = new BufferedReader(
+                                              new InputStreamReader(
+                                                                    new ByteArrayInputStream(new byte[0]),
+                                                                    StandardCharsets.UTF_8));
+        final var stdinField = AskUserTool.class.getDeclaredField("stdin");
         stdinField.setAccessible(true);
         stdinField.set(tool, reader);
     }
@@ -242,13 +241,13 @@ class AskUserToolTest {
      * the tool.
      */
     private void injectStdin(String... lines) throws Exception {
-        final String input = String.join("\n", lines) + "\n";
-        final BufferedReader reader = new BufferedReader(
-                                                         new InputStreamReader(
-                                                                               new ByteArrayInputStream(
-                                                                                                        input.getBytes(StandardCharsets.UTF_8)),
-                                                                               StandardCharsets.UTF_8));
-        final Field stdinField = AskUserTool.class.getDeclaredField("stdin");
+        final var input = String.join("\n", lines) + "\n";
+        final var reader = new BufferedReader(
+                                              new InputStreamReader(
+                                                                    new ByteArrayInputStream(
+                                                                                             input.getBytes(StandardCharsets.UTF_8)),
+                                                                    StandardCharsets.UTF_8));
+        final var stdinField = AskUserTool.class.getDeclaredField("stdin");
         stdinField.setAccessible(true);
         stdinField.set(tool, reader);
     }

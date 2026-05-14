@@ -54,14 +54,14 @@ class TextToSqlAgentTest {
     @Test
     @DisplayName("builder with no extensions builds successfully")
     void builderWithNoExtensionsSucceeds() {
-        final Model model = mock(Model.class);
-        final AgentSetup setup = AgentSetup.builder()
+        final var model = mock(Model.class);
+        final var setup = AgentSetup.builder()
                 .mapper(new ObjectMapper())
                 .model(model)
                 .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
                 .outputGenerationTool(result -> result)
                 .build();
-        final TextToSqlAgent a = TextToSqlAgent.builder()
+        final var a = TextToSqlAgent.builder()
                 .setup(setup)
                 .outputValidator((ctx, out) -> OutputValidationResults.success())
                 .build();
@@ -72,8 +72,8 @@ class TextToSqlAgentTest {
     @Test
     @DisplayName("builder throws NullPointerException when outputValidator is null — uses default")
     void builderWithNullOutputValidatorUsesDefault() {
-        final Model model = mock(Model.class);
-        final AgentSetup setup = AgentSetup.builder()
+        final var model = mock(Model.class);
+        final var setup = AgentSetup.builder()
                 .mapper(new ObjectMapper())
                 .model(model)
                 .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
@@ -92,8 +92,8 @@ class TextToSqlAgentTest {
 
     @BeforeEach
     void setUp() {
-        final Model model = mock(Model.class);
-        final AgentSetup setup = AgentSetup.builder()
+        final var model = mock(Model.class);
+        final var setup = AgentSetup.builder()
                 .mapper(new ObjectMapper())
                 .model(model)
                 .outputGenerationMode(OutputGenerationMode.TOOL_BASED)

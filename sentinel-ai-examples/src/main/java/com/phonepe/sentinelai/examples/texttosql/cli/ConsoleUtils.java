@@ -125,7 +125,7 @@ public class ConsoleUtils {
             throws InterruptedException, ExecutionException {
         while (true) {
             try {
-                final T result = future.get(DEFAULT_FUTURE_TIMEOUT, TimeUnit.MILLISECONDS);
+                final var result = future.get(DEFAULT_FUTURE_TIMEOUT, TimeUnit.MILLISECONDS);
                 if (showSpinner && SPINNER_ENABLED.get()) {
                     // Erase the spinner line before the caller prints the result.
                     printToStdout("\r" + " ".repeat(80) + "\r");
@@ -134,12 +134,12 @@ public class ConsoleUtils {
             }
             catch (TimeoutException ignored) {
                 if (showSpinner && SPINNER_ENABLED.get()) {
-                    final String verb = PROCESSING_VERBS.get(
-                                                             // java:S2245 — ThreadLocalRandom is intentional here; this picks
-                                                             // a display verb for a CLI spinner animation and has no security
-                                                             // or cryptographic purpose whatsoever.
-                                                             ThreadLocalRandom.current().nextInt(PROCESSING_VERBS
-                                                                     .size()));
+                    final var verb = PROCESSING_VERBS.get(
+                                                          // java:S2245 — ThreadLocalRandom is intentional here; this picks
+                                                          // a display verb for a CLI spinner animation and has no security
+                                                          // or cryptographic purpose whatsoever.
+                                                          ThreadLocalRandom.current().nextInt(PROCESSING_VERBS
+                                                                  .size()));
                     printToStdout("\r" + BOLD + YELLOW + verb + "..." + RESET);
                 }
             }
@@ -276,7 +276,7 @@ public class ConsoleUtils {
 
         // ── Generated SQL ─────────────────────────────────────────────────
         printToStdout(CYAN + "┌─ Generated SQL " + "─".repeat(54) + "┐" + RESET + System.lineSeparator());
-        final String formattedSql = formatSql(result.generatedSql());
+        final var formattedSql = formatSql(result.generatedSql());
         for (final String line : formattedSql.split("\n")) {
             printToStdout(GREEN + "│  " + line + RESET + System.lineSeparator());
         }

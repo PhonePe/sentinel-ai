@@ -47,7 +47,7 @@ public final class SqlValidationUtils {
         if (sql == null) {
             return null;
         }
-        final String upper = sql.trim().toUpperCase();
+        final var upper = sql.trim().toUpperCase();
         for (final String keyword : DISALLOWED_WRITE_KEYWORDS) {
             if (upper.contains(keyword)) {
                 return keyword;

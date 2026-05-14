@@ -99,7 +99,7 @@ public class LocalTools implements ToolBox {
                     + "Returns a formatted ASCII table string.")
     public static String formatResultsAsTable(SqlQueryResult sqlQueryResult) {
         try {
-            final List<String> jsonRows = sqlQueryResult.results();
+            final var jsonRows = sqlQueryResult.results();
 
             if (jsonRows == null || jsonRows.isEmpty()) {
                 return "No results found.";
@@ -112,15 +112,15 @@ public class LocalTools implements ToolBox {
                 rows.add(MAPPER.readValue(jsonRow, rowType));
             }
 
-            final List<String> headers = new ArrayList<>(rows.get(0).keySet());
+            final var headers = new ArrayList<>(rows.get(0).keySet());
 
-            final AsciiTable at = new AsciiTable();
+            final var at = new AsciiTable();
             at.getRenderer().setCWC(new CWC_LongestLine());
             at.addRule();
             at.addRow(headers.toArray());
             at.addRule();
             for (final var row : rows) {
-                final Object[] cells = headers.stream()
+                final var cells = headers.stream()
                         .map(
                              h -> row.getOrDefault(h, "") == null
                                      ? "NULL"
@@ -187,8 +187,8 @@ public class LocalTools implements ToolBox {
                     + "Returns the date-time as yyyy/MM/dd HH:mm:ss.")
     public String convertEpochToLocalDateTime(long epochSeconds, String timezone) {
         try {
-            final ZoneId zoneId = ZoneId.of(timezone);
-            final ZonedDateTime zdt = Instant.ofEpochSecond(epochSeconds).atZone(zoneId);
+            final var zoneId = ZoneId.of(timezone);
+            final var zdt = Instant.ofEpochSecond(epochSeconds).atZone(zoneId);
             return zdt.format(DISPLAY_FORMAT);
         }
         catch (Exception e) {
@@ -252,8 +252,8 @@ public class LocalTools implements ToolBox {
                     + "into concrete epoch-second ranges for SQL WHERE clauses.")
     public String getCurrentDateTime(String timezone) {
         try {
-            final ZoneId zoneId = ZoneId.of(timezone);
-            final ZonedDateTime now = ZonedDateTime.now(zoneId);
+            final var zoneId = ZoneId.of(timezone);
+            final var now = ZonedDateTime.now(zoneId);
             return String.format(
                                  "Current time in %s: %s (epoch seconds: %d)",
                                  timezone,
@@ -415,12 +415,12 @@ public class LocalTools implements ToolBox {
         try (var stmt = conn.prepareStatement("PRAGMA table_info(\"" + table + "\")");
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-                final String colName = rs.getString("name");
-                final String colType = rs.getString("type");
-                final String notNull = "1".equals(String.valueOf(rs.getObject("notnull"))) ? " NOT NULL" : "";
-                final Object dflt = rs.getObject("dflt_value");
-                final String dfltStr = dflt != null ? " DEFAULT " + dflt : "";
-                final String pk = "1".equals(String.valueOf(rs.getObject("pk"))) ? " [PK]" : "";
+                final var colName = rs.getString("name");
+                final var colType = rs.getString("type");
+                final var notNull = "1".equals(String.valueOf(rs.getObject("notnull"))) ? " NOT NULL" : "";
+                final var dflt = rs.getObject("dflt_value");
+                final var dfltStr = dflt != null ? " DEFAULT " + dflt : "";
+                final var pk = "1".equals(String.valueOf(rs.getObject("pk"))) ? " [PK]" : "";
                 sb.append(
                           String.format("- `%s` %s%s%s%s%n", colName, colType, notNull, dfltStr, pk));
             }

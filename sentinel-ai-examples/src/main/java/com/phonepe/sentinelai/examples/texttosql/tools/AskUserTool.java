@@ -187,7 +187,7 @@ public class AskUserTool implements ToolBox {
                 return askUserQuestion(question);
             }
 
-            final List<String> choiceList = Arrays.stream(choices.split(";"))
+            final var choiceList = Arrays.stream(choices.split(";"))
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
                     .toList();
@@ -199,13 +199,13 @@ public class AskUserTool implements ToolBox {
             }
 
             printChoices(question, choiceList);
-            final String raw = readUserInput();
+            final var raw = readUserInput();
 
             // Try to interpret the input as a 1-based index first.
             try {
                 final int idx = Integer.parseInt(raw.trim());
                 if (idx >= 1 && idx <= choiceList.size()) {
-                    final String selected = choiceList.get(idx - 1);
+                    final var selected = choiceList.get(idx - 1);
                     log.debug("User selected choice #{}: {}", idx, selected);
                     return selected;
                 }
@@ -243,12 +243,12 @@ public class AskUserTool implements ToolBox {
      */
     private String readUserInput() {
         try {
-            final String line = stdin.readLine();
+            final var line = stdin.readLine();
             if (line == null) {
                 log.warn("EOF reached while waiting for user input");
                 return "<no input>";
             }
-            final String trimmed = line.trim();
+            final var trimmed = line.trim();
             log.debug("User provided input: {}", trimmed);
             return trimmed.isEmpty() ? "<no input>" : trimmed;
         }

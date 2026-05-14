@@ -373,9 +373,9 @@ class SqliteRestResourceTest {
         @Test
         @DisplayName("getTableSchema with invalid identifier throws IllegalArgumentException")
         void invalidIdentifierThrows() {
-            final IllegalArgumentException exception = assertThrows(
-                                                                    IllegalArgumentException.class,
-                                                                    () -> resource.getTableSchema("bad table; DROP"));
+            final var exception = assertThrows(
+                                               IllegalArgumentException.class,
+                                               () -> resource.getTableSchema("bad table; DROP"));
             assertEquals("Invalid table name: bad table; DROP", exception.getMessage());
         }
 
