@@ -29,7 +29,8 @@ nav = [
     {"OpenTelemetry" = "opentelemetry.md"}
   ]},
   {"Testing" = [{"Evals" = "evals.md"}]},
-  {"Errors" = "errors.md"}
+  {"Errors" = "errors.md"},
+  {"Examples" = "examples.md"}
 ]
 
 # ── Theme ────────────────────────────────────────────────────────────────────

@@ -32,39 +32,7 @@ For example, when the user provides a prompt like below in the CLI, then they ma
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          TextToSqlCLI                               │
-│                                                                     │
-│  call()                                                             │
-│   ├─ loadConfig / validateConfig   (CliConfig from YAML)            │
-│   ├─ initializeDatabase            (SQLite file + seed data)        │
-│   ├─ buildTrustedHttpClient        (OkHttp + auth interceptor)      │
-│   ├─ buildOpenAIModel              (SimpleOpenAIModel)              │
-│   ├─ buildAgentSetup               (ModelSettings + output mode)    │
-│   ├─ buildSkillsExtension          (AgentSkillsExtension / SKILL.md)│
-│   ├─ buildAgent                    (TextToSqlAgent)                 │
-│   ├─ registerLocalTools            (LocalSqlTools + SchemaVectorStore)│
-│   ├─ registerToolbox               (HTTP or MCP, based on --toolbox-mode)│
-│   └─ runInteractiveLoop            (stdin prompt → agent → stdout)  │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-           │                    │                      │
-           ▼                    ▼                      ▼
-  ┌─────────────────┐  ┌─────────────────────┐  ┌──────────────────┐
-  │  LocalSqlTools  │  │  SqliteRestServer   │  │  SqliteMcpServer │
-  │  (JDBC / Java + │  │  (Dropwizard REST)  │  │  (stdio or SSE)  │
-  │  Lucene search) │  │  [--toolbox-mode    │  │  [--toolbox-mode │
-  └─────────────────┘  │   HTTP, default]    │  │   MCP]           │
-           │           └─────────────────────┘  └──────────────────┘
-           │                    │                      │
-           └────────────────────┴──────────────────────┘
-                                ▼
-                       ┌─────────────────┐
-                       │  ecommerce.db   │
-                       │  (SQLite file)  │
-                       └─────────────────┘
-```
+![Architecture Overview](architecture-overview.svg)
 
 The agent has **three tool layers** on top of the same SQLite database:
 
@@ -74,8 +42,63 @@ The agent has **three tool layers** on top of the same SQLite database:
 | Remote-HTTP | `sqlite-api.yml` + `SqliteRestServer.java` | HTTP calls to an embedded Dropwizard server exposing a REST CRUD API (default toolbox mode) |
 | MCP | `SqliteMcpServer.java` | MCP server launched as a subprocess, accessed via stdio or SSE transport (enabled with `--toolbox-mode MCP`) |
 
----
+## Running the Example
 
+### Prerequisites
+
+- Java 17+
+- Maven 3.8+
+- An OpenAI-compatible API key
+
+### Build
+
+```bash
+cd sentinel-ai-examples
+mvn package -DskipTests
+```
+
+### Configure
+
+```bash
+mkdir -p .env
+cp src/main/resources/.env/agent-config.yml.example .env/agent-config.yml
+# Edit .env/agent-config.yml and set openai.apiKey
+```
+
+### Run
+
+```bash
+java -jar target/sentinel-ai-examples-*-cli.jar
+# or use the helper script
+./run.sh
+```
+
+Available CLI options:
+
+| Option | Default | Description |
+|---|---|---|
+| `--config`, `-c` | `.env/agent-config.yml` | Path to the YAML config file |
+| `--skills-dir`, `-s` | *(bundled)* | Override the skills directory |
+| `--session-id` | *(random UUID)* | Session ID for conversation history |
+| `--toolbox-mode`, `-t` | `HTTP` | Toolbox for SQL execution: `HTTP` (embedded REST server) or `MCP` (MCP subprocess) |
+| `--mcp-server-mode` | `STDIO` | MCP transport when `--toolbox-mode MCP`: `STDIO` or `SSE` |
+| `--mcp-port` | `8766` | HTTP port for the MCP SSE subprocess (only used with `--mcp-server-mode SSE`) |
+
+### Sample Queries
+
+Once the banner appears, try any of the following:
+
+```
+> List top 3 sellers by order volume
+> Find the user with the most number of orders
+> Find out top cities by shoe sales
+> What are the top 5 best-selling products this month?
+> Show total revenue per product category
+> Which products are running low on inventory?
+> How many orders were placed in the last 30 days?
+```
+
+Type `exit` or `quit` (or press `Ctrl+D`) to stop.
 ## Code Walkthrough
 
 ### 1. The Agent — `TextToSqlAgent`
@@ -123,8 +146,6 @@ The CLI wiring for this example also registers `OpenTelemetryAgentExtension` usi
 `GlobalOpenTelemetry.getTracer(...)`, so agent runs emit tracing spans automatically whenever
 the hosting process configures an OpenTelemetry SDK/exporter.
 
----
-
 ### 2. The Output Type — `SqlQueryResult`
 
 **File:** [`agent/SqlQueryResult.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/agent/SqlQueryResult.java)
@@ -152,8 +173,6 @@ public record SqlQueryResult(
 Sentinel AI uses the `@JsonClassDescription` / `@JsonPropertyDescription` annotations to
 derive the JSON Schema that is sent to the model as the output tool definition —
 no manual schema authoring required.
-
----
 
 ### 3. Local Tools — `LocalSqlTools`
 
@@ -201,8 +220,6 @@ These tools are registered with the agent at runtime:
 final Path dataDir = dbPath.getParent();
 agent.registerTools(ToolUtils.readTools(new LocalSqlTools(dbPath.toString(), dataDir)));
 ```
-
----
 
 ### 4. Hybrid Schema Search — `SchemaVectorStore`
 
@@ -261,8 +278,6 @@ The `sql-execution` skill instructs the model to call `search_schema` first, ext
 unique table names from the results, then call `get_table_desc` with those names to retrieve
 full column metadata before writing any SQL.
 
----
-
 ### 5. Remote-HTTP Toolbox — `sqlite-api.yml` (default)
 
 **File:** [`resources/http-tools/sqlite-api.yml`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/resources/http-tools/sqlite-api.yml)
@@ -319,8 +334,6 @@ final var httpToolBox = new HttpToolBox(
 agent.registerToolbox(httpToolBox);
 ```
 
----
-
 ### 6. The Embedded REST Server — `SqliteRestServer`
 
 **File:** [`server/SqliteRestServer.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/server/SqliteRestServer.java)
@@ -349,8 +362,6 @@ final String url  = SqliteRestServer.startEmbedded(dbPath.toString(), port, mapp
 `startEmbedded` launches the Dropwizard `run()` loop in a `CompletableFuture` and
 then polls the TCP port until it responds (up to 30 seconds), so by the time the
 method returns the server is ready to accept requests.
-
----
 
 ### 7. MCP Server — `SqliteMcpServer`
 
@@ -403,8 +414,6 @@ The MCP toolbox exposes tools with the prefix `sqlite-mcp_` (e.g. `sqlite-mcp_ex
 and the `sql-execution` skill references `sqlite-api_execute_query` for the HTTP mode.  Both
 paths are handled transparently by the skill — the agent calls whichever variant is registered.
 
----
-
 ### 8. Database Initialisation — `DatabaseInitializer`
 
 **File:** [`tools/DatabaseInitializer.java`](https://github.com/PhonePe/sentinel-ai/blob/main/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/DatabaseInitializer.java)
@@ -422,8 +431,6 @@ resources/db/ecommerce-data/orders.csv
 ```
 
 Subsequent runs detect that the file already contains tables and skip the step.
-
----
 
 ### 9. Configuration — `CliConfig`
 
@@ -448,8 +455,6 @@ agent:
 
 An example file is bundled at
 `sentinel-ai-examples/src/main/resources/.env/agent-config.yml.example`.
-
----
 
 ### 10. CLI Orchestration — `TextToSqlCLI`
 
@@ -511,8 +516,6 @@ public Integer call() {
 | 8c | `startRestServer` + `registerHttpToolbox` | Starts embedded Dropwizard server and registers `HttpToolBox` (default) |
 | 9 | `runInteractiveLoop` | Enters the read-eval-print loop |
 
----
-
 ### 11. Interactive Loop
 
 The REPL reads from `stdin` and dispatches each non-empty line to `handleQuery()`.
@@ -551,62 +554,3 @@ The session ID threads through every call so the model retains conversation
 history within a session. A new random UUID is generated if `--session-id` is
 not provided on the command line.
 
----
-
-## Running the Example
-
-### Prerequisites
-
-- Java 17+
-- Maven 3.8+
-- An OpenAI-compatible API key
-
-### Build
-
-```bash
-cd sentinel-ai-examples
-mvn package -DskipTests
-```
-
-### Configure
-
-```bash
-mkdir -p .env
-cp src/main/resources/.env/agent-config.yml.example .env/agent-config.yml
-# Edit .env/agent-config.yml and set openai.apiKey
-```
-
-### Run
-
-```bash
-java -jar target/sentinel-ai-examples-*-cli.jar
-# or use the helper script
-./run.sh
-```
-
-Available CLI options:
-
-| Option | Default | Description |
-|---|---|---|
-| `--config`, `-c` | `.env/agent-config.yml` | Path to the YAML config file |
-| `--skills-dir`, `-s` | *(bundled)* | Override the skills directory |
-| `--session-id` | *(random UUID)* | Session ID for conversation history |
-| `--toolbox-mode`, `-t` | `HTTP` | Toolbox for SQL execution: `HTTP` (embedded REST server) or `MCP` (MCP subprocess) |
-| `--mcp-server-mode` | `STDIO` | MCP transport when `--toolbox-mode MCP`: `STDIO` or `SSE` |
-| `--mcp-port` | `8766` | HTTP port for the MCP SSE subprocess (only used with `--mcp-server-mode SSE`) |
-
-### Sample Queries
-
-Once the banner appears, try any of the following:
-
-```
-> List top 3 sellers by order volume
-> Find the user with the most number of orders
-> Find out top cities by shoe sales
-> What are the top 5 best-selling products this month?
-> Show total revenue per product category
-> Which products are running low on inventory?
-> How many orders were placed in the last 30 days?
-```
-
-Type `exit` or `quit` (or press `Ctrl+D`) to stop.
