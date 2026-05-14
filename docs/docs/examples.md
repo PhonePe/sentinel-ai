@@ -28,20 +28,6 @@ For example, when the user provides a prompt like below in the CLI, then they ma
 └──────────────────────┴──────────────┘
 ```
 
----
-
-## Architecture Overview
-
-![Architecture Overview](architecture-overview.svg)
-
-The agent has **three tool layers** on top of the same SQLite database:
-
-| Layer | Class / File | Description |
-|---|---|---|
-| Local | `LocalSqlTools.java` | In-process tools — hybrid schema search (Lucene), timestamp conversion, ASCII table rendering |
-| Remote-HTTP | `sqlite-api.yml` + `SqliteRestServer.java` | HTTP calls to an embedded Dropwizard server exposing a REST CRUD API (default toolbox mode) |
-| MCP | `SqliteMcpServer.java` | MCP server launched as a subprocess, accessed via stdio or SSE transport (enabled with `--toolbox-mode MCP`) |
-
 ## Running the Example
 
 ### Prerequisites
@@ -99,6 +85,19 @@ Once the banner appears, try any of the following:
 ```
 
 Type `exit` or `quit` (or press `Ctrl+D`) to stop.
+
+## Architecture Overview
+
+![Architecture Overview](architecture-overview.svg)
+
+The agent has **three tool layers** on top of the same SQLite database:
+
+| Layer | Class / File | Description |
+|---|---|---|
+| Local | `LocalSqlTools.java` | In-process tools — hybrid schema search (Lucene), timestamp conversion, ASCII table rendering |
+| Remote-HTTP | `sqlite-api.yml` + `SqliteRestServer.java` | HTTP calls to an embedded Dropwizard server exposing a REST CRUD API (default toolbox mode) |
+| MCP | `SqliteMcpServer.java` | MCP server launched as a subprocess, accessed via stdio or SSE transport (enabled with `--toolbox-mode MCP`) |
+
 ## Code Walkthrough
 
 ### 1. The Agent — `TextToSqlAgent`
