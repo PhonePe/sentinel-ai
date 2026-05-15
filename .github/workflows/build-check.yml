@@ -33,10 +33,6 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: Install Zensical
-        run: |
-          pip install zensical
-
       - name: Build documentation (strict)
         working-directory: ./docs
         run: python -m zensical build --strict --clean --config-file zensical.toml
