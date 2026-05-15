@@ -36,7 +36,7 @@ jobs:
       - name: Build documentation (strict)
         working-directory: ./docs
         run: |
-          pip install -r requirements.txt
+          pip install --only-binary :all: -r requirements.txt
           python -m zensical build --strict --clean --config-file zensical.toml
 
       - name: Set up Node.js and cache npm packages
