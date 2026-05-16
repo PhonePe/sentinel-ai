@@ -16,18 +16,15 @@
 
 package com.phonepe.sentinelai.examples.texttosql.tools.vectorstore;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("SchemaSearchResult")
 class SchemaSearchResultTest {
 
     @Test
-    @DisplayName("record equality is value-based")
     void equalityIsValueBased() {
         SchemaSearchResult a = new SchemaSearchResult("table", "users", null, "content", 1.0f);
         SchemaSearchResult b = new SchemaSearchResult("table", "users", null, "content", 1.0f);
@@ -36,7 +33,6 @@ class SchemaSearchResultTest {
     }
 
     @Test
-    @DisplayName("record stores all fields correctly")
     void storesAllFields() {
         SchemaSearchResult r = new SchemaSearchResult("table", "users", null, "users content", 0.9f);
         assertEquals("table", r.docType());
@@ -47,7 +43,6 @@ class SchemaSearchResultTest {
     }
 
     @Test
-    @DisplayName("record stores column-level result correctly")
     void storesColumnLevelResult() {
         SchemaSearchResult r = new SchemaSearchResult("column", "orders", "status", "orders status content", 0.75f);
         assertEquals("column", r.docType());
@@ -58,7 +53,6 @@ class SchemaSearchResultTest {
     }
 
     @Test
-    @DisplayName("toString includes field values")
     void toStringIncludesFields() {
         SchemaSearchResult r = new SchemaSearchResult("table", "sellers", null, "sellers desc", 0.5f);
         String s = r.toString();

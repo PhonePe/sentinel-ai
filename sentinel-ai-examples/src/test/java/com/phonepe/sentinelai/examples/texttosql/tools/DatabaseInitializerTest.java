@@ -16,7 +16,6 @@
 
 package com.phonepe.sentinelai.examples.texttosql.tools;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -32,7 +31,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("DatabaseInitializer")
 class DatabaseInitializerTest {
 
     // =========================================================================
@@ -40,11 +38,9 @@ class DatabaseInitializerTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("ensureInitialised")
     class EnsureInitialisedTests {
 
         @Test
-        @DisplayName("creates database file when it does not exist")
         void createsDatabaseFile(@TempDir Path tempDir) {
             Path dbPath = tempDir.resolve("test.db");
             assertFalse(Files.exists(dbPath), "DB should not exist before init");
@@ -55,7 +51,6 @@ class DatabaseInitializerTest {
         }
 
         @Test
-        @DisplayName("creates parent directories when they do not exist")
         void createsParentDirectories(@TempDir Path tempDir) {
             Path dbPath = tempDir.resolve("nested").resolve("deep").resolve("test.db");
             assertFalse(Files.exists(dbPath.getParent()));
@@ -66,7 +61,6 @@ class DatabaseInitializerTest {
         }
 
         @Test
-        @DisplayName("database has expected tables after init")
         void databaseHasExpectedTables(@TempDir Path tempDir) throws Exception {
             Path dbPath = tempDir.resolve("test.db");
             DatabaseInitializer.ensureInitialised(dbPath);
@@ -88,7 +82,6 @@ class DatabaseInitializerTest {
         }
 
         @Test
-        @DisplayName("calling ensureInitialised twice is idempotent")
         void idempotentOnSecondCall(@TempDir Path tempDir) throws Exception {
             Path dbPath = tempDir.resolve("test.db");
             DatabaseInitializer.ensureInitialised(dbPath);
@@ -105,7 +98,6 @@ class DatabaseInitializerTest {
         }
 
         @Test
-        @DisplayName("tables have rows after init")
         void tablesHaveRowsAfterInit(@TempDir Path tempDir) throws Exception {
             Path dbPath = tempDir.resolve("test.db");
             DatabaseInitializer.ensureInitialised(dbPath);
@@ -124,74 +116,63 @@ class DatabaseInitializerTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("parseCsvLine")
     class ParseCsvLineTests {
 
         @Test
-        @DisplayName("unescapes doubled quotes inside a quoted field")
         void doubledQuoteInsideQuotedField() {
             List<String> tokens = DatabaseInitializer.parseCsvLine("\"say \"\"hi\"\"\",end");
             assertEquals(List.of("say \"hi\"", "end"), tokens);
         }
 
         @Test
-        @DisplayName("empty string produces single empty token")
         void emptyStringProducesSingleToken() {
             List<String> tokens = DatabaseInitializer.parseCsvLine("");
             assertEquals(List.of(""), tokens);
         }
 
         @Test
-        @DisplayName("fully quoted field")
         void fullyQuotedField() {
             List<String> tokens = DatabaseInitializer.parseCsvLine("\"hello\",\"world\"");
             assertEquals(List.of("hello", "world"), tokens);
         }
 
         @Test
-        @DisplayName("leading comma produces empty first token")
         void leadingComma() {
             List<String> tokens = DatabaseInitializer.parseCsvLine(",b,c");
             assertEquals(List.of("", "b", "c"), tokens);
         }
 
         @Test
-        @DisplayName("parses header line of CSV")
         void parsesHeaderLine() {
             List<String> tokens = DatabaseInitializer.parseCsvLine("id,user_id,seller_id,total_price,status");
             assertEquals(List.of("id", "user_id", "seller_id", "total_price", "status"), tokens);
         }
 
         @Test
-        @DisplayName("quoted field with newline-like content")
         void quotedFieldMixed() {
             List<String> tokens = DatabaseInitializer.parseCsvLine("\"value with spaces\",plain");
             assertEquals(List.of("value with spaces", "plain"), tokens);
         }
 
         @Test
-        @DisplayName("parses quoted field containing a comma")
         void quotedFieldWithComma() {
             List<String> tokens = DatabaseInitializer.parseCsvLine("\"hello, world\",foo");
             assertEquals(List.of("hello, world", "foo"), tokens);
         }
 
         @Test
-        @DisplayName("parses simple comma-separated values")
         void simpleValues() {
             List<String> tokens = DatabaseInitializer.parseCsvLine("a,b,c");
             assertEquals(List.of("a", "b", "c"), tokens);
         }
 
         @Test
-        @DisplayName("parses single field with no commas")
         void singleField() {
             List<String> tokens = DatabaseInitializer.parseCsvLine("only");
             assertEquals(List.of("only"), tokens);
         }
 
         @Test
-        @DisplayName("trailing comma produces empty last token")
         void trailingComma() {
             List<String> tokens = DatabaseInitializer.parseCsvLine("a,b,");
             assertEquals(List.of("a", "b", ""), tokens);

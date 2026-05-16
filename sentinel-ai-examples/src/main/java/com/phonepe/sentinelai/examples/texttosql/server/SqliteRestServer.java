@@ -131,7 +131,7 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
         // Wait until the port responds
         waitForPort("localhost", port, 30_000);
 
-        final String baseUrl = "http://localhost:" + port;
+        final var baseUrl = "http://localhost:" + port;
         log.info("Embedded SQLite REST server is ready at {}", baseUrl);
         return baseUrl;
     }
@@ -156,7 +156,7 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
         }
 
         // Replace the shell-style default-value placeholders with the actual ports.
-        final String yaml = template.replaceAll("\\$\\{DW_PORT(?::-[^}]*)?}", String.valueOf(port))
+        final var yaml = template.replaceAll("\\$\\{DW_PORT(?::-[^}]*)?}", String.valueOf(port))
                 .replaceAll("\\$\\{DW_ADMIN_PORT(?::-[^}]*)?}", String.valueOf(port + 1));
 
         // java:S5443 — temp file created with owner-only permissions (rw-------) to prevent
@@ -177,7 +177,7 @@ public class SqliteRestServer extends Application<SqliteRestConfig> {
     @SneakyThrows
     static void waitForPort(String host, int port, long timeoutMs)
             throws InterruptedException {
-        final long deadline = System.currentTimeMillis() + timeoutMs;
+        final var deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
             try (var socket = new Socket()) {
                 socket.connect(new InetSocketAddress(host, port), 500);

@@ -82,11 +82,11 @@ User NL Question
 
 ## 2. Prerequisites
 
-| Requirement | Version |
-|---|---|
-| Java | 17+ |
-| Maven | 3.9+ |
-| An OpenAI-compatible API key | `gpt-4o` recommended |
+| Requirement | Version              |
+|---|----------------------|
+| Java | 17+                  |
+| Maven | 3.9+                 |
+| An OpenAI-compatible API key | `gpt-5.2` recommended |
 
 Add the BOM and relevant Sentinel AI modules to your `pom.xml`.
 See [pom.xml](pom.xml) for reference.
