@@ -18,44 +18,100 @@ package com.phonepe.sentinelai.core.tools;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.json.OpenAIJsonSchema;
 import com.phonepe.sentinelai.core.openai.OpenAISchemaProvider;
-import org.junit.jupiter.api.Test;
-
-import com.phonepe.sentinelai.core.errors.ParameterValidationError;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
 
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ParameterMapperTest {
 
-    private static ParameterMapper parameterMapper(final ObjectMapper mapper) {
-        try {
-            final var constructor = ParameterMapper.class.getDeclaredConstructor(ObjectMapper.class);
-            constructor.setAccessible(true);
-            return constructor.newInstance(mapper);
+    static class InvalidRegistrationTestToolBox {
+        @Tool(value = "rejects invalid metadata map schema")
+        public String invalidMapSchemaTool(@OpenAISchemaProvider("invalidMetadataSchema") Map<String, String> metadata) {
+            return metadata.getOrDefault("tenantId", "missing");
         }
-        catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
+
+        OpenAIJsonSchema invalidMetadataSchema() {
+            return OpenAIJsonSchema.builder()
+                    .type(OpenAIJsonSchema.Type.OBJECT)
+                    .properties(Map.of("tenantId",
+                                       OpenAIJsonSchema.builder()
+                                               .type(OpenAIJsonSchema.Type.OBJECT)
+                                               .build()))
+                    .required(List.of("tenantId"))
+                    .build();
+        }
+    }
+
+    static class RegistrationTestToolBox {
+        @Tool(value = "accepts default metadata map")
+        public String defaultMapSchemaTool(Map<String, String> metadata) {
+            return metadata.getOrDefault("tenantId", "missing");
+        }
+
+        @Tool(value = "accepts metadata map")
+        public String mapSchemaTool(@OpenAISchemaProvider("metadataSchema") Map<String, String> metadata) {
+            return metadata.getOrDefault("tenantId", "missing");
+        }
+
+        OpenAIJsonSchema invalidMetadataSchema() {
+            return OpenAIJsonSchema.builder()
+                    .type(OpenAIJsonSchema.Type.OBJECT)
+                    .properties(Map.of("tenantId",
+                                       OpenAIJsonSchema.builder()
+                                               .type(OpenAIJsonSchema.Type.OBJECT)
+                                               .build()))
+                    .required(List.of("tenantId"))
+                    .build();
+        }
+
+        OpenAIJsonSchema metadataSchema() {
+            return OpenAIJsonSchema.builder()
+                    .type(OpenAIJsonSchema.Type.OBJECT)
+                    .properties(Map.of("tenantId",
+                                       OpenAIJsonSchema.builder()
+                                               .type(OpenAIJsonSchema.Type.STRING)
+                                               .build(),
+                                       "region",
+                                       OpenAIJsonSchema.builder()
+                                               .type(OpenAIJsonSchema.Type.STRING)
+                                               .build()))
+                    .required(List.of("tenantId", "region"))
+                    .build();
         }
     }
 
     static class TestToolBox {
-        OpenAIJsonSchema nameSchema() {
-            return OpenAIJsonSchema.builder()
-                    .type(OpenAIJsonSchema.Type.STRING)
-                    .enumValues(List.of("alice", "bob"))
-                    .build();
+        @Tool(value = "custom schema tool")
+        public String customSchema(
+                                   @JsonPropertyDescription("Name of the user") @OpenAISchemaProvider("nameSchema") String name,
+                                   @OpenAISchemaProvider("ageSchema") Integer age) {
+            return "ok";
+        }
+
+        @Tool(value = "default schema tool")
+        public String defaultSchema(
+                                    @JsonPropertyDescription("Name of the user") String name,
+                                    Integer age) {
+            return "ok";
+        }
+
+        @Tool(value = "invalid custom schema tool")
+        public String invalidCustomSchema(
+                                          @JsonPropertyDescription("Name of the user") @OpenAISchemaProvider("invalidNameSchema") String name) {
+            return "ok";
         }
 
         OpenAIJsonSchema ageSchema() {
@@ -69,82 +125,45 @@ class ParameterMapperTest {
             return OpenAIJsonSchema.builder()
                     .type(OpenAIJsonSchema.Type.STRING)
                     .anyOf(List.of(OpenAIJsonSchema.builder()
-                                            .type(OpenAIJsonSchema.Type.OBJECT)
-                                            .build()))
+                            .type(OpenAIJsonSchema.Type.OBJECT)
+                            .build()))
                     .build();
         }
 
-        @Tool(value = "default schema tool")
-        public String defaultSchema(
-                @JsonPropertyDescription("Name of the user") String name,
-                Integer age) {
-            return "ok";
-        }
-
-        @Tool(value = "custom schema tool")
-        public String customSchema(
-                @JsonPropertyDescription("Name of the user") @OpenAISchemaProvider("nameSchema") String name,
-                @OpenAISchemaProvider("ageSchema") Integer age) {
-            return "ok";
-        }
-
-        @Tool(value = "invalid custom schema tool")
-        public String invalidCustomSchema(
-                @JsonPropertyDescription("Name of the user") @OpenAISchemaProvider("invalidNameSchema") String name) {
-            return "ok";
+        OpenAIJsonSchema nameSchema() {
+            return OpenAIJsonSchema.builder()
+                    .type(OpenAIJsonSchema.Type.STRING)
+                    .enumValues(List.of("alice", "bob"))
+                    .build();
         }
     }
 
-    static class RegistrationTestToolBox {
-        OpenAIJsonSchema metadataSchema() {
-            return OpenAIJsonSchema.builder()
-                    .type(OpenAIJsonSchema.Type.OBJECT)
-                    .properties(Map.of("tenantId", OpenAIJsonSchema.builder()
-                                    .type(OpenAIJsonSchema.Type.STRING)
-                                    .build(),
-                                       "region", OpenAIJsonSchema.builder()
-                                               .type(OpenAIJsonSchema.Type.STRING)
-                                               .build()))
-                    .required(List.of("tenantId", "region"))
-                    .build();
+    private static ParameterMapper parameterMapper(final ObjectMapper mapper) {
+        try {
+            final var constructor = ParameterMapper.class.getDeclaredConstructor(ObjectMapper.class);
+            constructor.setAccessible(true);
+            return constructor.newInstance(mapper);
         }
-
-        OpenAIJsonSchema invalidMetadataSchema() {
-            return OpenAIJsonSchema.builder()
-                    .type(OpenAIJsonSchema.Type.OBJECT)
-                    .properties(Map.of("tenantId", OpenAIJsonSchema.builder()
-                            .type(OpenAIJsonSchema.Type.OBJECT)
-                            .build()))
-                    .required(List.of("tenantId"))
-                    .build();
-        }
-
-        @Tool(value = "accepts metadata map")
-        public String mapSchemaTool(@OpenAISchemaProvider("metadataSchema") Map<String, String> metadata) {
-            return metadata.getOrDefault("tenantId", "missing");
-        }
-
-        @Tool(value = "accepts default metadata map")
-        public String defaultMapSchemaTool(Map<String, String> metadata) {
-            return metadata.getOrDefault("tenantId", "missing");
+        catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    static class InvalidRegistrationTestToolBox {
-        @Tool(value = "rejects invalid metadata map schema")
-        public String invalidMapSchemaTool(@OpenAISchemaProvider("invalidMetadataSchema") Map<String, String> metadata) {
-            return metadata.getOrDefault("tenantId", "missing");
-        }
+    @Test
+    void parametersFromMethodInfoAllowsNestedObjectSchemaInAnyOf() throws Exception {
+        final var mapper = JsonUtils.createMapper();
+        final var method = TestToolBox.class.getMethod("invalidCustomSchema", String.class);
+        final var methodInfo = ToolUtils.toolMetadata("TestToolBox", method).getSecond();
 
-        OpenAIJsonSchema invalidMetadataSchema() {
-            return OpenAIJsonSchema.builder()
-                    .type(OpenAIJsonSchema.Type.OBJECT)
-                    .properties(Map.of("tenantId", OpenAIJsonSchema.builder()
-                            .type(OpenAIJsonSchema.Type.OBJECT)
-                            .build()))
-                    .required(List.of("tenantId"))
-                    .build();
-        }
+        final var schema = ParameterMapper.parametersFromMethodInfo(mapper, methodInfo);
+        final var nestedObjectSchema = schema.get("properties")
+                .get("name")
+                .get("anyOf")
+                .get(0);
+
+        assertEquals("object", nestedObjectSchema.get("type").asText());
+        assertEquals(JsonNodeType.OBJECT, nestedObjectSchema.get("properties").getNodeType());
+        assertEquals(JsonNodeType.ARRAY, nestedObjectSchema.get("required").getNodeType());
     }
 
     @Test
@@ -177,20 +196,10 @@ class ParameterMapperTest {
     }
 
     @Test
-    void parametersFromMethodInfoAllowsNestedObjectSchemaInAnyOf() throws Exception {
-        final var mapper = JsonUtils.createMapper();
-        final var method = TestToolBox.class.getMethod("invalidCustomSchema", String.class);
-        final var methodInfo = ToolUtils.toolMetadata("TestToolBox", method).getSecond();
+    void readToolsRegistersInternalToolWhenNestedObjectMapSchemaIsUsed() {
+        final var tools = ToolUtils.readTools(new InvalidRegistrationTestToolBox());
 
-        final var schema = ParameterMapper.parametersFromMethodInfo(mapper, methodInfo);
-        final var nestedObjectSchema = schema.get("properties")
-                .get("name")
-                .get("anyOf")
-                .get(0);
-
-        assertEquals("object", nestedObjectSchema.get("type").asText());
-        assertEquals(JsonNodeType.OBJECT, nestedObjectSchema.get("properties").getNodeType());
-        assertEquals(JsonNodeType.ARRAY, nestedObjectSchema.get("required").getNodeType());
+        assertNotNull(tools.get("invalid_registration_test_tool_box_invalid_map_schema_tool"));
     }
 
     @Test
@@ -224,13 +233,6 @@ class ParameterMapperTest {
     }
 
     @Test
-    void readToolsRegistersInternalToolWhenNestedObjectMapSchemaIsUsed() {
-        final var tools = ToolUtils.readTools(new InvalidRegistrationTestToolBox());
-
-        assertNotNull(tools.get("invalid_registration_test_tool_box_invalid_map_schema_tool"));
-    }
-
-    @Test
     void visitExternalToolAddsEmptyPropertiesAndRequiredForObjectSchemas() {
         final var mapper = JsonUtils.createMapper();
         final var parameterSchema = mapper.createObjectNode();
@@ -241,8 +243,8 @@ class ParameterMapperTest {
                 .name("external-tool")
                 .description("external tool")
                 .build(),
-                parameterSchema,
-                (ctx, callId, args) -> null);
+                                                  parameterSchema,
+                                                  (ctx, callId, args) -> null);
 
         final var schema = (ObjectNode) parameterMapper(mapper).visit(externalTool);
 

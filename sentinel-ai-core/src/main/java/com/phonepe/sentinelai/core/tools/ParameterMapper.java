@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.primitives.Primitives;
 
 import com.phonepe.sentinelai.core.json.OpenAIJsonSchema;
-import com.phonepe.sentinelai.core.json.OpenAIJsonSchemaValidator;
 import com.phonepe.sentinelai.core.utils.Pair;
 
 import lombok.AllArgsConstructor;
@@ -65,22 +64,6 @@ public class ParameterMapper implements ExecutableToolVisitor<JsonNode> {
         return normalizeObjectSchema(objectMapper, schema.toObjectNode(objectMapper));
     }
 
-    @Override
-    public JsonNode visit(ExternalTool externalTool) {
-        final var parameterSchema = externalTool.getParameterSchema();
-        if (parameterSchema instanceof ObjectNode objectNode) {
-            return normalizeObjectSchema(objectMapper, objectNode);
-        }
-        return parameterSchema; //Could be anything really, so we expect the toolbox to generate this
-        // and keep it ready
-    }
-
-    @Override
-    public JsonNode visit(InternalTool internalTool) {
-        final var methodInfo = internalTool.getMethodInfo();
-        return parametersFromMethodInfo(objectMapper, methodInfo);
-    }
-
     private static ObjectNode normalizeObjectSchema(final ObjectMapper objectMapper,
                                                     final ObjectNode schemaNode) {
         if (schemaNode.has("type") && schemaNode.get("type").isTextual()
@@ -114,6 +97,22 @@ public class ParameterMapper implements ExecutableToolVisitor<JsonNode> {
             });
         }
         return schemaNode;
+    }
+
+    @Override
+    public JsonNode visit(ExternalTool externalTool) {
+        final var parameterSchema = externalTool.getParameterSchema();
+        if (parameterSchema instanceof ObjectNode objectNode) {
+            return normalizeObjectSchema(objectMapper, objectNode);
+        }
+        return parameterSchema; //Could be anything really, so we expect the toolbox to generate this
+        // and keep it ready
+    }
+
+    @Override
+    public JsonNode visit(InternalTool internalTool) {
+        final var methodInfo = internalTool.getMethodInfo();
+        return parametersFromMethodInfo(objectMapper, methodInfo);
     }
 
 }

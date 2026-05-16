@@ -31,8 +31,8 @@ public class SimpleOpenAIModelOptions {
     public static final boolean DEFAULT_STRICT_TOOL_SCHEMA_VALIDATION = false;
 
     public static final SimpleOpenAIModelOptions DEFAULT = new SimpleOpenAIModelOptions(DEFAULT_TOOL_CHOICE,
-                                                                                         DEFAULT_TOKEN_COUNTING_CONFIG,
-                                                                                         DEFAULT_STRICT_TOOL_SCHEMA_VALIDATION);
+                                                                                        DEFAULT_TOKEN_COUNTING_CONFIG,
+                                                                                        DEFAULT_STRICT_TOOL_SCHEMA_VALIDATION);
 
     public enum ToolChoice {
         REQUIRED, // Model will always call a tool. This is the default behavior.
@@ -68,8 +68,8 @@ public class SimpleOpenAIModelOptions {
 
     @Builder
     public SimpleOpenAIModelOptions(ToolChoice toolChoice,
-                                     TokenCountingConfig tokenCountingConfig,
-                                     Boolean strictToolSchemaValidation) {
+                                    TokenCountingConfig tokenCountingConfig,
+                                    Boolean strictToolSchemaValidation) {
         this.toolChoice = Objects.requireNonNullElse(toolChoice, DEFAULT_TOOL_CHOICE);
         this.tokenCountingConfig = Objects.requireNonNullElse(tokenCountingConfig, TokenCountingConfig.DEFAULT);
         this.strictToolSchemaValidation = Objects.requireNonNullElse(strictToolSchemaValidation,
@@ -82,12 +82,12 @@ public class SimpleOpenAIModelOptions {
         }
         return new SimpleOpenAIModelOptions(Objects.requireNonNullElse(other
                 .getToolChoice(), this.toolChoice),
-                                             Objects.requireNonNullElse(other
-                                                     .getTokenCountingConfig(),
+                                            Objects.requireNonNullElse(other
+                                                    .getTokenCountingConfig(),
                                                                        this.tokenCountingConfig),
-                                             Objects.requireNonNullElse(other
-                                                     .isStrictToolSchemaValidation(),
-                                                                        this.strictToolSchemaValidation));
+                                            Objects.requireNonNullElse(other
+                                                    .isStrictToolSchemaValidation(),
+                                                                       this.strictToolSchemaValidation));
     }
 
 }

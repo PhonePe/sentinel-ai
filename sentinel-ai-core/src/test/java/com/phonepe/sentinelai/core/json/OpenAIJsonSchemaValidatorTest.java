@@ -28,6 +28,42 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OpenAIJsonSchemaValidatorTest {
 
+    private static com.fasterxml.jackson.databind.node.ObjectNode objectSchema(
+                                                                               com.fasterxml.jackson.databind.ObjectMapper mapper) {
+        final var schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        schema.put("additionalProperties", false);
+        schema.putObject("properties");
+        schema.putArray("required");
+        return schema;
+    }
+
+    @Test
+    void acceptsLargeStringEnumAtLimit() {
+        final var mapper = JsonUtils.createMapper();
+        final var schema = objectSchema(mapper);
+        final var enumSchema = mapper.createObjectNode();
+        enumSchema.put("type", "string");
+        final var enumValues = enumSchema.putArray("enum");
+        IntStream.range(0, 250).forEach(i -> enumValues.add("x".repeat(60)));
+        schema.withObject("properties").set("status", enumSchema);
+        schema.withArray("required").add("status");
+
+        assertDoesNotThrow(() -> OpenAIJsonSchemaValidator.validate(schema));
+    }
+
+    @Test
+    void acceptsObjectSchemaWithEmptyPropertiesAndRequired() {
+        final var mapper = JsonUtils.createMapper();
+        final var schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        schema.put("additionalProperties", false);
+        schema.set("required", mapper.createArrayNode());
+        schema.set("properties", mapper.createObjectNode());
+
+        assertDoesNotThrow(() -> OpenAIJsonSchemaValidator.validate(schema));
+    }
+
     @Test
     void acceptsValidOpenAIObjectSchema() {
         final var mapper = JsonUtils.createMapper();
@@ -45,14 +81,81 @@ class OpenAIJsonSchemaValidatorTest {
     }
 
     @Test
-    void rejectsUnsupportedKeyword() {
+    void rejectsLargeStringEnumWhenTextLengthExceedsLimit() {
+        final var mapper = JsonUtils.createMapper();
+        final var schema = objectSchema(mapper);
+        final var enumSchema = mapper.createObjectNode();
+        enumSchema.put("type", "string");
+        final var enumValues = enumSchema.putArray("enum");
+        IntStream.range(0, 251).forEach(i -> enumValues.add("x".repeat(60)));
+        schema.withObject("properties").set("status", enumSchema);
+        schema.withArray("required").add("status");
+
+        assertThrows(ParameterValidationError.class,
+                     () -> OpenAIJsonSchemaValidator.validate(schema));
+    }
+
+    @Test
+    void rejectsObjectSchemaWhenRequiredContainsNonStringValue() {
         final var mapper = JsonUtils.createMapper();
         final var schema = mapper.createObjectNode();
         schema.put("type", "object");
         schema.put("additionalProperties", false);
+        final var required = mapper.createArrayNode();
+        required.add(1);
+        schema.set("required", required);
+        final var properties = mapper.createObjectNode();
+        properties.set("name", mapper.createObjectNode().put("type", "string"));
+        schema.set("properties", properties);
+
+        assertThrows(ParameterValidationError.class,
+                     () -> OpenAIJsonSchemaValidator.validate(schema));
+    }
+
+    @Test
+    void rejectsObjectSchemaWhenRequiredContainsUnknownField() {
+        final var mapper = JsonUtils.createMapper();
+        final var schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        schema.put("additionalProperties", false);
+        final var required = mapper.createArrayNode();
+        required.add("name");
+        required.add("missing");
+        schema.set("required", required);
+        final var properties = mapper.createObjectNode();
+        properties.set("name", mapper.createObjectNode().put("type", "string"));
+        schema.set("properties", properties);
+
+        assertThrows(ParameterValidationError.class,
+                     () -> OpenAIJsonSchemaValidator.validate(schema));
+    }
+
+    @Test
+    void rejectsObjectSchemaWhenRequiredDoesNotMatchProperties() {
+        final var mapper = JsonUtils.createMapper();
+        final var schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        schema.put("additionalProperties", false);
+        final var required = mapper.createArrayNode();
+        required.add("name");
+        schema.set("required", required);
+        final var properties = mapper.createObjectNode();
+        properties.set("name", mapper.createObjectNode().put("type", "string"));
+        properties.set("age", mapper.createObjectNode().put("type", "integer"));
+        schema.set("properties", properties);
+
+        assertThrows(ParameterValidationError.class,
+                     () -> OpenAIJsonSchemaValidator.validate(schema));
+    }
+
+    @Test
+    void rejectsObjectSchemaWithAdditionalPropertiesTrue() {
+        final var mapper = JsonUtils.createMapper();
+        final var schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        schema.put("additionalProperties", true);
         schema.set("required", mapper.createArrayNode());
         schema.set("properties", mapper.createObjectNode());
-        schema.put("allOf", "invalid");
 
         assertThrows(ParameterValidationError.class,
                      () -> OpenAIJsonSchemaValidator.validate(schema));
@@ -95,31 +198,6 @@ class OpenAIJsonSchemaValidatorTest {
     }
 
     @Test
-    void rejectsObjectSchemaWithAdditionalPropertiesTrue() {
-        final var mapper = JsonUtils.createMapper();
-        final var schema = mapper.createObjectNode();
-        schema.put("type", "object");
-        schema.put("additionalProperties", true);
-        schema.set("required", mapper.createArrayNode());
-        schema.set("properties", mapper.createObjectNode());
-
-        assertThrows(ParameterValidationError.class,
-                     () -> OpenAIJsonSchemaValidator.validate(schema));
-    }
-
-    @Test
-    void acceptsObjectSchemaWithEmptyPropertiesAndRequired() {
-        final var mapper = JsonUtils.createMapper();
-        final var schema = mapper.createObjectNode();
-        schema.put("type", "object");
-        schema.put("additionalProperties", false);
-        schema.set("required", mapper.createArrayNode());
-        schema.set("properties", mapper.createObjectNode());
-
-        assertDoesNotThrow(() -> OpenAIJsonSchemaValidator.validate(schema));
-    }
-
-    @Test
     void rejectsRootSchemaWhenTypeIsNotObject() {
         final var mapper = JsonUtils.createMapper();
         final var schema = mapper.createObjectNode();
@@ -130,53 +208,15 @@ class OpenAIJsonSchemaValidatorTest {
     }
 
     @Test
-    void rejectsObjectSchemaWhenRequiredDoesNotMatchProperties() {
+    void rejectsSchemaWhenEnumValueCountExceedsOneThousand() {
         final var mapper = JsonUtils.createMapper();
-        final var schema = mapper.createObjectNode();
-        schema.put("type", "object");
-        schema.put("additionalProperties", false);
-        final var required = mapper.createArrayNode();
-        required.add("name");
-        schema.set("required", required);
-        final var properties = mapper.createObjectNode();
-        properties.set("name", mapper.createObjectNode().put("type", "string"));
-        properties.set("age", mapper.createObjectNode().put("type", "integer"));
-        schema.set("properties", properties);
-
-        assertThrows(ParameterValidationError.class,
-                     () -> OpenAIJsonSchemaValidator.validate(schema));
-    }
-
-    @Test
-    void rejectsObjectSchemaWhenRequiredContainsUnknownField() {
-        final var mapper = JsonUtils.createMapper();
-        final var schema = mapper.createObjectNode();
-        schema.put("type", "object");
-        schema.put("additionalProperties", false);
-        final var required = mapper.createArrayNode();
-        required.add("name");
-        required.add("missing");
-        schema.set("required", required);
-        final var properties = mapper.createObjectNode();
-        properties.set("name", mapper.createObjectNode().put("type", "string"));
-        schema.set("properties", properties);
-
-        assertThrows(ParameterValidationError.class,
-                     () -> OpenAIJsonSchemaValidator.validate(schema));
-    }
-
-    @Test
-    void rejectsObjectSchemaWhenRequiredContainsNonStringValue() {
-        final var mapper = JsonUtils.createMapper();
-        final var schema = mapper.createObjectNode();
-        schema.put("type", "object");
-        schema.put("additionalProperties", false);
-        final var required = mapper.createArrayNode();
-        required.add(1);
-        schema.set("required", required);
-        final var properties = mapper.createObjectNode();
-        properties.set("name", mapper.createObjectNode().put("type", "string"));
-        schema.set("properties", properties);
+        final var schema = objectSchema(mapper);
+        final var enumSchema = mapper.createObjectNode();
+        enumSchema.put("type", "string");
+        final var enumValues = enumSchema.putArray("enum");
+        IntStream.range(0, 1001).forEach(i -> enumValues.add("value" + i));
+        schema.withObject("properties").set("status", enumSchema);
+        schema.withArray("required").add("status");
 
         assertThrows(ParameterValidationError.class,
                      () -> OpenAIJsonSchemaValidator.validate(schema));
@@ -227,56 +267,16 @@ class OpenAIJsonSchemaValidatorTest {
     }
 
     @Test
-    void rejectsSchemaWhenEnumValueCountExceedsOneThousand() {
+    void rejectsUnsupportedKeyword() {
         final var mapper = JsonUtils.createMapper();
-        final var schema = objectSchema(mapper);
-        final var enumSchema = mapper.createObjectNode();
-        enumSchema.put("type", "string");
-        final var enumValues = enumSchema.putArray("enum");
-        IntStream.range(0, 1001).forEach(i -> enumValues.add("value" + i));
-        schema.withObject("properties").set("status", enumSchema);
-        schema.withArray("required").add("status");
-
-        assertThrows(ParameterValidationError.class,
-                     () -> OpenAIJsonSchemaValidator.validate(schema));
-    }
-
-    @Test
-    void rejectsLargeStringEnumWhenTextLengthExceedsLimit() {
-        final var mapper = JsonUtils.createMapper();
-        final var schema = objectSchema(mapper);
-        final var enumSchema = mapper.createObjectNode();
-        enumSchema.put("type", "string");
-        final var enumValues = enumSchema.putArray("enum");
-        IntStream.range(0, 251).forEach(i -> enumValues.add("x".repeat(60)));
-        schema.withObject("properties").set("status", enumSchema);
-        schema.withArray("required").add("status");
-
-        assertThrows(ParameterValidationError.class,
-                     () -> OpenAIJsonSchemaValidator.validate(schema));
-    }
-
-    @Test
-    void acceptsLargeStringEnumAtLimit() {
-        final var mapper = JsonUtils.createMapper();
-        final var schema = objectSchema(mapper);
-        final var enumSchema = mapper.createObjectNode();
-        enumSchema.put("type", "string");
-        final var enumValues = enumSchema.putArray("enum");
-        IntStream.range(0, 250).forEach(i -> enumValues.add("x".repeat(60)));
-        schema.withObject("properties").set("status", enumSchema);
-        schema.withArray("required").add("status");
-
-        assertDoesNotThrow(() -> OpenAIJsonSchemaValidator.validate(schema));
-    }
-
-    private static com.fasterxml.jackson.databind.node.ObjectNode objectSchema(
-            com.fasterxml.jackson.databind.ObjectMapper mapper) {
         final var schema = mapper.createObjectNode();
         schema.put("type", "object");
         schema.put("additionalProperties", false);
-        schema.putObject("properties");
-        schema.putArray("required");
-        return schema;
+        schema.set("required", mapper.createArrayNode());
+        schema.set("properties", mapper.createObjectNode());
+        schema.put("allOf", "invalid");
+
+        assertThrows(ParameterValidationError.class,
+                     () -> OpenAIJsonSchemaValidator.validate(schema));
     }
 }

@@ -17,7 +17,6 @@
 package com.phonepe.sentinelai.core.utils;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
@@ -147,7 +146,7 @@ public class ToolUtils {
             }
 
             final var paramAnnotation = param.getAnnotation(
-                                                             JsonPropertyDescription.class);
+                                                            JsonPropertyDescription.class);
             final var description = (null != paramAnnotation) ? paramAnnotation
                     .value() : "";
             final var schemaProviderMethod = schemaProviderMethod(method, param);
@@ -176,30 +175,13 @@ public class ToolUtils {
                                           method.getReturnType()));
     }
 
-    private static Method schemaProviderMethod(Method toolMethod,
-                                               java.lang.reflect.Parameter parameter) {
-        final var annotation = parameter.getAnnotation(OpenAISchemaProvider.class);
-        if (annotation == null) {
-            return null;
-        }
-        try {
-            final var providerMethod = toolMethod.getDeclaringClass().getDeclaredMethod(annotation.value());
-            if (providerMethod.getParameterCount() != 0) {
-                throw new IllegalArgumentException("OpenAISchemaProvider method must be zero-argument");
-            }
-            if (!OpenAIJsonSchema.class.equals(providerMethod.getReturnType())) {
-                throw new IllegalArgumentException("OpenAISchemaProvider method must return OpenAIJsonSchema");
-            }
-            providerMethod.setAccessible(true);
-            return providerMethod;
-        }
-        catch (Exception e) {
-            throw new IllegalArgumentException("Invalid OpenAISchemaProvider method for tool method "
-                                                       + toolMethod.getDeclaringClass().getName()
-                                                       + "."
-                                                       + toolMethod.getName(),
-                                               e);
-        }
+    private static InternalTool createCallableToolFromLocalMethod(Object instance,
+                                                                  Method method) {
+        final var toolMetadata = toolMetadata(instance.getClass()
+                .getSimpleName(), method);
+        return new InternalTool(toolMetadata.getFirst(),
+                                toolMetadata.getSecond(),
+                                instance);
     }
 
     private static OpenAIJsonSchema resolveFieldSchema(Method toolMethod,
@@ -224,26 +206,43 @@ public class ToolUtils {
                 throw validationError;
             }
             throw new IllegalArgumentException("Failed to resolve OpenAI schema from provider method "
-                                                       + schemaProviderMethod.getName()
-                                                       + " for tool method "
-                                                       + toolMethod.getName(),
+                    + schemaProviderMethod.getName()
+                    + " for tool method "
+                    + toolMethod.getName(),
                                                e);
         }
         catch (Exception e) {
             throw new IllegalArgumentException("Failed to resolve OpenAI schema from provider method "
-                                                       + schemaProviderMethod.getName()
-                                                       + " for tool method "
-                                                       + toolMethod.getName(),
+                    + schemaProviderMethod.getName()
+                    + " for tool method "
+                    + toolMethod.getName(),
                                                e);
         }
     }
 
-    private static InternalTool createCallableToolFromLocalMethod(Object instance,
-                                                                  Method method) {
-        final var toolMetadata = toolMetadata(instance.getClass()
-                .getSimpleName(), method);
-        return new InternalTool(toolMetadata.getFirst(),
-                                toolMetadata.getSecond(),
-                                instance);
+    private static Method schemaProviderMethod(Method toolMethod,
+                                               java.lang.reflect.Parameter parameter) {
+        final var annotation = parameter.getAnnotation(OpenAISchemaProvider.class);
+        if (annotation == null) {
+            return null;
+        }
+        try {
+            final var providerMethod = toolMethod.getDeclaringClass().getDeclaredMethod(annotation.value());
+            if (providerMethod.getParameterCount() != 0) {
+                throw new IllegalArgumentException("OpenAISchemaProvider method must be zero-argument");
+            }
+            if (!OpenAIJsonSchema.class.equals(providerMethod.getReturnType())) {
+                throw new IllegalArgumentException("OpenAISchemaProvider method must return OpenAIJsonSchema");
+            }
+            providerMethod.setAccessible(true);
+            return providerMethod;
+        }
+        catch (Exception e) {
+            throw new IllegalArgumentException("Invalid OpenAISchemaProvider method for tool method "
+                    + toolMethod.getDeclaringClass().getName()
+                    + "."
+                    + toolMethod.getName(),
+                                               e);
+        }
     }
 }

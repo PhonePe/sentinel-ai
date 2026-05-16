@@ -22,7 +22,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -40,6 +47,35 @@ public class FileBasedSkillRegistry implements SkillRegistry {
 
     public FileBasedSkillRegistry(final String baseDir) {
         this.baseDir = baseDir;
+    }
+
+    /**
+     * Tries to resolve a skill directory path.
+     * <ol>
+     * <li>Uses the path as-is if it is already an existing directory.</li>
+     * <li>Resolves relative to {@code baseDir}.</li>
+     * <li>Resolves relative to the current working directory.</li>
+     * </ol>
+     *
+     * @throws IllegalArgumentException if no valid directory can be found
+     */
+    private static Path expandSkillDir(String skillDir, String baseDir) {
+        var path = Paths.get(skillDir);
+        if (Files.isDirectory(path)) {
+            return path.toAbsolutePath().normalize();
+        }
+
+        path = Paths.get(baseDir, skillDir);
+        if (Files.isDirectory(path)) {
+            return path.toAbsolutePath().normalize();
+        }
+
+        path = Paths.get(System.getProperty("user.dir"), skillDir);
+        if (Files.isDirectory(path)) {
+            return path.toAbsolutePath().normalize();
+        }
+
+        throw new IllegalArgumentException("Skills directory does not exist: " + skillDir);
     }
 
     @Override
@@ -118,12 +154,12 @@ public class FileBasedSkillRegistry implements SkillRegistry {
         loadedSkills
                 .values()
                 .forEach(
-                        skill -> {
-                            sb.append("  - name: ").append(skill.getName()).append("\n");
-                            sb.append("    description: ")
-                                    .append(skill.getDescription())
-                                    .append("\n");
-                        });
+                         skill -> {
+                             sb.append("  - name: ").append(skill.getName()).append("\n");
+                             sb.append("    description: ")
+                                     .append(skill.getDescription())
+                                     .append("\n");
+                         });
         return sb.toString();
     }
 
@@ -229,34 +265,5 @@ public class FileBasedSkillRegistry implements SkillRegistry {
 
         log.info("Loaded skill from path: {} ({})", skillPath, skillName);
         return Optional.of(skill);
-    }
-
-    /**
-     * Tries to resolve a skill directory path.
-     * <ol>
-     * <li>Uses the path as-is if it is already an existing directory.</li>
-     * <li>Resolves relative to {@code baseDir}.</li>
-     * <li>Resolves relative to the current working directory.</li>
-     * </ol>
-     *
-     * @throws IllegalArgumentException if no valid directory can be found
-     */
-    private static Path expandSkillDir(String skillDir, String baseDir) {
-        var path = Paths.get(skillDir);
-        if (Files.isDirectory(path)) {
-            return path.toAbsolutePath().normalize();
-        }
-
-        path = Paths.get(baseDir, skillDir);
-        if (Files.isDirectory(path)) {
-            return path.toAbsolutePath().normalize();
-        }
-
-        path = Paths.get(System.getProperty("user.dir"), skillDir);
-        if (Files.isDirectory(path)) {
-            return path.toAbsolutePath().normalize();
-        }
-
-        throw new IllegalArgumentException("Skills directory does not exist: " + skillDir);
     }
 }

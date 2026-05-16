@@ -37,24 +37,45 @@ import java.util.Map;
 @Builder(toBuilder = true)
 public class OpenAIJsonSchema {
 
+    public enum Type {
+        STRING("string"),
+        NUMBER("number"),
+        INTEGER("integer"),
+        BOOLEAN("boolean"),
+        OBJECT("object"),
+        ARRAY("array"),
+        NULL("null");
+
+        private final String jsonValue;
+
+        Type(String jsonValue) {
+            this.jsonValue = jsonValue;
+        }
+
+        @Override
+        public String toString() {
+            return jsonValue;
+        }
+    }
+
     @NonNull
     Type type;
-
     String title;
     String description;
     String format;
+
     String pattern;
-
     List<String> enumValues;
-    String constValue;
 
+    String constValue;
     BigDecimal multipleOf;
     BigDecimal maximum;
     BigDecimal exclusiveMaximum;
     BigDecimal minimum;
-    BigDecimal exclusiveMinimum;
 
+    BigDecimal exclusiveMinimum;
     Integer minItems;
+
     Integer maxItems;
 
     @Builder.Default
@@ -67,6 +88,30 @@ public class OpenAIJsonSchema {
     List<OpenAIJsonSchema> anyOf = List.of();
 
     OpenAIJsonSchema items;
+
+    private static void putIfNotBlank(ObjectNode node,
+                                      String field,
+                                      String value) {
+        if (value != null && !value.isBlank()) {
+            node.put(field, value);
+        }
+    }
+
+    private static void putIfPresent(ObjectNode node,
+                                     String field,
+                                     BigDecimal value) {
+        if (value != null) {
+            node.put(field, value);
+        }
+    }
+
+    private static void putIfPresent(ObjectNode node,
+                                     String field,
+                                     Integer value) {
+        if (value != null) {
+            node.put(field, value);
+        }
+    }
 
     public ObjectNode toObjectNode(ObjectMapper objectMapper) {
         final var node = objectMapper.createObjectNode();
@@ -118,50 +163,5 @@ public class OpenAIJsonSchema {
         }
 
         return node;
-    }
-
-    private static void putIfNotBlank(ObjectNode node,
-                                      String field,
-                                      String value) {
-        if (value != null && !value.isBlank()) {
-            node.put(field, value);
-        }
-    }
-
-    private static void putIfPresent(ObjectNode node,
-                                     String field,
-                                     BigDecimal value) {
-        if (value != null) {
-            node.put(field, value);
-        }
-    }
-
-    private static void putIfPresent(ObjectNode node,
-                                     String field,
-                                     Integer value) {
-        if (value != null) {
-            node.put(field, value);
-        }
-    }
-
-    public enum Type {
-        STRING("string"),
-        NUMBER("number"),
-        INTEGER("integer"),
-        BOOLEAN("boolean"),
-        OBJECT("object"),
-        ARRAY("array"),
-        NULL("null");
-
-        private final String jsonValue;
-
-        Type(String jsonValue) {
-            this.jsonValue = jsonValue;
-        }
-
-        @Override
-        public String toString() {
-            return jsonValue;
-        }
     }
 }

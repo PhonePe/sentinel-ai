@@ -18,7 +18,11 @@ package com.phonepe.sentinelai.filesystem.skills;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Registry contract for discovering and loading agent skills.
@@ -29,6 +33,10 @@ public interface SkillRegistry {
 
     void discoverSkills(Path skillsDirectory, Set<String> skillsToLoad) throws IOException;
 
+    String formatCatalog();
+
+    String formatLoadedSkillsAsYaml();
+
     Map<String, String> getSkillCatalog();
 
     Set<String> getSkillNames();
@@ -38,8 +46,4 @@ public interface SkillRegistry {
     Optional<AgentSkill> loadSkill(String skillName);
 
     Optional<AgentSkill> loadSkillFromPath(String skillPath) throws IOException;
-
-    String formatCatalog();
-
-    String formatLoadedSkillsAsYaml();
 }

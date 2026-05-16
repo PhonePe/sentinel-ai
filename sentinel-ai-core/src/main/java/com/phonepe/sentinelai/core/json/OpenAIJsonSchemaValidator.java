@@ -22,8 +22,8 @@ import com.phonepe.sentinelai.core.errors.ParameterValidationError;
 
 import lombok.experimental.UtilityClass;
 
-import java.util.LinkedHashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -39,8 +39,8 @@ public class OpenAIJsonSchemaValidator {
     private static final int SINGLE_ENUM_STRING_LENGTH_THRESHOLD = 250;
 
     private static final Set<String> SUPPORTED_KEYS = Set.of("type",
-                                                              "title",
-                                                              "description",
+                                                             "title",
+                                                             "description",
                                                              "format",
                                                              "pattern",
                                                              "enum",
@@ -58,12 +58,32 @@ public class OpenAIJsonSchemaValidator {
                                                              "items",
                                                              "additionalProperties");
 
+    private static final class ValidationStats {
+        private int totalProperties;
+        private int totalStringLength;
+        private int totalEnumValues;
+
+        private void addStringLength(String value,
+                                     String kind,
+                                     String path) {
+            totalStringLength += value.length();
+            if (totalStringLength > MAX_TOTAL_STRING_LENGTH) {
+                throw new ParameterValidationError("Schema exceeds maximum total string length of 120000 characters at "
+                        + path + " due to " + kind);
+            }
+        }
+    }
+
     public static void validate(JsonNode schema) {
         validate(schema, true, "$", 1, new ValidationStats());
     }
 
     public static void validateFieldSchema(JsonNode schema) {
         validate(schema, false, "$", 1, new ValidationStats());
+    }
+
+    private static boolean isObjectSchema(JsonNode schema) {
+        return schema.has("type") && schema.get("type").isTextual() && "object".equals(schema.get("type").asText());
     }
 
     private static void validate(JsonNode schema,
@@ -106,7 +126,7 @@ public class OpenAIJsonSchemaValidator {
             if (!schema.has("additionalProperties") || !schema.get("additionalProperties").isBoolean()
                     || schema.get("additionalProperties").asBoolean()) {
                 throw new ParameterValidationError("Object schema at " + path
-                                                            + " must set additionalProperties to false");
+                        + " must set additionalProperties to false");
             }
             final Iterator<String> propertyNames = properties.fieldNames();
             while (propertyNames.hasNext()) {
@@ -127,56 +147,6 @@ public class OpenAIJsonSchemaValidator {
             for (int i = 0; i < anyOf.size(); i++) {
                 validate(anyOf.get(i), false, path + ".anyOf[" + i + "]", depth + 1, stats);
             }
-        }
-    }
-
-    private static void validateSupportedKeys(JsonNode schema,
-                                              String path) {
-        final Iterator<String> fieldNames = schema.fieldNames();
-        while (fieldNames.hasNext()) {
-            final var fieldName = fieldNames.next();
-            if (!SUPPORTED_KEYS.contains(fieldName)) {
-                throw new ParameterValidationError("Unsupported OpenAI JSON Schema keyword '" + fieldName
-                                                           + "' at " + path);
-            }
-        }
-    }
-
-    private static void validateRequiredFields(JsonNode required,
-                                               JsonNode properties,
-                                               String path) {
-        final var requiredFields = new LinkedHashSet<String>();
-        for (int i = 0; i < required.size(); i++) {
-            final var requiredField = required.get(i);
-            if (!requiredField.isTextual()) {
-                throw new ParameterValidationError("required at " + path + " must contain only field names");
-            }
-            requiredFields.add(requiredField.asText());
-        }
-
-        final var propertyNames = new LinkedHashSet<String>();
-        final Iterator<String> fieldNames = properties.fieldNames();
-        while (fieldNames.hasNext()) {
-            propertyNames.add(fieldNames.next());
-        }
-
-        if (!requiredFields.equals(propertyNames)) {
-            throw new ParameterValidationError("required at " + path
-                                                       + " must exactly match property keys");
-        }
-    }
-
-    private static void validatePropertyLimits(JsonNode properties,
-                                               String path,
-                                               ValidationStats stats) {
-        final Iterator<String> fieldNames = properties.fieldNames();
-        while (fieldNames.hasNext()) {
-            final var fieldName = fieldNames.next();
-            stats.totalProperties++;
-            if (stats.totalProperties > MAX_OBJECT_PROPERTIES) {
-                throw new ParameterValidationError("Schema exceeds maximum of 5000 object properties at " + path);
-            }
-            stats.addStringLength(fieldName, "property name", path);
         }
     }
 
@@ -220,27 +190,57 @@ public class OpenAIJsonSchemaValidator {
         if (allTextual && enumValues.size() > SINGLE_ENUM_STRING_LENGTH_THRESHOLD
                 && textualEnumLength > MAX_SINGLE_ENUM_STRING_LENGTH) {
             throw new ParameterValidationError("String enum at " + path
-                                                       + " exceeds maximum total length of 15000 characters");
+                    + " exceeds maximum total length of 15000 characters");
         }
     }
 
-    private static final class ValidationStats {
-        private int totalProperties;
-        private int totalStringLength;
-        private int totalEnumValues;
+    private static void validatePropertyLimits(JsonNode properties,
+                                               String path,
+                                               ValidationStats stats) {
+        final Iterator<String> fieldNames = properties.fieldNames();
+        while (fieldNames.hasNext()) {
+            final var fieldName = fieldNames.next();
+            stats.totalProperties++;
+            if (stats.totalProperties > MAX_OBJECT_PROPERTIES) {
+                throw new ParameterValidationError("Schema exceeds maximum of 5000 object properties at " + path);
+            }
+            stats.addStringLength(fieldName, "property name", path);
+        }
+    }
 
-        private void addStringLength(String value,
-                                     String kind,
-                                     String path) {
-            totalStringLength += value.length();
-            if (totalStringLength > MAX_TOTAL_STRING_LENGTH) {
-                throw new ParameterValidationError("Schema exceeds maximum total string length of 120000 characters at "
-                                                           + path + " due to " + kind);
+    private static void validateRequiredFields(JsonNode required,
+                                               JsonNode properties,
+                                               String path) {
+        final var requiredFields = new LinkedHashSet<String>();
+        for (int i = 0; i < required.size(); i++) {
+            final var requiredField = required.get(i);
+            if (!requiredField.isTextual()) {
+                throw new ParameterValidationError("required at " + path + " must contain only field names");
+            }
+            requiredFields.add(requiredField.asText());
+        }
+
+        final var propertyNames = new LinkedHashSet<String>();
+        final Iterator<String> fieldNames = properties.fieldNames();
+        while (fieldNames.hasNext()) {
+            propertyNames.add(fieldNames.next());
+        }
+
+        if (!requiredFields.equals(propertyNames)) {
+            throw new ParameterValidationError("required at " + path
+                    + " must exactly match property keys");
+        }
+    }
+
+    private static void validateSupportedKeys(JsonNode schema,
+                                              String path) {
+        final Iterator<String> fieldNames = schema.fieldNames();
+        while (fieldNames.hasNext()) {
+            final var fieldName = fieldNames.next();
+            if (!SUPPORTED_KEYS.contains(fieldName)) {
+                throw new ParameterValidationError("Unsupported OpenAI JSON Schema keyword '" + fieldName
+                        + "' at " + path);
             }
         }
-    }
-
-    private static boolean isObjectSchema(JsonNode schema) {
-        return schema.has("type") && schema.get("type").isTextual() && "object".equals(schema.get("type").asText());
     }
 }

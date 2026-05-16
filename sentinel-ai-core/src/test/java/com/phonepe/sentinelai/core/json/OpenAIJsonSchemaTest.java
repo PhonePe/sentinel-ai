@@ -31,33 +31,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class OpenAIJsonSchemaTest {
 
     @Test
-    void serializesOpenAIStructuredOutputSubset() {
-        final var mapper = JsonUtils.createMapper();
-
-        final var schema = OpenAIJsonSchema.builder()
-                .type(OpenAIJsonSchema.Type.OBJECT)
-                .title("Person")
-                .description("Structured person output")
-                .properties(Map.of("name", OpenAIJsonSchema.builder()
-                                .type(OpenAIJsonSchema.Type.STRING)
-                                .build(),
-                                   "age", OpenAIJsonSchema.builder()
-                                           .type(OpenAIJsonSchema.Type.INTEGER)
-                                           .minimum(BigDecimal.valueOf(18))
-                                           .build()))
-                .required(List.of("name", "age"))
-                .build();
-
-        final var node = schema.toObjectNode(mapper);
-
-        assertEquals("object", node.get("type").asText());
-        assertEquals("string", node.get("properties").get("name").get("type").asText());
-        assertEquals(18, node.get("properties").get("age").get("minimum").asInt());
-        assertTrue(node.get("required").isArray());
-        assertFalse(node.get("additionalProperties").asBoolean());
-    }
-
-    @Test
     void alwaysSerializesObjectPropertiesAndRequired() {
         final var mapper = JsonUtils.createMapper();
         final var schema = OpenAIJsonSchema.builder()
@@ -78,9 +51,9 @@ class OpenAIJsonSchemaTest {
                 .type(OpenAIJsonSchema.Type.ARRAY)
                 .items(OpenAIJsonSchema.builder().type(OpenAIJsonSchema.Type.STRING).build())
                 .anyOf(List.of(OpenAIJsonSchema.builder()
-                                       .type(OpenAIJsonSchema.Type.ARRAY)
-                                       .items(OpenAIJsonSchema.builder().type(OpenAIJsonSchema.Type.STRING).build())
-                                       .build(),
+                        .type(OpenAIJsonSchema.Type.ARRAY)
+                        .items(OpenAIJsonSchema.builder().type(OpenAIJsonSchema.Type.STRING).build())
+                        .build(),
                                OpenAIJsonSchema.builder().type(OpenAIJsonSchema.Type.NULL).build()))
                 .build();
 
@@ -91,5 +64,34 @@ class OpenAIJsonSchemaTest {
         assertEquals(2, node.get("anyOf").size());
         assertEquals("array", node.get("anyOf").get(0).get("type").asText());
         assertEquals("null", node.get("anyOf").get(1).get("type").asText());
+    }
+
+    @Test
+    void serializesOpenAIStructuredOutputSubset() {
+        final var mapper = JsonUtils.createMapper();
+
+        final var schema = OpenAIJsonSchema.builder()
+                .type(OpenAIJsonSchema.Type.OBJECT)
+                .title("Person")
+                .description("Structured person output")
+                .properties(Map.of("name",
+                                   OpenAIJsonSchema.builder()
+                                           .type(OpenAIJsonSchema.Type.STRING)
+                                           .build(),
+                                   "age",
+                                   OpenAIJsonSchema.builder()
+                                           .type(OpenAIJsonSchema.Type.INTEGER)
+                                           .minimum(BigDecimal.valueOf(18))
+                                           .build()))
+                .required(List.of("name", "age"))
+                .build();
+
+        final var node = schema.toObjectNode(mapper);
+
+        assertEquals("object", node.get("type").asText());
+        assertEquals("string", node.get("properties").get("name").get("type").asText());
+        assertEquals(18, node.get("properties").get("age").get("minimum").asInt());
+        assertTrue(node.get("required").isArray());
+        assertFalse(node.get("additionalProperties").asBoolean());
     }
 }

@@ -18,17 +18,32 @@ package com.phonepe.sentinelai.filesystem.skills;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.google.common.collect.Maps;
-import com.phonepe.sentinelai.core.agent.*;
+
+import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentExtension;
+import com.phonepe.sentinelai.core.agent.AgentRunContext;
+import com.phonepe.sentinelai.core.agent.FactList;
+import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
+import com.phonepe.sentinelai.core.agent.ProcessingMode;
+import com.phonepe.sentinelai.core.agent.SystemPrompt;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.ToolUtils;
+
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Extension that provides Agent Skills capabilities to Sentinel AI agents.
@@ -113,6 +128,41 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
         displaySkillsCatalog();
     }
 
+    private static StringBuilder addSection(StringBuilder sb, String title, Collection<String> items) {
+        if (items.isEmpty()) {
+            return sb;
+        }
+        sb.append("\n\n## ").append(title).append("\n");
+        items.forEach(item -> sb.append("- ").append(item).append("\n"));
+        return sb;
+    }
+
+    private static String formatCatalog(SkillRegistry registry) {
+        final var catalog = registry.getSkillCatalog();
+        if (catalog.isEmpty()) {
+            return "No skills available.";
+        }
+
+        final var sb = new StringBuilder();
+        sb.append("Available Skills:\n\n");
+        catalog.forEach((name, description) -> sb.append(String.format("- **%s**: %s%n", name, description)));
+        return sb.toString();
+    }
+
+    private static Map<String, ExecutableTool> readTools(AgentSkillsExtension<?, ?, ?> extension) {
+        final var allTools = ToolUtils.readTools(extension);
+        // In single skill mode, we won't have the list skills and activate skill tools -
+        // the instructions will be injected directly via system prompts
+        if (extension.singleSkillMode) {
+            return Map.copyOf(Maps.filterKeys(allTools, key -> key.equals(READ_SKILL_REFERENCE_TOOL_ID)));
+        }
+        return Map.copyOf(allTools);
+    }
+
+    private static String skillNotFoundError(final String skillName) {
+        return "Error: Skill '" + skillName + "' not found in catalog.";
+    }
+
     @Tool("Activate a skill by name to access its instructions and capabilities")
     public String activateSkill(@JsonPropertyDescription("Name of the skill to activate") String skillName) {
 
@@ -164,7 +214,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
                                 3. Once activated, follow the skill's instructions carefully
                                 4. You can activate multiple skills if needed
                                 5. Always prefer activating relevant skills over using general tools, as skills may provide specialized capabilities and context
-                                6. Only load skill references, assets and scripts if they are relevant and are needed to accomplish the task at hand. 
+                                6. Only load skill references, assets and scripts if they are relevant and are needed to accomplish the task at hand.
                                    Don't automatically load everything as it can lead to poor usage of tokens in the current context window.
                                 """)
                         .tool(tools.values()
@@ -254,41 +304,6 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
     @Override
     public Map<String, ExecutableTool> tools() {
         return tools;
-    }
-
-    private static StringBuilder addSection(StringBuilder sb, String title, Collection<String> items) {
-        if (items.isEmpty()) {
-            return sb;
-        }
-        sb.append("\n\n## ").append(title).append("\n");
-        items.forEach(item -> sb.append("- ").append(item).append("\n"));
-        return sb;
-    }
-
-    private static String formatCatalog(SkillRegistry registry) {
-        final var catalog = registry.getSkillCatalog();
-        if (catalog.isEmpty()) {
-            return "No skills available.";
-        }
-
-        final var sb = new StringBuilder();
-        sb.append("Available Skills:\n\n");
-        catalog.forEach((name, description) -> sb.append(String.format("- **%s**: %s%n", name, description)));
-        return sb.toString();
-    }
-
-    private static Map<String, ExecutableTool> readTools(AgentSkillsExtension<?, ?, ?> extension) {
-        final var allTools = ToolUtils.readTools(extension);
-        // In single skill mode, we won't have the list skills and activate skill tools -
-        // the instructions will be injected directly via system prompts
-        if (extension.singleSkillMode) {
-            return Map.copyOf(Maps.filterKeys(allTools, key -> key.equals(READ_SKILL_REFERENCE_TOOL_ID)));
-        }
-        return Map.copyOf(allTools);
-    }
-
-    private static String skillNotFoundError(final String skillName) {
-        return "Error: Skill '" + skillName + "' not found in catalog.";
     }
 
     private void displaySkillsCatalog() {
