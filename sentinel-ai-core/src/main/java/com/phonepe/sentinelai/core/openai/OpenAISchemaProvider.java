@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.core.tools;
+package com.phonepe.sentinelai.core.openai;
 
-import com.phonepe.sentinelai.core.json.OpenAIJsonSchema;
-
-import java.lang.reflect.Method;
-import java.util.List;
-import java.util.Map;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * A record to hold information about a tool method.
+ * Marks the method to be used for providing an OpenAI-compatible JSON schema for a tool parameter.
  */
-public record ToolMethodInfo(
-        List<ToolParameter> parameters,
-        Map<String, OpenAIJsonSchema> fieldSchemas,
-        Method callable,
-        Class<?> returnType
-) {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.PARAMETER)
+public @interface OpenAISchemaProvider {
+    /**
+     * Name of a zero-argument method on the same toolbox instance that returns the parameter schema
+     * as an {@link com.phonepe.sentinelai.core.json.OpenAIJsonSchema}.
+     */
+    String value();
 }

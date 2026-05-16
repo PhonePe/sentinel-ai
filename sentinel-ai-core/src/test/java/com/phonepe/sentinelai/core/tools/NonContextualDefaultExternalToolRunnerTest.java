@@ -112,7 +112,7 @@ class NonContextualDefaultExternalToolRunnerTest {
     @Test
     void internalToolReturnsPermanentFailure() {
         final var internalTool = new InternalTool(toolDefinition("internalTool"),
-                                                  new ToolMethodInfo(List.of(), null, Void.class),
+                                                  new ToolMethodInfo(List.of(), Map.of(), null, Void.class),
                                                   new Object());
         final var tc = toolCall("call-4", "internalTool");
 

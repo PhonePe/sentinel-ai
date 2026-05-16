@@ -28,9 +28,11 @@ import java.util.Objects;
 public class SimpleOpenAIModelOptions {
     public static final ToolChoice DEFAULT_TOOL_CHOICE = ToolChoice.AUTO;
     public static final TokenCountingConfig DEFAULT_TOKEN_COUNTING_CONFIG = TokenCountingConfig.DEFAULT;
+    public static final boolean DEFAULT_STRICT_TOOL_SCHEMA_VALIDATION = false;
 
     public static final SimpleOpenAIModelOptions DEFAULT = new SimpleOpenAIModelOptions(DEFAULT_TOOL_CHOICE,
-                                                                                        DEFAULT_TOKEN_COUNTING_CONFIG);
+                                                                                         DEFAULT_TOKEN_COUNTING_CONFIG,
+                                                                                         DEFAULT_STRICT_TOOL_SCHEMA_VALIDATION);
 
     public enum ToolChoice {
         REQUIRED, // Model will always call a tool. This is the default behavior.
@@ -58,11 +60,20 @@ public class SimpleOpenAIModelOptions {
      */
     TokenCountingConfig tokenCountingConfig;
 
+    /**
+     * If enabled, invalid outgoing tool schemas will fail the model call before the request is sent.
+     * By default, violations are only logged.
+     */
+    boolean strictToolSchemaValidation;
+
     @Builder
     public SimpleOpenAIModelOptions(ToolChoice toolChoice,
-                                    TokenCountingConfig tokenCountingConfig) {
+                                     TokenCountingConfig tokenCountingConfig,
+                                     Boolean strictToolSchemaValidation) {
         this.toolChoice = Objects.requireNonNullElse(toolChoice, DEFAULT_TOOL_CHOICE);
         this.tokenCountingConfig = Objects.requireNonNullElse(tokenCountingConfig, TokenCountingConfig.DEFAULT);
+        this.strictToolSchemaValidation = Objects.requireNonNullElse(strictToolSchemaValidation,
+                                                                     DEFAULT_STRICT_TOOL_SCHEMA_VALIDATION);
     }
 
     public SimpleOpenAIModelOptions merge(SimpleOpenAIModelOptions other) {
@@ -71,9 +82,12 @@ public class SimpleOpenAIModelOptions {
         }
         return new SimpleOpenAIModelOptions(Objects.requireNonNullElse(other
                 .getToolChoice(), this.toolChoice),
-                                            Objects.requireNonNullElse(other
-                                                    .getTokenCountingConfig(),
-                                                                       this.tokenCountingConfig));
+                                             Objects.requireNonNullElse(other
+                                                     .getTokenCountingConfig(),
+                                                                       this.tokenCountingConfig),
+                                             Objects.requireNonNullElse(other
+                                                     .isStrictToolSchemaValidation(),
+                                                                        this.strictToolSchemaValidation));
     }
 
 }

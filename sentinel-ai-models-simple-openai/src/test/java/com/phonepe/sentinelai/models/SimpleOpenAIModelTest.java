@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
@@ -55,7 +56,9 @@ import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
+import com.phonepe.sentinelai.core.tools.ExternalTool;
 import com.phonepe.sentinelai.core.tools.Tool;
+import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 
@@ -75,7 +78,9 @@ import java.util.stream.Stream;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -660,7 +665,109 @@ class SimpleOpenAIModelTest {
                      setup -> setup.outputGenerationTool(output -> {
                          outputToolCalled.set(true);
                          return output;
-                     }));
+                      }));
         assertTrue(outputToolCalled.get());
+    }
+
+    @Test
+    @SneakyThrows
+    void testInvalidToolSchemasDoNotShortCircuitByDefault(final WireMockRuntimeInfo wiremock) {
+        final var objectMapper = JsonUtils.createMapper();
+        final var model = setupModel("gpt-4o", wiremock, objectMapper);
+        final var invalidToolSchema = objectMapper.createObjectNode();
+        invalidToolSchema.put("type", "object");
+        invalidToolSchema.put("additionalProperties", false);
+        invalidToolSchema.putObject("properties")
+                .set("name", objectMapper.createObjectNode().put("type", "string"));
+        invalidToolSchema.putArray("required");
+        final var invalidTool = new ExternalTool(ToolDefinition.builder()
+                .id("invalid-tool")
+                .name("invalid-tool")
+                .description("Invalid tool schema")
+                .strictSchema(true)
+                .build(),
+                                                 invalidToolSchema,
+                                                 (ctx, callId, args) -> null);
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                        .mapper(objectMapper)
+                        .model(model)
+                        .modelSettings(ModelSettings.builder()
+                                .temperature(0.1f)
+                                .seed(42)
+                                .build())
+                        .build())
+                .tools(Map.of("invalid-tool", invalidTool))
+                .build();
+
+        final var response = agent.execute(AgentInput.<UserInput>builder()
+                .request(new UserInput("Hi?"))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+
+        assertSame(ErrorType.MODEL_CALL_HTTP_FAILURE, response.getError().getErrorType());
+        WireMock.verify(postRequestedFor(urlPathEqualTo("/chat/completions")));
+    }
+
+    @Test
+    @SneakyThrows
+    void testInvalidToolSchemasShortCircuitWhenStrictValidationEnabled(final WireMockRuntimeInfo wiremock) {
+        final var objectMapper = JsonUtils.createMapper();
+        final var model = new SimpleOpenAIModel<>("gpt-4o",
+                                                  SimpleOpenAIAzure.builder()
+                                                          .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT",
+                                                                                             wiremock.getHttpBaseUrl()))
+                                                          .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
+                                                          .apiVersion("2024-10-21")
+                                                          .objectMapper(objectMapper)
+                                                          .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder().build()))
+                                                          .retryConfig(RetryConfig.builder().maxAttempts(1).build())
+                                                          .build(),
+                                                  objectMapper,
+                                                  SimpleOpenAIModelOptions.builder()
+                                                          .strictToolSchemaValidation(true)
+                                                          .build());
+        final var invalidToolSchema = objectMapper.createObjectNode();
+        invalidToolSchema.put("type", "object");
+        invalidToolSchema.put("additionalProperties", false);
+        invalidToolSchema.putObject("properties")
+                .set("name", objectMapper.createObjectNode().put("type", "string"));
+        invalidToolSchema.putArray("required");
+        final var invalidTool = new ExternalTool(ToolDefinition.builder()
+                .id("invalid-tool")
+                .name("invalid-tool")
+                .description("Invalid tool schema")
+                .strictSchema(true)
+                .build(),
+                                                 invalidToolSchema,
+                                                 (ctx, callId, args) -> null);
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                        .mapper(objectMapper)
+                        .model(model)
+                        .modelSettings(ModelSettings.builder()
+                                .temperature(0.1f)
+                                .seed(42)
+                                .build())
+                        .build())
+                .tools(Map.of("invalid-tool", invalidTool))
+                .build();
+
+        final var response = agent.execute(AgentInput.<UserInput>builder()
+                .request(new UserInput("Hi?"))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+
+        assertSame(ErrorType.GENERIC_MODEL_CALL_FAILURE, response.getError().getErrorType());
+        assertTrue(response.getError().getMessage().contains("Invalid OpenAI tool schemas:"));
+        assertTrue(response.getError().getMessage()
+                .contains("Tool 'invalid-tool': required at $ must exactly match property keys"));
+        WireMock.verify(0, postRequestedFor(urlPathEqualTo("/chat/completions")));
     }
 }

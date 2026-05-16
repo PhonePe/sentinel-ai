@@ -50,10 +50,12 @@ import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.errors.ParameterValidationError;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessContext;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
+import com.phonepe.sentinelai.core.json.OpenAIJsonSchemaValidator;
 import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelAttributes;
@@ -89,6 +91,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -193,7 +196,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         this.parameterMapper = new ParameterMapper(mapper);
         this.modelOptions = Objects.requireNonNullElse(modelOptions,
                                                        new SimpleOpenAIModelOptions(SimpleOpenAIModelOptions.DEFAULT_TOOL_CHOICE,
-                                                                                    TokenCountingConfig.DEFAULT));
+                                                                                    TokenCountingConfig.DEFAULT,
+                                                                                    SimpleOpenAIModelOptions.DEFAULT_STRICT_TOOL_SCHEMA_VALIDATION));
         this.tokenCounter = Objects.requireNonNullElseGet(tokenCounter,
                                                           OpenAICompletionsTokenCounter::new);
     }
@@ -269,6 +273,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 stats.incrementRequestsForRun();
 
                 final var request = builder.build();
+
+                logToolList(request.getTools());
+                validateToolSchemas(request.getTools());
                 logModelRequest(request);
                 Chat completionResponse;
 
@@ -1043,6 +1050,44 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                          toolDefinition
                                                                  .isStrictSchema()));
             }).toList());
+        }
+    }
+
+    private void logToolList(Object node) {
+        logDataDebug("Tools list: {}", node);
+    }
+
+    private void validateToolSchemas(List<Tool> tools) {
+        if (tools == null || tools.isEmpty()) {
+            return;
+        }
+        final var violations = new ArrayList<String>();
+        tools.forEach(tool -> {
+            if (tool == null || tool.getFunction() == null) {
+                return;
+            }
+            final var function = tool.getFunction();
+            final var toolName = function.getName();
+            final var parameters = function.getParameters();
+            try {
+                final var schemaNode = mapper.valueToTree(parameters);
+                if (!(schemaNode instanceof ObjectNode objectNode)) {
+                    throw new ParameterValidationError("Tool schema must be a JSON object");
+                }
+                OpenAIJsonSchemaValidator.validate(objectNode);
+            }
+            catch (ParameterValidationError e) {
+                violations.add("Tool '" + toolName + "': " + e.getMessage());
+            }
+        });
+        if (!violations.isEmpty()) {
+            final var message = new StringJoiner(System.lineSeparator())
+                    .add("Invalid OpenAI tool schemas:")
+                    .toString() + System.lineSeparator() + String.join(System.lineSeparator(), violations);
+            log.error(message);
+            if (modelOptions.isStrictToolSchemaValidation()) {
+                throw new IllegalArgumentException(message);
+            }
         }
     }
 

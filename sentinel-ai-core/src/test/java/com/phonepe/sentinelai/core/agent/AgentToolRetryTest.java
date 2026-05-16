@@ -163,6 +163,7 @@ class AgentToolRetryTest {
                 .build();
         final var internalTool = new InternalTool(toolDefinition,
                                                   new ToolMethodInfo(List.of(),
+                                                                     Map.of(),
                                                                      method,
                                                                      String.class),
                                                   testTool);
