@@ -130,10 +130,12 @@ public class ToolUtils {
         final var toolDef = method.getAnnotation(Tool.class);
         final var params = new ArrayList<ToolParameter>();
         final var paramTypes = method.getParameterTypes();
+        final var genericParamTypes = method.getGenericParameterTypes();
         final var declParams = method.getParameters();
         boolean hasContext = false;
         for (var i = 0; i < declParams.length; i++) {
             final var paramType = paramTypes[i];
+            final var genericParamType = genericParamTypes[i];
             final var param = declParams[i];
             if (paramType.equals(AgentRunContext.class)) {
                 hasContext = true;
@@ -147,7 +149,7 @@ public class ToolUtils {
             params.add(new ToolParameter(param.getName(),
                                          description,
                                          TypeFactory.defaultInstance()
-                                                 .constructType(paramType)));
+                                                 .constructType(genericParamType)));
         }
         final var toolName = toolDef.name().isBlank() ? method.getName()
                 : toolDef.name();

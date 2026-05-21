@@ -3,7 +3,7 @@ title: Examples
 description: End-to-end example — Text-to-SQL interactive CLI agent
 ---
 
-# Examples
+# Example
 
 ## Text-to-SQL Agent
 

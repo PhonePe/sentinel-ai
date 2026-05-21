@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.core.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +34,9 @@ import com.github.victools.jsonschema.generator.TypeScope;
 import com.github.victools.jsonschema.module.jackson.JacksonModule;
 
 import lombok.experimental.UtilityClass;
+
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 
 /**
  * Uti
@@ -89,19 +93,11 @@ public class JsonUtils {
     }
 
     public static JsonNode schema(final Class<?> clazz) {
-        final var configBuilder = new SchemaGeneratorConfigBuilder(SchemaVersion.DRAFT_2020_12,
-                                                                   OptionPreset.PLAIN_JSON);
-        final var config = configBuilder.without(
-                                                 Option.EXTRA_OPEN_API_FORMAT_VALUES)
-                .without(Option.FLATTENED_ENUMS_FROM_TOSTRING)
-                .without(Option.SCHEMA_VERSION_INDICATOR)
-                .with(Option.FORBIDDEN_ADDITIONAL_PROPERTIES_BY_DEFAULT)
-                .with(Option.STRICT_TYPE_INFO)
-                .with(Option.INLINE_ALL_SCHEMAS)
-                .with(new JacksonTitleModule())
-                .build();
-        final var generator = new SchemaGenerator(config);
-        return generator.generateSchema(clazz);
+        return schemaFromReflectType(clazz);
+    }
+
+    public static JsonNode schema(final JavaType javaType) {
+        return schemaFromReflectType(toReflectType(javaType));
     }
 
     public static JsonNode schemaForPrimitive(final Class<?> clazz,
@@ -117,5 +113,56 @@ public class JsonUtils {
         fields.add(mapper.createObjectNode().textNode(fieldName));
         propertiesNode.set(fieldName, schema(clazz));
         return schema;
+    }
+
+    private static JsonNode schemaFromReflectType(final Type type) {
+        final var configBuilder = new SchemaGeneratorConfigBuilder(SchemaVersion.DRAFT_2020_12,
+                                                                   OptionPreset.PLAIN_JSON);
+        final var config = configBuilder.without(
+                                                 Option.EXTRA_OPEN_API_FORMAT_VALUES)
+                .without(Option.FLATTENED_ENUMS_FROM_TOSTRING)
+                .without(Option.SCHEMA_VERSION_INDICATOR)
+                .with(Option.FORBIDDEN_ADDITIONAL_PROPERTIES_BY_DEFAULT)
+                .with(Option.STRICT_TYPE_INFO)
+                .with(Option.INLINE_ALL_SCHEMAS)
+                .with(new JacksonTitleModule())
+                .build();
+        final var generator = new SchemaGenerator(config);
+        return generator.generateSchema(type);
+    }
+
+    /**
+     * Converts a Jackson {@link JavaType} to a standard {@link java.lang.reflect.Type} that
+     * classmate (used internally by victools' SchemaGenerator) can resolve. Jackson's concrete
+     * subtypes (e.g. {@code CollectionType}, {@code SimpleType}) are not recognised by classmate,
+     * so we reconstruct an equivalent {@link ParameterizedType} when type parameters are present,
+     * or return the raw class otherwise.
+     */
+    private static Type toReflectType(final JavaType javaType) {
+        final var rawClass = javaType.getRawClass();
+        final var bindings = javaType.getBindings();
+        final var typeParams = bindings.getTypeParameters();
+        if (typeParams.isEmpty()) {
+            return rawClass;
+        }
+        final var args = typeParams.stream()
+                .map(JsonUtils::toReflectType)
+                .toArray(Type[]::new);
+        return new ParameterizedType() {
+            @Override
+            public Type[] getActualTypeArguments() {
+                return args;
+            }
+
+            @Override
+            public Type getOwnerType() {
+                return null;
+            }
+
+            @Override
+            public Type getRawType() {
+                return rawClass;
+            }
+        };
     }
 }

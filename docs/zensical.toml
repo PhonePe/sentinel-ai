@@ -32,7 +32,7 @@ nav = [
       {"Evals" = "evals.md"}
   ]},
   {"Errors" = "errors.md"},
-  {"Examples" = "examples.md"}
+  {"Example" = "examples.md"}
 ]
 
 # ── Theme ────────────────────────────────────────────────────────────────────
