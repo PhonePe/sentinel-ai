@@ -19,7 +19,6 @@ package com.phonepe.sentinelai.core.tools;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.primitives.Primitives;
 
 import com.phonepe.sentinelai.core.utils.Pair;
 
@@ -38,12 +37,8 @@ public class ParameterMapper implements ExecutableToolVisitor<JsonNode> {
     public static ObjectNode parametersFromMethodInfo(final ObjectMapper objectMapper,
                                                       final ToolMethodInfo methodInfo) {
         final var paramNodes = methodInfo.parameters().stream().map(param -> {
-            final var rawType = param.getType().getRawClass();
-            final var paramSchema = (ObjectNode) schema(rawType);
-            if (rawType.isAssignableFrom(String.class) || Primitives
-                    .isWrapperType(rawType)) {
-                paramSchema.put("description", param.getDescription());
-            }
+            final var paramSchema = (ObjectNode) schema(param.getType());
+            paramSchema.put("description", param.getDescription());
             return Pair.of(param.getName(), paramSchema);
         }).collect(toMap(Pair::getFirst, Pair::getSecond));
         final var params = objectMapper.createObjectNode();
