@@ -219,6 +219,42 @@ final var model = new SimpleOpenAIModel<>(
 );
 ```
 
+The `toolChoice` field on `SimpleOpenAIModelOptions` controls the `tool_choice` parameter sent to the model. Sentinel AI
+automatically resolves the effective OpenAI `tool_choice` value by combining `toolChoice` with the active
+`outputGenerationMode`. This is needed because `TOOL_BASED` mode previously forced `tool_choice` to `required`,
+and some models (e.g. Qwen, Kimi on vLLM) do not call tools reliably in this configuration. The `toolChoice` option
+now allows you to override this behavior and set it to `auto` for such models.
+
+The resolution rules are:
+
+| `outputGenerationMode` | `toolChoice`        | Effective OpenAI `tool_choice` | Notes                                                                                           |
+|------------------------|---------------------|--------------------------------|-------------------------------------------------------------------------------------------------|
+| `TOOL_BASED`           | `REQUIRED`          | `required`                     |                                                                                                 |
+| `TOOL_BASED`           | `AUTO`              | `auto`                         |                                                                                                 |
+| `TOOL_BASED`           | `DEFAULT`           | `required`                     | Default for tool-based mode — model must call a tool to produce output.                         |
+| `STRUCTURED_OUTPUT`    | `REQUIRED`          | `required`                     | ⚠️ Warning logged: may cause infinite tool-call loops in structured-output mode.               |
+| `STRUCTURED_OUTPUT`    | `AUTO`              | `auto`                         |                                                                                                 |
+| `STRUCTURED_OUTPUT`    | `DEFAULT`           | `auto`                         | Default for structured-output mode — model chooses whether to call a tool.                      |
+
+!!!warning "REQUIRED + STRUCTURED_OUTPUT"
+    Setting `toolChoice` to `REQUIRED` while `outputGenerationMode` is `STRUCTURED_OUTPUT` is allowed but will emit a
+    warning at runtime. This combination can cause the model to enter an infinite tool-call loop. Prefer `AUTO` or
+    `DEFAULT` when using `STRUCTURED_OUTPUT`.
+
+```java
+// Use AUTO tool choice for models that ignore REQUIRED (e.g. Qwen, Kimi on vLLM)
+final var modelOptions = SimpleOpenAIModelOptions.builder()
+        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
+        .build();
+
+final var model = new SimpleOpenAIModel<>(
+        "qwen-plus",
+        client,
+        objectMapper,
+        modelOptions
+);
+```
+
 ### Retry Setup
 The `RetrySetup` class is a configuration class that is used to configure the retry mechanism for model calls.
 
