@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.models;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
 import java.util.Objects;
 
@@ -26,7 +27,7 @@ import java.util.Objects;
  */
 @Value
 public class SimpleOpenAIModelOptions {
-    public static final ToolChoice DEFAULT_TOOL_CHOICE = ToolChoice.AUTO;
+    public static final ToolChoice DEFAULT_TOOL_CHOICE = ToolChoice.DEFAULT;
     public static final TokenCountingConfig DEFAULT_TOKEN_COUNTING_CONFIG = TokenCountingConfig.DEFAULT;
 
     public static final SimpleOpenAIModelOptions DEFAULT = new SimpleOpenAIModelOptions(DEFAULT_TOOL_CHOICE,
@@ -34,7 +35,9 @@ public class SimpleOpenAIModelOptions {
 
     public enum ToolChoice {
         REQUIRED, // Model will always call a tool. This is the default behavior.
-        AUTO // Model will call a tool only if it needs to
+        AUTO, // Model will call a tool only if it needs to
+        DEFAULT // Default based on the output generation mode. If output generation mode is set to TOOL_BASED, it will be same as REQUIRED.
+               // If output generation mode is set to STRUCTURED_OUTPUT, it will be same as AUTO.
     }
 
 
@@ -59,6 +62,7 @@ public class SimpleOpenAIModelOptions {
     TokenCountingConfig tokenCountingConfig;
 
     @Builder
+    @Jacksonized
     public SimpleOpenAIModelOptions(ToolChoice toolChoice,
                                     TokenCountingConfig tokenCountingConfig) {
         this.toolChoice = Objects.requireNonNullElse(toolChoice, DEFAULT_TOOL_CHOICE);

@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.models.utils;
 
 import io.github.sashirestela.openai.common.function.FunctionCall;
+import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
 import io.github.sashirestela.openai.common.tool.ToolType;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
 
@@ -36,7 +37,9 @@ import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
+import com.phonepe.sentinelai.models.SimpleOpenAIModelOptions;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -164,4 +167,31 @@ public class OpenAIMessageUtils {
                 .toList();
 
     }
+
+    /**
+     * Resolves the tool choice option for OpenAI models based on the output generation mode
+     * and the tool choice specified in model options.
+     * This is needed because some models like qwen and kimi (on vllm) are not calling tools properly
+     * when output generation mode is set to TOOL_BASED and tool choice is set to REQUIRED.
+     */
+    public static ToolChoiceOption resolveToolChoice(OutputGenerationMode outputGenerationMode,
+                                                     SimpleOpenAIModelOptions.ToolChoice toolChoice) {
+        return switch (outputGenerationMode) {
+            case TOOL_BASED -> switch (toolChoice) {
+                case REQUIRED -> ToolChoiceOption.REQUIRED;
+                case AUTO -> ToolChoiceOption.AUTO;
+                case DEFAULT -> ToolChoiceOption.REQUIRED;
+            };
+            case STRUCTURED_OUTPUT -> switch (toolChoice) {
+                case REQUIRED -> {
+                    log.warn("Model is configured for STRUCTURED_OUTPUT generation mode, "
+                            + "but tool choice is set to REQUIRED. This might lead to infinite tool-call loops");
+                    yield ToolChoiceOption.REQUIRED;
+                }
+                case AUTO -> ToolChoiceOption.AUTO;
+                case DEFAULT -> ToolChoiceOption.AUTO;
+            };
+        };
+    }
+
 }

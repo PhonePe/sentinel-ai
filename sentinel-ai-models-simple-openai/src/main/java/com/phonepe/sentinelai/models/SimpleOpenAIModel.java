@@ -70,6 +70,7 @@ import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
 import com.phonepe.sentinelai.models.errors.AgentMessagesPreProcessorExecutionFailedException;
 import com.phonepe.sentinelai.models.errors.InvalidAgentMessagesException;
+import com.phonepe.sentinelai.models.utils.OpenAIMessageUtils;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -1319,18 +1320,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     private ToolChoiceOption computeToolChoice(OutputGenerationMode outputGenerationMode) {
-        return switch (outputGenerationMode) {
-            case TOOL_BASED -> ToolChoiceOption.REQUIRED;
-            case STRUCTURED_OUTPUT -> switch (this.modelOptions
-                    .getToolChoice()) {
-                case REQUIRED -> {
-                    log.warn("Model is configured for STRUCTURED_OUTPUT generation mode, "
-                            + "but tool choice is set to REQUIRED. This might lead to infinite tool-call loops");
-                    yield ToolChoiceOption.REQUIRED;
-                }
-                case AUTO -> ToolChoiceOption.AUTO;
-            };
-        };
+        return OpenAIMessageUtils.resolveToolChoice(outputGenerationMode, this.modelOptions.getToolChoice());
     }
 
     /**
