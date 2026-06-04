@@ -24,7 +24,7 @@ import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
-import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -309,8 +309,13 @@ public class SentinelMCPClient implements AutoCloseable {
                                                                                   .getEnv(),
                                                                                                  Map::of))
                                                                   .build();
-                                                          return new StdioClientTransport(serverParameters,
-                                                                                          jacksonMapper);
+                                                          final var stdioTransport = new StdioClientTransport(serverParameters,
+                                                                                                              jacksonMapper);
+                                                          stdioTransport.setStdErrorHandler(err -> log.error(
+                                                                                                             "MCP Server {} stderr: {}",
+                                                                                                             name,
+                                                                                                             err));
+                                                          return stdioTransport;
                                                       }
                                                   });
 
