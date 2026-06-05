@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.toolbox.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
@@ -24,7 +25,7 @@ import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
-import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -66,13 +67,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
 
+import static java.util.Objects.requireNonNullElse;
+import static java.util.Objects.requireNonNullElseGet;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -80,6 +82,7 @@ import static java.util.stream.Collectors.toMap;
  */
 @Slf4j
 public class SentinelMCPClient implements AutoCloseable {
+    private static final int DEFAULT_TIMEOUT = 5_000;
     private static final String SAMPLING_OUTPUT_KEY = "mcpSamplingOutput";
 
     @Getter
@@ -125,8 +128,7 @@ public class SentinelMCPClient implements AutoCloseable {
     }
 
     public SentinelMCPClient exposeTools(Collection<String> toolIds) {
-        exposedTools.addAll(Objects.requireNonNullElseGet(toolIds,
-                                                          ArrayList::new));
+        exposedTools.addAll(requireNonNullElseGet(toolIds, ArrayList::new));
         return this;
     }
 
@@ -190,9 +192,10 @@ public class SentinelMCPClient implements AutoCloseable {
         return Map.copyOf(mapToReturn);
     }
 
-    private List<AgentMessage> convertFromSamplingToAgentMessages(String sessionId,
-                                                                  String runId,
-                                                                  List<McpSchema.SamplingMessage> messages) {
+    @VisibleForTesting
+    List<AgentMessage> convertFromSamplingToAgentMessages(String sessionId,
+                                                          String runId,
+                                                          List<McpSchema.SamplingMessage> messages) {
         return messages.stream()
                 .map(message -> switch (message.content().type()) {
                     case "text" -> new GenericText(sessionId,
@@ -210,129 +213,44 @@ public class SentinelMCPClient implements AutoCloseable {
                 .toList();
     }
 
+    @VisibleForTesting
     @SneakyThrows
-    private AgentMessage convertResourceResponse(String sessionId,
-                                                 String runId,
-                                                 McpSchema.SamplingMessage message) {
+    AgentMessage convertResourceResponse(String sessionId,
+                                         String runId,
+                                         McpSchema.SamplingMessage message) {
         final var embeddedResource = (McpSchema.EmbeddedResource) message
                 .content();
-        return switch (embeddedResource.type()) {
-            case "text" -> new GenericResource(sessionId,
-                                               runId,
-                                               translateRole(message.role()),
-                                               GenericResource.ResourceType.TEXT,
-                                               embeddedResource.resource()
-                                                       .uri(),
-                                               embeddedResource.resource()
-                                                       .mimeType(),
-                                               ((McpSchema.TextResourceContents) embeddedResource
-                                                       .resource()).text(),
-                                               mapper.writeValueAsString(embeddedResource
-                                                       .resource()));
-            case "blob" -> new GenericResource(sessionId,
-                                               runId,
-                                               translateRole(message.role()),
-                                               GenericResource.ResourceType.BLOB,
-                                               embeddedResource.resource()
-                                                       .uri(),
-                                               embeddedResource.resource()
-                                                       .mimeType(),
-                                               ((McpSchema.BlobResourceContents) embeddedResource
-                                                       .resource()).blob(),
-                                               mapper.writeValueAsString(embeddedResource
-                                                       .resource()));
-            default -> throw new IllegalArgumentException(
-                                                          "Unsupported resource type: " + embeddedResource
-                                                                  .type());
-
-        };
+        if (embeddedResource.resource() instanceof McpSchema.TextResourceContents textResource) {
+            return new GenericResource(sessionId,
+                                       runId,
+                                       translateRole(message.role()),
+                                       GenericResource.ResourceType.TEXT,
+                                       textResource.uri(),
+                                       textResource.mimeType(),
+                                       textResource.text(),
+                                       mapper.writeValueAsString(textResource));
+        }
+        else if (embeddedResource.resource() instanceof McpSchema.BlobResourceContents blobResource) {
+            return new GenericResource(sessionId,
+                                       runId,
+                                       translateRole(message.role()),
+                                       GenericResource.ResourceType.BLOB,
+                                       blobResource.uri(),
+                                       blobResource.mimeType(),
+                                       blobResource.blob(),
+                                       mapper.writeValueAsString(blobResource));
+        }
+        else {
+            throw new IllegalArgumentException(
+                                               "Unsupported resource type: " + embeddedResource
+                                                       .resource()
+                                                       .getClass()
+                                                       .getSimpleName());
+        }
     }
 
-    private McpSyncClient createMcpClient(MCPServerConfig serverConfig) {
-        final var transport = serverConfig.accept(
-                                                  new MCPServerConfigVisitor<McpClientTransport>() {
-                                                      @Override
-                                                      public McpClientTransport visit(MCPHttpServerConfig httpServerConfig) {
-                                                          final int timeout = Objects
-                                                                  .requireNonNullElse(httpServerConfig
-                                                                          .getTimeout(),
-                                                                                      5_000);
-                                                          final var providedHeaders = Objects
-                                                                  .requireNonNullElseGet(httpServerConfig
-                                                                          .getHeaders(),
-                                                                                         Map::<String, String>of);
-                                                          return HttpClientStreamableHttpTransport
-                                                                  .builder(httpServerConfig
-                                                                          .getUrl())
-                                                                  .connectTimeout(Duration
-                                                                          .ofMillis(timeout))
-                                                                  .jsonMapper(jacksonMapper)
-                                                                  .customizeRequest(requestBuilder -> {
-                                                                      requestBuilder
-                                                                              .timeout(Duration
-                                                                                      .ofMillis(timeout));
-                                                                      providedHeaders
-                                                                              .forEach(requestBuilder::header);
-                                                                  })
-                                                                  .build();
-                                                      }
-
-                                                      @Override
-                                                      public McpClientTransport visit(MCPSSEServerConfig sseServerConfig) {
-                                                          final int timeout = Objects
-                                                                  .requireNonNullElse(sseServerConfig
-                                                                          .getTimeout(),
-                                                                                      5_000);
-                                                          return HttpClientSseClientTransport
-                                                                  .builder(sseServerConfig
-                                                                          .getUrl())
-                                                                  .jsonMapper(jacksonMapper)
-                                                                  .connectTimeout(Duration
-                                                                          .ofMillis(timeout))
-                                                                  .customizeRequest(requestBuilder -> requestBuilder
-                                                                          .timeout(Duration
-                                                                                  .ofMillis(timeout)))
-                                                                  .build();
-                                                      }
-
-                                                      @Override
-                                                      public McpClientTransport visit(MCPStdioServerConfig stdioServerConfig) {
-                                                          final var serverParameters = ServerParameters
-                                                                  .builder(stdioServerConfig
-                                                                          .getCommand())
-                                                                  .args(Objects
-                                                                          .requireNonNullElseGet(stdioServerConfig
-                                                                                  .getArgs(),
-                                                                                                 List::of))
-                                                                  .env(Objects
-                                                                          .requireNonNullElseGet(stdioServerConfig
-                                                                                  .getEnv(),
-                                                                                                 Map::of))
-                                                                  .build();
-                                                          return new StdioClientTransport(serverParameters,
-                                                                                          jacksonMapper);
-                                                      }
-                                                  });
-
-        final var client = McpClient.sync(transport)
-                .clientInfo(new McpSchema.Implementation("sentinel-ai-toolbox-mcp",
-                                                         "X.X.X"))
-                .sampling(this::handleSamplingRequest)
-                .toolsChangeConsumer(tools -> {
-                    knownTools.clear();
-                    log.info("Received tools change notification from MCP server: {}. "
-                            + "Will reload on next tools call",
-                             name);
-                })
-                .build();
-        final var result = client.initialize();
-        log.debug("Initialized MCP client for server: {} with result: {}",
-                  name,
-                  result);
-        return client;
-    }
-
-    private McpSchema.CreateMessageResult handleSamplingRequest(McpSchema.CreateMessageRequest createMessageRequest) {
+    @VisibleForTesting
+    McpSchema.CreateMessageResult handleSamplingRequest(McpSchema.CreateMessageRequest createMessageRequest) {
         if (null == agent) {
             return new McpSchema.CreateMessageResult(McpSchema.Role.ASSISTANT,
                                                      new McpSchema.TextContent("Sampling call failed. No agent is registered to handle the request"),
@@ -343,8 +261,7 @@ public class SentinelMCPClient implements AutoCloseable {
         final var agentSetup = agent.getSetup();
         final var setup = agentSetup.getModelSettings()
                 .withMaxTokens(createMessageRequest.maxTokens())
-                .withTemperature(Objects.requireNonNullElse(createMessageRequest
-                        .temperature(), 0.0f).floatValue());
+                .withTemperature(requireNonNullElse(createMessageRequest.temperature(), 0.0f).floatValue());
         final var messages = new ArrayList<AgentMessage>();
         final var runId = "sampling-" + UUID.randomUUID();
         messages.add(new SystemPrompt(null,
@@ -354,14 +271,12 @@ public class SentinelMCPClient implements AutoCloseable {
                                       null));
         messages.addAll(convertFromSamplingToAgentMessages(null,
                                                            runId,
-                                                           createMessageRequest
-                                                                   .messages()));
+                                                           createMessageRequest.messages()));
         final var modelRunContext = new ModelRunContext(agent.name(),
                                                         runId,
                                                         null,
                                                         null,
-                                                        agentSetup
-                                                                .withModelSettings(setup),
+                                                        agentSetup.withModelSettings(setup),
                                                         new ModelUsageStats(),
                                                         ProcessingMode.DIRECT);
         try {
@@ -372,8 +287,7 @@ public class SentinelMCPClient implements AutoCloseable {
                     .compute(modelRunContext,
                              List.of(new ModelOutputDefinition(SAMPLING_OUTPUT_KEY,
                                                                "Response to sampling calls",
-                                                               JsonUtils.schema(
-                                                                                String.class))),
+                                                               JsonUtils.schema(String.class))),
                              messages,
                              Map.of(),
                              toolRunner,
@@ -415,7 +329,8 @@ public class SentinelMCPClient implements AutoCloseable {
         }
     }
 
-    private McpSchema.CreateMessageResult.StopReason toStopReason(ErrorType errorType) {
+    @VisibleForTesting
+    McpSchema.CreateMessageResult.StopReason toStopReason(ErrorType errorType) {
         return switch (errorType) {
             case LENGTH_EXCEEDED -> McpSchema.CreateMessageResult.StopReason.MAX_TOKENS;
             default -> McpSchema.CreateMessageResult.StopReason.END_TURN;
@@ -434,13 +349,89 @@ public class SentinelMCPClient implements AutoCloseable {
         };
     }
 
+    @VisibleForTesting
+    AgentGenericMessage.Role translateRole(McpSchema.Role role) {
+        return switch (role) {
+            case USER -> AgentGenericMessage.Role.USER;
+            case ASSISTANT -> AgentGenericMessage.Role.ASSISTANT;
+        };
+    }
+
+    private McpSyncClient createMcpClient(MCPServerConfig serverConfig) {
+        final var transport = serverConfig.accept(new MCPServerConfigVisitor<McpClientTransport>() {
+            @Override
+            public McpClientTransport visit(MCPHttpServerConfig httpServerConfig) {
+                final int timeout = requireNonNullElse(httpServerConfig.getTimeout(), DEFAULT_TIMEOUT);
+                final var providedHeaders = requireNonNullElseGet(httpServerConfig.getHeaders(),
+                                                                  Map::<String, String>of);
+                return HttpClientStreamableHttpTransport
+                        .builder(httpServerConfig.getUrl())
+                        .connectTimeout(Duration.ofMillis(timeout))
+                        .jsonMapper(jacksonMapper)
+                        .httpRequestCustomizer((builder,
+                                                method,
+                                                endpoint,
+                                                body,
+                                                context) -> {
+                            builder.timeout(Duration.ofMillis(timeout));
+                            providedHeaders.forEach(builder::header);
+                        })
+                        .build();
+            }
+
+            @Override
+            public McpClientTransport visit(MCPSSEServerConfig sseServerConfig) {
+                final int timeout = requireNonNullElse(sseServerConfig.getTimeout(), DEFAULT_TIMEOUT);
+                return HttpClientSseClientTransport
+                        .builder(sseServerConfig.getUrl())
+                        .jsonMapper(jacksonMapper)
+                        .connectTimeout(Duration.ofMillis(timeout))
+                        .httpRequestCustomizer((builder,
+                                                method,
+                                                endpoint,
+                                                body,
+                                                context) -> builder.timeout(Duration.ofMillis(timeout)))
+                        .build();
+            }
+
+            @Override
+            public McpClientTransport visit(MCPStdioServerConfig stdioServerConfig) {
+                final var serverParameters = ServerParameters
+                        .builder(stdioServerConfig.getCommand())
+                        .args(requireNonNullElseGet(stdioServerConfig.getArgs(), List::of))
+                        .env(requireNonNullElseGet(stdioServerConfig.getEnv(), Map::of))
+                        .build();
+                final var stdioTransport = new StdioClientTransport(serverParameters,
+                                                                    jacksonMapper);
+                stdioTransport.setStdErrorHandler(err -> log.error("MCP Server {} stderr: {}", name, err));
+                return stdioTransport;
+            }
+        });
+
+        final var client = McpClient.sync(transport)
+                .clientInfo(new McpSchema.Implementation("sentinel-ai-toolbox-mcp",
+                                                         "X.X.X"))
+                .sampling(this::handleSamplingRequest)
+                .toolsChangeConsumer(tools -> {
+                    knownTools.clear();
+                    log.info("Received tools change notification from MCP server: {}. "
+                            + "Will reload on next tools call",
+                             name);
+                })
+                .build();
+        final var result = client.initialize();
+        log.debug("Initialized MCP client for server: {} with result: {}",
+                  name,
+                  result);
+        return client;
+    }
+
     private Map<String, ExternalTool> toolsList(final List<McpSchema.Tool> tools) {
         return tools.stream()
                 .map(toolDef -> new ExternalTool(ToolDefinition.builder()
                         .id(AgentUtils.id(name, toolDef.name()))
                         .name(toolDef.name())
-                        .description(Objects.requireNonNullElseGet(toolDef
-                                .description(), toolDef::name))
+                        .description(requireNonNullElseGet(toolDef.description(), toolDef::name))
                         .contextAware(false)
                         .strictSchema(false)
                         // IMPORTANT::Strict means openai expects all object params to be
@@ -456,12 +447,5 @@ public class SentinelMCPClient implements AutoCloseable {
                                                  this::runTool))
                 .collect(toMap(tool -> tool.getToolDefinition().getId(),
                                Function.identity()));
-    }
-
-    private AgentGenericMessage.Role translateRole(McpSchema.Role role) {
-        return switch (role) {
-            case USER -> AgentGenericMessage.Role.USER;
-            case ASSISTANT -> AgentGenericMessage.Role.ASSISTANT;
-        };
     }
 }
