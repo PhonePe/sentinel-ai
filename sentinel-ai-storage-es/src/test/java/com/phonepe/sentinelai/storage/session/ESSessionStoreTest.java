@@ -34,6 +34,7 @@ import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.session.BiScrollable;
 import com.phonepe.sentinelai.session.QueryDirection;
+import com.phonepe.sentinelai.session.SessionExtraDataOperator;
 import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.storage.ESClient;
 import com.phonepe.sentinelai.storage.ESIntegrationTestBase;
@@ -43,6 +44,7 @@ import lombok.SneakyThrows;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -54,6 +56,132 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ESSessionStoreTest extends ESIntegrationTestBase {
+
+    @Test
+    @SneakyThrows
+    void sessionStorage() {
+        try (final var client = ESClient.builder()
+                .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
+                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
+                .build()) {
+
+            final var sessionStore = ESSessionStore.builder()
+                    .client(client)
+                    .indexPrefix("test")
+                    .sessionIndexSettings(IndexSettings.DEFAULT)
+                    .messageIndexSettings(IndexSettings.DEFAULT)
+                    .build();
+
+
+            final var sessionId = "test-session";
+            final var sessionSummary = SessionSummary.builder()
+                    .sessionId(sessionId)
+                    .summary("Test Summary")
+                    .keywords(List.of("topic1", "topic2"))
+                    .updatedAt(AgentUtils.epochMicro())
+                    .build();
+
+            final var savedSession = sessionStore.saveSessionImpl(sessionSummary);
+            assertTrue(savedSession.isPresent());
+            assertEquals(sessionId, savedSession.get().getSessionId());
+
+            final var retrievedSession = sessionStore.session(sessionId);
+            assertTrue(retrievedSession.isPresent());
+            assertEquals("Test Summary", retrievedSession.get().getSummary());
+
+            final var sessions = sessionStore.sessions(10,
+                                                       null,
+                                                       QueryDirection.OLDER);
+            assertFalse(sessions.getItems().isEmpty());
+            assertEquals(1, sessions.getItems().size());
+            assertEquals(sessionId, sessions.getItems().get(0).getSessionId());
+
+            final var updatedSessionSummary = SessionSummary.builder()
+                    .sessionId(sessionId)
+                    .summary("Updated Summary")
+                    .keywords(List.of("topic1", "topic2"))
+                    .updatedAt(AgentUtils.epochMicro())
+                    .build();
+            final var updatedSession = sessionStore.saveSessionImpl(
+                                                                    updatedSessionSummary);
+            assertTrue(updatedSession.isPresent());
+            assertEquals("Updated Summary", updatedSession.get().getSummary());
+            assertTrue(sessionStore.deleteSession(sessionId));
+            assertFalse(sessionStore.session(sessionId).isPresent());
+
+            final var savedIds = IntStream.rangeClosed(1, 25)
+                    .mapToObj(i -> sessionStore.saveSessionImpl(SessionSummary
+                            .builder()
+                            .sessionId("S-" + i)
+                            .summary("Summary " + i)
+                            .keywords(List.of())
+                            .updatedAt(AgentUtils.epochMicro())
+                            .build())
+                            .map(SessionSummary::getSessionId)
+                            .orElse(null))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toUnmodifiableSet());
+            var nextPointer = "";
+            final var retrieved = new HashSet<String>();
+            do {
+                final var response = sessionStore.sessions(10,
+                                                           nextPointer,
+                                                           QueryDirection.OLDER);
+                assertNotNull(response.getItems());
+                response.getItems()
+                        .forEach(s -> retrieved.add(s.getSessionId()));
+                assertNotNull(response.getPointer());
+                nextPointer = response.getPointer().getOlder();
+            } while (!retrieved.containsAll(savedIds));
+            assertEquals(savedIds.size(), retrieved.size(), () -> {
+                final var savedSize = savedIds.size();
+                final var retrievedSize = retrieved.size();
+                final var diff = savedSize > retrievedSize ? Sets.difference(
+                                                                             savedIds,
+                                                                             retrieved)
+                        : Sets.difference(retrieved, savedIds);
+                return "Expected to retrieve %d sessions, but got %d. Extra: %s"
+                        .formatted(savedSize,
+                                   retrievedSize,
+                                   String.join(",", diff));
+            });
+            assertTrue(retrieved.containsAll(savedIds),
+                       () -> "Retrieved sessions do not contain all saved sessions. Missing: " + String
+                               .join(",",
+                                     Sets.difference(savedIds, retrieved)));
+        }
+    }
+
+    @Test
+    @SneakyThrows
+    void testBuilderWithExtraDataOperator() {
+        try (final var client = ESClient.builder()
+                .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
+                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
+                .build()) {
+
+            final var operator = SessionExtraDataOperator.fixed(Map.of("builder", "test"));
+            final var sessionStore = ESSessionStore.builder()
+                    .client(client)
+                    .indexPrefix("test-builder")
+                    .sessionIndexSettings(IndexSettings.DEFAULT)
+                    .messageIndexSettings(IndexSettings.DEFAULT)
+                    .extraDataOperator(operator)
+                    .build();
+
+            assertNotNull(sessionStore);
+            final var sessionId = "test-builder-session";
+            final var sessionSummary = SessionSummary.builder()
+                    .sessionId(sessionId)
+                    .summary("Builder Test")
+                    .updatedAt(AgentUtils.epochMicro())
+                    .build();
+
+            final var savedSession = sessionStore.saveSession(sessionSummary);
+            assertTrue(savedSession.isPresent());
+            assertEquals(Map.of("builder", "test"), savedSession.get().getExtra());
+        }
+    }
 
     @Test
     @SneakyThrows
@@ -123,7 +251,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     .map(AgentMessage::getMessageId)
                     .collect(Collectors.toUnmodifiableSet());
 
-            sessionStore.saveSessionImpl(SessionSummary.builder()
+            sessionStore.saveSession(SessionSummary.builder()
                     .sessionId(sessionId)
                     .updatedAt(AgentUtils.epochMicro())
                     .build());
@@ -226,96 +354,103 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
 
     @Test
     @SneakyThrows
-    void testSessionStorage() {
+    void testSessionStorageWithComplexExtraData() {
         try (final var client = ESClient.builder()
                 .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
                 .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
                 .build()) {
 
+            final var nestedMap = Map.of("nested", "value");
+            final var extraData = Map.<String, Object>of(
+                                                         "stringValue",
+                                                         "text",
+                                                         "numberValue",
+                                                         42L,
+                                                         "booleanValue",
+                                                         true,
+                                                         "listValue",
+                                                         List.of("a",
+                                                                 "b",
+                                                                 "c"),
+                                                         "nested",
+                                                         nestedMap
+            );
+            final var operator = SessionExtraDataOperator.fixed(extraData);
+
             final var sessionStore = ESSessionStore.builder()
                     .client(client)
-                    .indexPrefix("test")
+                    .indexPrefix("test-complex")
                     .sessionIndexSettings(IndexSettings.DEFAULT)
                     .messageIndexSettings(IndexSettings.DEFAULT)
+                    .extraDataOperator(operator)
                     .build();
 
-
-            final var sessionId = "test-session";
+            final var sessionId = "session-complex";
             final var sessionSummary = SessionSummary.builder()
                     .sessionId(sessionId)
+                    .summary("Complex Extra Data Test")
+                    .updatedAt(AgentUtils.epochMicro())
+                    .build();
+
+            final var savedSession = sessionStore.saveSession(sessionSummary);
+            assertTrue(savedSession.isPresent());
+            assertEquals(5, savedSession.get().getExtra().size());
+            assertEquals("text", savedSession.get().getExtra().get("stringValue"));
+            assertEquals(((Number) savedSession.get().getExtra().get("numberValue")).longValue(), 42L);
+            assertEquals(true, savedSession.get().getExtra().get("booleanValue"));
+            assertEquals(List.of("a", "b", "c"), savedSession.get().getExtra().get("listValue"));
+
+            final var retrievedSession = sessionStore.session(sessionId);
+            assertTrue(retrievedSession.isPresent());
+            assertEquals(5, retrievedSession.get().getExtra().size());
+        }
+    }
+
+    @Test
+    @SneakyThrows
+    void testSessionStorageWithExtraData() {
+        try (final var client = ESClient.builder()
+                .serverUrl(ELASTICSEARCH_CONTAINER.getHttpHostAddress())
+                .apiKey(TestUtils.getTestProperty("ES_API_KEY", "test"))
+                .build()) {
+
+            final var extraData = Map.<String, Object>of(
+                                                         "source",
+                                                         "elasticsearch",
+                                                         "version",
+                                                         "1.0",
+                                                         "priority",
+                                                         10
+            );
+            final var operator = SessionExtraDataOperator.fixed(extraData);
+
+            final var sessionStore = ESSessionStore.builder()
+                    .client(client)
+                    .indexPrefix("test-extra")
+                    .sessionIndexSettings(IndexSettings.DEFAULT)
+                    .messageIndexSettings(IndexSettings.DEFAULT)
+                    .extraDataOperator(operator)
+                    .build();
+
+            final var sessionId = "session-with-extra";
+            final var sessionSummary = SessionSummary.builder()
+                    .sessionId(sessionId)
+                    .title("Session with Extra Data")
                     .summary("Test Summary")
                     .keywords(List.of("topic1", "topic2"))
                     .updatedAt(AgentUtils.epochMicro())
                     .build();
 
-            final var savedSession = sessionStore.saveSessionImpl(sessionSummary);
+            final var savedSession = sessionStore.saveSession(sessionSummary);
             assertTrue(savedSession.isPresent());
-            assertEquals(sessionId, savedSession.get().getSessionId());
+            assertEquals(extraData, savedSession.get().getExtra());
 
             final var retrievedSession = sessionStore.session(sessionId);
             assertTrue(retrievedSession.isPresent());
-            assertEquals("Test Summary", retrievedSession.get().getSummary());
-
-            final var sessions = sessionStore.sessions(10,
-                                                       null,
-                                                       QueryDirection.OLDER);
-            assertFalse(sessions.getItems().isEmpty());
-            assertEquals(1, sessions.getItems().size());
-            assertEquals(sessionId, sessions.getItems().get(0).getSessionId());
-
-            final var updatedSessionSummary = SessionSummary.builder()
-                    .sessionId(sessionId)
-                    .summary("Updated Summary")
-                    .keywords(List.of("topic1", "topic2"))
-                    .updatedAt(AgentUtils.epochMicro())
-                    .build();
-            final var updatedSession = sessionStore.saveSessionImpl(
-                                                                    updatedSessionSummary);
-            assertTrue(updatedSession.isPresent());
-            assertEquals("Updated Summary", updatedSession.get().getSummary());
-            assertTrue(sessionStore.deleteSession(sessionId));
-            assertFalse(sessionStore.session(sessionId).isPresent());
-
-            final var savedIds = IntStream.rangeClosed(1, 25)
-                    .mapToObj(i -> sessionStore.saveSessionImpl(SessionSummary
-                            .builder()
-                            .sessionId("S-" + i)
-                            .summary("Summary " + i)
-                            .keywords(List.of())
-                            .updatedAt(AgentUtils.epochMicro())
-                            .build())
-                            .map(SessionSummary::getSessionId)
-                            .orElse(null))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toUnmodifiableSet());
-            var nextPointer = "";
-            final var retrieved = new HashSet<String>();
-            do {
-                final var response = sessionStore.sessions(10,
-                                                           nextPointer,
-                                                           QueryDirection.OLDER);
-                assertNotNull(response.getItems());
-                response.getItems()
-                        .forEach(s -> retrieved.add(s.getSessionId()));
-                assertNotNull(response.getPointer());
-                nextPointer = response.getPointer().getOlder();
-            } while (!retrieved.containsAll(savedIds));
-            assertEquals(savedIds.size(), retrieved.size(), () -> {
-                final var savedSize = savedIds.size();
-                final var retrievedSize = retrieved.size();
-                final var diff = savedSize > retrievedSize ? Sets.difference(
-                                                                             savedIds,
-                                                                             retrieved)
-                        : Sets.difference(retrieved, savedIds);
-                return "Expected to retrieve %d sessions, but got %d. Extra: %s"
-                        .formatted(savedSize,
-                                   retrievedSize,
-                                   String.join(",", diff));
-            });
-            assertTrue(retrieved.containsAll(savedIds),
-                       () -> "Retrieved sessions do not contain all saved sessions. Missing: " + String
-                               .join(",",
-                                     Sets.difference(savedIds, retrieved)));
+            assertEquals(extraData, retrievedSession.get().getExtra());
+            assertTrue(retrievedSession.get().getExtra().containsKey("source"));
+            assertTrue(retrievedSession.get().getExtra().containsKey("version"));
+            assertTrue(retrievedSession.get().getExtra().containsKey("priority"));
         }
     }
 }

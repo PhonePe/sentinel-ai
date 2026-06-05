@@ -59,19 +59,9 @@ class FileSystemSessionStoreTest {
     private ObjectMapper objectMapper;
     private FileSystemSessionStore sessionStore;
 
-    @BeforeEach
-    void setUp() {
-        objectMapper = JsonUtils.createMapper();
-        sessionStore = FileSystemSessionStore.builder()
-                .baseDir(tempDir.toString())
-                .mapper(objectMapper)
-                .extraDataOperator(SessionExtraDataOperator.fixed(Map.of("testKey", "testValue")))
-                .build();
-    }
-
     @Test
     @SneakyThrows
-    void testBoundedCaching() {
+    void boundedCaching() {
         // Create a store with a small cache size
         final var cacheSize = 5;
         final var boundedStore = FileSystemSessionStore.builder()
@@ -110,6 +100,124 @@ class FileSystemSessionStoreTest {
             final var messages = boundedStore.readMessages(id, 1, false, null, QueryDirection.OLDER);
             assertFalse(messages.getItems().isEmpty());
         }
+    }
+
+    @BeforeEach
+    void setUp() {
+        objectMapper = JsonUtils.createMapper();
+        sessionStore = FileSystemSessionStore.builder()
+                .baseDir(tempDir.toString())
+                .mapper(objectMapper)
+                .extraDataOperator(SessionExtraDataOperator.fixed(Map.of("testKey", "testValue")))
+                .build();
+    }
+
+    @Test
+    void testBuilderAllParameters() {
+        final var extraData = Map.<String, Object>of("key1", "value1", "key2", "value2");
+        final var operator = SessionExtraDataOperator.fixed(extraData);
+        final var cacheSize = 15;
+
+        final var store = FileSystemSessionStore.builder()
+                .baseDir(tempDir.toString())
+                .mapper(objectMapper)
+                .cacheSize(cacheSize)
+                .extraDataOperator(operator)
+                .build();
+
+        assertNotNull(store);
+        final var sessionSummary = SessionSummary.builder()
+                .sessionId("test-3")
+                .title("Test")
+                .summary("Summary")
+                .updatedAt(System.currentTimeMillis())
+                .build();
+
+        final var result = store.saveSession(sessionSummary);
+        assertTrue(result.isPresent());
+        assertEquals(extraData, result.get().getExtra());
+    }
+
+    @Test
+    void testBuilderWithCacheSize() {
+        final var customCacheSize = 10;
+        final var store = FileSystemSessionStore.builder()
+                .baseDir(tempDir.toString())
+                .mapper(objectMapper)
+                .cacheSize(customCacheSize)
+                .build();
+
+        assertNotNull(store);
+        assertFalse(store.deleteSession("non-existent"));
+    }
+
+    @Test
+    void testBuilderWithDefaults() {
+        final var store = FileSystemSessionStore.builder()
+                .baseDir(tempDir.toString())
+                .mapper(objectMapper)
+                .build();
+
+        assertNotNull(store);
+        final var sessionSummary = SessionSummary.builder()
+                .sessionId("test-1")
+                .title("Test")
+                .summary("Summary")
+                .updatedAt(System.currentTimeMillis())
+                .build();
+
+        final var result = store.saveSession(sessionSummary);
+        assertTrue(result.isPresent());
+        assertTrue(result.get().getExtra().isEmpty());
+    }
+
+    @Test
+    void testBuilderWithExtraDataOperator() {
+        final var extraData = Map.<String, Object>of("custom", "data");
+        final var operator = SessionExtraDataOperator.fixed(extraData);
+        final var store = FileSystemSessionStore.builder()
+                .baseDir(tempDir.toString())
+                .mapper(objectMapper)
+                .extraDataOperator(operator)
+                .build();
+
+        assertNotNull(store);
+        final var sessionSummary = SessionSummary.builder()
+                .sessionId("test-2")
+                .title("Test")
+                .summary("Summary")
+                .updatedAt(System.currentTimeMillis())
+                .build();
+
+        final var result = store.saveSession(sessionSummary);
+        assertTrue(result.isPresent());
+        assertEquals(extraData, result.get().getExtra());
+    }
+
+    @Test
+    @SneakyThrows
+    void testExtraDataPersistence() {
+        final var extraData = Map.<String, Object>of("persisted", "value", "timestamp", 123456L);
+        final var operator = SessionExtraDataOperator.fixed(extraData);
+        final var store = FileSystemSessionStore.builder()
+                .baseDir(tempDir.toString())
+                .mapper(objectMapper)
+                .extraDataOperator(operator)
+                .build();
+
+        final var sessionId = "persistence-test";
+        final var sessionSummary = SessionSummary.builder()
+                .sessionId(sessionId)
+                .title("Persistence Test")
+                .summary("Testing extra data persistence")
+                .updatedAt(AgentUtils.epochMicro())
+                .build();
+
+        store.saveSession(sessionSummary);
+        final var retrieved = store.session(sessionId);
+
+        assertTrue(retrieved.isPresent());
+        assertEquals(extraData, retrieved.get().getExtra());
     }
 
     @Test
@@ -276,4 +384,5 @@ class FileSystemSessionStoreTest {
         assertEquals("S-4", response.getItems().get(0).getSessionId());
         assertEquals("S-1", response.getItems().get(3).getSessionId());
     }
+
 }
