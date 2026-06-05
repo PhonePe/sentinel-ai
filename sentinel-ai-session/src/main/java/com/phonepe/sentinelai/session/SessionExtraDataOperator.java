@@ -51,5 +51,5 @@ public abstract class SessionExtraDataOperator implements UnaryOperator<SessionS
         return sessionSummary;
     }
 
-    abstract Optional<Map<String, Object>> operate(final SessionSummary sessionSummary);
+    abstract protected Optional<Map<String, Object>> operate(final SessionSummary sessionSummary);
 }
