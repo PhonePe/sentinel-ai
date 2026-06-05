@@ -22,26 +22,36 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.session.BiScrollable;
 import com.phonepe.sentinelai.session.BiScrollable.DataPointer;
 import com.phonepe.sentinelai.session.QueryDirection;
+import com.phonepe.sentinelai.session.SessionExtraDataOperator;
 import com.phonepe.sentinelai.session.SessionStore;
 import com.phonepe.sentinelai.session.SessionSummary;
 
+import lombok.Builder;
+import lombok.NonNull;
 import lombok.SneakyThrows;
 
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
-public class FileSystemSessionStore implements SessionStore {
+import javax.annotation.Nullable;
+
+public class FileSystemSessionStore extends SessionStore {
+    private static final int DEFAULT_CACHE_SIZE = 20;
+
     private final DiskBasedSessionSummaryStore summaryStore;
     private final ObjectMapper mapper;
 
-    public FileSystemSessionStore(String baseDir, final ObjectMapper mapper) {
-        this(baseDir, mapper, 20);
-    }
-
-    public FileSystemSessionStore(String baseDir, final ObjectMapper mapper, int cacheSize) {
-        this.summaryStore = new DiskBasedSessionSummaryStore(baseDir, mapper, cacheSize);
+    @Builder
+    public FileSystemSessionStore(String baseDir,
+                                  @NonNull final ObjectMapper mapper,
+                                  @Nullable Integer cacheSize,
+                                  @Nullable SessionExtraDataOperator extraDataOperator) {
+        super(extraDataOperator);
+        final var size = Objects.requireNonNullElse(cacheSize, DEFAULT_CACHE_SIZE);
+        this.summaryStore = new DiskBasedSessionSummaryStore(baseDir, mapper, size);
         this.mapper = mapper;
     }
 
@@ -66,13 +76,6 @@ public class FileSystemSessionStore implements SessionStore {
         summaryStore.getMessageStorage(sessionId)
                 .orElseThrow(() -> new IllegalStateException("Message storage not found for session: " + sessionId))
                 .addMessages(messages);
-    }
-
-    @Override
-    @SneakyThrows
-    public Optional<SessionSummary> saveSession(SessionSummary sessionSummary) {
-        summaryStore.saveSummary(sessionSummary);
-        return Optional.of(sessionSummary);
     }
 
     @Override
@@ -143,6 +146,13 @@ public class FileSystemSessionStore implements SessionStore {
         final var newer = queryDirection == QueryDirection.NEWER ? newestResultPtr : updatedNewerForOlderQuery;
 
         return new BiScrollable<>(filteredSummaries, new DataPointer(older, newer));
+    }
+
+    @Override
+    @SneakyThrows
+    protected Optional<SessionSummary> saveSessionImpl(SessionSummary sessionSummary) {
+        summaryStore.saveSummary(sessionSummary);
+        return Optional.of(sessionSummary);
     }
 
 

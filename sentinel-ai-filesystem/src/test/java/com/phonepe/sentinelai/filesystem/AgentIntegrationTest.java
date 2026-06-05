@@ -190,8 +190,10 @@ class AgentIntegrationTest {
         final var memoryStorage = new FileSystemAgentMemoryStorage(new File(tempDir, "memory").getAbsolutePath(),
                                                                    objectMapper,
                                                                    new HuggingfaceEmbeddingModel());
-        final var sessionStorage = new FileSystemSessionStore(new File(tempDir, "session").getAbsolutePath(),
-                                                              objectMapper);
+        final var sessionStorage = FileSystemSessionStore.builder()
+                .baseDir(new File(tempDir, "session").getAbsolutePath())
+                .mapper(objectMapper)
+                .build();
         final var agentSessionExtension = AgentSessionExtension
                 .<UserInput, OutputObject, SimpleAgent>builder()
                 .sessionStore(sessionStorage)

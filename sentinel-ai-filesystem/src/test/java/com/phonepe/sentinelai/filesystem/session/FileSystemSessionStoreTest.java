@@ -32,6 +32,7 @@ import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.session.BiScrollable;
 import com.phonepe.sentinelai.session.QueryDirection;
+import com.phonepe.sentinelai.session.SessionExtraDataOperator;
 import com.phonepe.sentinelai.session.SessionSummary;
 
 import lombok.SneakyThrows;
@@ -39,10 +40,12 @@ import lombok.SneakyThrows;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -59,7 +62,11 @@ class FileSystemSessionStoreTest {
     @BeforeEach
     void setUp() {
         objectMapper = JsonUtils.createMapper();
-        sessionStore = new FileSystemSessionStore(tempDir.toString(), objectMapper);
+        sessionStore = FileSystemSessionStore.builder()
+                .baseDir(tempDir.toString())
+                .mapper(objectMapper)
+                .extraDataOperator(SessionExtraDataOperator.fixed(Map.of("testKey", "testValue")))
+                .build();
     }
 
     @Test
@@ -67,10 +74,11 @@ class FileSystemSessionStoreTest {
     void testBoundedCaching() {
         // Create a store with a small cache size
         final var cacheSize = 5;
-        final var boundedStore = new FileSystemSessionStore(tempDir.resolve("bounded").toString(),
-                                                            objectMapper,
-                                                            cacheSize);
-
+        final var boundedStore = FileSystemSessionStore.builder()
+                .baseDir(tempDir.toString())
+                .mapper(objectMapper)
+                .cacheSize(cacheSize)
+                .build();
         // Save more sessions than the cache size
         final var sessionIds = IntStream.rangeClosed(1, 10)
                 .mapToObj(i -> {
@@ -200,6 +208,11 @@ class FileSystemSessionStoreTest {
         assertEquals(1, sessions.getItems().size());
         assertEquals(sessionId, sessions.getItems().get(0).getSessionId());
 
+        assertAll(() -> {
+            final var testSession = sessionStore.session(sessionId).get();
+            assertNotNull(testSession);
+            assertEquals("testValue", testSession.getExtra().get("testKey"));
+        });
         assertTrue(sessionStore.deleteSession(sessionId));
         assertFalse(sessionStore.session(sessionId).isPresent());
     }

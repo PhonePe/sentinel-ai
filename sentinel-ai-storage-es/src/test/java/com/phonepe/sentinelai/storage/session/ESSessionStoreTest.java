@@ -123,7 +123,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     .map(AgentMessage::getMessageId)
                     .collect(Collectors.toUnmodifiableSet());
 
-            sessionStore.saveSession(SessionSummary.builder()
+            sessionStore.saveSessionImpl(SessionSummary.builder()
                     .sessionId(sessionId)
                     .updatedAt(AgentUtils.epochMicro())
                     .build());
@@ -241,7 +241,6 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
 
 
             final var sessionId = "test-session";
-            final var agentName = "test-agent";
             final var sessionSummary = SessionSummary.builder()
                     .sessionId(sessionId)
                     .summary("Test Summary")
@@ -249,7 +248,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     .updatedAt(AgentUtils.epochMicro())
                     .build();
 
-            final var savedSession = sessionStore.saveSession(sessionSummary);
+            final var savedSession = sessionStore.saveSessionImpl(sessionSummary);
             assertTrue(savedSession.isPresent());
             assertEquals(sessionId, savedSession.get().getSessionId());
 
@@ -270,15 +269,15 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
                     .keywords(List.of("topic1", "topic2"))
                     .updatedAt(AgentUtils.epochMicro())
                     .build();
-            final var updatedSession = sessionStore.saveSession(
-                                                                updatedSessionSummary);
+            final var updatedSession = sessionStore.saveSessionImpl(
+                                                                    updatedSessionSummary);
             assertTrue(updatedSession.isPresent());
             assertEquals("Updated Summary", updatedSession.get().getSummary());
             assertTrue(sessionStore.deleteSession(sessionId));
             assertFalse(sessionStore.session(sessionId).isPresent());
 
             final var savedIds = IntStream.rangeClosed(1, 25)
-                    .mapToObj(i -> sessionStore.saveSession(SessionSummary
+                    .mapToObj(i -> sessionStore.saveSessionImpl(SessionSummary
                             .builder()
                             .sessionId("S-" + i)
                             .summary("Summary " + i)

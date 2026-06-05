@@ -63,6 +63,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 
+import javax.annotation.Nullable;
+
 import static com.phonepe.sentinelai.session.MessageReadingUtils.readMessagesSinceId;
 import static com.phonepe.sentinelai.session.MessageReadingUtils.rearrangeMessages;
 
@@ -82,6 +84,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     private final AgentSessionExtensionSetup setup;
     private final List<MessagePersistencePreFilter> historyModifiers;
     private final List<MessageSelector> messageSelectors;
+    private final SessionExtraDataOperator extraDataOperator;
     private final AgentEventMessageExtractor extractor = new AgentEventMessageExtractor();
     private final ConsumingFireForgetSignal<SessionSummary> onSessionSummarized = new ConsumingFireForgetSignal<>();
     private A agent;
@@ -99,7 +102,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                  @NonNull SessionStore sessionStore,
                                  AgentSessionExtensionSetup setup,
                                  List<MessagePersistencePreFilter> historyModifiers,
-                                 List<MessageSelector> messageSelectors) {
+                                 List<MessageSelector> messageSelectors,
+                                 @Nullable SessionExtraDataOperator extraDataOperator) {
         this.mapper = Objects.requireNonNullElseGet(mapper,
                                                     JsonUtils::createMapper);
         this.setup = Objects.requireNonNullElse(setup,
@@ -114,6 +118,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 .requireNonNullElseGet(messageSelectors,
                                        () -> List.of(
                                                      new UnpairedToolCallsRemover())));
+        this.extraDataOperator = Objects.requireNonNullElseGet(extraDataOperator,
+                                                               SessionExtraDataOperator::empty);
     }
 
     public AgentSessionExtension<R, T, A> addMessagePersistencePreFilter(MessagePersistencePreFilter modifier) {
@@ -371,7 +377,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                   lastSummarizedMessageId,
                                   sessionId);
 
-                        final var updated = sessionStore.saveSession(SessionSummary
+                        final var sessionSummary = SessionSummary
                                 .builder()
                                 .sessionId(sessionId)
                                 .title(summary.getTitle())
@@ -380,7 +386,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                 .raw(summary.getRaw())
                                 .lastSummarizedMessageId(lastSummarizedMessageId)
                                 .updatedAt(AgentUtils.epochMicro())
-                                .build());
+                                .build();
+                        final var updated = sessionStore.saveSession(extraDataOperator.apply(sessionSummary));
                         updated.ifPresentOrElse(
                                                 savedSummary -> log.info(
                                                                          "Summary saved successfully for session: {}. Title: {}",
@@ -465,7 +472,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         }
         else {
             log.debug("Session summary extracted: {}", summary);
-            final var updated = sessionStore.saveSession(SessionSummary
+            final var sessionSummary = SessionSummary
                     .builder()
                     .sessionId(sessionId)
                     .title(summary.getTitle())
@@ -474,7 +481,8 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                     .raw(mapper.writeValueAsString(summary.getRawData()))
                     .lastSummarizedMessageId(lastSummarizedMessageId)
                     .updatedAt(AgentUtils.epochMicro())
-                    .build());
+                    .build();
+            final var updated = sessionStore.saveSession(sessionSummary);
             updated.ifPresentOrElse(
                                     savedSummary -> {
                                         log.info("Summary saved successfully for session: {}. Title: {}",

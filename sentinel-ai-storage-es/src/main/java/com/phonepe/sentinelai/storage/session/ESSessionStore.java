@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.storage.session;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 
@@ -25,6 +26,7 @@ import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.session.BiScrollable;
 import com.phonepe.sentinelai.session.QueryDirection;
+import com.phonepe.sentinelai.session.SessionExtraDataOperator;
 import com.phonepe.sentinelai.session.SessionStore;
 import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.storage.ESClient;
@@ -51,10 +53,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
+
+import javax.annotation.Nullable;
 
 import static co.elastic.clients.elasticsearch._types.Refresh.True;
 
@@ -62,7 +67,7 @@ import static co.elastic.clients.elasticsearch._types.Refresh.True;
  * Storage for session data
  */
 @Slf4j
-public class ESSessionStore implements SessionStore {
+public class ESSessionStore extends SessionStore {
     private static final String SESSIONS_INDEX = "agent-sessions";
 
     private static final String SESSION_AUTO_UPDATE_PIPELINE = "update_session_summary_created_updated";
@@ -80,7 +85,9 @@ public class ESSessionStore implements SessionStore {
                           String indexPrefix,
                           IndexSettings sessionIndexSettings,
                           IndexSettings messageIndexSettings,
-                          ObjectMapper mapper) {
+                          ObjectMapper mapper,
+                          @Nullable SessionExtraDataOperator extraDataOperator) {
+        super(extraDataOperator);
         this.client = client;
         this.indexPrefix = indexPrefix;
         this.mapper = Objects.requireNonNullElseGet(mapper,
@@ -232,24 +239,6 @@ public class ESSessionStore implements SessionStore {
         log.debug("Bulk message indexing response: {}", response);
     }
 
-
-    @Override
-    @SneakyThrows
-    public Optional<SessionSummary> saveSession(SessionSummary sessionSummary) {
-        final var stored = toStoredSession(sessionSummary);
-        final var indexName = sessionIndexName();
-        final var result = client.getElasticsearchClient()
-                .update(u -> u.index(indexName)
-                        .id(stored.getSessionId())
-                        .doc(stored)
-                        .docAsUpsert(true)
-                        .refresh(True), ESSessionDocument.class)
-                .result();
-
-        log.debug("Result of indexing: {}", result);
-        return session(sessionSummary.getSessionId());
-    }
-
     @Override
     @SneakyThrows
     public Optional<SessionSummary> session(String sessionId) {
@@ -308,6 +297,23 @@ public class ESSessionStore implements SessionStore {
         final var newer = queryDirection == QueryDirection.NEWER ? newestResultPtr : updatedNewerForOldQuery;
 
         return new BiScrollable<>(summaries, new BiScrollable.DataPointer(older, newer));
+    }
+
+    @Override
+    @SneakyThrows
+    protected Optional<SessionSummary> saveSessionImpl(SessionSummary sessionSummary) {
+        final var stored = toStoredSession(sessionSummary);
+        final var indexName = sessionIndexName();
+        final var result = client.getElasticsearchClient()
+                .update(u -> u.index(indexName)
+                        .id(stored.getSessionId())
+                        .doc(stored)
+                        .docAsUpsert(true)
+                        .refresh(True), ESSessionDocument.class)
+                .result();
+
+        log.debug("Result of indexing: {}", result);
+        return session(sessionSummary.getSessionId());
     }
 
     record MessageScrollPointer(
@@ -433,6 +439,9 @@ public class ESSessionStore implements SessionStore {
                             .properties(ESSessionDocument.Fields.lastSummarizedMessageId,
                                         p -> p.text(t -> t.store(false)
                                                 .index(false)))
+                            .properties(ESSessionDocument.Fields.extraJson,
+                                        p -> p.text(t -> t.store(false)
+                                                .index(false)))
                             .properties(ESSessionDocument.Fields.updatedAtMicro,
                                         p -> p.long_(t -> t))
                             .properties(ESSessionDocument.Fields.createdAt,
@@ -510,6 +519,7 @@ public class ESSessionStore implements SessionStore {
                 .raw(mapper.writeValueAsString(sessionSummary.getRaw()))
                 .lastSummarizedMessageId(sessionSummary
                         .getLastSummarizedMessageId())
+                .extraJson(mapper.writeValueAsString(sessionSummary.getExtra()))
                 .updatedAtMicro(sessionSummary.getUpdatedAt())
                 .build();
     }
@@ -520,6 +530,7 @@ public class ESSessionStore implements SessionStore {
         return mapper.readValue(document.getContent(), AgentMessage.class);
     }
 
+    @SneakyThrows
     private SessionSummary toWireSession(ESSessionDocument document) {
         return SessionSummary.builder()
                 .sessionId(document.getSessionId())
@@ -527,8 +538,18 @@ public class ESSessionStore implements SessionStore {
                 .keywords(document.getTopics())
                 .raw(document.getRaw())
                 .lastSummarizedMessageId(document.getLastSummarizedMessageId())
+                .extra(parseExtra(document.getExtraJson()))
                 .updatedAt(document.getUpdatedAtMicro())
                 .build();
+    }
+
+    @SneakyThrows
+    private Map<String, Object> parseExtra(String extraJson) {
+        if (Strings.isNullOrEmpty(extraJson)) {
+            return Map.of();
+        }
+        return mapper.readValue(extraJson, new TypeReference<Map<String, Object>>() {
+        });
     }
 
 }
