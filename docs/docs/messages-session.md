@@ -20,6 +20,7 @@ The `AgentSessionExtension` provides automated conversation history persistence 
 - **Context Injection**: Injects the latest session summary as a fact in the system prompt.
 - **Pre-filtering**: Supports filtering messages before persistence (e.g., removing system prompts or failed tool calls).
 - **Message Selection**: Supports selecting specific messages for context (e.g., removing unpaired tool calls).
+- **Extra Data Injection**: Attach custom metadata to every saved `SessionSummary` via `SessionExtraDataOperator`.
 
 ## Tools
 
@@ -67,6 +68,53 @@ final var response = agent.execute(AgentInput.<MyRequest>builder()
                 .build())
         .build());
 ```
+
+## Extra Data Injection
+
+`SessionExtraDataOperator` is a `UnaryOperator<SessionSummary>` that is applied inside `SessionStore.saveSession()` every time a summary is persisted. Use it to attach arbitrary metadata to the `extra` field of `SessionSummary` without touching the summarization logic.
+
+### Built-in factories
+
+| Factory | Behaviour |
+|---|---|
+| `SessionExtraDataOperator.empty()` | No-op; leaves `extra` unchanged (default). |
+| `SessionExtraDataOperator.fixed(map)` | Sets `extra` to a constant `Map<String, Object>` on every save. |
+
+### Custom operator
+
+Subclass `SessionExtraDataOperator` and implement `operate()` to derive the extra data from the summary itself:
+
+```java
+final var operator = new SessionExtraDataOperator() {
+    @Override
+    protected Optional<Map<String, Object>> operate(SessionSummary summary) {
+        return Optional.of(Map.of("tenant", resolveTenant(summary.getSessionId())));
+    }
+};
+```
+
+Returning `Optional.empty()` leaves `extra` unchanged.
+
+### Wiring into the session store
+
+The operator is configured on the `SessionStore` implementation, and called ever time `saveSession` is invoked:
+
+```java
+// Filesystem
+final var sessionStore = FileSystemSessionStore.builder()
+        .baseDir("/path/to/storage")
+        .mapper(objectMapper)
+        .extraDataOperator(SessionExtraDataOperator.fixed(Map.of("region", "us-east-1")))
+        .build();
+
+// Elasticsearch
+final var sessionStore = ESSessionStore.builder()
+        .client(esClient)
+        .mapper(objectMapper)
+        .extraDataOperator(SessionExtraDataOperator.fixed(Map.of("region", "us-east-1")))
+        .build();
+```
+
 
 ## Session Storage Implementations
 
