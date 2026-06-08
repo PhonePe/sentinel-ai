@@ -95,7 +95,6 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
         if (registry == null) {
             registry = new FileBasedSkillRegistry(baseDir);
         }
-        registry = new FileBasedSkillRegistry(baseDir);
         // Discover skills from all provided directories
         registry.discoverSkills(skillsDirectories, skillsToLoad);
         this.registry = registry;
