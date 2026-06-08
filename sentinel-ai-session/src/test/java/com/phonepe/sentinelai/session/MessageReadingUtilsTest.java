@@ -39,8 +39,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MessageReadingUtilsTest {
 
-    private static final class InMemorySessionStore implements SessionStore {
+    private static final class InMemorySessionStore extends SessionStore {
         private final Map<String, List<AgentMessage>> messageData = new ConcurrentHashMap<>();
+
+        public InMemorySessionStore() {
+            super(SessionExtraDataOperator.empty());
+        }
 
         @Override
         public boolean deleteSession(final String sessionId) {
@@ -122,11 +126,6 @@ class MessageReadingUtilsTest {
         }
 
         @Override
-        public Optional<SessionSummary> saveSession(final SessionSummary sessionSummary) {
-            return Optional.empty();
-        }
-
-        @Override
         public Optional<SessionSummary> session(final String sessionId) {
             return Optional.empty();
         }
@@ -137,6 +136,12 @@ class MessageReadingUtilsTest {
                                                      final QueryDirection queryDirection) {
             return null;
         }
+
+        @Override
+        protected Optional<SessionSummary> saveSessionImpl(final SessionSummary sessionSummary) {
+            return Optional.empty();
+        }
+
     }
 
     private InMemorySessionStore sessionStore;

@@ -19,13 +19,29 @@ package com.phonepe.sentinelai.session;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+
+import javax.annotation.Nullable;
 
 /**
  * A storage system for agent session
  */
-public interface SessionStore {
-    boolean deleteSession(String sessionId);
+public abstract class SessionStore {
+
+    private final SessionExtraDataOperator extraDataOperator;
+
+    protected SessionStore(@Nullable SessionExtraDataOperator extraDataOperator) {
+        this.extraDataOperator = Objects.requireNonNullElse(extraDataOperator, SessionExtraDataOperator.empty());
+    }
+
+    /**
+     * Deletes a session and all its associated data.
+     *
+     * @param sessionId The unique identifier for the session to delete.
+     * @return true if the session was successfully deleted, false otherwise.
+     */
+    public abstract boolean deleteSession(String sessionId);
 
     /**
      * Reads messages for a specific session with pagination support.
@@ -44,22 +60,66 @@ public interface SessionStore {
      * @return A {@link BiScrollable} containing the list of messages (sorted chronologically) and pointers for
      *         further scrolling.
      */
-    BiScrollable<AgentMessage> readMessages(String sessionId,
-                                            int count,
-                                            boolean skipSystemPrompt,
-                                            BiScrollable.DataPointer pointer,
-                                            QueryDirection queryDirection);
+    public abstract BiScrollable<AgentMessage> readMessages(String sessionId,
+                                                            int count,
+                                                            boolean skipSystemPrompt,
+                                                            BiScrollable.DataPointer pointer,
+                                                            QueryDirection queryDirection);
 
-    void saveMessages(String sessionId,
-                      String runId,
-                      List<AgentMessage> messages);
+    /**
+     * Saves a list of messages for a specific session and run. The session will be created if it doesn't exist.
+     *
+     * @param sessionId The unique identifier for the session.
+     * @param runId     The unique identifier for the run within the session.
+     * @param messages  The list of messages to save, in chronological order (oldest to newest).
+     */
+    public abstract void saveMessages(String sessionId,
+                                      String runId,
+                                      List<AgentMessage> messages);
 
-    Optional<SessionSummary> saveSession(SessionSummary sessionSummary);
+    /**
+     * Saves the session summary.
+     * The session summary will be created if it doesn't exist.
+     *
+     * @param sessionSummary The session summary to save.
+     * @return The saved session summary, or empty if the save operation failed.
+     */
+    public final Optional<SessionSummary> saveSession(SessionSummary sessionSummary) {
+        return saveSessionImpl(extraDataOperator.apply(sessionSummary));
+    }
 
-    Optional<SessionSummary> session(String sessionId);
+    /**
+     * Retrieves the session summary for a specific session.
+     *
+     * @param sessionId The unique identifier for the session.
+     * @return An Optional containing the session summary if found, or empty if not found.
+     */
+    public abstract Optional<SessionSummary> session(String sessionId);
 
-    BiScrollable<SessionSummary> sessions(int count,
-                                          String pointer,
-                                          QueryDirection queryDirection);
+    /**
+     * Lists session summaries with pagination support. The sessions are returned in reverse chronological order
+     * (newest to oldest).
+     *
+     * @param count          The maximum number of session summaries to retrieve.
+     * @param pointer        The {@link com.phonepe.sentinelai.session.BiScrollable.DataPointer} used by the client
+     *                       to indicate the current position in the session list.
+     * @param queryDirection The direction to scroll in: {@link QueryDirection#OLDER} to fetch sessions before the
+     *                       pointer,
+     *                       or {@link QueryDirection#NEWER} to fetch sessions after the pointer.
+     * @return A {@link BiScrollable} containing the list of session summaries (sorted reverse chronologically)
+     *         and pointers for further scrolling.
+     */
+    public abstract BiScrollable<SessionSummary> sessions(int count,
+                                                          String pointer,
+                                                          QueryDirection queryDirection);
+
+    /**
+     * Implementation method for saving the session summary.
+     * The session summary will be created if it doesn't exist.
+     *
+     * @param sessionSummary The session summary to save, with extra data applied.
+     * @return The saved session summary, or empty if the save operation failed.
+     */
+    protected abstract Optional<SessionSummary> saveSessionImpl(SessionSummary sessionSummary);
 
 }

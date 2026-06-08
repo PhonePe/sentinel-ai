@@ -40,6 +40,8 @@ public class ESSessionDocument {
 
     String lastSummarizedMessageId;
 
+    String extraJson;
+
     long updatedAtMicro;
 
     LocalDateTime createdAt;

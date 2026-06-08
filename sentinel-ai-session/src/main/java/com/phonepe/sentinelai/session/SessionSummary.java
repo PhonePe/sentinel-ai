@@ -21,8 +21,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.With;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * A summary for the session
@@ -48,5 +50,11 @@ public class SessionSummary {
     @JsonPropertyDescription("Structured data extracted from the conversation")
     String raw;
 
+    @JsonPropertyDescription("Any extra information that might be useful for the client")
+    @With
+    @Builder.Default
+    Map<String, Object> extra = Map.of();
+
+    @With
     long updatedAt;
 }
