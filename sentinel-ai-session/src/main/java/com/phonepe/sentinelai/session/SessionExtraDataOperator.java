@@ -26,17 +26,6 @@ import java.util.function.UnaryOperator;
 public abstract class SessionExtraDataOperator implements UnaryOperator<SessionSummary> {
 
     /**
-     * A no-op implementation of {@link SessionExtraDataOperator} that returns an empty optional,
-     * indicating that no extra data should be added to the session summary.
-     */
-    public static final class NoOp extends SessionExtraDataOperator {
-        @Override
-        protected Optional<Map<String, Object>> operate(SessionSummary sessionSummary) {
-            return Optional.empty();
-        }
-    }
-
-    /**
      * A fixed implementation of {@link SessionExtraDataOperator} that always returns the same extra data,
      * regardless of the input session summary.
      * This will make a copy of the input map once to ensure immutability and thread-safety.
@@ -51,6 +40,17 @@ public abstract class SessionExtraDataOperator implements UnaryOperator<SessionS
         @Override
         protected Optional<Map<String, Object>> operate(SessionSummary sessionSummary) {
             return Optional.of(extra);
+        }
+    }
+
+    /**
+     * A no-op implementation of {@link SessionExtraDataOperator} that returns an empty optional,
+     * indicating that no extra data should be added to the session summary.
+     */
+    public static final class NoOp extends SessionExtraDataOperator {
+        @Override
+        protected Optional<Map<String, Object>> operate(SessionSummary sessionSummary) {
+            return Optional.empty();
         }
     }
 
@@ -92,7 +92,7 @@ public abstract class SessionExtraDataOperator implements UnaryOperator<SessionS
      * Implementations of this method can choose to return an empty optional if no extra data should be added to
      * the session summary, or a non-empty optional if extra data should be added to the session summary.
      * Implementers need to be aware of the fact that this is called on every call of SessionSummary.saveSession()
-     * 
+     *
      * @param sessionSummary the session summary to operate on
      * @return an optional map of extra data to be added to the session summary
      */
