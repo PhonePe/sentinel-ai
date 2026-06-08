@@ -396,7 +396,7 @@ class ESSessionStoreTest extends ESIntegrationTestBase {
             assertTrue(savedSession.isPresent());
             assertEquals(5, savedSession.get().getExtra().size());
             assertEquals("text", savedSession.get().getExtra().get("stringValue"));
-            assertEquals(((Number) savedSession.get().getExtra().get("numberValue")).longValue(), 42L);
+            assertEquals(42L, ((Number) savedSession.get().getExtra().get("numberValue")).longValue());
             assertEquals(true, savedSession.get().getExtra().get("booleanValue"));
             assertEquals(List.of("a", "b", "c"), savedSession.get().getExtra().get("listValue"));
 

@@ -56,6 +56,7 @@ class SessionStoreTest {
         public void saveMessages(String sessionId,
                                  String runId,
                                  List<AgentMessage> messages) {
+            // Nothing to do here
         }
 
         @Override
