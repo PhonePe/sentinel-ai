@@ -120,7 +120,7 @@ class FileBasedSkillRegistryTest {
         assertNotNull(catalog);
         assertEquals(1, catalog.size());
         assertTrue(catalog.containsKey("my-skill"));
-        assertEquals("My skill description", catalog.get("my-skill"));
+        assertEquals("My skill description", catalog.get("my-skill").getDescription());
     }
 
     @Test

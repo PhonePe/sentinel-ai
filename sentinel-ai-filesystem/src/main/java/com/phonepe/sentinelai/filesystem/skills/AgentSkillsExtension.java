@@ -144,7 +144,9 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
 
         final var sb = new StringBuilder();
         sb.append("Available Skills:\n\n");
-        catalog.forEach((name, description) -> sb.append(String.format("- **%s**: %s%n", name, description)));
+        catalog.forEach((name, metadata) -> sb.append(String.format("- **%s**: %s%n",
+                                                                    name,
+                                                                    metadata.getDescription())));
         return sb.toString();
     }
 

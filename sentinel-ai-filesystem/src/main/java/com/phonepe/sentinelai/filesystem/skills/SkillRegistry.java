@@ -37,9 +37,15 @@ public interface SkillRegistry {
 
     String formatLoadedSkillsAsYaml();
 
-    Map<String, String> getSkillCatalog();
+    Optional<AgentSkill> getLoadedSkill(String skillName);
+
+    Map<String, AgentSkill> getLoadedSkills();
+
+    Map<String, SkillMetadata> getSkillCatalog();
 
     Set<String> getSkillNames();
+
+    boolean hasSkills();
 
     Optional<String> loadReferenceFile(String skillName, String referenceFilePath) throws IOException;
 

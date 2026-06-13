@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.filesystem.skills;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -41,10 +42,12 @@ import java.util.stream.Stream;
 public class FileBasedSkillRegistry implements SkillRegistry {
 
     private final String baseDir;
+    private final Set<Path> skillDirectories = new HashSet<>();
     private final SkillParser parser = new SkillParser();
     private final Map<String, SkillMetadata> skillCatalog = new LinkedHashMap<>();
+
+    @Getter
     private final Map<String, AgentSkill> loadedSkills = new LinkedHashMap<>();
-    private final Set<Path> skillDirectories = new HashSet<>();
 
     public FileBasedSkillRegistry(final String baseDir) {
         this.baseDir = baseDir;
@@ -79,6 +82,15 @@ public class FileBasedSkillRegistry implements SkillRegistry {
         throw new IllegalArgumentException("Skills directory does not exist: " + skillDir);
     }
 
+    /**
+     * Discovers skills in the specified skill directories
+     * Only loads the skills specified as to keep the memory footprint and token usage low.
+     *
+     * @param skillsDirs   - a list of skill directories to scan
+     * @param skillsToLoad - a collection of skill names to load. If the collection is empty, then all available skills
+     *                     are loaded
+     * @throws IOException
+     */
     @Override
     public void discoverSkills(List<String> skillsDirs, Collection<String> skillsToLoad) throws IOException {
         // Discover skills from all provided directories
@@ -167,6 +179,7 @@ public class FileBasedSkillRegistry implements SkillRegistry {
     /**
      * Get a loaded skill by name
      */
+    @Override
     public Optional<AgentSkill> getLoadedSkill(String skillName) {
         return Optional.ofNullable(loadedSkills.get(skillName));
     }
@@ -175,11 +188,12 @@ public class FileBasedSkillRegistry implements SkillRegistry {
      * Get skill catalog (name + description only)
      */
     @Override
-    public Map<String, String> getSkillCatalog() {
-        return skillCatalog.entrySet().stream()
+    public Map<String, SkillMetadata> getSkillCatalog() {
+        return skillCatalog.entrySet()
+                .stream()
                 .collect(Collectors.toMap(
                                           Map.Entry::getKey,
-                                          e -> e.getValue().getDescription(),
+                                          Map.Entry::getValue,
                                           (a, b) -> a,
                                           LinkedHashMap::new));
     }
@@ -195,6 +209,7 @@ public class FileBasedSkillRegistry implements SkillRegistry {
     /**
      * Check if any skills are available
      */
+    @Override
     public boolean hasSkills() {
         return !skillCatalog.isEmpty();
     }
