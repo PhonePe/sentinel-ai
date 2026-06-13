@@ -37,6 +37,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -47,6 +48,17 @@ import java.util.concurrent.locks.StampedLock;
 /**
  * Filesystem based implementation of AgentMemoryStore.
  * This is not for serious production use.
+ *
+ * <p>Optimizations over the naive implementation:
+ * <ol>
+ * <li><b>Pre-computed vector norms</b>: Each stored vector's L2 norm is computed once at save/load
+ * time and cached in {@link StoredAgentMemory}. The query vector norm is computed once per
+ * {@code findMemories} call. The old approach recomputed both norms inside the sort comparator,
+ * causing O(N log N &times; dim) norm operations; the new approach does O(N &times; dim) scoring
+ * in a single linear pass then O(N log N) comparisons on pre-scored doubles.
+ * <li><b>Score-first sort</b>: All candidates are scored in one linear pass before sorting,
+ * which is more cache-friendly and avoids redundant computation inside the comparator.
+ * </ol>
  */
 @Slf4j
 public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
@@ -59,6 +71,11 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
     public static class StoredAgentMemory {
         private AgentMemory memory;
         private float[] vector;
+        /**
+         * Pre-computed L2 norm of {@code vector}. Cached to eliminate per-comparison norm
+         * recomputation during semantic search scoring.
+         */
+        private double vectorNorm;
     }
 
     private final Path memoryRoot;
@@ -77,6 +94,46 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
         loadMemories();
     }
 
+    /**
+     * Compute the L2 norm (magnitude) of a vector.
+     *
+     * <p>Uses {@code x * x} instead of {@code Math.pow(x, 2)} — the latter routes through a
+     * general exponentiation path that is measurably slower for the square case.
+     */
+    static double vectorNorm(float[] v) {
+        double norm = 0.0;
+        for (final float x : v) {
+            norm += (double) x * x;
+        }
+        return Math.sqrt(norm);
+    }
+
+    /**
+     * Compute cosine similarity between a stored memory's vector and a query vector using
+     * pre-computed norms, avoiding redundant norm recomputation on repeated calls.
+     */
+    private static double computeSimilarity(StoredAgentMemory stored,
+                                            float[] queryVector,
+                                            double queryNorm) {
+        final var sv = stored.getVector();
+        if (sv == null || sv.length != queryVector.length || stored.getVectorNorm() == 0.0
+                || queryNorm == 0.0) {
+            return 0.0;
+        }
+        return dotProduct(sv, queryVector) / (stored.getVectorNorm() * queryNorm);
+    }
+
+    /**
+     * Compute the dot product of two equal-length vectors.
+     */
+    private static double dotProduct(float[] a, float[] b) {
+        double sum = 0.0;
+        for (int i = 0; i < a.length; i++) {
+            sum += (double) a[i] * b[i];
+        }
+        return sum;
+    }
+
     @Override
     @SuppressWarnings("java:S3776")
     public List<AgentMemory> findMemories(String scopeId,
@@ -90,7 +147,9 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
                 ? embeddingModel.getEmbedding(query)
                 : null;
 
-        return cache.values().stream()
+        // Apply all keyword/metadata filters first (cheap), materialise the surviving set, then rank.
+        // Materialising before sorting avoids running the filter predicate inside the sort comparator.
+        final var filtered = cache.values().stream()
                 .filter(stored -> {
                     final var memory = stored.getMemory();
                     if (scope != null && !Strings.isNullOrEmpty(scopeId)) {
@@ -113,8 +172,12 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
                     }
                     return minReusabilityScore == 0 || memory.getReusabilityScore() >= minReusabilityScore;
                 })
-                .sorted((a, b) -> {
-                    if (queryVector == null) {
+                .toList();
+
+        if (queryVector == null) {
+            // No semantic query: sort by recency (most-recently updated first).
+            return filtered.stream()
+                    .sorted((a, b) -> {
                         final var lhs = a.getMemory().getUpdatedAt();
                         final var rhs = b.getMemory().getUpdatedAt();
                         if (lhs == null || rhs == null) {
@@ -122,12 +185,26 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
                             return lhs == null ? rhsValue : -1;
                         }
                         return rhs.compareTo(lhs);
-                    }
-                    return Double.compare(cosineSimilarity(b.getVector(), queryVector),
-                                          cosineSimilarity(a.getVector(), queryVector));
-                })
+                    })
+                    .limit(count)
+                    .map(StoredAgentMemory::getMemory)
+                    .toList();
+        }
+
+        // Semantic query path.
+        //
+        // Key optimisation: compute the query vector's L2 norm ONCE here, outside the sort.
+        // The old approach called cosineSimilarity() inside the comparator, which recomputed the
+        // query norm on every invocation — O(N log N) recomputations of O(dim) work each.
+        //
+        // New approach: one linear scoring pass O(N × dim) using pre-stored memory norms and
+        // the once-computed query norm, followed by O(N log N) sort on plain doubles.
+        final double queryNorm = vectorNorm(queryVector);
+        return filtered.stream()
+                .map(stored -> Map.entry(stored, computeSimilarity(stored, queryVector, queryNorm)))
+                .sorted(Map.Entry.<StoredAgentMemory, Double>comparingByValue().reversed())
                 .limit(count)
-                .map(StoredAgentMemory::getMemory)
+                .map(e -> e.getKey().getMemory())
                 .toList();
     }
 
@@ -148,6 +225,7 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
         final var stored = new StoredAgentMemory();
         stored.setMemory(memoryToSave);
         stored.setVector(vector);
+        stored.setVectorNorm(vectorNorm(vector));
 
         final var stamp = lock.writeLock();
         try {
@@ -166,30 +244,9 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
         }
     }
 
-    /**
-     * Compute cosine similarity between two vectors.
-     * Returns a value between -1 and 1, where 1 means identical, 0 means orthogonal, and -1 means opposite.
-     * Implementation:
-     * - Compute the dot product of the two vectors.
-     * - Compute the magnitude (norm) of each vector.
-     * - Divide the dot product by the product of the magnitudes.
-     */
-    private double cosineSimilarity(float[] lhs, float[] rhs) {
-        if (lhs == null || rhs == null || lhs.length != rhs.length) {
-            return 0.0;
-        }
-        double dotProduct = 0.0;
-        double normLhs = 0.0;
-        double normB = 0.0;
-        for (int i = 0; i < lhs.length; i++) {
-            dotProduct += lhs[i] * rhs[i];
-            normLhs += Math.pow(lhs[i], 2);
-            normB += Math.pow(rhs[i], 2);
-        }
-        if (normLhs == 0.0 || normB == 0.0) {
-            return 0.0;
-        }
-        return dotProduct / (Math.sqrt(normLhs) * Math.sqrt(normB));
+    /** Package-private accessor used only by unit tests to inspect the in-memory cache. */
+    ConcurrentHashMap<String, StoredAgentMemory> getCacheForTest() {
+        return cache;
     }
 
     @SneakyThrows
@@ -205,6 +262,7 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
                         final var stored = new StoredAgentMemory();
                         stored.setMemory(memory);
                         stored.setVector(vector);
+                        stored.setVectorNorm(vectorNorm(vector)); // pre-compute norm at load time
                         cache.put(path.getFileName().toString(), stored);
                     }
                 }
