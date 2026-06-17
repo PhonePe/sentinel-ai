@@ -19,6 +19,7 @@ package com.phonepe.sentinelai.evals.tests;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 
+import lombok.Builder;
 import lombok.Value;
 
 import java.util.List;
@@ -29,6 +30,7 @@ import java.util.List;
  * @param <R> request type associated with the evaluated agent run
  */
 @Value
+@Builder
 public class EvalExpectationContext<R> {
     /** Unique run identifier for the current evaluation invocation. */
     String runId;
@@ -38,4 +40,8 @@ public class EvalExpectationContext<R> {
     List<AgentMessage> oldMessages;
     /** Model usage statistics associated with the run. */
     ModelUsageStats modelUsageStats;
+    /** Model identifier used by model-aware metric calculations. */
+    String modelId;
+    /** Wall-clock milliseconds for the agent {@code execute()} call only. */
+    Long latencyMs;
 }

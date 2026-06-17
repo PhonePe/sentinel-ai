@@ -14,22 +14,26 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.evals.tests;
+package com.phonepe.sentinelai.evals.tests.metrics;
+
+import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
+
+import lombok.val;
 
 /**
- * Marker interface representing the <em>definition</em> of an expectation.
- *
- * An Expectation carries only the configuration data that describes WHAT to assert
- * (e.g. an expected substring, a JSON-Path expression, a metric threshold). All
- * computation is delegated to a corresponding {@link ExpectationExecutor} created
- * by an {@link ExpectationExecutorFactory}.
- *
- * @param <R> result/output type being evaluated
- * @param <T> input/request type
+ * Executor for {@link TokenUsageMetric} that reads total tokens from
+ * {@link com.phonepe.sentinelai.core.model.ModelUsageStats}.
  */
-@SuppressWarnings("unused")
-public interface Expectation<R, T> {
-    default String id() {
-        return toString();
+public class TokenUsageMetricExecutor<R, T> implements MetricExecutor<R, T> {
+
+    @Override
+    public double calculate(R result, EvalExpectationContext<T> context) {
+        val usage = context.getModelUsageStats();
+        return usage != null ? usage.getTotalTokens() : 0.0;
+    }
+
+    @Override
+    public String metricName() {
+        return "TokenUsage";
     }
 }

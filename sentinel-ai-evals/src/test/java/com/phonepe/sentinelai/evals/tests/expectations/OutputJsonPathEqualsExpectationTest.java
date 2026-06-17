@@ -19,7 +19,6 @@ package com.phonepe.sentinelai.evals.tests.expectations;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.evals.tests.TestFactory;
-import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 
 import lombok.AllArgsConstructor;

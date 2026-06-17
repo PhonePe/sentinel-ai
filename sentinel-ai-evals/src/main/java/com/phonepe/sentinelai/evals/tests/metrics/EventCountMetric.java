@@ -14,22 +14,26 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.evals.tests;
+package com.phonepe.sentinelai.evals.tests.metrics;
+
+import com.phonepe.sentinelai.core.events.EventType;
+
+import lombok.Value;
 
 /**
- * Marker interface representing the <em>definition</em> of an expectation.
+ * A metric that counts how many times a specific agent event occurred.
  *
- * An Expectation carries only the configuration data that describes WHAT to assert
- * (e.g. an expected substring, a JSON-Path expression, a metric threshold). All
- * computation is delegated to a corresponding {@link ExpectationExecutor} created
- * by an {@link ExpectationExecutorFactory}.
- *
- * @param <R> result/output type being evaluated
+ * @param <R> result/output type
  * @param <T> input/request type
  */
-@SuppressWarnings("unused")
-public interface Expectation<R, T> {
-    default String id() {
-        return toString();
+@Value
+public class EventCountMetric<R, T> implements Metric<R, T> {
+    String agentName;
+    EventType eventType;
+    String eventKey;
+
+    @Override
+    public String metricName() {
+        return "EventCount";
     }
 }

@@ -49,7 +49,8 @@ class EvalReportAssertionsTest {
                                                                                                false,
                                                                                                "Expected output to contain green")),
                                                             "Expectation failed: contains green",
-                                                            1)))
+                                                            1,
+                                                            null)))
                 .build();
 
         assertThrows(AssertionError.class, () -> EvalReportAssertions.assertNoFailures(report));
@@ -72,7 +73,8 @@ class EvalReportAssertionsTest {
                                                             "output",
                                                             List.of(ExpectationReport.passFail("x", true, "ok")),
                                                             "All expectations passed",
-                                                            1)))
+                                                            1,
+                                                            null)))
                 .build();
 
         assertDoesNotThrow(() -> EvalReportAssertions.assertNoFailures(report));

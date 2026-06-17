@@ -14,22 +14,12 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.evals.tests;
+package com.phonepe.sentinelai.evals.tests.metrics;
 
-/**
- * Marker interface representing the <em>definition</em> of an expectation.
- *
- * An Expectation carries only the configuration data that describes WHAT to assert
- * (e.g. an expected substring, a JSON-Path expression, a metric threshold). All
- * computation is delegated to a corresponding {@link ExpectationExecutor} created
- * by an {@link ExpectationExecutorFactory}.
- *
- * @param <R> result/output type being evaluated
- * @param <T> input/request type
- */
-@SuppressWarnings("unused")
-public interface Expectation<R, T> {
-    default String id() {
-        return toString();
+public class AgentLatencyMetric<R, T> implements Metric<R, T> {
+
+    @Override
+    public String metricName() {
+        return "AgentLatency";
     }
 }

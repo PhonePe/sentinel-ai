@@ -17,32 +17,15 @@
 package com.phonepe.sentinelai.evals.tests.expectations.jsonpath;
 
 import com.phonepe.sentinelai.evals.tests.Expectation;
+import com.phonepe.sentinelai.evals.tests.expectations.Operator;
 
-import lombok.ToString;
 
-/**
- * Expectation definition that asserts a JSON-Path expression in the output satisfies
- * a given comparison operator against an expected value.
- *
- * Computation is performed by {@code OutputJsonPathCompareExpectationExecutor}.
- *
- * @param <R> result/output type
- * @param <T> input/request type
- */
-@ToString
 public class OutputJsonPathCompareExpectation<R, T> implements Expectation<R, T> {
 
     private final String jsonPath;
     private final Operator operator;
     private final Object expectedValue;
 
-    /**
-     * Creates a JSONPath comparison expectation.
-     *
-     * @param jsonPath      JSONPath expression to evaluate against the output
-     * @param operator      comparison operator to apply
-     * @param expectedValue expected comparison value
-     */
     public OutputJsonPathCompareExpectation(String jsonPath,
                                             Operator operator,
                                             Object expectedValue) {
@@ -62,30 +45,20 @@ public class OutputJsonPathCompareExpectation<R, T> implements Expectation<R, T>
         return "$." + trimmed;
     }
 
-    /**
-     * Returns the expected comparison value.
-     *
-     * @return expected value used during comparison
-     */
     public Object getExpectedValue() {
         return expectedValue;
     }
 
-    /**
-     * Returns the normalized JSONPath expression.
-     *
-     * @return JSONPath expression starting with {@code $}
-     */
     public String getJsonPath() {
         return jsonPath;
     }
 
-    /**
-     * Returns the operator used for comparison.
-     *
-     * @return comparison operator
-     */
     public Operator getOperator() {
         return operator;
+    }
+
+    @Override
+    public String toString() {
+        return "OutputJsonPathCompareExpectation(path=" + jsonPath + ", operator=" + operator + ")";
     }
 }

@@ -51,4 +51,9 @@ public class OrderedExpectation<R, T> implements Expectation<R, T> {
     public List<MessageExpectation<R, T>> getExpectations() {
         return expectations;
     }
+
+    @Override
+    public String toString() {
+        return "OrderedExpectation(count=" + expectations.size() + ")";
+    }
 }

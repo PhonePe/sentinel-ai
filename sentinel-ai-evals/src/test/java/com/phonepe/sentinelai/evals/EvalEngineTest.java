@@ -36,6 +36,7 @@ import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.evals.tests.Dataset;
+import com.phonepe.sentinelai.evals.tests.Expectation;
 import com.phonepe.sentinelai.evals.tests.ExpectationExecutorRegistry;
 import com.phonepe.sentinelai.evals.tests.Expectations;
 import com.phonepe.sentinelai.evals.tests.TestCase;
@@ -140,6 +141,133 @@ class EvalEngineTest {
         };
     }
 
+    /**
+     * Covers AgentEventExpectation via AgentEventTracer.
+     */
+    @Test
+    void testAgentEventExpectation() {
+        val tracer = new AgentEventTracer();
+        val metricRegistry = MetricExecutorRegistry.withDefaults().withEventMetrics(tracer);
+        val expectationRegistry = ExpectationExecutorRegistry.withDefaults(metricRegistry, TestFactory.mapper())
+                .withEventExpectations(tracer);
+        val engine = new EvalEngine(TestFactory.mapper(), expectationRegistry);
+
+        val agent = TestFactory.testAgent("ok");
+        // Pre-seed the same tracer used by the registry so the expectation
+        // executor sees matching events (agent event bus is async and the
+        // agent wires a new tracer, so the registry's tracer stays empty).
+        tracer.handleAgentEvent(
+                                new com.phonepe.sentinelai.core.events.OutputGeneratedAgentEvent(
+                                                                                                 "test-agent",
+                                                                                                 "run-1",
+                                                                                                 null,
+                                                                                                 null,
+                                                                                                 "ok",
+                                                                                                 null,
+                                                                                                 java.time.Duration
+                                                                                                         .ofMillis(10)));
+
+        val expectations = List.<com.phonepe.sentinelai.evals.tests.Expectation<String, String>>of(
+                                                                                                   new com.phonepe.sentinelai.evals.tests.expectations.AgentEventExpectation<>(
+                                                                                                                                                                               "test-agent",
+                                                                                                                                                                               com.phonepe.sentinelai.core.events.EventType.OUTPUT_GENERATED,
+                                                                                                                                                                               null,
+                                                                                                                                                                               null,
+                                                                                                                                                                               null,
+                                                                                                                                                                               null));
+        val tests = List.of(new TestCase<>("input", expectations));
+        val dataset = new Dataset<>("agent-event", tests);
+
+        val report = engine.run(dataset, agent, EvalRunConfig.defaults());
+
+        assertEquals(1, report.getPassedTestCases());
+    }
+
+    /**
+     * Covers AgentLatencyMetric (registered by default).
+     */
+    @Test
+    void testAgentLatencyMetric() {
+        EvalEngine engine = engineWithMockJudgeModel();
+        val expectations = List.<Expectation<String, String>>of(new MetricExpectation<>(
+                                                                                        new com.phonepe.sentinelai.evals.tests.metrics.AgentLatencyMetric<>()));
+        val tests = List.of(new TestCase<String, String>("input", expectations));
+        val dataset = new Dataset<>("latency", tests);
+
+        val report = engine.run(dataset, TestFactory.testAgent("ok"), EvalRunConfig.defaults());
+
+        assertEquals(1, report.getPassedTestCases());
+        assertTrue(report.getTestCaseReports().get(0).getExpectationReports().get(0).getScore().isPresent());
+    }
+
+    /**
+     * Covers CostMetric registered via registry fluent API.
+     */
+    @Test
+    void testCostMetric() {
+        val costCalculator = new com.phonepe.sentinelai.evals.tests.metrics.CostCalculator() {
+            @Override
+            public double calculate(String modelId, ModelUsageStats usage) {
+                return 0.42;
+            }
+        };
+        val metricRegistry = MetricExecutorRegistry.withDefaults()
+                .withCostMetric(costCalculator);
+        val expectationRegistry = ExpectationExecutorRegistry.withDefaults(metricRegistry, TestFactory.mapper());
+        val engine = new EvalEngine(TestFactory.mapper(), expectationRegistry);
+
+        val expectations = List.<com.phonepe.sentinelai.evals.tests.Expectation<String, String>>of(
+                                                                                                   new MetricExpectation<>(new com.phonepe.sentinelai.evals.tests.metrics.CostMetric<>()));
+        val tests = List.of(new TestCase<>("input", expectations));
+        val dataset = new Dataset<>("cost", tests);
+
+        val report = engine.run(dataset, TestFactory.testAgent("ok"), EvalRunConfig.defaults());
+
+        assertEquals(1, report.getPassedTestCases());
+        assertTrue(report.getTestCaseReports().get(0).getExpectationReports().get(0).getScore().isPresent());
+        assertEquals(0.42, report.getTestCaseReports().get(0).getExpectationReports().get(0).getScore().get(), 0.001);
+    }
+
+    /**
+     * Covers EventCountMetric / EventLatencyMetric via AgentEventTracer.
+     */
+    @Test
+    void testEventMetrics() {
+        val tracer = new AgentEventTracer();
+        val metricRegistry = MetricExecutorRegistry.withDefaults().withEventMetrics(tracer);
+        val expectationRegistry = ExpectationExecutorRegistry.withDefaults(metricRegistry, TestFactory.mapper())
+                .withEventExpectations(tracer);
+        val engine = new EvalEngine(TestFactory.mapper(), expectationRegistry);
+
+        val agent = TestFactory.testAgent("ok");
+        // Pre-seed the same tracer used by the registry so metrics see events
+        tracer.handleAgentEvent(
+                                new com.phonepe.sentinelai.core.events.OutputGeneratedAgentEvent(
+                                                                                                 "test-agent",
+                                                                                                 "run-1",
+                                                                                                 null,
+                                                                                                 null,
+                                                                                                 "ok",
+                                                                                                 null,
+                                                                                                 java.time.Duration
+                                                                                                         .ofMillis(100)));
+
+        val expectations = List.<com.phonepe.sentinelai.evals.tests.Expectation<String, String>>of(
+                                                                                                   new MetricExpectation<>(new com.phonepe.sentinelai.evals.tests.metrics.EventCountMetric<>("test-agent",
+                                                                                                                                                                                             com.phonepe.sentinelai.core.events.EventType.OUTPUT_GENERATED,
+                                                                                                                                                                                             null)),
+                                                                                                   new MetricExpectation<>(new com.phonepe.sentinelai.evals.tests.metrics.EventLatencyMetric<>("test-agent",
+                                                                                                                                                                                               com.phonepe.sentinelai.core.events.EventType.OUTPUT_GENERATED,
+                                                                                                                                                                                               null)));
+        val tests = List.of(new TestCase<>("input", expectations));
+        val dataset = new Dataset<>("event-metrics", tests);
+
+        val report = engine.run(dataset, agent, EvalRunConfig.defaults());
+
+        assertEquals(1, report.getPassedTestCases());
+        assertEquals(2, report.getTestCaseReports().get(0).getExpectationReports().size());
+    }
+
     @Test
     void testFailFast() {
         EvalEngine engine = engineWithMockJudgeModel();
@@ -209,6 +337,60 @@ class EvalEngineTest {
         assertEquals(EvalStatus.SKIPPED, report.getTestCaseReports().get(0).getStatus());
     }
 
+    /**
+     * Covers OutputContainsExpectation and OutputEqualsExpectation variants.
+     */
+    @Test
+    void testOutputContainsAndEqualsVariants() {
+        EvalEngine engine = engineWithMockJudgeModel();
+        val expectations = List.<Expectation<String, String>>of(
+                                                                Expectations.outputContains("ok"),
+                                                                Expectations.outputEquals("ok"));
+        val tests = List.of(new TestCase<String, String>("input", expectations));
+        val dataset = new Dataset<String, String>("output-variants", tests);
+
+        val report = engine.run(dataset, TestFactory.testAgent("ok"), EvalRunConfig.defaults());
+
+        assertEquals(2, report.getTestCaseReports().get(0).getExpectationReports().size());
+        assertTrue(report.getTestCaseReports().get(0).getExpectationReports().stream()
+                .allMatch(r -> r.getStatus() == EvalStatus.PASSED));
+    }
+
+    /**
+     * Validates report structure for all expected fields.
+     */
+    @Test
+    void testReportContainsAllExpectedFields() {
+        EvalEngine engine = engineWithMockJudgeModel();
+        val expectations = List.<Expectation<String, String>>of(
+                                                                Expectations.outputContains("ok"),
+                                                                Expectations.outputEquals("ok"));
+        val tests = List.of(new TestCase<String, String>("input", expectations));
+        val dataset = new Dataset<String, String>("report-structure", tests);
+
+        val report = engine.run(dataset, TestFactory.testAgent("ok"), EvalRunConfig.defaults());
+
+        assertEquals("report-structure", report.getDatasetName());
+        assertEquals(1, report.getTotalTestCases());
+        assertEquals(1, report.getSampledTestCases());
+        assertEquals(1, report.getExecutedTestCases());
+        assertEquals(1, report.getPassedTestCases());
+        assertEquals(0, report.getFailedTestCases());
+        assertEquals(0, report.getSkippedTestCases());
+        assertTrue(report.isCompletedAllSampledCases());
+        assertEquals(1, report.getTestCaseReports().size());
+
+        val tcr = report.getTestCaseReports().get(0);
+        assertEquals("input", tcr.getInput());
+        assertEquals(EvalStatus.PASSED, tcr.getStatus());
+        assertEquals("ok", tcr.getOutput());
+        assertEquals(2, tcr.getExpectationReports().size());
+        assertEquals("All expectations passed", tcr.getDetails());
+        assertTrue(tcr.getEvalDurationMs() >= 0);
+        assertTrue(tcr.getAgentLatencyMs() != null && tcr.getAgentLatencyMs() >= 0);
+        assertTrue(report.getDurationMs() >= 0);
+    }
+
     @Test
     void testSampling() {
         EvalEngine engine = engineWithMockJudgeModel();
@@ -247,6 +429,23 @@ class EvalEngineTest {
         assertEquals(1, report.getSkippedTestCases());
         assertEquals(EvalStatus.SKIPPED, report.getTestCaseReports().get(0).getStatus());
         assertTrue(report.getTestCaseReports().get(0).getDetails().contains("Timed out"));
+    }
+
+    /**
+     * Covers TokenUsageMetric (registered by default).
+     */
+    @Test
+    void testTokenUsageMetric() {
+        EvalEngine engine = engineWithMockJudgeModel();
+        val expectations = List.<Expectation<String, String>>of(new MetricExpectation<>(
+                                                                                        new com.phonepe.sentinelai.evals.tests.metrics.TokenUsageMetric<>()));
+        val tests = List.of(new TestCase<String, String>("input", expectations));
+        val dataset = new Dataset<String, String>("token-usage", tests);
+
+        val report = engine.run(dataset, TestFactory.testAgent("ok"), EvalRunConfig.defaults());
+
+        assertEquals(1, report.getPassedTestCases());
+        assertTrue(report.getTestCaseReports().get(0).getExpectationReports().get(0).getScore().isPresent());
     }
 
     @Test

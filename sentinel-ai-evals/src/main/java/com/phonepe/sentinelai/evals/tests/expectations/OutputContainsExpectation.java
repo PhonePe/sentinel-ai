@@ -18,7 +18,6 @@ package com.phonepe.sentinelai.evals.tests.expectations;
 
 import com.phonepe.sentinelai.evals.tests.Expectation;
 
-import lombok.ToString;
 
 /**
  * Expectation definition that asserts the output string contains a given substring
@@ -28,7 +27,6 @@ import lombok.ToString;
  *
  * @param <T> input/request type
  */
-@ToString
 public class OutputContainsExpectation<T> implements Expectation<String, T> {
 
     private final String containsSubstring;
@@ -49,5 +47,10 @@ public class OutputContainsExpectation<T> implements Expectation<String, T> {
      */
     public String getContainsSubstring() {
         return containsSubstring;
+    }
+
+    @Override
+    public String toString() {
+        return "OutputContainsExpectation(contains=" + containsSubstring + ")";
     }
 }

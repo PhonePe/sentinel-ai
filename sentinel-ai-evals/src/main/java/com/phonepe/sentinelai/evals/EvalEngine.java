@@ -115,14 +115,19 @@ public class EvalEngine {
 
     private static <R, T> EvalExpectationContext<R> buildContext(TestCase<R, T> testCase,
                                                                  List<AgentMessage> allMessages,
-                                                                 ModelUsageStats usageStats) {
+                                                                 ModelUsageStats usageStats,
+                                                                 String modelId,
+                                                                 Long latencyMs) {
         final var safeMessages = Objects.requireNonNullElse(allMessages, List.<AgentMessage>of());
-        return new EvalExpectationContext<>("eval-run-" + UUID.randomUUID(),
-                                            testCase.getInput(),
-                                            safeMessages,
-                                            Objects.requireNonNullElseGet(usageStats, ModelUsageStats::new));
+        return EvalExpectationContext.<R>builder()
+                .runId("eval-run-" + UUID.randomUUID())
+                .request(testCase.getInput())
+                .oldMessages(safeMessages)
+                .modelUsageStats(Objects.requireNonNullElseGet(usageStats, ModelUsageStats::new))
+                .modelId(modelId)
+                .latencyMs(latencyMs)
+                .build();
     }
-
 
     private static List<MetricScore> collectRawMetricScores(List<TestCaseReport> reports) {
         final List<MetricScore> scores = new ArrayList<>();
@@ -139,8 +144,17 @@ public class EvalEngine {
         return scores;
     }
 
+
     private static long elapsedMs(Stopwatch stopwatch) {
         return stopwatch.elapsed(TimeUnit.MILLISECONDS);
+    }
+
+    private static <R, T, A extends Agent<R, T, A>> String resolveModelId(Agent<R, T, A> agent) {
+        var setup = agent.getSetup();
+        if (setup == null || setup.getModel() == null) {
+            return null;
+        }
+        return setup.getModel().modelId();
     }
 
     @SuppressWarnings("java:S2245")
@@ -256,9 +270,11 @@ public class EvalEngine {
         final var callerStopwatch = Stopwatch.createStarted();
         final var execution = CompletableFuture.supplyAsync(() -> {
             final var supplierStopwatch = Stopwatch.createStarted();
+            final var agentStopwatch = Stopwatch.createStarted();
             final var output = agent.execute(AgentInput.<R>builder()
                     .request(testCase.getInput())
                     .build());
+            final var agentLatencyMs = elapsedMs(agentStopwatch);
 
             final var expectationReports = new ArrayList<ExpectationReport>();
             if (output.getError() != null && output.getError().getErrorType() != ErrorType.SUCCESS) {
@@ -267,24 +283,34 @@ public class EvalEngine {
                                           output.getData(),
                                           expectationReports,
                                           "Agent execution failed: " + output.getError().getMessage(),
-                                          elapsedMs(supplierStopwatch));
+                                          elapsedMs(supplierStopwatch),
+                                          agentLatencyMs);
             }
 
-            final var context = buildContext(testCase, output.getAllMessages(), output.getUsage());
+            final var modelId = resolveModelId(agent);
+            final var context = buildContext(testCase,
+                                             output.getAllMessages(),
+                                             output.getUsage(),
+                                             modelId,
+                                             agentLatencyMs);
             var status = EvalStatus.PASSED;
             var details = "All expectations passed";
 
             final List<Expectation<T, R>> expectations = Objects.requireNonNullElse(testCase.getExpectations(),
                                                                                     List.of());
 
+            var hasFailure = false;
             for (Expectation<T, R> expectation : expectations) {
                 final var executor = createExecutor(agent, expectation);
                 final var report = executor.evaluateWithReport(output.getData(), context);
                 expectationReports.add(report);
                 if (report.getStatus() == EvalStatus.FAILED) {
-                    status = EvalStatus.FAILED;
-                    details = "Expectation failed: " + report.getExpectation();
-                    break;
+                    hasFailure = true;
+                    if (!config.isEvaluateAllExpectations()) {
+                        status = EvalStatus.FAILED;
+                        details = "Expectation failed: " + report.getExpectation();
+                        break;
+                    }
                 }
                 if (report.getStatus() == EvalStatus.SKIPPED) {
                     status = EvalStatus.SKIPPED;
@@ -292,12 +318,18 @@ public class EvalEngine {
                     log.warn("Expectation skipped during evaluation: {}", report.getExpectation());
                 }
             }
+
+            if (hasFailure) {
+                status = EvalStatus.FAILED;
+                details = "One or more expectations failed";
+            }
             return new TestCaseReport(testCase.getInput(),
                                       status,
                                       output.getData(),
                                       expectationReports,
                                       details,
-                                      elapsedMs(supplierStopwatch));
+                                      elapsedMs(supplierStopwatch),
+                                      agentLatencyMs);
         }, executorService);
 
         final var timeout = Objects.requireNonNullElse(testCase.getTimeout(), config.getDefaultTestCaseTimeout());
@@ -312,7 +344,8 @@ public class EvalEngine {
                                       null,
                                       List.of(),
                                       "Timed out after " + timeout,
-                                      elapsedMs(callerStopwatch));
+                                      elapsedMs(callerStopwatch),
+                                      null);
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -321,7 +354,8 @@ public class EvalEngine {
                                       null,
                                       List.of(),
                                       "Test case execution interrupted",
-                                      elapsedMs(callerStopwatch));
+                                      elapsedMs(callerStopwatch),
+                                      null);
         }
         catch (Exception e) {
             return new TestCaseReport(testCase.getInput(),
@@ -329,7 +363,8 @@ public class EvalEngine {
                                       null,
                                       List.of(),
                                       "Exception during testcase execution: " + e.getMessage(),
-                                      elapsedMs(callerStopwatch));
+                                      elapsedMs(callerStopwatch),
+                                      null);
         }
     }
 

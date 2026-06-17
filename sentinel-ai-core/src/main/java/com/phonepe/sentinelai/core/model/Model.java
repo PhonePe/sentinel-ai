@@ -39,7 +39,6 @@ public interface Model {
 
     static int TOKEN_COUNT_UNKNOWN = -1;
 
-
     /**
      * Process messages and generate structured output. Supports both structured and tool based outputs.
      * Response will consist of a JsonNode in the form of a Map where the keys are the
@@ -74,6 +73,10 @@ public interface Model {
     default int estimateTokenCount(List<AgentMessage> messages,
                                    AgentSetup agentSetup) {
         return TOKEN_COUNT_UNKNOWN;
+    }
+
+    default String modelId() {
+        return null;
     }
 
     /**

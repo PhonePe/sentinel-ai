@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.embedding.EmbeddingModel;
+import com.phonepe.sentinelai.evals.AgentEventTracer;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -153,7 +154,6 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
         if (embeddingModel != null) {
             registry.registerMetric(OutputSimilarityMetric.class, new MetricExecutorFactory() {
                 @Override
-                @SuppressWarnings("unchecked")
                 public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
                                                           ObjectMapper objectMapper,
                                                           ExecutorService executorService) {
@@ -164,7 +164,6 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
 
             registry.registerMetric(OutputRelevanceBySimilarityMetric.class, new MetricExecutorFactory() {
                 @Override
-                @SuppressWarnings("unchecked")
                 public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
                                                           ObjectMapper objectMapper,
                                                           ExecutorService executorService) {
@@ -182,7 +181,6 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
         if (answerRelevanceModel != null) {
             registry.registerMetric(OutputRelevanceMetric.class, new MetricExecutorFactory() {
                 @Override
-                @SuppressWarnings("unchecked")
                 public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
                                                           ObjectMapper objectMapper,
                                                           ExecutorService executorService) {
@@ -198,10 +196,26 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
             skippedMetrics.add(OutputRelevanceMetric.class.getSimpleName());
         }
 
-        if (!skippedMetrics.isEmpty()) {
-            log.warn("The following metrics were not registered due to missing model dependencies: {}",
-                     skippedMetrics);
-        }
+        registry.registerMetric(TokenUsageMetric.class, new MetricExecutorFactory() {
+            @Override
+            public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
+                                                      ObjectMapper objectMapper,
+                                                      ExecutorService executorService) {
+                return new TokenUsageMetricExecutor<>();
+            }
+        });
+
+        registry.registerMetric(AgentLatencyMetric.class, new MetricExecutorFactory() {
+            @Override
+            public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
+                                                      ObjectMapper objectMapper,
+                                                      ExecutorService executorService) {
+                return new AgentLatencyMetricExecutor<>();
+            }
+        });
+
+        registry.withCostMetric(CostCalculator.noOp());
+        registry.withEventMetrics(new AgentEventTracer());
 
         return registry;
     }
@@ -241,6 +255,40 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
         Objects.requireNonNull(metricClass, "metricClass cannot be null");
         Objects.requireNonNull(factory, "factory cannot be null");
         registry.put(metricClass, factory);
+        return this;
+    }
+
+    public MetricExecutorRegistry withCostMetric(CostCalculator costCalculator) {
+        Objects.requireNonNull(costCalculator, "costCalculator cannot be null");
+        register((Class) CostMetric.class, new MetricExecutorFactory() {
+            @Override
+            public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
+                                                      ObjectMapper objectMapper,
+                                                      ExecutorService executorService) {
+                return (MetricExecutor<R, T>) new CostMetricExecutor<>(costCalculator);
+            }
+        });
+        return this;
+    }
+
+    public MetricExecutorRegistry withEventMetrics(AgentEventTracer tracer) {
+        register((Class) EventCountMetric.class, new MetricExecutorFactory() {
+            @Override
+            public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
+                                                      ObjectMapper objectMapper,
+                                                      ExecutorService executorService) {
+                return (MetricExecutor<R, T>) new EventCountMetricExecutor<>((EventCountMetric<R, T>) metric, tracer);
+            }
+        });
+        register((Class) EventLatencyMetric.class, new MetricExecutorFactory() {
+            @Override
+            public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
+                                                      ObjectMapper objectMapper,
+                                                      ExecutorService executorService) {
+                return (MetricExecutor<R, T>) new EventLatencyMetricExecutor<>((EventLatencyMetric<R, T>) metric,
+                                                                               tracer);
+            }
+        });
         return this;
     }
 

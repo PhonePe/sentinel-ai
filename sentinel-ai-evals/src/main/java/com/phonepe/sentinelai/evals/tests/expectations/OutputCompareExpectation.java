@@ -14,48 +14,30 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.evals.tests.metrics;
+package com.phonepe.sentinelai.evals.tests.expectations;
 
 import com.phonepe.sentinelai.evals.tests.Expectation;
-import com.phonepe.sentinelai.evals.tests.expectations.Operator;
 
-import lombok.ToString;
+public class OutputCompareExpectation<R, T> implements Expectation<R, T> {
 
-@ToString
-public class MetricExpectation<R, T> implements Expectation<R, T> {
-
-    private final Metric<R, T> metric;
-    private final Double threshold;
+    private final Object expectedValue;
     private final Operator operator;
 
-    public MetricExpectation(Metric<R, T> metric) {
-        this(metric, null, null);
-    }
-
-    public MetricExpectation(Metric<R, T> metric, Double threshold) {
-        this(metric, threshold, null);
-    }
-
-    public MetricExpectation(Metric<R, T> metric, Double threshold, Operator operator) {
-        this.metric = metric;
-        this.threshold = threshold;
+    public OutputCompareExpectation(Object expectedValue, Operator operator) {
+        this.expectedValue = expectedValue;
         this.operator = operator;
     }
 
-    public Metric<R, T> getMetric() {
-        return metric;
+    public Object getExpectedValue() {
+        return expectedValue;
     }
 
     public Operator getOperator() {
         return operator;
     }
 
-    public Double getThreshold() {
-        return threshold;
-    }
-
     @Override
     public String toString() {
-        return metric.metricName();
+        return "OutputCompareExpectation(expected=" + expectedValue + ", operator=" + operator + ")";
     }
 }

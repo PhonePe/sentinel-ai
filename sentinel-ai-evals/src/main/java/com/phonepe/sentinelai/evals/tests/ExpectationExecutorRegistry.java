@@ -20,13 +20,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.evals.AgentEventTracer;
+import com.phonepe.sentinelai.evals.tests.expectations.AgentEventExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OrderedExpectation;
+import com.phonepe.sentinelai.evals.tests.expectations.OutputCompareExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputContainsExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputEqualsExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.ToolCalledExpectation;
+import com.phonepe.sentinelai.evals.tests.expectations.executors.AgentEventExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.MessageExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.MetricExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.OrderedExpectationExecutor;
+import com.phonepe.sentinelai.evals.tests.expectations.executors.OutputCompareExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.OutputContainsExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.OutputEqualsExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.ToolCalledExpectationExecutor;
@@ -116,7 +121,6 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
 
         registry.registerExpectation(OutputContainsExpectation.class, new ExpectationExecutorFactory() {
             @Override
-            @SuppressWarnings("unchecked")
             public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
                                                                                      Expectation<R, T> expectation,
                                                                                      ObjectMapper objectMapper,
@@ -167,6 +171,17 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
             }
         });
 
+        registry.registerExpectation(OutputCompareExpectation.class, new ExpectationExecutorFactory() {
+            @Override
+            public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
+                                                                                     Expectation<R, T> expectation,
+                                                                                     ObjectMapper objectMapper,
+                                                                                     ExecutorService executorService) {
+                final var typedExpectation = (OutputCompareExpectation<R, T>) expectation;
+                return new OutputCompareExpectationExecutor<>(typedExpectation);
+            }
+        });
+
         registry.registerExpectation(OutputJsonPathCompareExpectation.class, new ExpectationExecutorFactory() {
             @Override
             public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
@@ -177,6 +192,8 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
                 return new OutputJsonPathCompareExpectationExecutor<>(typedExpectation, objectMapper);
             }
         });
+
+        registry.withEventExpectations(new AgentEventTracer());
 
         return registry;
     }
@@ -196,14 +213,18 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
                                                                              Expectation<R, T> expectation,
                                                                              ObjectMapper objectMapper,
                                                                              ExecutorService executorService) {
-        final var factory = registry.get(expectation.getClass());
-        if (factory == null) {
-            throw new IllegalArgumentException(
-                                               "No ExpectationExecutor registered for expectation type: " + expectation
-                                                       .getClass().getName()
-                                                       + ". Register it via ExpectationExecutorRegistry.register().");
+        Class<?> clazz = expectation.getClass();
+        while (clazz != null && clazz != Object.class) {
+            final var factory = registry.get(clazz);
+            if (factory != null) {
+                return factory.create(agent, expectation, objectMapper, executorService);
+            }
+            clazz = clazz.getSuperclass();
         }
-        return factory.create(agent, expectation, objectMapper, executorService);
+        throw new IllegalArgumentException(
+                                           "No ExpectationExecutor registered for expectation type: " + expectation
+                                                   .getClass().getName()
+                                                   + ". Register it via ExpectationExecutorRegistry.register().");
     }
 
     /**
@@ -219,6 +240,23 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
         Objects.requireNonNull(expectationClass, "expectationClass cannot be null");
         Objects.requireNonNull(factory, "factory cannot be null");
         registry.put(expectationClass, factory);
+        return this;
+    }
+
+    public ExpectationExecutorRegistry withEventExpectations(AgentEventTracer tracer) {
+        register((Class) AgentEventExpectation.class, new ExpectationExecutorFactory() {
+            @Override
+            public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(
+                                                                                     Agent<R, T, A> agent,
+                                                                                     Expectation<R, T> expectation,
+                                                                                     ObjectMapper objectMapper,
+                                                                                     ExecutorService executorService) {
+                return (ExpectationExecutor<R, T>) new AgentEventExpectationExecutor<>(
+                                                                                       (AgentEventExpectation<R, T>) expectation,
+                                                                                       tracer,
+                                                                                       objectMapper);
+            }
+        });
         return this;
     }
 

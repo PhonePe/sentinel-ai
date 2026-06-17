@@ -14,22 +14,16 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.evals.tests;
+package com.phonepe.sentinelai.evals.tests.metrics;
 
-/**
- * Marker interface representing the <em>definition</em> of an expectation.
- *
- * An Expectation carries only the configuration data that describes WHAT to assert
- * (e.g. an expected substring, a JSON-Path expression, a metric threshold). All
- * computation is delegated to a corresponding {@link ExpectationExecutor} created
- * by an {@link ExpectationExecutorFactory}.
- *
- * @param <R> result/output type being evaluated
- * @param <T> input/request type
- */
-@SuppressWarnings("unused")
-public interface Expectation<R, T> {
-    default String id() {
-        return toString();
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
+
+@FunctionalInterface
+public interface CostCalculator {
+
+    static CostCalculator noOp() {
+        return (modelId, usage) -> 0.0;
     }
+
+    double calculate(String modelId, ModelUsageStats usage);
 }

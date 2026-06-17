@@ -47,4 +47,9 @@ public class OutputEqualsExpectation<R, T> implements Expectation<R, T> {
     public R getExpectedOutput() {
         return expectedOutput;
     }
+
+    @Override
+    public String toString() {
+        return "OutputEqualsExpectation(expected=" + expectedOutput + ")";
+    }
 }

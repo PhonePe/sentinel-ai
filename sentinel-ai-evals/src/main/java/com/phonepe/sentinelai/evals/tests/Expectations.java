@@ -17,11 +17,11 @@
 package com.phonepe.sentinelai.evals.tests;
 
 import com.phonepe.sentinelai.core.utils.ToolUtils;
+import com.phonepe.sentinelai.evals.tests.expectations.Operator;
 import com.phonepe.sentinelai.evals.tests.expectations.OrderedExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputContainsExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputEqualsExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.ToolCalledExpectation;
-import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExpectation;
 
@@ -59,9 +59,9 @@ public class Expectations {
          * @return JSONPath expectation using {@link Operator#EQ}
          */
         public Expectation<R, T> eq(Object expectedValue) {
-            return new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>(jsonPath,
-                                                                                                                   Operator.EQ,
-                                                                                                                   expectedValue);
+            return new OutputJsonPathCompareExpectation<>(jsonPath,
+                                                          Operator.EQ,
+                                                          expectedValue);
         }
 
         /**
@@ -71,9 +71,9 @@ public class Expectations {
          * @return JSONPath expectation using {@link Operator#GT}
          */
         public Expectation<R, T> gt(Object expectedValue) {
-            return new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>(jsonPath,
-                                                                                                                   Operator.GT,
-                                                                                                                   expectedValue);
+            return new OutputJsonPathCompareExpectation<>(jsonPath,
+                                                          Operator.GT,
+                                                          expectedValue);
         }
 
         /**
@@ -93,9 +93,9 @@ public class Expectations {
          * @return JSONPath expectation using {@link Operator#IN}
          */
         public Expectation<R, T> in(Collection<?> expectedValues) {
-            return new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>(jsonPath,
-                                                                                                                   Operator.IN,
-                                                                                                                   expectedValues);
+            return new OutputJsonPathCompareExpectation<>(jsonPath,
+                                                          Operator.IN,
+                                                          expectedValues);
         }
 
         /**
@@ -105,9 +105,9 @@ public class Expectations {
          * @return JSONPath expectation using {@link Operator#LT}
          */
         public Expectation<R, T> lt(Object expectedValue) {
-            return new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>(jsonPath,
-                                                                                                                   Operator.LT,
-                                                                                                                   expectedValue);
+            return new OutputJsonPathCompareExpectation<>(jsonPath,
+                                                          Operator.LT,
+                                                          expectedValue);
         }
 
         /**
@@ -117,9 +117,9 @@ public class Expectations {
          * @return JSONPath expectation using {@link Operator#LTE}
          */
         public Expectation<R, T> lte(Object expectedValue) {
-            return new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>(jsonPath,
-                                                                                                                   Operator.LTE,
-                                                                                                                   expectedValue);
+            return new OutputJsonPathCompareExpectation<>(jsonPath,
+                                                          Operator.LTE,
+                                                          expectedValue);
         }
 
         /**
@@ -129,9 +129,9 @@ public class Expectations {
          * @return JSONPath expectation using {@link Operator#NE}
          */
         public Expectation<R, T> ne(Object expectedValue) {
-            return new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>(jsonPath,
-                                                                                                                   Operator.NE,
-                                                                                                                   expectedValue);
+            return new OutputJsonPathCompareExpectation<>(jsonPath,
+                                                          Operator.NE,
+                                                          expectedValue);
         }
 
         /**
@@ -141,9 +141,9 @@ public class Expectations {
          * @return JSONPath expectation using {@link Operator#NOT_IN}
          */
         public Expectation<R, T> notIn(Collection<?> expectedValues) {
-            return new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>(jsonPath,
-                                                                                                                   Operator.NOT_IN,
-                                                                                                                   expectedValues);
+            return new OutputJsonPathCompareExpectation<>(jsonPath,
+                                                          Operator.NOT_IN,
+                                                          expectedValues);
         }
     }
 
@@ -195,9 +195,9 @@ public class Expectations {
      */
     public static <R, T> Expectation<R, T> jsonPathEquals(String jsonPath,
                                                           Object expectedValue) {
-        return new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>(jsonPath,
-                                                                                                               Operator.EQ,
-                                                                                                               expectedValue);
+        return new OutputJsonPathCompareExpectation<>(jsonPath,
+                                                      Operator.EQ,
+                                                      expectedValue);
     }
 
     /**

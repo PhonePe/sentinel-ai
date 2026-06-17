@@ -88,4 +88,9 @@ public class ToolCalledExpectation<R, T> extends MessageExpectation<R, T> {
     public String getToolName() {
         return toolName;
     }
+
+    @Override
+    public String toString() {
+        return "ToolCalledExpectation(tool=" + toolName + ", times=" + times + ")";
+    }
 }

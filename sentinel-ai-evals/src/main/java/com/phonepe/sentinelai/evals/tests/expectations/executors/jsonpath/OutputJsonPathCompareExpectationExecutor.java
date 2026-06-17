@@ -21,11 +21,8 @@ import com.jayway.jsonpath.JsonPath;
 
 import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import com.phonepe.sentinelai.evals.tests.ExpectationExecutor;
-import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 
-import java.math.BigDecimal;
-import java.util.Collection;
 import java.util.Objects;
 
 /**
@@ -52,67 +49,21 @@ public class OutputJsonPathCompareExpectationExecutor<R, T> implements Expectati
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
     }
 
-    // Type erasure prevents knowing Comparable's exact type at runtime; safe because
-    // we already verified actual.getClass().equals(expected.getClass()).
-    @SuppressWarnings("unchecked")
-    private static <T extends Comparable<? super T>> int castAndCompare(Comparable<?> actual, Object expected) {
-        return ((T) actual).compareTo((T) expected);
-    }
-
-    private static boolean compare(Object actualValue, Operator operator, Object expectedValue) {
-        return switch (operator) {
-            case EQ -> Objects.equals(actualValue, expectedValue);
-            case NE -> !Objects.equals(actualValue, expectedValue);
-            case GT -> compareOrder(actualValue, expectedValue) > 0;
-            case GTE -> compareOrder(actualValue, expectedValue) >= 0;
-            case LT -> compareOrder(actualValue, expectedValue) < 0;
-            case LTE -> compareOrder(actualValue, expectedValue) <= 0;
-            case IN -> expectedValue instanceof Collection<?> collection && collection.contains(actualValue);
-            case NOT_IN -> expectedValue instanceof Collection<?> collection && !collection.contains(actualValue);
-        };
-    }
-
-    private static int compareOrder(Object actual, Object expected) {
-        if (actual == null || expected == null) {
-            throw new IllegalArgumentException("Both actual and expected must be non-null for ordered comparisons");
-        }
-        if (actual instanceof Number actualNumber && expected instanceof Number expectedNumber) {
-            return new BigDecimal(actualNumber.toString()).compareTo(new BigDecimal(expectedNumber.toString()));
-        }
-        if (actual.getClass().equals(expected.getClass()) && actual instanceof Comparable<?> actualComparable) {
-            return castAndCompare(actualComparable, expected);
-        }
-        throw new IllegalArgumentException("Unsupported ordered comparison between values");
-    }
-
-    /**
-     * Evaluates the configured JSONPath expression against the output value.
-     *
-     * @param result  output value to serialize and inspect
-     * @param context evaluation context (unused)
-     * @return {@code true} when the extracted value satisfies the configured comparison
-     */
     @Override
     public boolean evaluate(R result, EvalExpectationContext<T> context) {
         if (result == null) {
-            return compare(null, expectation.getOperator(), expectation.getExpectedValue());
+            return expectation.getOperator().compare(null, expectation.getExpectedValue());
         }
         try {
             final var document = objectMapper.convertValue(result, Object.class);
             final var actualValue = JsonPath.read(document, expectation.getJsonPath());
-            return compare(actualValue, expectation.getOperator(), expectation.getExpectedValue());
+            return expectation.getOperator().compare(actualValue, expectation.getExpectedValue());
         }
         catch (RuntimeException e) {
             return false;
         }
     }
 
-
-    /**
-     * Returns the textual representation of the underlying expectation.
-     *
-     * @return expectation description
-     */
     @Override
     public String toString() {
         return expectation.toString();

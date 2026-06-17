@@ -163,10 +163,14 @@ public class TestFactory {
      * Suitable for simple expectation tests that don't require specific context state.
      */
     public static <T> EvalExpectationContext<T> context() {
-        return new EvalExpectationContext<>(DEFAULT_RUN_ID,
-                                            null,
-                                            List.of(),
-                                            new ModelUsageStats());
+        return EvalExpectationContext.<T>builder()
+                .runId(DEFAULT_RUN_ID)
+                .request(null)
+                .oldMessages(List.of())
+                .modelUsageStats(new ModelUsageStats())
+                .modelId(null)
+                .latencyMs(null)
+                .build();
     }
 
     /**
@@ -177,10 +181,14 @@ public class TestFactory {
      * @return context with the given message history
      */
     public static <T> EvalExpectationContext<T> contextWith(List<AgentMessage> oldMessages) {
-        return new EvalExpectationContext<>(DEFAULT_RUN_ID,
-                                            null,
-                                            oldMessages,
-                                            new ModelUsageStats());
+        return EvalExpectationContext.<T>builder()
+                .runId(DEFAULT_RUN_ID)
+                .request(null)
+                .oldMessages(oldMessages)
+                .modelUsageStats(new ModelUsageStats())
+                .modelId(null)
+                .latencyMs(null)
+                .build();
     }
 
     /**
@@ -190,10 +198,14 @@ public class TestFactory {
      * @return context with the given request
      */
     public static <R> EvalExpectationContext<R> contextWith(R request) {
-        return new EvalExpectationContext<>(DEFAULT_RUN_ID,
-                                            request,
-                                            List.of(),
-                                            new ModelUsageStats());
+        return EvalExpectationContext.<R>builder()
+                .runId(DEFAULT_RUN_ID)
+                .request(request)
+                .oldMessages(List.of())
+                .modelUsageStats(new ModelUsageStats())
+                .modelId(null)
+                .latencyMs(null)
+                .build();
     }
 
     /**
@@ -205,10 +217,14 @@ public class TestFactory {
      */
     public static <R> EvalExpectationContext<R> contextWith(R request,
                                                             List<AgentMessage> oldMessages) {
-        return new EvalExpectationContext<>(DEFAULT_RUN_ID,
-                                            request,
-                                            oldMessages,
-                                            new ModelUsageStats());
+        return EvalExpectationContext.<R>builder()
+                .runId(DEFAULT_RUN_ID)
+                .request(request)
+                .oldMessages(oldMessages)
+                .modelUsageStats(new ModelUsageStats())
+                .modelId(null)
+                .latencyMs(null)
+                .build();
     }
 
     /**
@@ -222,10 +238,14 @@ public class TestFactory {
     public static <R> EvalExpectationContext<R> contextWith(String runId,
                                                             R request,
                                                             List<AgentMessage> oldMessages) {
-        return new EvalExpectationContext<>(runId,
-                                            request,
-                                            oldMessages,
-                                            new ModelUsageStats());
+        return EvalExpectationContext.<R>builder()
+                .runId(runId)
+                .request(request)
+                .oldMessages(oldMessages)
+                .modelUsageStats(new ModelUsageStats())
+                .modelId(null)
+                .latencyMs(null)
+                .build();
     }
 
     /**

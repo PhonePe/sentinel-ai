@@ -14,26 +14,12 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.evals.tests.expectations.jsonpath;
+package com.phonepe.sentinelai.evals.tests.metrics;
 
-/**
- * Comparison operators supported by JSONPath-based expectations.
- */
-public enum Operator {
-    /** Equality comparison. */
-    EQ,
-    /** Inequality comparison. */
-    NE,
-    /** Greater-than comparison. */
-    GT,
-    /** Greater-than-or-equal comparison. */
-    GTE,
-    /** Less-than comparison. */
-    LT,
-    /** Less-than-or-equal comparison. */
-    LTE,
-    /** Membership comparison against a collection of allowed values. */
-    IN,
-    /** Non-membership comparison against a collection of disallowed values. */
-    NOT_IN
+public class CostMetric<R, T> implements Metric<R, T> {
+
+    @Override
+    public String metricName() {
+        return "Cost";
+    }
 }

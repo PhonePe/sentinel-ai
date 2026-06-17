@@ -25,7 +25,7 @@ import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
 import com.phonepe.sentinelai.evals.EvalEngine;
 import com.phonepe.sentinelai.evals.tests.Dataset;
 import com.phonepe.sentinelai.evals.tests.TestCase;
-import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.Operator;
+import com.phonepe.sentinelai.evals.tests.expectations.Operator;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 import com.phonepe.sentinelai.examples.texttosql.agent.TextToSqlAgent;
 import com.phonepe.sentinelai.examples.texttosql.cli.support.StubTextToSqlModel;
