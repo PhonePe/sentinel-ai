@@ -49,6 +49,7 @@ import com.phonepe.sentinelai.embedding.HuggingfaceEmbeddingModel;
 import com.phonepe.sentinelai.models.SimpleOpenAIModel;
 import com.phonepe.sentinelai.session.AgentSessionExtension;
 import com.phonepe.sentinelai.session.AgentSessionExtensionSetup;
+import com.phonepe.sentinelai.session.SessionExtraDataOperator;
 import com.phonepe.sentinelai.session.SessionSummary;
 import com.phonepe.sentinelai.storage.memory.ESAgentMemoryStorage;
 import com.phonepe.sentinelai.storage.session.ESSessionStore;
@@ -66,6 +67,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -193,7 +195,8 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
                                                       indexPrefix(this),
                                                       IndexSettings.DEFAULT,
                                                       IndexSettings.DEFAULT,
-                                                      objectMapper);
+                                                      objectMapper,
+                                                      SessionExtraDataOperator.fixed(Map.of("testKey", "testValue")));
         final var agentSessionExtension = AgentSessionExtension
                 .<UserInput, OutputObject, SimpleAgent>builder()
                 .sessionStore(sessionStorage)
@@ -235,6 +238,13 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
         Awaitility.await()
                 .atMost(Duration.ofSeconds(30))
                 .until(() -> sessionStorage.session("s1").isPresent());
+        assertAll(() -> {
+            final var session = sessionStorage.session("s1");
+            assertTrue(session.isPresent());
+            final var sessionSummary = session.get();
+            log.info("Session summary: {}", sessionSummary);
+            assertTrue(sessionSummary.getExtra().containsKey("testKey"));
+        });
         final var updatedTime = new AtomicLong(sessionStorage.session("s1")
                 .get()
                 .getUpdatedAt());

@@ -124,10 +124,14 @@ class AgentSessionExtensionTest {
         }
     }
 
-    private static final class InMemorySessionStore implements SessionStore {
+    private static final class InMemorySessionStore extends SessionStore {
 
         private final Map<String, SessionSummary> sessionData = new ConcurrentHashMap<>();
         private final Map<String, List<AgentMessage>> messageData = new ConcurrentHashMap<>();
+
+        public InMemorySessionStore() {
+            super(SessionExtraDataOperator.empty());
+        }
 
         @Override
         public boolean deleteSession(String sessionId) {
@@ -158,12 +162,6 @@ class AgentSessionExtensionTest {
         }
 
         @Override
-        public Optional<SessionSummary> saveSession(SessionSummary sessionSummary) {
-            sessionData.put(sessionSummary.getSessionId(), sessionSummary);
-            return session(sessionSummary.getSessionId());
-        }
-
-        @Override
         public Optional<SessionSummary> session(String sessionId) {
             return Optional.ofNullable(sessionData.get(sessionId));
         }
@@ -174,6 +172,12 @@ class AgentSessionExtensionTest {
                                                      QueryDirection queryDirection) {
             return new BiScrollable<>(List.copyOf(sessionData.values()),
                                       new BiScrollable.DataPointer(null, null));
+        }
+
+        @Override
+        protected Optional<SessionSummary> saveSessionImpl(SessionSummary sessionSummary) {
+            sessionData.put(sessionSummary.getSessionId(), sessionSummary);
+            return session(sessionSummary.getSessionId());
         }
 
     }
@@ -534,7 +538,7 @@ class AgentSessionExtensionTest {
                 .build();
 
         // Save a session first
-        sessionStore.saveSession(SessionSummary.builder()
+        sessionStore.saveSessionImpl(SessionSummary.builder()
                 .sessionId("existing-session")
                 .title("Test Session")
                 .summary("This is a test summary")
