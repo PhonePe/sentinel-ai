@@ -154,12 +154,11 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
                         }
                     }
                     return minReusabilityScore == 0 || memory.getReusabilityScore() >= minReusabilityScore;
-                })
-                .toList();
+                });
 
         if (queryVector == null) {
             // No semantic query: sort by recency (most-recently updated first).
-            return filtered.stream()
+            return filtered
                     .sorted((a, b) -> {
                         final var lhs = a.getMemory().getUpdatedAt();
                         final var rhs = b.getMemory().getUpdatedAt();
@@ -175,7 +174,7 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
         }
 
         final double queryNorm = vectorNorm(queryVector);
-        return filtered.stream()
+        return filtered
                 .map(stored -> Map.entry(stored, computeSimilarity(stored, queryVector, queryNorm)))
                 .sorted(Map.Entry.<StoredAgentMemory, Double>comparingByValue().reversed())
                 .limit(count)
