@@ -100,6 +100,7 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                       toolCall.getToolCallId(),
                       toolCall.getToolName(),
                       toolCall.getArguments());
+            //TODO : Ankush to add the Agent extension for executions
             final var response = externalTool.getCallable()
                     .apply(context,
                            toolCall.getToolName(),
@@ -233,6 +234,7 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                       toolCall.getToolCallId(),
                       toolCall.getToolName(),
                       toolCall.getArguments());
+            //TODO : Ankush to add the agent extensions for processing, add agent context into extensions processing
             var resultObject = callable.invoke(internalTool.getInstance(),
                                                args.toArray());
             return new ToolCallResponse(AgentUtils.sessionId(context),
