@@ -37,6 +37,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -59,6 +60,7 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
     public static class StoredAgentMemory {
         private AgentMemory memory;
         private float[] vector;
+        private double vectorNorm;
     }
 
     private final Path memoryRoot;
@@ -77,6 +79,46 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
         loadMemories();
     }
 
+    /**
+     * Compute the L2 norm (magnitude) of a vector.
+     *
+     * <p>Uses {@code x * x} instead of {@code Math.pow(x, 2)} — the latter routes through a
+     * general exponentiation path that is measurably slower for the square case.
+     */
+    static double vectorNorm(float[] v) {
+        var norm = 0.0;
+        for (final float x : v) {
+            norm += (double) x * x;
+        }
+        return Math.sqrt(norm);
+    }
+
+    /**
+     * Compute cosine similarity between a stored memory's vector and a query vector using
+     * pre-computed norms, avoiding redundant norm recomputation on repeated calls.
+     */
+    private static double computeSimilarity(StoredAgentMemory stored,
+                                            float[] queryVector,
+                                            double queryNorm) {
+        final var sv = stored.getVector();
+        if (sv == null || sv.length != queryVector.length || stored.getVectorNorm() == 0.0
+                || queryNorm == 0.0) {
+            return 0.0;
+        }
+        return dotProduct(sv, queryVector) / (stored.getVectorNorm() * queryNorm);
+    }
+
+    /**
+     * Compute the dot product of two equal-length vectors.
+     */
+    private static double dotProduct(float[] a, float[] b) {
+        double sum = 0.0;
+        for (int i = 0; i < a.length; i++) {
+            sum += (double) a[i] * b[i];
+        }
+        return sum;
+    }
+
     @Override
     @SuppressWarnings("java:S3776")
     public List<AgentMemory> findMemories(String scopeId,
@@ -90,7 +132,7 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
                 ? embeddingModel.getEmbedding(query)
                 : null;
 
-        return cache.values().stream()
+        final var filtered = cache.values().stream()
                 .filter(stored -> {
                     final var memory = stored.getMemory();
                     if (scope != null && !Strings.isNullOrEmpty(scopeId)) {
@@ -112,9 +154,12 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
                         }
                     }
                     return minReusabilityScore == 0 || memory.getReusabilityScore() >= minReusabilityScore;
-                })
-                .sorted((a, b) -> {
-                    if (queryVector == null) {
+                });
+
+        if (queryVector == null) {
+            // No semantic query: sort by recency (most-recently updated first).
+            return filtered
+                    .sorted((a, b) -> {
                         final var lhs = a.getMemory().getUpdatedAt();
                         final var rhs = b.getMemory().getUpdatedAt();
                         if (lhs == null || rhs == null) {
@@ -122,12 +167,18 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
                             return lhs == null ? rhsValue : -1;
                         }
                         return rhs.compareTo(lhs);
-                    }
-                    return Double.compare(cosineSimilarity(b.getVector(), queryVector),
-                                          cosineSimilarity(a.getVector(), queryVector));
-                })
+                    })
+                    .limit(count)
+                    .map(StoredAgentMemory::getMemory)
+                    .toList();
+        }
+
+        final double queryNorm = vectorNorm(queryVector);
+        return filtered
+                .map(stored -> Map.entry(stored, computeSimilarity(stored, queryVector, queryNorm)))
+                .sorted(Map.Entry.<StoredAgentMemory, Double>comparingByValue().reversed())
                 .limit(count)
-                .map(StoredAgentMemory::getMemory)
+                .map(e -> e.getKey().getMemory())
                 .toList();
     }
 
@@ -148,6 +199,7 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
         final var stored = new StoredAgentMemory();
         stored.setMemory(memoryToSave);
         stored.setVector(vector);
+        stored.setVectorNorm(vectorNorm(vector));
 
         final var stamp = lock.writeLock();
         try {
@@ -166,30 +218,9 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
         }
     }
 
-    /**
-     * Compute cosine similarity between two vectors.
-     * Returns a value between -1 and 1, where 1 means identical, 0 means orthogonal, and -1 means opposite.
-     * Implementation:
-     * - Compute the dot product of the two vectors.
-     * - Compute the magnitude (norm) of each vector.
-     * - Divide the dot product by the product of the magnitudes.
-     */
-    private double cosineSimilarity(float[] lhs, float[] rhs) {
-        if (lhs == null || rhs == null || lhs.length != rhs.length) {
-            return 0.0;
-        }
-        double dotProduct = 0.0;
-        double normLhs = 0.0;
-        double normB = 0.0;
-        for (int i = 0; i < lhs.length; i++) {
-            dotProduct += lhs[i] * rhs[i];
-            normLhs += Math.pow(lhs[i], 2);
-            normB += Math.pow(rhs[i], 2);
-        }
-        if (normLhs == 0.0 || normB == 0.0) {
-            return 0.0;
-        }
-        return dotProduct / (Math.sqrt(normLhs) * Math.sqrt(normB));
+    /** Package-private accessor used only by unit tests to inspect the in-memory cache. */
+    ConcurrentHashMap<String, StoredAgentMemory> getCacheForTest() {
+        return cache;
     }
 
     @SneakyThrows
@@ -205,6 +236,7 @@ public class FileSystemAgentMemoryStorage implements AgentMemoryStore {
                         final var stored = new StoredAgentMemory();
                         stored.setMemory(memory);
                         stored.setVector(vector);
+                        stored.setVectorNorm(vectorNorm(vector)); // pre-compute norm at load time
                         cache.put(path.getFileName().toString(), stored);
                     }
                 }
