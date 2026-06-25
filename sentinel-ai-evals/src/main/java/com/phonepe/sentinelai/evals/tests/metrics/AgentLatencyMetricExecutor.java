@@ -20,6 +20,9 @@ import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 
 import lombok.val;
 
+/**
+ * Executor for {@link AgentLatencyMetric} that reads latency from the eval context.
+ */
 public class AgentLatencyMetricExecutor<R, T> implements MetricExecutor<R, T> {
 
     @Override

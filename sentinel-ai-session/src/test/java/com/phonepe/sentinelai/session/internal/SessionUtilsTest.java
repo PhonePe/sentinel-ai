@@ -84,6 +84,11 @@ class SessionUtilsTest {
         public int estimateTokenCount(List<AgentMessage> messages, AgentSetup agentSetup) {
             return tokenCount;
         }
+
+        @Override
+        public String modelName() {
+            return "test-model";
+        }
     }
 
     @Test

@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.evals.tests.expectations.executors;
 
+import com.phonepe.sentinelai.evals.EvalStatus;
 import com.phonepe.sentinelai.evals.ExpectationReport;
 import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import com.phonepe.sentinelai.evals.tests.ExpectationExecutor;
@@ -23,6 +24,13 @@ import com.phonepe.sentinelai.evals.tests.expectations.OutputCompareExpectation;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Executor for {@link OutputCompareExpectation} that compares the entire output value
+ * using the configured {@link Operator}.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
+ */
 @RequiredArgsConstructor
 public class OutputCompareExpectationExecutor<R, T> implements ExpectationExecutor<R, T> {
 
@@ -36,14 +44,10 @@ public class OutputCompareExpectationExecutor<R, T> implements ExpectationExecut
     @Override
     public ExpectationReport evaluateWithReport(R result, EvalExpectationContext<T> context) {
         boolean passed = evaluate(result, context);
-        return ExpectationReport.passFail(
-                                          expectation.id(),
-                                          passed,
-                                          passed ? "output comparison passed" : "output comparison failed");
-    }
-
-    @Override
-    public String toString() {
-        return expectation.toString();
+        return ExpectationReport.builder()
+                .expectation(expectation.getId())
+                .status(passed ? EvalStatus.PASSED : EvalStatus.FAILED)
+                .details(passed ? "output comparison passed" : "output comparison failed")
+                .build();
     }
 }

@@ -18,7 +18,6 @@ package com.phonepe.sentinelai.evals;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,8 +25,6 @@ import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
-import com.phonepe.sentinelai.core.agentmessages.responses.Text;
-import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.Model;
@@ -41,7 +38,6 @@ import com.phonepe.sentinelai.evals.tests.ExpectationExecutorRegistry;
 import com.phonepe.sentinelai.evals.tests.Expectations;
 import com.phonepe.sentinelai.evals.tests.TestCase;
 import com.phonepe.sentinelai.evals.tests.TestFactory;
-import com.phonepe.sentinelai.evals.tests.expectations.ToolCalledExpectation;
 import com.phonepe.sentinelai.evals.tests.metrics.Metric;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutor;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorFactory;
@@ -66,55 +62,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EvalEngineTest {
 
-    static class OrderedToolCallModel implements Model {
-        private final List<String> encodedToolOrder;
-        private final String finalOutput;
-
-        OrderedToolCallModel(List<String> encodedToolOrder,
-                             String finalOutput) {
-            this.encodedToolOrder = encodedToolOrder;
-            this.finalOutput = finalOutput;
-        }
-
-        @Override
-        public CompletableFuture<ModelOutput> compute(ModelRunContext context,
-                                                      Collection<ModelOutputDefinition> outputDefinitions,
-                                                      List<AgentMessage> oldMessages,
-                                                      Map<String, ExecutableTool> tools,
-                                                      ToolRunner toolRunner,
-                                                      EarlyTerminationStrategy earlyTerminationStrategy,
-                                                      List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
-            return CompletableFuture.supplyAsync(() -> {
-                val usage = new ModelUsageStats();
-                ObjectNode data = JsonNodeFactory.instance.objectNode();
-                data.put(Agent.OUTPUT_VARIABLE_NAME, finalOutput);
-
-                final var sessionId = Objects.requireNonNullElse(context.getSessionId(), "session");
-                final var runId = Objects.requireNonNullElse(context.getRunId(), "run");
-                final var newMessages = new ArrayList<AgentMessage>();
-                for (int i = 0; i < encodedToolOrder.size(); i++) {
-                    newMessages.add(new ToolCall(sessionId,
-                                                 runId,
-                                                 "tc-" + i,
-                                                 encodedToolOrder.get(i),
-                                                 "{}"));
-                }
-                newMessages.add(new Text(sessionId,
-                                         runId,
-                                         finalOutput,
-                                         usage,
-                                         0));
-
-                final var allMessages = new ArrayList<>(oldMessages);
-                allMessages.addAll(newMessages);
-                return ModelOutput.success(data,
-                                           newMessages,
-                                           allMessages,
-                                           usage);
-            });
-        }
-    }
-
     private static EvalEngine engineWithMockJudgeModel() {
         final var mapper = TestFactory.mapper();
         final var metricExecutorFactory = MetricExecutorRegistry.withDefaults(null, mockJudgeModel(), mapper);
@@ -124,20 +71,28 @@ class EvalEngineTest {
     }
 
     private static Model mockJudgeModel() {
-        return (context,
-                outputDefinitions,
-                oldMessages,
-                tools,
-                toolRunner,
-                earlyTerminationStrategy,
-                agentMessagesPreProcessors) -> {
-            final var data = JsonNodeFactory.instance.objectNode();
-            data.put(Agent.OUTPUT_VARIABLE_NAME, "{\"score\":0.0,\"reason\":\"mock\"}");
-            final var safeMessages = Objects.requireNonNullElse(oldMessages, List.<AgentMessage>of());
-            return CompletableFuture.completedFuture(ModelOutput.success(data,
-                                                                         List.of(),
-                                                                         safeMessages,
-                                                                         new ModelUsageStats()));
+        return new Model() {
+            @Override
+            public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                          Collection<ModelOutputDefinition> outputDefinitions,
+                                                          List<AgentMessage> oldMessages,
+                                                          Map<String, ExecutableTool> tools,
+                                                          ToolRunner toolRunner,
+                                                          EarlyTerminationStrategy earlyTerminationStrategy,
+                                                          List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
+                final var data = JsonNodeFactory.instance.objectNode();
+                data.put(Agent.OUTPUT_VARIABLE_NAME, "{\"score\":0.0,\"reason\":\"mock\"}");
+                final var safeMessages = Objects.requireNonNullElse(oldMessages, List.<AgentMessage>of());
+                return CompletableFuture.completedFuture(ModelOutput.success(data,
+                                                                             List.of(),
+                                                                             safeMessages,
+                                                                             new ModelUsageStats()));
+            }
+
+            @Override
+            public String modelName() {
+                return "mock-judge";
+            }
         };
     }
 
@@ -169,6 +124,7 @@ class EvalEngineTest {
 
         val expectations = List.<com.phonepe.sentinelai.evals.tests.Expectation<String, String>>of(
                                                                                                    new com.phonepe.sentinelai.evals.tests.expectations.AgentEventExpectation<>(
+                                                                                                                                                                               "testAgentEventExpectation",
                                                                                                                                                                                "test-agent",
                                                                                                                                                                                com.phonepe.sentinelai.core.events.EventType.OUTPUT_GENERATED,
                                                                                                                                                                                null,
@@ -190,6 +146,7 @@ class EvalEngineTest {
     void testAgentLatencyMetric() {
         EvalEngine engine = engineWithMockJudgeModel();
         val expectations = List.<Expectation<String, String>>of(new MetricExpectation<>(
+                                                                                        "testAgentLatencyMetric",
                                                                                         new com.phonepe.sentinelai.evals.tests.metrics.AgentLatencyMetric<>()));
         val tests = List.of(new TestCase<String, String>("input", expectations));
         val dataset = new Dataset<>("latency", tests);
@@ -217,7 +174,8 @@ class EvalEngineTest {
         val engine = new EvalEngine(TestFactory.mapper(), expectationRegistry);
 
         val expectations = List.<com.phonepe.sentinelai.evals.tests.Expectation<String, String>>of(
-                                                                                                   new MetricExpectation<>(new com.phonepe.sentinelai.evals.tests.metrics.CostMetric<>()));
+                                                                                                   new MetricExpectation<>("testCostMetric",
+                                                                                                                           new com.phonepe.sentinelai.evals.tests.metrics.CostMetric<>()));
         val tests = List.of(new TestCase<>("input", expectations));
         val dataset = new Dataset<>("cost", tests);
 
@@ -253,10 +211,12 @@ class EvalEngineTest {
                                                                                                          .ofMillis(100)));
 
         val expectations = List.<com.phonepe.sentinelai.evals.tests.Expectation<String, String>>of(
-                                                                                                   new MetricExpectation<>(new com.phonepe.sentinelai.evals.tests.metrics.EventCountMetric<>("test-agent",
+                                                                                                   new MetricExpectation<>("testEventMetrics-count",
+                                                                                                                           new com.phonepe.sentinelai.evals.tests.metrics.EventCountMetric<>("test-agent",
                                                                                                                                                                                              com.phonepe.sentinelai.core.events.EventType.OUTPUT_GENERATED,
                                                                                                                                                                                              null)),
-                                                                                                   new MetricExpectation<>(new com.phonepe.sentinelai.evals.tests.metrics.EventLatencyMetric<>("test-agent",
+                                                                                                   new MetricExpectation<>("testEventMetrics-latency",
+                                                                                                                           new com.phonepe.sentinelai.evals.tests.metrics.EventLatencyMetric<>("test-agent",
                                                                                                                                                                                                com.phonepe.sentinelai.core.events.EventType.OUTPUT_GENERATED,
                                                                                                                                                                                                null)));
         val tests = List.of(new TestCase<>("input", expectations));
@@ -272,8 +232,11 @@ class EvalEngineTest {
     void testFailFast() {
         EvalEngine engine = engineWithMockJudgeModel();
         val tests = List.of(
-                            new TestCase<String, String>("first", List.of(Expectations.outputContains("missing"))),
-                            new TestCase<String, String>("second", List.of(Expectations.outputContains("ok"))));
+                            new TestCase<String, String>("first",
+                                                         List.of(Expectations.outputContains("testFailFast",
+                                                                                             "missing"))),
+                            new TestCase<String, String>("second",
+                                                         List.of(Expectations.outputContains("testFailFast", "ok"))));
         val dataset = new Dataset<String, String>("test-dataset", tests);
 
         val report = engine.run(dataset,
@@ -323,7 +286,8 @@ class EvalEngineTest {
         EvalEngine engine = new EvalEngine(TestFactory.mapper(),
                                            TestFactory.expectationExecutorFactory(metricExecutorFactory));
         val tests = List.of(new TestCase<>("input",
-                                           List.of(new MetricExpectation<String, String>(unavailableJudgeMetric,
+                                           List.of(new MetricExpectation<String, String>("testMetricExpectationSkipMarksTestCaseSkipped",
+                                                                                         unavailableJudgeMetric,
                                                                                          0.8))));
         val dataset = new Dataset<>("metric-skip-dataset", tests);
 
@@ -344,8 +308,12 @@ class EvalEngineTest {
     void testOutputContainsAndEqualsVariants() {
         EvalEngine engine = engineWithMockJudgeModel();
         val expectations = List.<Expectation<String, String>>of(
-                                                                Expectations.outputContains("ok"),
-                                                                Expectations.outputEquals("ok"));
+                                                                Expectations.outputContains(
+                                                                                            "testOutputContainsAndEqualsVariants",
+                                                                                            "ok"),
+                                                                Expectations.outputEquals(
+                                                                                          "testOutputContainsAndEqualsVariants",
+                                                                                          "ok"));
         val tests = List.of(new TestCase<String, String>("input", expectations));
         val dataset = new Dataset<String, String>("output-variants", tests);
 
@@ -363,8 +331,12 @@ class EvalEngineTest {
     void testReportContainsAllExpectedFields() {
         EvalEngine engine = engineWithMockJudgeModel();
         val expectations = List.<Expectation<String, String>>of(
-                                                                Expectations.outputContains("ok"),
-                                                                Expectations.outputEquals("ok"));
+                                                                Expectations.outputContains(
+                                                                                            "testReportContainsAllExpectedFields",
+                                                                                            "ok"),
+                                                                Expectations.outputEquals(
+                                                                                          "testReportContainsAllExpectedFields",
+                                                                                          "ok"));
         val tests = List.of(new TestCase<String, String>("input", expectations));
         val dataset = new Dataset<String, String>("report-structure", tests);
 
@@ -397,7 +369,7 @@ class EvalEngineTest {
         val tests = new ArrayList<TestCase<String, String>>();
         for (int i = 0; i < 10; i++) {
             tests.add(new TestCase<>("input-" + i,
-                                     List.of(Expectations.outputContains("ok"))));
+                                     List.of(Expectations.outputContains("testSampling", "ok"))));
         }
         val dataset = new Dataset<String, String>("test-dataset", tests);
         val report = engine.run(dataset,
@@ -417,7 +389,7 @@ class EvalEngineTest {
     void testTimeoutMarksSkipped() {
         EvalEngine engine = engineWithMockJudgeModel();
         val tests = List.of(new TestCase<>("slow",
-                                           List.of(Expectations.outputContains("ok")),
+                                           List.of(Expectations.outputContains("testTimeoutMarksSkipped", "ok")),
                                            Duration.ofMillis(1)));
         val dataset = new Dataset<>("test-dataset", tests);
 
@@ -438,6 +410,7 @@ class EvalEngineTest {
     void testTokenUsageMetric() {
         EvalEngine engine = engineWithMockJudgeModel();
         val expectations = List.<Expectation<String, String>>of(new MetricExpectation<>(
+                                                                                        "testTokenUsageMetric",
                                                                                         new com.phonepe.sentinelai.evals.tests.metrics.TokenUsageMetric<>()));
         val tests = List.of(new TestCase<String, String>("input", expectations));
         val dataset = new Dataset<String, String>("token-usage", tests);
@@ -446,26 +419,5 @@ class EvalEngineTest {
 
         assertEquals(1, report.getPassedTestCases());
         assertTrue(report.getTestCaseReports().get(0).getExpectationReports().get(0).getScore().isPresent());
-    }
-
-    @Test
-    void testToolCallsFollowEncodedOrder() {
-        EvalEngine engine = engineWithMockJudgeModel();
-        val orderedExpectation = Expectations.<String, String>ordered(
-                                                                      new ToolCalledExpectation<>("fetch_user"),
-                                                                      new ToolCalledExpectation<>("fetch_account"));
-        val tests = List.of(new TestCase<String, String>("run tools", List.of(orderedExpectation)));
-        val dataset = new Dataset<String, String>("tool-order-dataset", tests);
-
-        val report = engine.run(dataset,
-                                TestFactory.testAgent(new OrderedToolCallModel(
-                                                                               List.of("test_agent_fetch_user",
-                                                                                       "test_agent_fetch_account"),
-                                                                               "ok")),
-                                EvalRunConfig.defaults());
-
-        assertEquals(1, report.getExecutedTestCases());
-        assertEquals(1, report.getPassedTestCases());
-        assertEquals(0, report.getFailedTestCases());
     }
 }

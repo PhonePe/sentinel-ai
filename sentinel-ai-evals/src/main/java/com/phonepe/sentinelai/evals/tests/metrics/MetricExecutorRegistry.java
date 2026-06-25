@@ -258,6 +258,12 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
         return this;
     }
 
+    /**
+     * Registers a {@link CostMetric} executor backed by the supplied calculator.
+     *
+     * @param costCalculator cost calculator to use
+     * @return this registry (fluent)
+     */
     public MetricExecutorRegistry withCostMetric(CostCalculator costCalculator) {
         Objects.requireNonNull(costCalculator, "costCalculator cannot be null");
         register((Class) CostMetric.class, new MetricExecutorFactory() {
@@ -271,6 +277,13 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
         return this;
     }
 
+    /**
+     * Registers built-in event-based metric executors (event count and event latency)
+     * backed by the supplied tracer.
+     *
+     * @param tracer event tracer to query during metric evaluation
+     * @return this registry (fluent)
+     */
     public MetricExecutorRegistry withEventMetrics(AgentEventTracer tracer) {
         register((Class) EventCountMetric.class, new MetricExecutorFactory() {
             @Override

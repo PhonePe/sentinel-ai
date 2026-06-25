@@ -21,6 +21,9 @@ import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 
+/**
+ * Executor for {@link CostMetric} that delegates to a {@link CostCalculator}.
+ */
 @RequiredArgsConstructor
 public class CostMetricExecutor<R, T> implements MetricExecutor<R, T> {
 
@@ -32,7 +35,7 @@ public class CostMetricExecutor<R, T> implements MetricExecutor<R, T> {
         if (usage == null) {
             return 0.0;
         }
-        return costCalculator.calculate(context.getModelId(), usage);
+        return costCalculator.calculate(context.getModelName(), usage);
     }
 
     @Override

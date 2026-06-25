@@ -93,13 +93,20 @@ public class MetricExpectationExecutor<R, T> implements ExpectationExecutor<R, T
             score = metricExecutor.calculate(result, context);
         }
         catch (Exception e) {
-            return ExpectationReport.skipped(expectation.id(),
-                                             "Metric evaluation skipped due to exception: " + e.getMessage());
+            return ExpectationReport.builder()
+                    .expectation(expectation.getId())
+                    .status(EvalStatus.SKIPPED)
+                    .details("Metric evaluation skipped due to exception: " + e.getMessage())
+                    .build();
         }
         if (expectation.getThreshold() == null) {
-            return ExpectationReport.metric(expectation.id(),
-                                            score,
-                                            "Metric evaluated without threshold enforcement");
+            return ExpectationReport.builder()
+                    .expectation(expectation.getId())
+                    .status(EvalStatus.PASSED)
+                    .details("Metric evaluated without threshold enforcement (score: " + String.format("%.2f", score)
+                            + ")")
+                    .score(Optional.of(score))
+                    .build();
         }
         val operator = expectation.getOperator() != null ? expectation.getOperator() : Operator.GTE;
         boolean passed = operator.compare(score, expectation.getThreshold());
@@ -107,16 +114,11 @@ public class MetricExpectationExecutor<R, T> implements ExpectationExecutor<R, T
                 + " (score: " + String.format("%.2f", score)
                 + ", threshold: " + String.format("%.2f", expectation.getThreshold()) + ")";
         return ExpectationReport.builder()
-                .expectation(expectation.id())
+                .expectation(expectation.getId())
                 .status(passed ? EvalStatus.PASSED : EvalStatus.FAILED)
                 .details(details)
                 .score(Optional.of(score))
                 .threshold(Optional.of(expectation.getThreshold()))
                 .build();
-    }
-
-    @Override
-    public String toString() {
-        return expectation.toString();
     }
 }

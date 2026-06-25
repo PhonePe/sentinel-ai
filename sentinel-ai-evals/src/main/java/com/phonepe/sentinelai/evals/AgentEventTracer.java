@@ -34,6 +34,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Predicate;
 
+/**
+ * Captures {@link AgentEvent}s emitted during agent execution for use by eval expectations and metrics.
+ *
+ * <p>Wire to an agent by passing it to the constructor, or call {@link #handleAgentEvent} directly.
+ */
 @Slf4j
 public class AgentEventTracer {
 
@@ -45,6 +50,13 @@ public class AgentEventTracer {
     public AgentEventTracer() {
     }
 
+    /**
+     * Wires this tracer to the supplied agent's event bus.
+     *
+     * @param agent agent whose events should be captured
+     * @param <T>   request type accepted by the agent
+     * @param <R>   response type produced by the agent
+     */
     public <T, R> AgentEventTracer(Agent<T, R, ?> agent) {
         val eventBus = agent.getSetup().getEventBus();
         eventBus.onEvent().connect(this::handleAgentEvent);
@@ -70,6 +82,12 @@ public class AgentEventTracer {
         return false;
     }
 
+    /**
+     * Returns all captured events matching the supplied predicate.
+     *
+     * @param predicate filter to apply
+     * @return list of matching events (possibly empty)
+     */
     public List<AgentEvent> findEvents(Predicate<AgentEvent> predicate) {
         synchronized (capturedEvents) {
             val result = new ArrayList<AgentEvent>();
@@ -82,6 +100,14 @@ public class AgentEventTracer {
         }
     }
 
+    /**
+     * Returns the average latency in milliseconds for the given event key.
+     *
+     * @param agentName agent to match; {@code null} or empty aggregates across all agents
+     * @param eventType event type to measure
+     * @param eventKey  event-specific key (e.g. tool name); {@code null} ignores the key
+     * @return average latency in ms, or {@code 0.0} when no samples exist
+     */
     public double getAverageLatencyMs(String agentName, EventType eventType, String eventKey) {
         if (agentName != null && !agentName.isEmpty()) {
             val key = buildKey(agentName, eventType, eventKey);
@@ -103,10 +129,26 @@ public class AgentEventTracer {
         return totalCount == 0 ? 0.0 : (double) totalSum / totalCount;
     }
 
+    /**
+     * Returns the number of captured events matching the given filters.
+     *
+     * @param agentName agent to match; {@code null} or empty ignores the agent name
+     * @param eventType event type to count
+     * @param eventKey  event-specific key; {@code null} or empty ignores the key
+     * @return count of matching events
+     */
     public int getEventCount(String agentName, EventType eventType, String eventKey) {
         return getEvents(agentName, eventType, eventKey).size();
     }
 
+    /**
+     * Returns all captured events matching the given filters.
+     *
+     * @param agentName agent to match; {@code null} or empty ignores the agent name
+     * @param eventType event type to return
+     * @param eventKey  event-specific key; {@code null} or empty ignores the key
+     * @return list of matching events (possibly empty)
+     */
     public List<AgentEvent> getEvents(String agentName, EventType eventType, String eventKey) {
         return findEvents(e -> {
             if (agentName != null && !agentName.isEmpty() && !agentName.equals(e.getAgentName())) {
@@ -165,6 +207,9 @@ public class AgentEventTracer {
         }
     }
 
+    /**
+     * Clears all captured events and latency data.
+     */
     public void reset() {
         startMsById.clear();
         latencySum.clear();

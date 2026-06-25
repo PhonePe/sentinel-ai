@@ -41,7 +41,7 @@ class OutputJsonPathCompareExpectationTest {
 
     @Test
     void testEquals() {
-        final var expectation = Expectations.<Decision, Object>at("status").eq("SUCCESS");
+        final var expectation = Expectations.<Decision, Object>at("testEquals", "status").eq("SUCCESS");
 
         assertTrue(TestFactory.evaluate(expectation, new Decision("SUCCESS", 91, "IN"), TestFactory.context()));
         assertFalse(TestFactory.evaluate(expectation, new Decision("FAILED", 91, "IN"), TestFactory.context()));
@@ -49,7 +49,7 @@ class OutputJsonPathCompareExpectationTest {
 
     @Test
     void testGreaterThan() {
-        final var expectation = Expectations.<Decision, Object>where("score").gt(80);
+        final var expectation = Expectations.<Decision, Object>where("testGreaterThan", "score").gt(80);
 
         assertTrue(TestFactory.evaluate(expectation, new Decision("SUCCESS", 91, "IN"), TestFactory.context()));
         assertFalse(TestFactory.evaluate(expectation, new Decision("SUCCESS", 50, "IN"), TestFactory.context()));
@@ -57,7 +57,7 @@ class OutputJsonPathCompareExpectationTest {
 
     @Test
     void testGreaterThanOrEquals() {
-        final var expectation = Expectations.<Decision, Object>where("score").gte(80);
+        final var expectation = Expectations.<Decision, Object>where("testGreaterThanOrEquals", "score").gte(80);
 
         assertTrue(TestFactory.evaluate(expectation, new Decision("SUCCESS", 80, "IN"), TestFactory.context()));
         assertFalse(TestFactory.evaluate(expectation, new Decision("SUCCESS", 79, "IN"), TestFactory.context()));
@@ -65,7 +65,9 @@ class OutputJsonPathCompareExpectationTest {
 
     @Test
     void testInList() {
-        final var expectation = Expectations.<Decision, Object>where("region").in(List.of("IN", "US", "SG"));
+        final var expectation = Expectations.<Decision, Object>where("testInList", "region").in(List.of("IN",
+                                                                                                        "US",
+                                                                                                        "SG"));
 
         assertTrue(TestFactory.evaluate(expectation, new Decision("SUCCESS", 91, "IN"), TestFactory.context()));
         assertFalse(TestFactory.evaluate(expectation, new Decision("SUCCESS", 91, "DE"), TestFactory.context()));
@@ -73,7 +75,7 @@ class OutputJsonPathCompareExpectationTest {
 
     @Test
     void testLessThan() {
-        final var expectation = Expectations.<Decision, Object>where("score").lt(30);
+        final var expectation = Expectations.<Decision, Object>where("testLessThan", "score").lt(30);
 
         assertTrue(TestFactory.evaluate(expectation, new Decision("SUCCESS", 20, "IN"), TestFactory.context()));
         assertFalse(TestFactory.evaluate(expectation, new Decision("SUCCESS", 31, "IN"), TestFactory.context()));
@@ -81,7 +83,7 @@ class OutputJsonPathCompareExpectationTest {
 
     @Test
     void testLessThanOrEquals() {
-        final var expectation = Expectations.<Decision, Object>where("score").lte(30);
+        final var expectation = Expectations.<Decision, Object>where("testLessThanOrEquals", "score").lte(30);
 
         assertTrue(TestFactory.evaluate(expectation, new Decision("SUCCESS", 30, "IN"), TestFactory.context()));
         assertFalse(TestFactory.evaluate(expectation, new Decision("SUCCESS", 31, "IN"), TestFactory.context()));
@@ -89,7 +91,7 @@ class OutputJsonPathCompareExpectationTest {
 
     @Test
     void testNotEquals() {
-        final var expectation = Expectations.<Decision, Object>at("status").ne("FAILED");
+        final var expectation = Expectations.<Decision, Object>at("testNotEquals", "status").ne("FAILED");
 
         assertTrue(TestFactory.evaluate(expectation, new Decision("SUCCESS", 91, "IN"), TestFactory.context()));
         assertFalse(TestFactory.evaluate(expectation, new Decision("FAILED", 91, "IN"), TestFactory.context()));
@@ -97,7 +99,8 @@ class OutputJsonPathCompareExpectationTest {
 
     @Test
     void testNotInList() {
-        final var expectation = Expectations.<Decision, Object>where("region").notIn(List.of("DE", "FR"));
+        final var expectation = Expectations.<Decision, Object>where("testNotInList", "region").notIn(List.of("DE",
+                                                                                                              "FR"));
 
         assertTrue(TestFactory.evaluate(expectation, new Decision("SUCCESS", 91, "IN"), TestFactory.context()));
         assertFalse(TestFactory.evaluate(expectation, new Decision("SUCCESS", 91, "DE"), TestFactory.context()));

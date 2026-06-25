@@ -16,6 +16,12 @@
 
 package com.phonepe.sentinelai.evals.tests.metrics;
 
+/**
+ * Metric that reports the monetary cost of an inference call.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
+ */
 public class CostMetric<R, T> implements Metric<R, T> {
 
     @Override

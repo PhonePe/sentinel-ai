@@ -47,7 +47,6 @@ import com.phonepe.sentinelai.evals.tests.TestCase;
 import com.phonepe.sentinelai.evals.tests.expectations.AgentEventExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.Operator;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputCompareExpectation;
-import com.phonepe.sentinelai.evals.tests.expectations.ToolCalledExpectation;
 import com.phonepe.sentinelai.evals.tests.metrics.CostCalculator;
 import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelIdentifier;
@@ -83,7 +82,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class EvalEngineE2ETest {
 
     /* ---- Custom expectation for registry test ---- */
-    static class CustomExpectation<R, T> implements Expectation<R, T> {
+    static class CustomExpectation<R, T> extends Expectation<R, T> {
+        CustomExpectation() {
+            super("custom-expectation");
+        }
     }
 
     /* ---- Test agents ---- */
@@ -136,6 +138,11 @@ class EvalEngineE2ETest {
 
                 return ModelOutput.success(data, List.of(text), allMessages, usage);
             });
+        }
+
+        @Override
+        public String modelName() {
+            return "decision-model";
         }
     }
 
@@ -197,6 +204,11 @@ class EvalEngineE2ETest {
                 return ModelOutput.success(data, List.of(), safeMessages, new ModelUsageStats());
             });
         }
+
+        @Override
+        public String modelName() {
+            return "mock-judge";
+        }
     }
 
     static class StringAgent extends Agent<AgentInput, String, StringAgent> {
@@ -241,6 +253,11 @@ class EvalEngineE2ETest {
 
                 return ModelOutput.success(data, List.of(text), allMessages, usage);
             });
+        }
+
+        @Override
+        public String modelName() {
+            return "string-model";
         }
     }
 
@@ -297,6 +314,11 @@ class EvalEngineE2ETest {
                                            allMessages,
                                            usage);
             });
+        }
+
+        @Override
+        public String modelName() {
+            return "tool-emitting";
         }
     }
 
@@ -388,6 +410,7 @@ class EvalEngineE2ETest {
         // field extraction needed).
         final List<Expectation<String, AgentInput>> expectations = List.of(
                                                                            new AgentEventExpectation<>(
+                                                                                                       "agentEventExpectation",
                                                                                                        "string-agent",
                                                                                                        com.phonepe.sentinelai.core.events.EventType.OUTPUT_GENERATED,
                                                                                                        null,
@@ -404,19 +427,61 @@ class EvalEngineE2ETest {
 
     @Test
     void combinedExpectations() {
-        final var engine = defaultEngine();
+        final var tracer = new AgentEventTracer();
+        tracer.handleAgentEvent(new com.phonepe.sentinelai.core.events.ToolCalledAgentEvent(
+                                                                                            "tool-agent",
+                                                                                            "run-1",
+                                                                                            null,
+                                                                                            null,
+                                                                                            "tc-1",
+                                                                                            "fetch_user",
+                                                                                            "{}"));
+        tracer.handleAgentEvent(new com.phonepe.sentinelai.core.events.ToolCalledAgentEvent(
+                                                                                            "tool-agent",
+                                                                                            "run-1",
+                                                                                            null,
+                                                                                            null,
+                                                                                            "tc-2",
+                                                                                            "fetch_account",
+                                                                                            "{}"));
+        tracer.handleAgentEvent(new com.phonepe.sentinelai.core.events.ToolCalledAgentEvent(
+                                                                                            "tool-agent",
+                                                                                            "run-1",
+                                                                                            null,
+                                                                                            null,
+                                                                                            "tc-3",
+                                                                                            "fetch_user",
+                                                                                            "{}"));
+
+        final var metricRegistry = MetricExecutorRegistry.withDefaults().withEventMetrics(tracer);
+        final var expectationRegistry = ExpectationExecutorRegistry.withDefaults(metricRegistry, new ObjectMapper())
+                .withEventExpectations(tracer);
+        final var engine = new EvalEngine(new ObjectMapper(), expectationRegistry);
         final var agent = new ToolAgent(setup(new ToolEmittingModel()));
 
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           Expectations.outputContains("tools"),
+                                                                           Expectations.outputContains(
+                                                                                                       "combinedExpectations",
+                                                                                                       "tools"),
                                                                            Expectations.outputEquals(
+                                                                                                     "combinedExpectations",
                                                                                                      "All tools executed"),
-                                                                           Expectations.toolCalled("fetch_user", 2),
-                                                                           Expectations.ordered(
-                                                                                                Expectations.toolCalled(
-                                                                                                                        "fetch_user"),
-                                                                                                Expectations.toolCalled(
-                                                                                                                        "fetch_account")));
+                                                                           new AgentEventExpectation<>(
+                                                                                                       "combinedExpectations-fetchUser",
+                                                                                                       null,
+                                                                                                       com.phonepe.sentinelai.core.events.EventType.TOOL_CALLED,
+                                                                                                       "fetch_user",
+                                                                                                       null,
+                                                                                                       null,
+                                                                                                       null),
+                                                                           new AgentEventExpectation<>(
+                                                                                                       "combinedExpectations-fetchAccount",
+                                                                                                       null,
+                                                                                                       com.phonepe.sentinelai.core.events.EventType.TOOL_CALLED,
+                                                                                                       "fetch_account",
+                                                                                                       null,
+                                                                                                       null,
+                                                                                                       null));
 
         final var dataset = new Dataset<AgentInput, String>("combined",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
@@ -443,7 +508,8 @@ class EvalEngineE2ETest {
 
         final var agent = new StringAgent(setup(new StringModel("test")));
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           new MetricExpectation<>(new com.phonepe.sentinelai.evals.tests.metrics.CostMetric<>()));
+                                                                           new MetricExpectation<>("costMetric",
+                                                                                                   new com.phonepe.sentinelai.evals.tests.metrics.CostMetric<>()));
 
         final var dataset = new Dataset<AgentInput, String>("cost-metric",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
@@ -503,7 +569,8 @@ class EvalEngineE2ETest {
         final var dataset = new Dataset<AgentInput, String>("default-engine",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
                                                                                                      List.of(Expectations
-                                                                                                             .outputEquals("ok")))));
+                                                                                                             .outputEquals("defaultEngineConstructor",
+                                                                                                                           "ok")))));
         final var report = engine.run(dataset, agent);
         assertEquals(1, report.getPassedTestCases());
     }
@@ -516,7 +583,8 @@ class EvalEngineE2ETest {
         final var dataset = new Dataset<AgentInput, String>("explicit-executor",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
                                                                                                      List.of(Expectations
-                                                                                                             .outputEquals("ok")))));
+                                                                                                             .outputEquals("engineWithExplicitExecutor",
+                                                                                                                           "ok")))));
         final var report = engine.run(dataset, agent);
         assertEquals(1, report.getPassedTestCases());
     }
@@ -527,17 +595,20 @@ class EvalEngineE2ETest {
         final var agent = new StringAgent(setup(new StringModel("ok")));
 
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           Expectations.outputContains("missing"),
-                                                                           Expectations.outputContains("ok"),
-                                                                           Expectations.outputEquals("ok"));
+                                                                           Expectations.outputContains(
+                                                                                                       "eval-all-1",
+                                                                                                       "missing"),
+                                                                           Expectations.outputContains(
+                                                                                                       "eval-all-2",
+                                                                                                       "ok"),
+                                                                           Expectations.outputEquals(
+                                                                                                     "eval-all-3",
+                                                                                                     "ok"));
 
         final var dataset = new Dataset<AgentInput, String>("evaluate-all",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
                                                                                                      expectations)));
-
-        final var report = engine.run(dataset,
-                                      agent,
-                                      EvalRunConfig.defaults().withEvaluateAllExpectations(true));
+        final var report = engine.run(dataset, agent, EvalRunConfig.defaults());
 
         assertEquals(1, report.getFailedTestCases());
         assertEquals(3, report.getTestCaseReports().get(0).getExpectationReports().size());
@@ -561,11 +632,13 @@ class EvalEngineE2ETest {
         agent.getSetup().getEventBus().onEvent().connect(tracer::handleAgentEvent);
 
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           new MetricExpectation<>(new EventCountMetric<>(
+                                                                           new MetricExpectation<>("eventCountAndEventLatencyMetrics-count",
+                                                                                                   new EventCountMetric<>(
                                                                                                                           "string-agent",
                                                                                                                           com.phonepe.sentinelai.core.events.EventType.OUTPUT_GENERATED,
                                                                                                                           null)),
-                                                                           new MetricExpectation<>(new EventLatencyMetric<>(
+                                                                           new MetricExpectation<>("eventCountAndEventLatencyMetrics-latency",
+                                                                                                   new EventLatencyMetric<>(
                                                                                                                             "string-agent",
                                                                                                                             com.phonepe.sentinelai.core.events.EventType.OUTPUT_GENERATED,
                                                                                                                             null)));
@@ -586,10 +659,12 @@ class EvalEngineE2ETest {
         final List<TestCase<AgentInput, String>> tests = List.of(
                                                                  new TestCase<AgentInput, String>(new AgentInput("first"),
                                                                                                   List.of(Expectations
-                                                                                                          .outputContains("missing"))),
+                                                                                                          .outputContains("failFastStopsAfterFirstFailure",
+                                                                                                                          "missing"))),
                                                                  new TestCase<AgentInput, String>(new AgentInput("second"),
                                                                                                   List.of(Expectations
-                                                                                                          .outputContains("ok"))));
+                                                                                                          .outputContains("failFastStopsAfterFirstFailure",
+                                                                                                                          "ok"))));
         final var dataset = new Dataset<AgentInput, String>("fail-fast-dataset", tests);
 
         final var report = engine.run(dataset,
@@ -610,32 +685,41 @@ class EvalEngineE2ETest {
 
         final List<Expectation<DecisionOutput, AgentInput>> expectations = List.of(
                                                                                    Expectations.jsonPathEquals(
+                                                                                                               "jsonpath-eq-status",
                                                                                                                "$.status",
                                                                                                                "SUCCESS"),
                                                                                    Expectations
-                                                                                           .<DecisionOutput, AgentInput>where("$.status")
+                                                                                           .<DecisionOutput, AgentInput>where("where-eq-status",
+                                                                                                                              "$.status")
                                                                                            .eq("SUCCESS"),
                                                                                    Expectations
-                                                                                           .<DecisionOutput, AgentInput>where("$.status")
+                                                                                           .<DecisionOutput, AgentInput>where("where-ne-status",
+                                                                                                                              "$.status")
                                                                                            .ne("FAILED"),
                                                                                    Expectations
-                                                                                           .<DecisionOutput, AgentInput>at("$.score")
+                                                                                           .<DecisionOutput, AgentInput>at("at-gt-score",
+                                                                                                                           "$.score")
                                                                                            .gt(80),
                                                                                    Expectations
-                                                                                           .<DecisionOutput, AgentInput>at("$.score")
+                                                                                           .<DecisionOutput, AgentInput>at("at-gte-score",
+                                                                                                                           "$.score")
                                                                                            .gte(85),
                                                                                    Expectations
-                                                                                           .<DecisionOutput, AgentInput>at("$.score")
+                                                                                           .<DecisionOutput, AgentInput>at("at-lt-score",
+                                                                                                                           "$.score")
                                                                                            .lt(90),
                                                                                    Expectations
-                                                                                           .<DecisionOutput, AgentInput>at("$.score")
+                                                                                           .<DecisionOutput, AgentInput>at("at-lte-score",
+                                                                                                                           "$.score")
                                                                                            .lte(85),
                                                                                    Expectations
-                                                                                           .<DecisionOutput, AgentInput>at("$.category")
+                                                                                           .<DecisionOutput, AgentInput>at("at-in-category",
+                                                                                                                           "$.category")
                                                                                            .in(List.of("GOLD",
                                                                                                        "PLATINUM")),
                                                                                    Expectations
-                                                                                           .<DecisionOutput, AgentInput>at("$.category")
+                                                                                           .<DecisionOutput, AgentInput>at("at-notIn-category",
+                                                                                                                           "$.category")
                                                                                            .notIn(List.of("SILVER",
                                                                                                           "BRONZE")));
 
@@ -655,7 +739,9 @@ class EvalEngineE2ETest {
         final var agent = new StringAgent(setup(new StringModel("test output")));
 
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           Expectations.answerRelevance(0.9));
+                                                                           Expectations.answerRelevance(
+                                                                                                        "metricExpectationThresholdFailure",
+                                                                                                        0.9));
 
         final var dataset = new Dataset<AgentInput, String>("threshold-fail",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
@@ -668,70 +754,35 @@ class EvalEngineE2ETest {
     }
 
     @Test
-    void orderedExpectation() {
-        final var agent = new ToolAgent(setup(new ToolEmittingModel()));
-
-        final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           Expectations.ordered(
-                                                                                                Expectations.toolCalled(
-                                                                                                                        "fetch_user"),
-                                                                                                Expectations.toolCalled(
-                                                                                                                        "fetch_account"),
-                                                                                                Expectations.toolCalled(
-                                                                                                                        "fetch_user")));
-
-        final var dataset = new Dataset<AgentInput, String>("ordered",
-                                                            List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
-                                                                                                     expectations)));
-        final var report = defaultEngine().run(dataset, agent);
-        assertEquals(1, report.getPassedTestCases());
-    }
-
-    @Test
-    void orderedExpectationFailure() {
-        final var agent = new ToolAgent(setup(new ToolEmittingModel()));
-
-        // Tool history: fetch_user, fetch_account, fetch_user
-        // This expectation requires fetch_account BEFORE the first fetch_user,
-        // which is impossible because fetch_user appears first.
-        final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           Expectations.ordered(
-                                                                                                Expectations.toolCalled(
-                                                                                                                        "fetch_account"),
-                                                                                                Expectations.toolCalled(
-                                                                                                                        "fetch_user"),
-                                                                                                Expectations.toolCalled(
-                                                                                                                        "fetch_account")));
-
-        final var dataset = new Dataset<AgentInput, String>("ordered-fail",
-                                                            List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
-                                                                                                     expectations)));
-        final var report = defaultEngine().run(dataset, agent);
-        assertEquals(1, report.getFailedTestCases());
-    }
-
-    @Test
     void outputCompareExpectationAllOperators() {
         final var agent = new StringAgent(setup(new StringModel("42")));
 
         // All expected values are Strings to avoid type-mismatch in Operator.compareOrder
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           new OutputCompareExpectation<>("42",
+                                                                           new OutputCompareExpectation<>("outputCompareExpectationAllOperators-eq",
+                                                                                                          "42",
                                                                                                           Operator.EQ),
-                                                                           new OutputCompareExpectation<>("99",
+                                                                           new OutputCompareExpectation<>("outputCompareExpectationAllOperators-ne",
+                                                                                                          "99",
                                                                                                           Operator.NE),
-                                                                           new OutputCompareExpectation<>("40",
+                                                                           new OutputCompareExpectation<>("outputCompareExpectationAllOperators-gt",
+                                                                                                          "40",
                                                                                                           Operator.GT),
-                                                                           new OutputCompareExpectation<>("42",
+                                                                           new OutputCompareExpectation<>("outputCompareExpectationAllOperators-gte",
+                                                                                                          "42",
                                                                                                           Operator.GTE),
-                                                                           new OutputCompareExpectation<>("50",
+                                                                           new OutputCompareExpectation<>("outputCompareExpectationAllOperators-lt",
+                                                                                                          "50",
                                                                                                           Operator.LT),
-                                                                           new OutputCompareExpectation<>("42",
+                                                                           new OutputCompareExpectation<>("outputCompareExpectationAllOperators-lte",
+                                                                                                          "42",
                                                                                                           Operator.LTE),
-                                                                           new OutputCompareExpectation<>(List.of("42",
+                                                                           new OutputCompareExpectation<>("outputCompareExpectationAllOperators-in",
+                                                                                                          List.of("42",
                                                                                                                   "99"),
                                                                                                           Operator.IN),
-                                                                           new OutputCompareExpectation<>(List.of(
+                                                                           new OutputCompareExpectation<>("outputCompareExpectationAllOperators-notIn",
+                                                                                                          List.of(
                                                                                                                   "wrong",
                                                                                                                   "also wrong"),
                                                                                                           Operator.NOT_IN));
@@ -751,9 +802,15 @@ class EvalEngineE2ETest {
         final var agent = new StringAgent(setup(new StringModel("Hello World")));
 
         final List<Expectation<String, AgentInput>> passExpectations = List.of(
-                                                                               Expectations.outputContains("Hello"),
-                                                                               Expectations.outputContains("World"),
-                                                                               Expectations.outputContains("hello"));
+                                                                               Expectations.outputContains(
+                                                                                                           "outputContainsExpectation",
+                                                                                                           "Hello"),
+                                                                               Expectations.outputContains(
+                                                                                                           "outputContainsExpectation",
+                                                                                                           "World"),
+                                                                               Expectations.outputContains(
+                                                                                                           "outputContainsExpectation",
+                                                                                                           "hello"));
         final var passDataset = new Dataset<AgentInput, String>("contains-pass",
                                                                 List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
                                                                                                          passExpectations)));
@@ -764,7 +821,9 @@ class EvalEngineE2ETest {
                 .allMatch(r -> r.getStatus() == EvalStatus.PASSED));
 
         final List<Expectation<String, AgentInput>> failExpectations = List.of(
-                                                                               Expectations.outputContains("missing"));
+                                                                               Expectations.outputContains(
+                                                                                                           "outputContainsExpectation",
+                                                                                                           "missing"));
         final var failDataset = new Dataset<AgentInput, String>("contains-fail",
                                                                 List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
                                                                                                          failExpectations)));
@@ -781,14 +840,16 @@ class EvalEngineE2ETest {
         final var passDataset = new Dataset<AgentInput, String>("equals-pass",
                                                                 List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
                                                                                                          List.of(Expectations
-                                                                                                                 .outputEquals("Exact Match")))));
+                                                                                                                 .outputEquals("outputEqualsExpectation",
+                                                                                                                               "Exact Match")))));
         final var passReport = defaultEngine().run(passDataset, agent);
         assertEquals(1, passReport.getPassedTestCases());
 
         final var failDataset = new Dataset<AgentInput, String>("equals-fail",
                                                                 List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
                                                                                                          List.of(Expectations
-                                                                                                                 .outputEquals("Wrong")))));
+                                                                                                                 .outputEquals("outputEqualsExpectation",
+                                                                                                                               "Wrong")))));
         final var failReport = defaultEngine().run(failDataset, agent);
         assertEquals(1, failReport.getFailedTestCases());
     }
@@ -802,7 +863,9 @@ class EvalEngineE2ETest {
 
         final var metric = new OutputRelevanceBySimilarityMetric<AgentInput>();
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           new MetricExpectation<>(metric, 0.5));
+                                                                           new MetricExpectation<>("outputRelevanceBySimilarityMetric",
+                                                                                                   metric,
+                                                                                                   0.5));
 
         final var dataset = new Dataset<AgentInput, String>("relevance-by-similarity",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("hello world"),
@@ -817,7 +880,9 @@ class EvalEngineE2ETest {
         final var agent = new StringAgent(setup(new StringModel("test output")));
 
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           Expectations.answerRelevance(0.9));
+                                                                           Expectations.answerRelevance(
+                                                                                                        "outputRelevanceMetric",
+                                                                                                        0.9));
 
         final var dataset = new Dataset<AgentInput, String>("relevance-metric",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
@@ -834,9 +899,12 @@ class EvalEngineE2ETest {
         final var agent = new StringAgent(setup(new StringModel("Hello World")));
 
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           Expectations.outputSimilarity("Hello World",
+                                                                           Expectations.outputSimilarity(
+                                                                                                         "outputSimilarityMetric-threshold",
+                                                                                                         "Hello World",
                                                                                                          0.8),
                                                                            Expectations.outputSimilarity(
+                                                                                                         "outputSimilarityMetric",
                                                                                                          "Hello World"));
 
         final var dataset = new Dataset<AgentInput, String>("similarity-metric",
@@ -857,9 +925,14 @@ class EvalEngineE2ETest {
         final var agent = new StringAgent(setup(new StringModel("ok")));
 
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           Expectations.outputContains("ok"),
-                                                                           Expectations.outputEquals("ok"),
-                                                                           new MetricExpectation<>(new com.phonepe.sentinelai.evals.tests.metrics.TokenUsageMetric<>()));
+                                                                           Expectations.outputContains(
+                                                                                                       "reportStructureValidation",
+                                                                                                       "ok"),
+                                                                           Expectations.outputEquals(
+                                                                                                     "reportStructureValidation",
+                                                                                                     "ok"),
+                                                                           new MetricExpectation<>("TokenUsage",
+                                                                                                   new com.phonepe.sentinelai.evals.tests.metrics.TokenUsageMetric<>()));
 
         final var dataset = new Dataset<AgentInput, String>("report-structure",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
@@ -899,7 +972,9 @@ class EvalEngineE2ETest {
         final var tests = new ArrayList<TestCase<AgentInput, String>>();
         for (int i = 0; i < 20; i++) {
             tests.add(new TestCase<AgentInput, String>(new AgentInput("input-" + i),
-                                                       List.of(Expectations.outputContains("ok"))));
+                                                       List.of(Expectations.outputContains(
+                                                                                           "samplingReducesExecutedCases",
+                                                                                           "ok"))));
         }
         final var dataset = new Dataset<AgentInput, String>("sampling-dataset", tests);
 
@@ -923,7 +998,8 @@ class EvalEngineE2ETest {
         final List<TestCase<AgentInput, String>> tests = List.of(
                                                                  new TestCase<AgentInput, String>(new AgentInput("slow"),
                                                                                                   List.of(Expectations
-                                                                                                          .outputContains("ok")),
+                                                                                                          .outputContains("testCaseTimeout",
+                                                                                                                          "ok")),
                                                                                                   java.time.Duration
                                                                                                           .ofMillis(1)));
         final var dataset = new Dataset<AgentInput, String>("timeout-dataset", tests);
@@ -942,8 +1018,10 @@ class EvalEngineE2ETest {
         final var agent = new StringAgent(setup(new StringModel("test output")));
 
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           new MetricExpectation<>(new com.phonepe.sentinelai.evals.tests.metrics.TokenUsageMetric<>()),
-                                                                           new MetricExpectation<>(new com.phonepe.sentinelai.evals.tests.metrics.AgentLatencyMetric<>()));
+                                                                           new MetricExpectation<>("tokenUsageAndAgentLatencyMetrics-tokenUsage",
+                                                                                                   new com.phonepe.sentinelai.evals.tests.metrics.TokenUsageMetric<>()),
+                                                                           new MetricExpectation<>("tokenUsageAndAgentLatencyMetrics-agentLatency",
+                                                                                                   new com.phonepe.sentinelai.evals.tests.metrics.AgentLatencyMetric<>()));
 
         final var dataset = new Dataset<AgentInput, String>("token-latency-metrics",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
@@ -962,45 +1040,109 @@ class EvalEngineE2ETest {
 
     @Test
     void toolCalledExpectation() {
+        final var tracer = new AgentEventTracer();
+        // Tool history: fetch_user (1), fetch_account (2), fetch_user (3)
+        tracer.handleAgentEvent(new com.phonepe.sentinelai.core.events.ToolCalledAgentEvent(
+                                                                                            "tool-agent",
+                                                                                            "run-1",
+                                                                                            null,
+                                                                                            null,
+                                                                                            "tc-1",
+                                                                                            "fetch_user",
+                                                                                            "{}"));
+        tracer.handleAgentEvent(new com.phonepe.sentinelai.core.events.ToolCalledAgentEvent(
+                                                                                            "tool-agent",
+                                                                                            "run-1",
+                                                                                            null,
+                                                                                            null,
+                                                                                            "tc-2",
+                                                                                            "fetch_account",
+                                                                                            "{}"));
+        tracer.handleAgentEvent(new com.phonepe.sentinelai.core.events.ToolCalledAgentEvent(
+                                                                                            "tool-agent",
+                                                                                            "run-1",
+                                                                                            null,
+                                                                                            null,
+                                                                                            "tc-3",
+                                                                                            "fetch_user",
+                                                                                            "{}"));
+
+        final var metricRegistry = MetricExecutorRegistry.withDefaults().withEventMetrics(tracer);
+        final var expectationRegistry = ExpectationExecutorRegistry.withDefaults(metricRegistry, new ObjectMapper())
+                .withEventExpectations(tracer);
+        final var engine = new EvalEngine(new ObjectMapper(), expectationRegistry);
         final var agent = new ToolAgent(setup(new ToolEmittingModel()));
 
-        // Tool history: fetch_user (1), fetch_account (2), fetch_user (3)
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           Expectations.toolCalled("fetch_account"),                // 1 call of fetch_account
-                                                                           Expectations.toolCalled("fetch_user", 2),                // 2 calls of fetch_user
-                                                                           Expectations.toolCalled("fetch_account",
-                                                                                                   1,
-                                                                                                   Map.of()),   // 1 call with no param constraints
-                                                                           Expectations.toolCalled("fetch_user", 2));               // 2 calls again
+                                                                           new AgentEventExpectation<>(
+                                                                                                       "toolCalledExpectation-fetchAccount",
+                                                                                                       null,
+                                                                                                       com.phonepe.sentinelai.core.events.EventType.TOOL_CALLED,
+                                                                                                       "fetch_account",
+                                                                                                       null,
+                                                                                                       null,
+                                                                                                       null),
+                                                                           new AgentEventExpectation<>(
+                                                                                                       "toolCalledExpectation-fetchUser",
+                                                                                                       null,
+                                                                                                       com.phonepe.sentinelai.core.events.EventType.TOOL_CALLED,
+                                                                                                       "fetch_user",
+                                                                                                       null,
+                                                                                                       null,
+                                                                                                       null));
 
         final var dataset = new Dataset<AgentInput, String>("tool-called",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
                                                                                                      expectations)));
-        final var report = defaultEngine().run(dataset, agent);
+        final var report = engine.run(dataset, agent);
         assertEquals(1, report.getPassedTestCases());
-        assertEquals(4, report.getTestCaseReports().get(0).getExpectationReports().size());
+        assertEquals(2, report.getTestCaseReports().get(0).getExpectationReports().size());
         assertTrue(report.getTestCaseReports().get(0).getExpectationReports().stream()
                 .allMatch(r -> r.getStatus() == EvalStatus.PASSED));
     }
 
     @Test
     void toolCalledExpectationFailures() {
+        final var tracer = new AgentEventTracer();
+        // Only fetch_user and fetch_account exist — nonexistent_tool never fired
+        tracer.handleAgentEvent(new com.phonepe.sentinelai.core.events.ToolCalledAgentEvent(
+                                                                                            "tool-agent",
+                                                                                            "run-1",
+                                                                                            null,
+                                                                                            null,
+                                                                                            "tc-1",
+                                                                                            "fetch_user",
+                                                                                            "{}"));
+        tracer.handleAgentEvent(new com.phonepe.sentinelai.core.events.ToolCalledAgentEvent(
+                                                                                            "tool-agent",
+                                                                                            "run-1",
+                                                                                            null,
+                                                                                            null,
+                                                                                            "tc-2",
+                                                                                            "fetch_account",
+                                                                                            "{}"));
+
+        final var metricRegistry = MetricExecutorRegistry.withDefaults().withEventMetrics(tracer);
+        final var expectationRegistry = ExpectationExecutorRegistry.withDefaults(metricRegistry, new ObjectMapper())
+                .withEventExpectations(tracer);
+        final var engine = new EvalEngine(new ObjectMapper(), expectationRegistry);
         final var agent = new ToolAgent(setup(new ToolEmittingModel()));
 
         final List<Expectation<String, AgentInput>> expectations = List.of(
-                                                                           Expectations.toolCalled("nonexistent_tool"),
-                                                                           Expectations.toolCalled("fetch_user", 99),
-                                                                           new ToolCalledExpectation<>("fetch_user",
-                                                                                                       1,
-                                                                                                       Map.of("unexpected",
-                                                                                                              "param")));
+                                                                           new AgentEventExpectation<>(
+                                                                                                       "toolCalledExpectationFailures-nonexistentTool",
+                                                                                                       null,
+                                                                                                       com.phonepe.sentinelai.core.events.EventType.TOOL_CALLED,
+                                                                                                       "nonexistent_tool",
+                                                                                                       null,
+                                                                                                       null,
+                                                                                                       null));
 
         final var dataset = new Dataset<AgentInput, String>("tool-called-fail",
                                                             List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
                                                                                                      expectations)));
-        final var report = defaultEngine().run(dataset, agent);
+        final var report = engine.run(dataset, agent);
         assertEquals(1, report.getFailedTestCases());
-        // Only evaluateAllExpectations=false so first failure short-circuits rest
         assertEquals(1, report.getTestCaseReports().get(0).getExpectationReports().size());
     }
 }

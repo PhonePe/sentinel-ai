@@ -38,7 +38,6 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.evals.ExpectationReport;
 import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.LLMIdentifier;
-import com.phonepe.sentinelai.evals.tests.metrics.LLMModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.Metric;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry;
@@ -103,7 +102,6 @@ public class TestFactory {
             this.output = output;
         }
 
-
         @Override
         public CompletableFuture<ModelOutput> compute(ModelRunContext context,
                                                       Collection<ModelOutputDefinition> outputDefinitions,
@@ -128,6 +126,11 @@ public class TestFactory {
                                            allMessages,
                                            usage);
             });
+        }
+
+        @Override
+        public String modelName() {
+            return "test-model";
         }
     }
 
@@ -168,7 +171,7 @@ public class TestFactory {
                 .request(null)
                 .oldMessages(List.of())
                 .modelUsageStats(new ModelUsageStats())
-                .modelId(null)
+                .modelName(null)
                 .latencyMs(null)
                 .build();
     }
@@ -186,7 +189,7 @@ public class TestFactory {
                 .request(null)
                 .oldMessages(oldMessages)
                 .modelUsageStats(new ModelUsageStats())
-                .modelId(null)
+                .modelName(null)
                 .latencyMs(null)
                 .build();
     }
@@ -203,7 +206,7 @@ public class TestFactory {
                 .request(request)
                 .oldMessages(List.of())
                 .modelUsageStats(new ModelUsageStats())
-                .modelId(null)
+                .modelName(null)
                 .latencyMs(null)
                 .build();
     }
@@ -222,7 +225,7 @@ public class TestFactory {
                 .request(request)
                 .oldMessages(oldMessages)
                 .modelUsageStats(new ModelUsageStats())
-                .modelId(null)
+                .modelName(null)
                 .latencyMs(null)
                 .build();
     }
@@ -243,7 +246,7 @@ public class TestFactory {
                 .request(request)
                 .oldMessages(oldMessages)
                 .modelUsageStats(new ModelUsageStats())
-                .modelId(null)
+                .modelName(null)
                 .latencyMs(null)
                 .build();
     }
@@ -301,23 +304,33 @@ public class TestFactory {
         return MetricExecutorRegistry.withDefaults(null,
                                                    EmbeddingModelFactory.noOp(),
                                                    new LLMIdentifier("mock"),
-                                                   (LLMModelFactory) id -> (context,
-                                                                            outputDefinitions,
-                                                                            oldMessages,
-                                                                            tools,
-                                                                            toolRunner,
-                                                                            earlyTerminationStrategy,
-                                                                            agentMessagesPreProcessors) -> {
-                                                       final var data = JsonNodeFactory.instance.objectNode();
-                                                       data.put(Agent.OUTPUT_VARIABLE_NAME,
-                                                                "{\"score\":0.0,\"reason\":\"mock\"}");
-                                                       final var safeMessages = Objects.requireNonNullElse(oldMessages,
-                                                                                                           List.<AgentMessage>of());
-                                                       return CompletableFuture.completedFuture(ModelOutput.success(
-                                                                                                                    data,
-                                                                                                                    List.of(),
-                                                                                                                    safeMessages,
-                                                                                                                    new ModelUsageStats()));
+                                                   id -> new Model() {
+                                                       @Override
+                                                       public CompletableFuture<ModelOutput> compute(
+                                                                                                     ModelRunContext context,
+                                                                                                     Collection<ModelOutputDefinition> outputDefinitions,
+                                                                                                     List<AgentMessage> oldMessages,
+                                                                                                     Map<String, ExecutableTool> tools,
+                                                                                                     ToolRunner toolRunner,
+                                                                                                     EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                                                     List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
+                                                           final var data = JsonNodeFactory.instance.objectNode();
+                                                           data.put(Agent.OUTPUT_VARIABLE_NAME,
+                                                                    "{\"score\":0.0,\"reason\":\"mock\"}");
+                                                           final var safeMessages = Objects.requireNonNullElse(
+                                                                                                               oldMessages,
+                                                                                                               List.<AgentMessage>of());
+                                                           return CompletableFuture.completedFuture(ModelOutput.success(
+                                                                                                                        data,
+                                                                                                                        List.of(),
+                                                                                                                        safeMessages,
+                                                                                                                        new ModelUsageStats()));
+                                                       }
+
+                                                       @Override
+                                                       public String modelName() {
+                                                           return "mock";
+                                                       }
                                                    });
     }
 

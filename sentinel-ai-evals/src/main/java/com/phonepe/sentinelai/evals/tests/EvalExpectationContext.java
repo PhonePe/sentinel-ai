@@ -40,8 +40,8 @@ public class EvalExpectationContext<R> {
     List<AgentMessage> oldMessages;
     /** Model usage statistics associated with the run. */
     ModelUsageStats modelUsageStats;
-    /** Model identifier used by model-aware metric calculations. */
-    String modelId;
+    /** Model name used by model-aware metric calculations. */
+    String modelName;
     /** Wall-clock milliseconds for the agent {@code execute()} call only. */
     Long latencyMs;
 }

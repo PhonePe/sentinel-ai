@@ -58,14 +58,4 @@ public class OutputContainsExpectationExecutor<T> implements ExpectationExecutor
         return result.toLowerCase(Locale.ROOT)
                 .contains(expectation.getContainsSubstring().toLowerCase(Locale.ROOT));
     }
-
-    /**
-     * Returns the textual representation of the underlying expectation.
-     *
-     * @return expectation description
-     */
-    @Override
-    public String toString() {
-        return expectation.toString();
-    }
 }

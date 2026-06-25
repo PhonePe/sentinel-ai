@@ -16,6 +16,12 @@
 
 package com.phonepe.sentinelai.evals.tests.metrics;
 
+/**
+ * Metric that reports the agent's end-to-end execution latency in milliseconds.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
+ */
 public class AgentLatencyMetric<R, T> implements Metric<R, T> {
 
     @Override

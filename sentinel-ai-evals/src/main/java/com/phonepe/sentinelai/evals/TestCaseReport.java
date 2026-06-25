@@ -20,6 +20,9 @@ import lombok.Value;
 
 import java.util.List;
 
+/**
+ * Detailed outcome of executing a single test case.
+ */
 @Value
 public class TestCaseReport {
     /** Input request used when invoking the agent. */

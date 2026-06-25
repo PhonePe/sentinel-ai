@@ -38,10 +38,6 @@ public class EvalRunConfig {
     @Builder.Default
     boolean failFast = false;
 
-    /** Whether all expectations should be evaluated, even if one fails. Individual reports still indicate failure. */
-    @Builder.Default
-    boolean evaluateAllExpectations = false;
-
     /** Percentage of dataset cases to sample for execution, in the range {@code (0, 100]}. */
     @Builder.Default
     double samplePercentage = 100D;
@@ -61,15 +57,13 @@ public class EvalRunConfig {
     /**
      * Creates a validated runtime configuration.
      *
-     * @param failFast                whether execution should stop after the first failed test case
-     * @param evaluateAllExpectations whether all expectations should be evaluated even if one fails
-     * @param samplePercentage        percentage of dataset cases to sample for execution
-     * @param sampleSeed              deterministic seed used for sampling order
-     * @param defaultTestCaseTimeout  default timeout for test cases without an explicit timeout
-     * @param minimumSampleSize       minimum number of sampled test cases to execute
+     * @param failFast               whether execution should stop after the first failed test case
+     * @param samplePercentage       percentage of dataset cases to sample for execution
+     * @param sampleSeed             deterministic seed used for sampling order
+     * @param defaultTestCaseTimeout default timeout for test cases without an explicit timeout
+     * @param minimumSampleSize      minimum number of sampled test cases to execute
      */
     public EvalRunConfig(boolean failFast,
-                         boolean evaluateAllExpectations,
                          double samplePercentage,
                          long sampleSeed,
                          Duration defaultTestCaseTimeout,
@@ -80,7 +74,6 @@ public class EvalRunConfig {
         Preconditions.checkArgument(minimumSampleSize > 0, "minimumSampleSize must be positive");
 
         this.failFast = failFast;
-        this.evaluateAllExpectations = evaluateAllExpectations;
         this.samplePercentage = samplePercentage;
         this.sampleSeed = sampleSeed;
         this.defaultTestCaseTimeout = defaultTestCaseTimeout;

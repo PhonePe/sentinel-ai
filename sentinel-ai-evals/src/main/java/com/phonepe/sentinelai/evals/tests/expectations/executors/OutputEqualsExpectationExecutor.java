@@ -16,6 +16,8 @@
 
 package com.phonepe.sentinelai.evals.tests.expectations.executors;
 
+import com.phonepe.sentinelai.evals.EvalStatus;
+import com.phonepe.sentinelai.evals.ExpectationReport;
 import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import com.phonepe.sentinelai.evals.tests.ExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputEqualsExpectation;
@@ -53,13 +55,13 @@ public class OutputEqualsExpectationExecutor<R, T> implements ExpectationExecuto
         return Objects.equals(result, expectation.getExpectedOutput());
     }
 
-    /**
-     * Returns the textual representation of the underlying expectation.
-     *
-     * @return expectation description
-     */
     @Override
-    public String toString() {
-        return expectation.toString();
+    public ExpectationReport evaluateWithReport(R result, EvalExpectationContext<T> context) {
+        boolean passed = evaluate(result, context);
+        return ExpectationReport.builder()
+                .expectation(expectation.getId())
+                .status(passed ? EvalStatus.PASSED : EvalStatus.FAILED)
+                .details(passed ? "output equals expected value" : "output does not equal expected value")
+                .build();
     }
 }

@@ -20,6 +20,10 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Objects;
 
+/**
+ * Comparison operators used by {@link com.phonepe.sentinelai.evals.tests.expectations.OutputCompareExpectation}
+ * and {@link com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation}.
+ */
 public enum Operator {
     EQ,
     NE,
@@ -57,6 +61,13 @@ public enum Operator {
                 + " and " + expected.getClass());
     }
 
+    /**
+     * Compares two values using this operator.
+     *
+     * @param actual   value extracted from the output or event
+     * @param expected value supplied in the expectation definition
+     * @return {@code true} if the comparison holds
+     */
     public boolean compare(Object actual, Object expected) {
         return switch (this) {
             case EQ -> Objects.equals(actual, expected);

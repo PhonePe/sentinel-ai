@@ -19,12 +19,17 @@ package com.phonepe.sentinelai.evals.tests.expectations;
 import com.phonepe.sentinelai.core.events.EventType;
 import com.phonepe.sentinelai.evals.tests.Expectation;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+/**
+ * Expectation that asserts a captured {@link com.phonepe.sentinelai.core.events.AgentEvent} matches
+ * given filters and optionally satisfies a JSONPath comparison.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
+ */
 @Getter
-@AllArgsConstructor
-public class AgentEventExpectation<R, T> implements Expectation<R, T> {
+public class AgentEventExpectation<R, T> extends Expectation<R, T> {
     String agentName;
     EventType eventType;
     String eventKey;
@@ -32,10 +37,19 @@ public class AgentEventExpectation<R, T> implements Expectation<R, T> {
     Object expectedValue;
     Operator operator;
 
-    @Override
-    public String toString() {
-        return "AgentEventExpectation(agent=" + agentName
-                + ", type=" + eventType
-                + ", path=" + jsonPath + ")";
+    public AgentEventExpectation(String id,
+                                 String agentName,
+                                 EventType eventType,
+                                 String eventKey,
+                                 String jsonPath,
+                                 Object expectedValue,
+                                 Operator operator) {
+        super(id);
+        this.agentName = agentName;
+        this.eventType = eventType;
+        this.eventKey = eventKey;
+        this.jsonPath = jsonPath;
+        this.expectedValue = expectedValue;
+        this.operator = operator;
     }
 }

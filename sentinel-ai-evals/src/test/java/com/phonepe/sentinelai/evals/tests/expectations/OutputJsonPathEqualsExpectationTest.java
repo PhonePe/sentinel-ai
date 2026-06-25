@@ -38,7 +38,8 @@ class OutputJsonPathEqualsExpectationTest {
 
     @Test
     void testFailsWhenFieldValueDiffers() {
-        final var expectation = new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>("$.status",
+        final var expectation = new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>("testFailsWhenFieldValueDiffers",
+                                                                                                                                "$.status",
                                                                                                                                 Operator.EQ,
                                                                                                                                 "FAILED");
 
@@ -49,7 +50,8 @@ class OutputJsonPathEqualsExpectationTest {
 
     @Test
     void testFailsWhenPathMissing() {
-        final var expectation = new OutputJsonPathCompareExpectation<>("$.nested.status",
+        final var expectation = new OutputJsonPathCompareExpectation<>("testFailsWhenPathMissing",
+                                                                       "$.nested.status",
                                                                        Operator.EQ,
                                                                        "SUCCESS");
 
@@ -60,7 +62,8 @@ class OutputJsonPathEqualsExpectationTest {
 
     @Test
     void testMatchesFieldUsingJsonPath() {
-        final var expectation = new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>("$.status",
+        final var expectation = new com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation<>("testMatchesFieldUsingJsonPath",
+                                                                                                                                "$.status",
                                                                                                                                 Operator.EQ,
                                                                                                                                 "SUCCESS");
 

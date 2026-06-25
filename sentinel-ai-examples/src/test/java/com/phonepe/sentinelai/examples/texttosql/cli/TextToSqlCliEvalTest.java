@@ -58,11 +58,13 @@ class TextToSqlCliEvalTest {
                                                                                              "show me one row",
                                                                                              List.of(
                                                                                                      new OutputJsonPathCompareExpectation<>(
+                                                                                                                                            "sql-eq",
                                                                                                                                             "$.generatedSql",
                                                                                                                                             Operator.EQ,
                                                                                                                                             "SELECT 1"
                                                                                                      ),
                                                                                                      new OutputJsonPathCompareExpectation<>(
+                                                                                                                                            "results-eq",
                                                                                                                                             "$.results",
                                                                                                                                             Operator.EQ,
                                                                                                                                             List.of("{\"answer\":1}")

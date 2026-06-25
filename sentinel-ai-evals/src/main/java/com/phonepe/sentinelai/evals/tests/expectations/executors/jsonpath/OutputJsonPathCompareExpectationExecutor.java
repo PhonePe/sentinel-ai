@@ -49,6 +49,13 @@ public class OutputJsonPathCompareExpectationExecutor<R, T> implements Expectati
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
     }
 
+    /**
+     * Evaluates the configured JSONPath expression against the output value.
+     *
+     * @param result  output value to serialize and inspect
+     * @param context evaluation context (unused)
+     * @return {@code true} when the extracted value satisfies the configured comparison
+     */
     @Override
     public boolean evaluate(R result, EvalExpectationContext<T> context) {
         if (result == null) {
@@ -62,10 +69,5 @@ public class OutputJsonPathCompareExpectationExecutor<R, T> implements Expectati
         catch (RuntimeException e) {
             return false;
         }
-    }
-
-    @Override
-    public String toString() {
-        return expectation.toString();
     }
 }

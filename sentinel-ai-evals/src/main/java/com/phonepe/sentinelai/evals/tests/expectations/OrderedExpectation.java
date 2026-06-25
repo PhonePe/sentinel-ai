@@ -30,16 +30,18 @@ import java.util.List;
  * @param <R> result/output type
  * @param <T> input/request type
  */
-public class OrderedExpectation<R, T> implements Expectation<R, T> {
+public class OrderedExpectation<R, T> extends Expectation<R, T> {
 
     private final List<MessageExpectation<R, T>> expectations;
 
     /**
      * Creates an ordered message expectation.
      *
+     * @param id           unique identifier for this expectation
      * @param expectations message expectations that must match in order
      */
-    public OrderedExpectation(List<MessageExpectation<R, T>> expectations) {
+    public OrderedExpectation(String id, List<MessageExpectation<R, T>> expectations) {
+        super(id);
         this.expectations = expectations;
     }
 
@@ -50,10 +52,5 @@ public class OrderedExpectation<R, T> implements Expectation<R, T> {
      */
     public List<MessageExpectation<R, T>> getExpectations() {
         return expectations;
-    }
-
-    @Override
-    public String toString() {
-        return "OrderedExpectation(count=" + expectations.size() + ")";
     }
 }

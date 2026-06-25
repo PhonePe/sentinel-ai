@@ -116,7 +116,7 @@ public class EvalEngine {
     private static <R, T> EvalExpectationContext<R> buildContext(TestCase<R, T> testCase,
                                                                  List<AgentMessage> allMessages,
                                                                  ModelUsageStats usageStats,
-                                                                 String modelId,
+                                                                 String modelName,
                                                                  Long latencyMs) {
         final var safeMessages = Objects.requireNonNullElse(allMessages, List.<AgentMessage>of());
         return EvalExpectationContext.<R>builder()
@@ -124,7 +124,7 @@ public class EvalEngine {
                 .request(testCase.getInput())
                 .oldMessages(safeMessages)
                 .modelUsageStats(Objects.requireNonNullElseGet(usageStats, ModelUsageStats::new))
-                .modelId(modelId)
+                .modelName(modelName)
                 .latencyMs(latencyMs)
                 .build();
     }
@@ -149,12 +149,12 @@ public class EvalEngine {
         return stopwatch.elapsed(TimeUnit.MILLISECONDS);
     }
 
-    private static <R, T, A extends Agent<R, T, A>> String resolveModelId(Agent<R, T, A> agent) {
+    private static <R, T, A extends Agent<R, T, A>> String resolveModelName(Agent<R, T, A> agent) {
         var setup = agent.getSetup();
         if (setup == null || setup.getModel() == null) {
             return null;
         }
-        return setup.getModel().modelId();
+        return setup.getModel().modelName();
     }
 
     @SuppressWarnings("java:S2245")
@@ -287,11 +287,11 @@ public class EvalEngine {
                                           agentLatencyMs);
             }
 
-            final var modelId = resolveModelId(agent);
+            final var modelName = resolveModelName(agent);
             final var context = buildContext(testCase,
                                              output.getAllMessages(),
                                              output.getUsage(),
-                                             modelId,
+                                             modelName,
                                              agentLatencyMs);
             var status = EvalStatus.PASSED;
             var details = "All expectations passed";
@@ -306,11 +306,6 @@ public class EvalEngine {
                 expectationReports.add(report);
                 if (report.getStatus() == EvalStatus.FAILED) {
                     hasFailure = true;
-                    if (!config.isEvaluateAllExpectations()) {
-                        status = EvalStatus.FAILED;
-                        details = "Expectation failed: " + report.getExpectation();
-                        break;
-                    }
                 }
                 if (report.getStatus() == EvalStatus.SKIPPED) {
                     status = EvalStatus.SKIPPED;

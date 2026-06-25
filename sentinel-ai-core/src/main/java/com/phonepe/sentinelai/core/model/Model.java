@@ -75,9 +75,12 @@ public interface Model {
         return TOKEN_COUNT_UNKNOWN;
     }
 
-    default String modelId() {
-        return null;
-    }
+    /**
+     * Returns the model name identifier used for cost calculation and metrics.
+     *
+     * @return the model name, never {@code null}
+     */
+    String modelName();
 
     /**
      * Streams output from the model based on the provided context and messages. Supports tool calls.

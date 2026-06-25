@@ -200,7 +200,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     @Override
-    public String modelId() {
+    public String modelName() {
         return modelName;
     }
 

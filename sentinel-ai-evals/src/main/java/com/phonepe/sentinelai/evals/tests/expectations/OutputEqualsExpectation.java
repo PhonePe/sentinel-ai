@@ -26,16 +26,18 @@ import com.phonepe.sentinelai.evals.tests.Expectation;
  * @param <R> result/output type
  * @param <T> input/request type
  */
-public class OutputEqualsExpectation<R, T> implements Expectation<R, T> {
+public class OutputEqualsExpectation<R, T> extends Expectation<R, T> {
 
     private final R expectedOutput;
 
     /**
      * Creates an equality expectation for the full output value.
      *
+     * @param id             unique identifier for this expectation
      * @param expectedOutput expected output value
      */
-    public OutputEqualsExpectation(R expectedOutput) {
+    public OutputEqualsExpectation(String id, R expectedOutput) {
+        super(id);
         this.expectedOutput = expectedOutput;
     }
 
@@ -46,10 +48,5 @@ public class OutputEqualsExpectation<R, T> implements Expectation<R, T> {
      */
     public R getExpectedOutput() {
         return expectedOutput;
-    }
-
-    @Override
-    public String toString() {
-        return "OutputEqualsExpectation(expected=" + expectedOutput + ")";
     }
 }

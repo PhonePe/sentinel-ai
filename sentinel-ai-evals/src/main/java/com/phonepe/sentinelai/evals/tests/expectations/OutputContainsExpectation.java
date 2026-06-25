@@ -27,16 +27,18 @@ import com.phonepe.sentinelai.evals.tests.Expectation;
  *
  * @param <T> input/request type
  */
-public class OutputContainsExpectation<T> implements Expectation<String, T> {
+public class OutputContainsExpectation<T> extends Expectation<String, T> {
 
     private final String containsSubstring;
 
     /**
      * Creates a substring containment expectation.
      *
+     * @param id                unique identifier for this expectation
      * @param containsSubstring substring expected to appear in the output
      */
-    public OutputContainsExpectation(String containsSubstring) {
+    public OutputContainsExpectation(String id, String containsSubstring) {
+        super(id);
         this.containsSubstring = containsSubstring;
     }
 
@@ -47,10 +49,5 @@ public class OutputContainsExpectation<T> implements Expectation<String, T> {
      */
     public String getContainsSubstring() {
         return containsSubstring;
-    }
-
-    @Override
-    public String toString() {
-        return "OutputContainsExpectation(contains=" + containsSubstring + ")";
     }
 }

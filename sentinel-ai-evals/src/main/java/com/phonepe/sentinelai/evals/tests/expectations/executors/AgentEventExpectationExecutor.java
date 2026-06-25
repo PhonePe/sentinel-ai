@@ -36,6 +36,13 @@ import lombok.val;
 import java.time.Duration;
 import java.util.ArrayList;
 
+/**
+ * Executor for {@link AgentEventExpectation} that queries an {@link AgentEventTracer}
+ * and optionally applies a JSONPath comparison on matching events.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
+ */
 @RequiredArgsConstructor
 public class AgentEventExpectationExecutor<R, T> implements ExpectationExecutor<R, T> {
 
@@ -85,7 +92,11 @@ public class AgentEventExpectationExecutor<R, T> implements ExpectationExecutor<
         });
 
         if (events.isEmpty()) {
-            return ExpectationReport.passFail(expectation.id(), false, "no matching events found");
+            return ExpectationReport.builder()
+                    .expectation(expectation.getId())
+                    .status(EvalStatus.FAILED)
+                    .details("no matching events found")
+                    .build();
         }
 
         boolean allPassed = true;
@@ -116,7 +127,11 @@ public class AgentEventExpectationExecutor<R, T> implements ExpectationExecutor<
                                       normalizedExpected));
         }
 
-        return ExpectationReport.passFail(expectation.id(), allPassed, String.join("; ", details));
+        return ExpectationReport.builder()
+                .expectation(expectation.getId())
+                .status(allPassed ? EvalStatus.PASSED : EvalStatus.FAILED)
+                .details(String.join("; ", details))
+                .build();
     }
 
     private Object extractField(AgentEvent event, String jsonPath) {

@@ -18,12 +18,26 @@ package com.phonepe.sentinelai.evals.tests.expectations;
 
 import com.phonepe.sentinelai.evals.tests.Expectation;
 
-public class OutputCompareExpectation<R, T> implements Expectation<R, T> {
+/**
+ * Expectation that compares the entire output value against an expected value using an {@link Operator}.
+ *
+ * @param <R> result/output type
+ * @param <T> input/request type
+ */
+public class OutputCompareExpectation<R, T> extends Expectation<R, T> {
 
     private final Object expectedValue;
     private final Operator operator;
 
-    public OutputCompareExpectation(Object expectedValue, Operator operator) {
+    /**
+     * Creates an output comparison expectation.
+     *
+     * @param id            unique identifier for this expectation
+     * @param expectedValue expected value to compare against
+     * @param operator      comparison operator to apply
+     */
+    public OutputCompareExpectation(String id, Object expectedValue, Operator operator) {
+        super(id);
         this.expectedValue = expectedValue;
         this.operator = operator;
     }
@@ -34,10 +48,5 @@ public class OutputCompareExpectation<R, T> implements Expectation<R, T> {
 
     public Operator getOperator() {
         return operator;
-    }
-
-    @Override
-    public String toString() {
-        return "OutputCompareExpectation(expected=" + expectedValue + ", operator=" + operator + ")";
     }
 }
