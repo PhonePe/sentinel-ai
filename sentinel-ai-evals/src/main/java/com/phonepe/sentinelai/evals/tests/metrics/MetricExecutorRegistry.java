@@ -154,6 +154,7 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
         if (embeddingModel != null) {
             registry.registerMetric(OutputSimilarityMetric.class, new MetricExecutorFactory() {
                 @Override
+                @SuppressWarnings("unchecked")
                 public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
                                                           ObjectMapper objectMapper,
                                                           ExecutorService executorService) {
@@ -164,6 +165,7 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
 
             registry.registerMetric(OutputRelevanceBySimilarityMetric.class, new MetricExecutorFactory() {
                 @Override
+                @SuppressWarnings("unchecked")
                 public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
                                                           ObjectMapper objectMapper,
                                                           ExecutorService executorService) {
@@ -181,6 +183,7 @@ public class MetricExecutorRegistry implements MetricExecutorFactory {
         if (answerRelevanceModel != null) {
             registry.registerMetric(OutputRelevanceMetric.class, new MetricExecutorFactory() {
                 @Override
+                @SuppressWarnings("unchecked")
                 public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
                                                           ObjectMapper objectMapper,
                                                           ExecutorService executorService) {

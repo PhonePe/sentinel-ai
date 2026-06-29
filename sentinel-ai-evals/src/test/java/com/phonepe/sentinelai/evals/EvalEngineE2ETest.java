@@ -810,7 +810,7 @@ class EvalEngineE2ETest {
                                                                                                            "World"),
                                                                                Expectations.outputContains(
                                                                                                            "outputContainsExpectation",
-                                                                                                           "hello"));
+                                                                                                           "Hello World"));
         final var passDataset = new Dataset<AgentInput, String>("contains-pass",
                                                                 List.of(new TestCase<AgentInput, String>(new AgentInput("test"),
                                                                                                          passExpectations)));

@@ -18,8 +18,7 @@ package com.phonepe.sentinelai.evals.tests;
 
 import com.phonepe.sentinelai.evals.tests.expectations.Operator;
 import com.phonepe.sentinelai.evals.tests.expectations.OrderedExpectation;
-import com.phonepe.sentinelai.evals.tests.expectations.OutputContainsExpectation;
-import com.phonepe.sentinelai.evals.tests.expectations.OutputEqualsExpectation;
+import com.phonepe.sentinelai.evals.tests.expectations.OutputCompareExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExpectation;
 
@@ -241,13 +240,16 @@ public class Expectations {
     /**
      * Creates a substring containment expectation for string outputs.
      *
+     * <p>Backed by {@link OutputCompareExpectation} using {@link Operator#CONTAINS},
+     * which performs a case-sensitive substring match.
+     *
      * @param id        unique identifier for this expectation
      * @param substring substring that should appear in the output
      * @param <T>       input/request type
      * @return output-contains expectation
      */
     public static <T> Expectation<String, T> outputContains(String id, String substring) {
-        return new OutputContainsExpectation<>(id, substring);
+        return new OutputCompareExpectation<>(id, substring, Operator.CONTAINS);
     }
 
     /**
@@ -260,7 +262,7 @@ public class Expectations {
      * @return output-equals expectation
      */
     public static <R, T> Expectation<R, T> outputEquals(String id, R expected) {
-        return new OutputEqualsExpectation<>(id, expected);
+        return new OutputCompareExpectation<>(id, expected, Operator.EQ);
     }
 
     /**

@@ -299,24 +299,20 @@ public class EvalEngine {
             final List<Expectation<T, R>> expectations = Objects.requireNonNullElse(testCase.getExpectations(),
                                                                                     List.of());
 
-            var hasFailure = false;
             for (Expectation<T, R> expectation : expectations) {
                 final var executor = createExecutor(agent, expectation);
                 final var report = executor.evaluateWithReport(output.getData(), context);
                 expectationReports.add(report);
                 if (report.getStatus() == EvalStatus.FAILED) {
-                    hasFailure = true;
+                    status = EvalStatus.FAILED;
+                    details = "Expectation failed: " + report.getExpectation();
+                    break;
                 }
                 if (report.getStatus() == EvalStatus.SKIPPED) {
                     status = EvalStatus.SKIPPED;
                     details = "Expectation skipped: " + report.getExpectation();
                     log.warn("Expectation skipped during evaluation: {}", report.getExpectation());
                 }
-            }
-
-            if (hasFailure) {
-                status = EvalStatus.FAILED;
-                details = "One or more expectations failed";
             }
             return new TestCaseReport(testCase.getInput(),
                                       status,

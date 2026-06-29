@@ -24,15 +24,11 @@ import com.phonepe.sentinelai.evals.AgentEventTracer;
 import com.phonepe.sentinelai.evals.tests.expectations.AgentEventExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OrderedExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.OutputCompareExpectation;
-import com.phonepe.sentinelai.evals.tests.expectations.OutputContainsExpectation;
-import com.phonepe.sentinelai.evals.tests.expectations.OutputEqualsExpectation;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.AgentEventExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.MessageExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.MetricExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.OrderedExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.OutputCompareExpectationExecutor;
-import com.phonepe.sentinelai.evals.tests.expectations.executors.OutputContainsExpectationExecutor;
-import com.phonepe.sentinelai.evals.tests.expectations.executors.OutputEqualsExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.executors.jsonpath.OutputJsonPathCompareExpectationExecutor;
 import com.phonepe.sentinelai.evals.tests.expectations.jsonpath.OutputJsonPathCompareExpectation;
 import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelFactory;
@@ -105,28 +101,6 @@ public class ExpectationExecutorRegistry implements ExpectationExecutorFactory {
                                                                               mapper);
 
         final var registry = new ExpectationExecutorRegistry();
-
-        registry.registerExpectation(OutputEqualsExpectation.class, new ExpectationExecutorFactory() {
-            @Override
-            public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
-                                                                                     Expectation<R, T> expectation,
-                                                                                     ObjectMapper objectMapper,
-                                                                                     ExecutorService executorService) {
-                final var typedExpectation = (OutputEqualsExpectation<R, T>) expectation;
-                return new OutputEqualsExpectationExecutor<>(typedExpectation);
-            }
-        });
-
-        registry.registerExpectation(OutputContainsExpectation.class, new ExpectationExecutorFactory() {
-            @Override
-            public <R, T, A extends Agent<R, T, A>> ExpectationExecutor<R, T> create(Agent<R, T, A> agent,
-                                                                                     Expectation<R, T> expectation,
-                                                                                     ObjectMapper objectMapper,
-                                                                                     ExecutorService executorService) {
-                final var typedExpectation = (OutputContainsExpectation<T>) expectation;
-                return (ExpectationExecutor<R, T>) new OutputContainsExpectationExecutor<>(typedExpectation);
-            }
-        });
 
         registry.registerExpectation(OrderedExpectation.class, new ExpectationExecutorFactory() {
             @Override

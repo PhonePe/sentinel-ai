@@ -302,7 +302,7 @@ class EvalEngineTest {
     }
 
     /**
-     * Covers OutputContainsExpectation and OutputEqualsExpectation variants.
+     * Covers outputContains and outputEquals expectation variants.
      */
     @Test
     void testOutputContainsAndEqualsVariants() {
