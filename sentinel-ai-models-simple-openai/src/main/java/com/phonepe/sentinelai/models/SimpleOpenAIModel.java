@@ -335,7 +335,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                            allMessages,
                                                                                            newMessages,
                                                                                            oldMessages)
-                                                                                                   .orElse(null);
+                            .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(oldMessages,
                                                                    stats,
                                                                    SentinelError
