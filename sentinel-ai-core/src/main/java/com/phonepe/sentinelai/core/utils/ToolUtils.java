@@ -56,6 +56,7 @@ public class ToolUtils {
     public static List<Object> convertToRealParams(ToolMethodInfo methodInfo,
                                                    String params,
                                                    ObjectMapper objectMapper) {
+        log.debug("Converting params to real params. JSON: {}", params);
         final var paramNodes = objectMapper.readTree(params);
         return methodInfo.parameters().stream().map(param -> {
             final var paramName = param.getName();

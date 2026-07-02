@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.examples.texttosql.cli;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.google.common.base.Strings;
 
 import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
 import io.github.sashirestela.openai.SimpleOpenAI;
@@ -30,6 +31,7 @@ import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.StreamConsumer;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
@@ -709,9 +711,19 @@ public class TextToSqlCLI implements Callable<Integer> {
             CompletableFuture<AgentOutput<SqlQueryResult>> outputFuture;
             if (config.getAgent().isStreaming()) {
                 ConsoleUtils.printToStdout(System.lineSeparator());
-                outputFuture = agent.executeAsyncStreaming(agentInput,
-                                                           chunk -> ConsoleUtils.printToStdout(new String(chunk,
-                                                                                                          StandardCharsets.UTF_8)));
+                final var streamHandler = new StreamConsumer() {
+                    @Override
+                    public void consumeReasoningAndContent(final String reasoning,
+                                                           final String content) {
+                        if (!Strings.isNullOrEmpty(reasoning)) {
+                            ConsoleUtils.printToStdout(reasoning);
+                        }
+                        if (!Strings.isNullOrEmpty(content)) {
+                            ConsoleUtils.printToStdout(content);
+                        }
+                    }
+                };
+                outputFuture = agent.executeAsyncStreaming(agentInput, streamHandler);
             }
             else {
                 outputFuture = agent.executeAsync(agentInput);

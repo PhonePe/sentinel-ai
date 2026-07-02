@@ -40,6 +40,7 @@ import org.apache.commons.lang3.ClassUtils;
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
+import com.phonepe.sentinelai.core.agent.StreamConsumer;
 import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
@@ -80,7 +81,6 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -93,7 +93,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -373,7 +372,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                  Map<String, ExecutableTool> tools,
                                                  ToolRunner toolRunner,
                                                  EarlyTerminationStrategy earlyTerminationStrategy,
-                                                 Consumer<byte[]> streamHandler,
+                                                 StreamConsumer streamHandler,
                                                  List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
         return streamImpl(context,
                           outputDefinitions,
@@ -392,7 +391,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                      Map<String, ExecutableTool> tools,
                                                      ToolRunner toolRunner,
                                                      EarlyTerminationStrategy earlyTerminationStrategy,
-                                                     Consumer<byte[]> streamHandler,
+                                                     StreamConsumer streamHandler,
                                                      List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
         return streamImpl(context,
                           List.of(),
@@ -428,7 +427,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                       Map<String, ExecutableTool> tools,
                                                       ToolRunner toolRunner,
                                                       EarlyTerminationStrategy earlyTerminationStrategy,
-                                                      Consumer<byte[]> streamHandler,
+                                                      StreamConsumer streamHandler,
                                                       Agent.StreamProcessingMode streamProcessingMode,
                                                       List<AgentMessagesPreProcessor> messagesPreProcessors) {
         final var agentSetup = context.getAgentSetup();
@@ -469,8 +468,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                      stats,
                                                      allMessages,
                                                      newMessages,
-                                                     openAiMessages)
-                        .orElse(null);
+                                                     openAiMessages).orElse(null);
                 if (error != null) {
                     output = error;
                     break;
@@ -479,9 +477,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                             modelSettings,
                                                             toolsForExecution,
                                                             outputGenerationMode);
-                if (streamProcessingMode.equals(
-                                                Agent.StreamProcessingMode.TYPED) && outputGenerationMode
-                                                        .equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
+                if (streamProcessingMode.equals(Agent.StreamProcessingMode.TYPED)
+                        && outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
                     builder.responseFormat(jsonSchema(schema));
                 }
                 final var stopwatch = Stopwatch.createStarted();
@@ -492,189 +489,145 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 Stream<Chat> completionResponseStream;
                 raiseMessageSentEvent(context, prevMessages, allMessages);
                 try {
-                    completionResponseStream = openAIProviderFactory.get(
-                                                                         modelName)
+                    completionResponseStream = openAIProviderFactory.get(modelName)
                             .chatCompletions()
                             .createStream(request)
                             .join();
                 }
                 catch (Exception e) {
-                    return errorToModelOutput(context,
-                                              e,
-                                              newMessages,
-                                              allMessages);
+                    return errorToModelOutput(context, e, newMessages, allMessages);
                 }
                 //We use the following to merge the pieces of response we get from stream into final output
                 final var responseData = new StringBuilder();
                 //We use the following to cobble together the fragment of tool call objects we get from the stream
                 final var toolCallData = new HashMap<Integer, io.github.sashirestela.openai.common.tool.ToolCall>();
 
-                final var outputs = completionResponseStream.map(
-                                                                 completionResponse -> {
-                                                                     logModelResponse(completionResponse);
-                                                                     mergeUsage(stats,
-                                                                                completionResponse
-                                                                                        .getUsage());
-                                                                     final var response = extractResponse(completionResponse);
-                                                                     if (null == response) {
-                                                                         return null; //No response received yet, continue to next chunk
-                                                                     }
-                                                                     final var message = response
-                                                                             .getMessage();
-                                                                     final var finishReason = response
-                                                                             .getFinishReason();
-                                                                     if (Strings
-                                                                             .isNullOrEmpty(finishReason)) {
-                                                                         //We must either have received content or some data in tool calls or both
-                                                                         if (null != message
-                                                                                 .getContent()) {
-                                                                             responseData
-                                                                                     .append(message
-                                                                                             .getContent());
-                                                                             streamHandler
-                                                                                     .accept(message
-                                                                                             .getContent()
-                                                                                             .getBytes(StandardCharsets.UTF_8));
-                                                                         }
-                                                                         final var toolCalls = Objects
-                                                                                 .requireNonNullElseGet(message
-                                                                                         .getToolCalls(),
-                                                                                                        List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
-                                                                         if (!toolCalls
-                                                                                 .isEmpty()) {
-                                                                             // Caution: the following is not for people with weak constitution
-                                                                             // The api sends fully formed objects with partial data in the field (I kid you not)
-                                                                             // So we try to assemble the pieces together to form a complete object
-                                                                             // I am not proud of having done this but like Bruce Willis says in die hard ...:
-                                                                             // somebody has to do it
-                                                                             toolCalls
-                                                                                     .forEach(call -> {
-                                                                                         var node = toolCallData
-                                                                                                 .compute(call
-                                                                                                         .getIndex(),
-                                                                                                          (idx,
-                                                                                                           existing) -> mergeToolCallFragment(existing,
-                                                                                                                                              call));
-                                                                                         logDataTrace("Function till now: {}",
-                                                                                                      node);
-                                                                                     });
-                                                                         }
-                                                                         return null; //Continue to next chunk
-                                                                     }
-                                                                     //Model has stopped for some reason. Find out reason and handle
-                                                                     return switch (finishReason) {
-                                                                         case FinishReasons.STOP -> {
-                                                                             final var refusal = message
-                                                                                     .getRefusal();
-                                                                             if (!Strings
-                                                                                     .isNullOrEmpty(refusal)) {
-                                                                                 yield ModelOutput
-                                                                                         .error(oldMessages,
-                                                                                                stats,
-                                                                                                SentinelError
-                                                                                                        .error(ErrorType.REFUSED,
-                                                                                                               refusal));
-                                                                             }
-                                                                             // Output handling is a little different for streaming and non-streaming cases
-                                                                             // For streaming it looks like VLLM etc. are not supporting tool calls properly
-                                                                             // So we do the old-fashioned way and use fragments collected during streaming
-                                                                             // to cobble together the final output
-                                                                             if (streamProcessingMode
-                                                                                     .equals(Agent.StreamProcessingMode.TYPED)) {
+                final var outputs = completionResponseStream.map(completionResponse -> {
+                    logModelResponse(completionResponse);
+                    mergeUsage(stats, completionResponse.getUsage());
+                    final var response = extractResponse(completionResponse);
+                    if (null == response) {
+                        return null; //No response received yet, continue to next chunk
+                    }
+                    final var message = response.getMessage();
+                    final var finishReason = response.getFinishReason();
+                    final var reasoningContent = message.getReasoningContent();
+                    final var content = message.getContent();
+                    if (null != content) {
+                        responseData.append(content);
+                    }
+                    streamHandler.consumeReasoningAndContent(reasoningContent, content);
+                    final var toolCalls = Objects
+                            .requireNonNullElseGet(message.getToolCalls(),
+                                                   List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
+                    if (!toolCalls.isEmpty()) {
+                        // Caution: the following is not for people with weak constitution
+                        // The api sends fully formed objects with partial data in the field (I kid you not)
+                        // So we try to assemble the pieces together to form a complete object
+                        // I am not proud of having done this but like Bruce Willis says in die hard ...:
+                        // somebody has to do it
+                        toolCalls.forEach(call -> {
+                            var node = toolCallData.compute(call.getIndex(),
+                                                            (idx, existing) -> mergeToolCallFragment(existing, call));
+                            logDataDebug("Function till now: {}", node);
+                        });
+                    }
+                    if (Strings.isNullOrEmpty(finishReason)) {
+                        return null; //Continue to next chunk
+                    }
+                    //Model has stopped for some reason. Find out reason and handle
+                    return switch (finishReason) {
+                        case FinishReasons.STOP -> {
+                            final var refusal = message.getRefusal();
+                            if (!Strings.isNullOrEmpty(refusal)) {
+                                yield ModelOutput.error(oldMessages,
+                                                        stats,
+                                                        SentinelError.error(ErrorType.REFUSED, refusal));
+                            }
+                            // Output handling is a little different for streaming and non-streaming cases
+                            // For streaming it looks like VLLM etc. are not supporting tool calls properly
+                            // So we do the old-fashioned way and use fragments collected during streaming
+                            // to cobble together the final output
+                            if (streamProcessingMode.equals(Agent.StreamProcessingMode.TYPED)) {
 
-                                                                                 yield processOutput(context,
-                                                                                                     responseData
-                                                                                                             .toString(),
-                                                                                                     //We just take what we gathered return that
-                                                                                                     oldMessages,
-                                                                                                     stats,
-                                                                                                     allMessages,
-                                                                                                     newMessages,
-                                                                                                     stopwatch);
-                                                                             }
-                                                                             else {
+                                yield processOutput(context,
+                                                    responseData.toString(),
+                                                    //We just take what we gathered return that
+                                                    oldMessages,
+                                                    stats,
+                                                    allMessages,
+                                                    newMessages,
+                                                    stopwatch);
+                            }
+                            else {
+                                yield processStreamingOutput(context,
+                                                             responseData.toString(),
+                                                             //We just take what we gathered return that
+                                                             oldMessages,
+                                                             stats,
+                                                             allMessages,
+                                                             newMessages,
+                                                             stopwatch);
+                            }
+                        }
+                        case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
+                            //Model is waiting for us to run tools and respond back
+                            final var calls = toolCallData
+                                    .values()
+                                    .stream()
+                                    .sorted(Comparator
+                                            .comparing(io.github.sashirestela.openai.common.tool.ToolCall::getIndex))
+                                    .toList();
 
-                                                                                 yield processStreamingOutput(context,
-                                                                                                              responseData
-                                                                                                                      .toString(),
-                                                                                                              //We just take what we gathered return that
-                                                                                                              oldMessages,
-                                                                                                              stats,
-                                                                                                              allMessages,
-                                                                                                              newMessages,
-                                                                                                              stopwatch);
-                                                                             }
-                                                                         }
-                                                                         case FinishReasons.FUNCTION_CALL,
-                                                                                 FinishReasons.TOOL_CALLS -> {
-                                                                             //Model is waiting for us to run tools and respond back
-                                                                             final var toolCalls = toolCallData
-                                                                                     .values()
-                                                                                     .stream()
-                                                                                     .sorted(Comparator
-                                                                                             .comparing(io.github.sashirestela.openai.common.tool.ToolCall::getIndex))
-                                                                                     .toList();
-
-                                                                             if (!toolCalls.isEmpty()) {
-                                                                                 handleToolCalls(context,
-                                                                                                 toolsForExecution,
-                                                                                                 toolRunner,
-                                                                                                 toolCalls,
-                                                                                                 AgentMessages
-                                                                                                         .builder()
-                                                                                                         .newMessages(newMessages)
-                                                                                                         .allMessages(allMessages)
-                                                                                                         .openAiMessages(openAiMessages)
-                                                                                                         .build(),
-                                                                                                 stats,
-                                                                                                 stopwatch);
-                                                                                 if (generatedOutput
-                                                                                         .get() != null) {
-                                                                                     //If the output generator was called, we use the generated output
-                                                                                     if (streamProcessingMode
-                                                                                             .equals(Agent.StreamProcessingMode.TYPED)) {
-
-                                                                                         yield processOutput(context,
-                                                                                                             generatedOutput
-                                                                                                                     .get(),
-                                                                                                             oldMessages,
-                                                                                                             stats,
-                                                                                                             allMessages,
-                                                                                                             newMessages,
-                                                                                                             stopwatch);
-                                                                                     }
-                                                                                     else {
-                                                                                         yield processStreamingOutput(context,
-                                                                                                                      generatedOutput
-                                                                                                                              .get(),
-                                                                                                                      oldMessages,
-                                                                                                                      stats,
-                                                                                                                      allMessages,
-                                                                                                                      newMessages,
-                                                                                                                      stopwatch);
-                                                                                     }
-                                                                                 }
-                                                                             }
-                                                                             yield null; //Continue to next chunk
-                                                                         }
-                                                                         case FinishReasons.LENGTH -> ModelOutput.error(
-                                                                                                                        oldMessages,
-                                                                                                                        stats,
-                                                                                                                        SentinelError
-                                                                                                                                .error(ErrorType.LENGTH_EXCEEDED));
-                                                                         case FinishReasons.CONTENT_FILTER ->
-                                                                             ModelOutput
-                                                                                     .error(oldMessages,
-                                                                                            stats,
-                                                                                            SentinelError.error(
-                                                                                                                ErrorType.FILTERED));
-                                                                         default -> ModelOutput.error(oldMessages,
-                                                                                                      stats,
-                                                                                                      SentinelError
-                                                                                                              .error(ErrorType.UNKNOWN_FINISH_REASON,
-                                                                                                                     finishReason));
-                                                                     };
-                                                                 })
+                            if (!calls.isEmpty()) {
+                                handleToolCalls(context,
+                                                toolsForExecution,
+                                                toolRunner,
+                                                calls,
+                                                AgentMessages
+                                                        .builder()
+                                                        .newMessages(newMessages)
+                                                        .allMessages(allMessages)
+                                                        .openAiMessages(openAiMessages)
+                                                        .build(),
+                                                stats,
+                                                stopwatch);
+                                if (generatedOutput.get() != null) {
+                                    //If the output generator was called, we use the generated output
+                                    if (streamProcessingMode.equals(Agent.StreamProcessingMode.TYPED)) {
+                                        yield processOutput(context,
+                                                            generatedOutput.get(),
+                                                            oldMessages,
+                                                            stats,
+                                                            allMessages,
+                                                            newMessages,
+                                                            stopwatch);
+                                    }
+                                    else {
+                                        yield processStreamingOutput(context,
+                                                                     generatedOutput.get(),
+                                                                     oldMessages,
+                                                                     stats,
+                                                                     allMessages,
+                                                                     newMessages,
+                                                                     stopwatch);
+                                    }
+                                }
+                            }
+                            yield null; //Continue to next chunk
+                        }
+                        case FinishReasons.LENGTH -> ModelOutput.error(oldMessages,
+                                                                       stats,
+                                                                       SentinelError.error(ErrorType.LENGTH_EXCEEDED));
+                        case FinishReasons.CONTENT_FILTER -> ModelOutput.error(oldMessages,
+                                                                               stats,
+                                                                               SentinelError.error(ErrorType.FILTERED));
+                        default -> ModelOutput.error(oldMessages,
+                                                     stats,
+                                                     SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON,
+                                                                         finishReason));
+                    };
+                })
                         .filter(Objects::nonNull)
                         .toList();
                 //NOTE::DO NOT MERGE THE STREAM WITH BELOW

@@ -20,6 +20,7 @@ import org.apache.commons.lang3.NotImplementedException;
 
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
+import com.phonepe.sentinelai.core.agent.StreamConsumer;
 import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
@@ -30,7 +31,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 
 /**
  * Abstract representation for a LLM model
@@ -96,13 +96,14 @@ public interface Model {
      * @param agentMessagesPreProcessors
      * @return A CompletableFuture that will complete with the generated ModelOutput when the streaming is done.
      */
+    @SuppressWarnings("java:S107")
     default CompletableFuture<ModelOutput> stream(ModelRunContext context,
                                                   Collection<ModelOutputDefinition> outputDefinitions,
                                                   List<AgentMessage> oldMessages,
                                                   Map<String, ExecutableTool> tools,
                                                   ToolRunner toolRunner,
                                                   EarlyTerminationStrategy earlyTerminationStrategy,
-                                                  Consumer<byte[]> streamHandler,
+                                                  StreamConsumer streamHandler,
                                                   List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
         throw new NotImplementedException();
     }
@@ -131,7 +132,7 @@ public interface Model {
                                                       Map<String, ExecutableTool> tools,
                                                       ToolRunner toolRunner,
                                                       EarlyTerminationStrategy earlyTerminationStrategy,
-                                                      Consumer<byte[]> streamHandler,
+                                                      StreamConsumer streamHandler,
                                                       List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
         throw new NotImplementedException();
     }

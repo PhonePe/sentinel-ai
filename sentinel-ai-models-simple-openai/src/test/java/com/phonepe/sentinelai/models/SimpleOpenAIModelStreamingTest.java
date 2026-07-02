@@ -32,6 +32,7 @@ import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.StreamConsumer;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
 import com.phonepe.sentinelai.core.model.ModelSettings;
@@ -110,6 +111,15 @@ class SimpleOpenAIModelStreamingTest {
         }
     }
 
+    private static StreamConsumer createStreamConsumer(final PrintStream outputStream) {
+        return new StreamConsumer() {
+            @Override
+            public void consumeContent(final String content) {
+                print(content.getBytes(), outputStream);
+            }
+        };
+    }
+
     private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock,
                                                final OkHttpClient client) throws FileNotFoundException {
         final var objectMapper = JsonUtils.createMapper();
@@ -126,11 +136,7 @@ class SimpleOpenAIModelStreamingTest {
                         .userId("ss")
                         .usageStats(stats)
                         .build())
-                .build(),
-                                           new TextStreamer(objectMapper,
-                                                            executor,
-                                                            data -> print(data,
-                                                                          outputStream)))
+                .build(), createStreamConsumer(outputStream))
                 .join();
     }
 
@@ -203,11 +209,7 @@ class SimpleOpenAIModelStreamingTest {
                         .userId("ss")
                         .usageStats(stats)
                         .build())
-                .build(),
-                                                         new TextStreamer(objectMapper,
-                                                                          executor,
-                                                                          data -> print(data,
-                                                                                        outputStream)))
+                .build(), createStreamConsumer(outputStream))
                 .join();
         var responseString = response.getData();
         log.info("Agent response: {}", responseString);
@@ -228,11 +230,7 @@ class SimpleOpenAIModelStreamingTest {
                         .usageStats(stats)
                         .build())
                 .oldMessages(response.getAllMessages())
-                .build(),
-                                                              new TextStreamer(objectMapper,
-                                                                               executor,
-                                                                               data -> print(data,
-                                                                                             outputStream)))
+                .build(), createStreamConsumer(outputStream))
                 .join();
         responseString = response2.getData();
         log.info("Agent response: {}", responseString);
@@ -269,11 +267,7 @@ class SimpleOpenAIModelStreamingTest {
         final var response = agent.executeAsyncStreaming(AgentInput
                 .<String>builder()
                 .request("Hi")
-                .build(),
-                                                         new TextStreamer(objectMapper,
-                                                                          executor,
-                                                                          data -> print(data,
-                                                                                        outputStream)))
+                .build(), createStreamConsumer(outputStream))
                 .join();
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertTrue(preProcessorCalled.get());
@@ -302,11 +296,7 @@ class SimpleOpenAIModelStreamingTest {
         final var response = agent.executeAsyncStreaming(AgentInput
                 .<String>builder()
                 .request("Hi")
-                .build(),
-                                                         new TextStreamer(objectMapper,
-                                                                          executor,
-                                                                          data -> print(data,
-                                                                                        outputStream)))
+                .build(), createStreamConsumer(outputStream))
                 .join();
         assertEquals(ErrorType.PREPROCESSOR_RUN_FAILURE,
                      response.getError().getErrorType());

@@ -564,9 +564,18 @@ final var agentInput = AgentInput.<String>builder()
 CompletableFuture<AgentOutput<SqlQueryResult>> outputFuture;
 if (config.getAgent().isStreaming()) {
     ConsoleUtils.printToStdout(System.lineSeparator());
-    outputFuture = agent.executeAsyncStreaming(
-            agentInput,
-            chunk -> ConsoleUtils.printToStdout(new String(chunk, StandardCharsets.UTF_8)));
+    final var streamHandler = new StreamConsumer() {
+        @Override
+        public void consumeReasoningAndContent(final String reasoning, final String content) {
+            if (!Strings.isNullOrEmpty(reasoning)) {
+                ConsoleUtils.printToStdout(reasoning);
+            }
+            if (!Strings.isNullOrEmpty(content)) {
+                ConsoleUtils.printToStdout(content);
+            }
+        }
+    };
+    outputFuture = agent.executeAsyncStreaming(agentInput, streamHandler);
 } else {
     outputFuture = agent.executeAsync(agentInput);
 }

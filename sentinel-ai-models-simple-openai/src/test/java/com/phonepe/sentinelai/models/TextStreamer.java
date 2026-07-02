@@ -19,6 +19,8 @@ package com.phonepe.sentinelai.models;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.phonepe.sentinelai.core.agent.StreamConsumer;
+
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,7 +31,6 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 import static com.phonepe.sentinelai.core.agent.Agent.OUTPUT_VARIABLE_NAME;
 
@@ -37,14 +38,14 @@ import static com.phonepe.sentinelai.core.agent.Agent.OUTPUT_VARIABLE_NAME;
  *
  */
 @Slf4j
-public class TextStreamer implements Consumer<byte[]> {
+public class TextStreamer implements StreamConsumer {
     private final ObjectMapper mapper;
     private final ExecutorService executorService;
-    private final Consumer<byte[]> streamHandler;
+    private final StreamConsumer streamHandler;
 
     public TextStreamer(ObjectMapper mapper,
                         ExecutorService executorService,
-                        Consumer<byte[]> streamHandler) {
+                        StreamConsumer streamHandler) {
         this.mapper = mapper;
         this.executorService = executorService;
         this.streamHandler = streamHandler;
@@ -52,7 +53,7 @@ public class TextStreamer implements Consumer<byte[]> {
 
     @Override
     @SneakyThrows
-    public void accept(byte[] data) {
+    public void consumeContent(final String content) {
         final var jfactory = mapper.getFactory();
         final var pipe = new PipedOutputStream();
         final var streamReader = new BufferedReader(new InputStreamReader(new PipedInputStream(pipe)));
@@ -73,13 +74,13 @@ public class TextStreamer implements Consumer<byte[]> {
             }
         });
         try {
-            pipe.write(data);
+            pipe.write(content.getBytes());
         }
         catch (IOException e) {
             log.error("Error writing to parser");
         }
         if (receivingOutput.get()) {
-            streamHandler.accept(data);
+            streamHandler.consumeContent(content);
         }
     }
 }

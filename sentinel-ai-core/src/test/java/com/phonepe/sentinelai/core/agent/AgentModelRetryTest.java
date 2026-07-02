@@ -233,7 +233,7 @@ class AgentModelRetryTest {
             final var response = agent.executeAsyncStreaming(AgentInput
                     .<String>builder()
                     .request("Hello")
-                    .build(), data -> {}).get();
+                    .build(), StreamConsumer.NO_OP).get();
             assertNull(response.getData());
             assertEquals(ErrorType.GENERIC_MODEL_CALL_FAILURE,
                          response.getError().getErrorType());
@@ -242,7 +242,7 @@ class AgentModelRetryTest {
             final var response = agent.executeAsyncTextStreaming(AgentInput
                     .<String>builder()
                     .request("Hello")
-                    .build(), data -> {}).get();
+                    .build(), StreamConsumer.NO_OP).get();
             assertNull(response.getData());
             assertEquals(ErrorType.GENERIC_MODEL_CALL_FAILURE,
                          response.getError().getErrorType());
@@ -314,7 +314,7 @@ class AgentModelRetryTest {
             final var response = agent.executeAsyncStreaming(AgentInput
                     .<String>builder()
                     .request("Hello")
-                    .build(), data -> {}).get();
+                    .build(), StreamConsumer.NO_OP).get();
             assertNull(response.getData());
             assertEquals(ErrorType.NO_RESPONSE,
                          response.getError().getErrorType());
@@ -323,7 +323,7 @@ class AgentModelRetryTest {
             final var response = agent.executeAsyncTextStreaming(AgentInput
                     .<String>builder()
                     .request("Hello")
-                    .build(), data -> {}).get();
+                    .build(), StreamConsumer.NO_OP).get();
             assertNull(response.getData());
             assertEquals(ErrorType.NO_RESPONSE,
                          response.getError().getErrorType());
@@ -453,7 +453,7 @@ class AgentModelRetryTest {
             final var response = agent.executeAsyncStreaming(AgentInput
                     .<String>builder()
                     .request("Hello")
-                    .build(), data -> {}).get();
+                    .build(), StreamConsumer.NO_OP).get();
             assertNotNull(response.getData());
             assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
             assertEquals(3, callCount.get());
@@ -463,7 +463,7 @@ class AgentModelRetryTest {
             final var response = agent.executeAsyncTextStreaming(AgentInput
                     .<String>builder()
                     .request("Hello")
-                    .build(), data -> {}).get();
+                    .build(), StreamConsumer.NO_OP).get();
             assertNotNull(response.getData());
             assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
             assertEquals(3, callCount.get());

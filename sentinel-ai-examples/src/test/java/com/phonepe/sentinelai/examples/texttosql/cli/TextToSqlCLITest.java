@@ -31,6 +31,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.StreamConsumer;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
@@ -52,7 +53,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -515,7 +515,7 @@ class TextToSqlCLITest {
             final var agent = mock(TextToSqlAgent.class);
             final var result = new SqlQueryResult("SELECT 2", List.of(), "no rows", 10L);
             final var output = new AgentOutput<>(result, List.of(), List.of(), null, null);
-            when(agent.executeAsyncStreaming(any(), any(Consumer.class)))
+            when(agent.executeAsyncStreaming(any(), any(StreamConsumer.class)))
                     .thenReturn(CompletableFuture.completedFuture(output));
 
             assertDoesNotThrow(() -> invokeHandleQuery(new TextToSqlCLI(), agent, buildConfig(true), "stream me"));

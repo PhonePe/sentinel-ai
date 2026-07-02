@@ -81,7 +81,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static com.phonepe.sentinelai.core.utils.JsonUtils.schema;
@@ -416,7 +415,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @return The response to be consumed by the client
      */
     public final CompletableFuture<AgentOutput<T>> executeAsyncStreaming(AgentInput<R> input,
-                                                                         Consumer<byte[]> streamHandler) {
+                                                                         StreamConsumer streamHandler) {
         return executeAsyncStreamingInternal(input,
                                              streamHandler,
                                              false,
@@ -432,7 +431,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @return The response to be consumed by the client
      */
     public final CompletableFuture<AgentOutput<String>> executeAsyncTextStreaming(AgentInput<R> input,
-                                                                                  Consumer<byte[]> streamHandler) {
+                                                                                  StreamConsumer streamHandler) {
         return executeAsyncStreamingInternal(input,
                                              streamHandler,
                                              true,
@@ -474,7 +473,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @return A CompletableFuture that will complete with the agent output
      */
     private <U> CompletableFuture<AgentOutput<U>> executeAsyncStreamingInternal(AgentInput<R> input,
-                                                                                Consumer<byte[]> streamHandler,
+                                                                                StreamConsumer streamHandler,
                                                                                 boolean isTextStreaming,
                                                                                 BiFunction<ModelOutputProcessingContext<R>, ModelOutput, AgentOutput<U>> outputProcessor) {
         final var mergedAgentSetup = AgentUtils.mergeAgentSetup(input
@@ -490,12 +489,12 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                      AgentRequestMetadata::getRunId,
                                                      () -> UUID.randomUUID()
                                                              .toString());
-        final var request = input.getRequest();
+        final var inpuRequest = input.getRequest();
         final var facts = input.getFacts();
         final var processingMode = ProcessingMode.STREAMING;
         final var modelUsageStats = new ModelUsageStats();
         final var context = new AgentRunContext<>(runId,
-                                                  request,
+                                                  inpuRequest,
                                                   requestMetadata,
                                                   mergedAgentSetup,
                                                   messages,
@@ -503,7 +502,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                   processingMode);
         EventUtils.raiseInputReceivedEvent(name(),
                                            context,
-                                           request,
+                                           inpuRequest,
                                            mergedAgentSetup);
         var finalSystemPrompt = "";
         try {
@@ -528,7 +527,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         messages.addAll(extensionMessages(input.getRequest(), context));
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
-                                    toXmlContent(input),
+                                    toXmlContent(input.getRequest()),
                                     false,
                                     LocalDateTime.now()));
         final var modelRunContext = new ModelRunContext(name(),
@@ -540,9 +539,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                         mergedAgentSetup,
                                                         modelUsageStats,
                                                         processingMode);
-        final var outputDefinitions = isTextStreaming ? List
-                .<ModelOutputDefinition>of() : populateOutputDefinitions(
-                                                                         processingMode);
+        final var outputDefinitions = isTextStreaming
+                ? List.<ModelOutputDefinition>of()
+                : populateOutputDefinitions(processingMode);
         final var retryPolicy = Agent.<U>buildRetryPolicy(mergedAgentSetup);
         return Failsafe.with(List.of(retryPolicy))
                 .with(mergedAgentSetup.getExecutorService())
@@ -789,7 +788,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                            AgentRunContext<R> context,
                                            EarlyTerminationStrategy earlyTerminationStrategy,
                                            boolean isTextStreaming,
-                                           Consumer<byte[]> streamHandler) {
+                                           StreamConsumer streamHandler) {
         CompletableFuture<ModelOutput> modelFuture;
         ModelOutput modelOutput;
         final var stopwatch = Stopwatch.createStarted();
