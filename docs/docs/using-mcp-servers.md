@@ -37,10 +37,10 @@ The toolbox can be added to your project using the following dependency:
 <dependency>
     <groupId>com.phonepe.sentinel-ai</groupId>
     <artifactId>sentinel-ai-toolbox-mcp</artifactId>
-    <version>${sentinel.version}</version>
+    <version>${sentinel-ai.version}</version>
 </dependency>
 ```
-This provides the `MCPToolBox` and `ComposingToolBox` classes t oconnect to and use tools from MCP servers.
+This provides the `MCPToolBox` and `ComposingToolBox` classes to connect to and use tools from MCP servers.
 
 ## Using MCPToolBox
 
@@ -92,7 +92,7 @@ mcpToolBox.exposeTools("echo", "sum");
 ```
 
 You can call this method repeatedly to add more tools to the set of exposed tools. If you want to expose all tools you
-can use the folliwing method:
+can use the following method:
 
 ```java title="TestAgent.java"
 mcpToolBox.exposeAllTools();
@@ -112,7 +112,7 @@ This toolbox allows you to:
 
 ### Using `mcp.json` to build
 
-Over time, a standard way oif configuring MCP servers has emerged. The `mcp.json` file is a JSON file that contains a
+Over time, a standard way of configuring MCP servers has emerged. The `mcp.json` file is a JSON file that contains a
 map of MCP servers with relevant coordinates and parameters.
 
 Format:

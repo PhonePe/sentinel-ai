@@ -47,6 +47,7 @@ import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.NonContextualDefaultExternalToolRunner;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.EventUtils;
@@ -123,6 +124,7 @@ public class MessageCompactor {
         final var usageStats = Objects.requireNonNullElseGet(stats,
                                                              ModelUsageStats::new);
         final var settingsForCompaction = agentSetup
+                .withOutputGenerationMode(OutputGenerationMode.TOOL_BASED)
                 .withModelSettings(agentSetup
                         .getModelSettings()
                         .withParallelToolCalls(false));

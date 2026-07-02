@@ -31,8 +31,8 @@ jobs:
 
       - name: Install Zensical
         run: |
-          python -m pip install --upgrade pip
-          pip install zensical
+          python -m pip install --upgrade pip==24.3.1 --only-binary :all:
+          pip install zensical==0.0.46 --only-binary :all:
 
       - name: Build documentation
         working-directory: ./docs

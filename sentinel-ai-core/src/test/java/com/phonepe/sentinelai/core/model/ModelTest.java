@@ -20,6 +20,7 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
+import com.phonepe.sentinelai.core.agent.StreamConsumer;
 import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
@@ -58,7 +59,7 @@ class ModelTest {
                                             Map.of(),
                                             null,
                                             null,
-                                            bytes -> {},
+                                            StreamConsumer.NO_OP,
                                             List.of()));
     }
 
@@ -84,7 +85,7 @@ class ModelTest {
                                         Map.of(),
                                         null,
                                         null,
-                                        bytes -> {},
+                                        StreamConsumer.NO_OP,
                                         List.of()));
     }
 }
