@@ -335,7 +335,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                            allMessages,
                                                                                            newMessages,
                                                                                            oldMessages)
-                            .orElse(null);
+                                                                                                   .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(oldMessages,
                                                                    stats,
                                                                    SentinelError
@@ -1012,19 +1012,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         if (log.isDebugEnabled()) {
             try {
                 log.debug(fmtStr,
-                          mapper.writerWithDefaultPrettyPrinter()
-                                  .writeValueAsString(node));
-            }
-            catch (JsonProcessingException e) {
-                //Do nothing
-            }
-        }
-    }
-
-    private void logDataTrace(String fmtStr, Object node) {
-        if (log.isTraceEnabled()) {
-            try {
-                log.trace(fmtStr,
                           mapper.writerWithDefaultPrettyPrinter()
                                   .writeValueAsString(node));
             }
