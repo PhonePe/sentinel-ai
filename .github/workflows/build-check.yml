@@ -27,6 +27,18 @@ jobs:
           java-version: '17'
           cache: 'maven'
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Build documentation (strict)
+        working-directory: ./docs
+        run: |
+          pip install --only-binary :all: -r requirements.txt
+          python -m zensical build --strict --clean --config-file zensical.toml
+
       - name: Set up Node.js and cache npm packages
         uses: actions/setup-node@v4
         with:
@@ -59,9 +71,8 @@ jobs:
              echo "Package @modelcontextprotocol/server-everything@2025.12.18 is already installed globally, skipping installation."
           fi
 
-      # Disabling spotless check for now since it is flagging way too many classes as violating the checks
       - name: Run spotless checkstyle
-        run: mvn -Pspotless spotless:check
+        run: mvn spotless:check
 
       - name: Build (run unit + integration tests)
         env:

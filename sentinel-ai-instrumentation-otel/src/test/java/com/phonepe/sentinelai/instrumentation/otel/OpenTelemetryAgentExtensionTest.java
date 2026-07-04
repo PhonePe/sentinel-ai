@@ -23,6 +23,7 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,10 +58,12 @@ import com.phonepe.sentinelai.core.tools.ToolRunApprovalSeeker;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -171,7 +174,7 @@ class OpenTelemetryAgentExtensionTest {
 
         agent.execute(agentInput("run-2", "session-2"));
 
-        final var spans = waitForSpans(2);
+        final var spans = waitForSpans("execute_tool lookup-order", "invoke_agent dummy");
         assertEquals(2, spans.size());
 
         final var span = spanByName("execute_tool lookup-order");
@@ -205,7 +208,7 @@ class OpenTelemetryAgentExtensionTest {
 
         agent.execute(agentInput("run-3", "session-3"));
 
-        final var spans = waitForSpans(2);
+        final var spans = waitForSpans("execute_tool get-weather", "invoke_agent dummy");
         assertEquals(2, spans.size());
         final var toolSpan = spanByName("execute_tool get-weather");
         assertNotNull(toolSpan);
@@ -303,7 +306,7 @@ class OpenTelemetryAgentExtensionTest {
 
         agent.execute(agentInput("run-5", "session-5"));
 
-        final var spans = waitForSpans(1);
+        final var spans = waitForSpans("invoke_agent dummy");
         assertEquals(1, spans.size());
         assertEquals("LENGTH_EXCEEDED", spans.get(0).getAttributes().get(ATTR_ERROR_TYPE));
     }
@@ -443,45 +446,34 @@ class OpenTelemetryAgentExtensionTest {
         };
     }
 
-    @SuppressWarnings({
-            "BusyWait", "java:S2925"
-    })
     private SpanData waitForSpanByName(String name) {
-        final var deadline = System.currentTimeMillis() + 1_000;
-        while (System.currentTimeMillis() < deadline) {
-            final var span = spanByName(name);
-            if (span != null) {
-                return span;
-            }
-            try {
-                Thread.sleep(10);
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return null;
-            }
+        try {
+            await().atMost(Duration.ofSeconds(2))
+                    .until(() -> spanByName(name) != null);
+        }
+        catch (ConditionTimeoutException ignored) {
+            return spanByName(name);
         }
         return spanByName(name);
     }
 
-    @SuppressWarnings({
-            "BusyWait", "java:S2925"
-    })
-    private List<SpanData> waitForSpans(int expectedCount) {
-        final var deadline = System.currentTimeMillis() + 1_000;
-        while (System.currentTimeMillis() < deadline) {
-            final var spans = finishedSpans();
-            if (spans.size() >= expectedCount) {
-                return spans;
-            }
-            try {
-                Thread.sleep(10);
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return finishedSpans();
-            }
+    private List<SpanData> waitForSpans(String... names) {
+        final var expectedNames = List.copyOf(Arrays.asList(names));
+        try {
+            await().atMost(Duration.ofSeconds(2))
+                    .until(() -> finishedSpans().stream()
+                            .map(SpanData::getName)
+                            .filter(expectedNames::contains)
+                            .distinct()
+                            .count() == names.length);
         }
-        return finishedSpans();
+        catch (ConditionTimeoutException ignored) {
+            return finishedSpans().stream()
+                    .filter(span -> expectedNames.contains(span.getName()))
+                    .toList();
+        }
+        return finishedSpans().stream()
+                .filter(span -> expectedNames.contains(span.getName()))
+                .toList();
     }
 }
