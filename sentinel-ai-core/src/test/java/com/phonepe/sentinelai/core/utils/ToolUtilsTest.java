@@ -111,4 +111,26 @@ class ToolUtilsTest {
         assertTrue(result.getResponse().startsWith("Error running tool:"));
         assertTrue(result.getResponse().contains(errorMessage));
     }
+
+    @Test
+    void testToolCallWithtEmptyArguments() {
+        //This is aa trivial test to ensure that the ToolCall builder can handle
+        //null or empty arguments without throwing an exception and sets a default value
+        assertEquals(ToolCall.EMPTY_ARGUMENTS,
+                     ToolCall.builder()
+                             .sessionId(SESSION_ID)
+                             .runId(RUN_ID)
+                             .toolCallId("call-6")
+                             .toolName("tool")
+                             .build().getArguments());
+        assertEquals(ToolCall.EMPTY_ARGUMENTS,
+                     ToolCall.builder()
+                             .sessionId(SESSION_ID)
+                             .runId(RUN_ID)
+                             .toolCallId("call-6")
+                             .toolName("tool")
+                             .arguments("")
+                             .build().getArguments());
+    }
+
 }
