@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.core.agentmessages.responses;
 
+import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
@@ -34,6 +35,8 @@ import lombok.extern.jackson.Jacksonized;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 public class ToolCall extends AgentResponse {
+    public static final String EMPTY_ARGUMENTS = "{}";
+
     /**
      * Tool call id as received from LLM
      */
@@ -65,7 +68,7 @@ public class ToolCall extends AgentResponse {
               timestamp);
         this.toolCallId = toolCallId;
         this.toolName = toolName;
-        this.arguments = arguments;
+        this.arguments = Strings.isNullOrEmpty(arguments) ? EMPTY_ARGUMENTS : arguments;
     }
 
     public ToolCall(String sessionId,

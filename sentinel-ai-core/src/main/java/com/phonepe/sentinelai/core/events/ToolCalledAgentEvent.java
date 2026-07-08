@@ -42,7 +42,7 @@ public class ToolCalledAgentEvent extends AgentEvent {
                                 String userId,
                                 @NonNull String toolCallId,
                                 @NonNull String toolCallName,
-                                @NonNull String arguments) {
+                                String arguments) {
         super(EventType.TOOL_CALLED, agentName, runId, sessionId, userId);
         this.toolCallId = toolCallId;
         this.toolCallName = toolCallName;
