@@ -96,10 +96,11 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                                         ExternalTool externalTool,
                                                         ToolCall toolCall) {
         try {
-            log.debug("Calling external tool: {} [{}] Arguments: {}",
+            log.info("Calling external tool: {} [{}] Arguments: {}",
                       toolCall.getToolCallId(),
                       toolCall.getToolName(),
                       toolCall.getArguments());
+            log.info("Ankush ::: This is where we need to add the argument of hooker for api calls ");
             //TODO : Ankush to add the Agent extension for executions
             final var response = externalTool.getCallable()
                     .apply(context,
