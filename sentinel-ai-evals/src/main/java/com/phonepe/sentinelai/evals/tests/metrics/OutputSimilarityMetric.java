@@ -61,16 +61,4 @@ public class OutputSimilarityMetric<T> implements Metric<String, T> {
     public String metricName() {
         return "OutputSimilarity";
     }
-
-    /**
-     * Returns a compact textual representation with a truncated reference snippet.
-     *
-     * @return compact metric description
-     */
-    @Override
-    public String toString() {
-        return "OutputSimilarityMetric(reference="
-                + referenceText.substring(0, Math.min(30, referenceText.length()))
-                + "...)";
-    }
 }

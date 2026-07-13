@@ -14,26 +14,25 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.evals.tests.expectations.jsonpath;
+package com.phonepe.sentinelai.evals.tests.metrics;
+
+import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
+
+import lombok.val;
 
 /**
- * Comparison operators supported by JSONPath-based expectations.
+ * Executor for {@link AgentLatencyMetric} that reads latency from the eval context.
  */
-public enum Operator {
-    /** Equality comparison. */
-    EQ,
-    /** Inequality comparison. */
-    NE,
-    /** Greater-than comparison. */
-    GT,
-    /** Greater-than-or-equal comparison. */
-    GTE,
-    /** Less-than comparison. */
-    LT,
-    /** Less-than-or-equal comparison. */
-    LTE,
-    /** Membership comparison against a collection of allowed values. */
-    IN,
-    /** Non-membership comparison against a collection of disallowed values. */
-    NOT_IN
+public class AgentLatencyMetricExecutor<R, T> implements MetricExecutor<R, T> {
+
+    @Override
+    public double calculate(R result, EvalExpectationContext<T> context) {
+        val latency = context.getLatencyMs();
+        return latency != null ? latency.doubleValue() : 0.0;
+    }
+
+    @Override
+    public String metricName() {
+        return "AgentLatency";
+    }
 }

@@ -17,8 +17,7 @@
 package com.phonepe.sentinelai.evals.tests.expectations.jsonpath;
 
 import com.phonepe.sentinelai.evals.tests.Expectation;
-
-import lombok.ToString;
+import com.phonepe.sentinelai.evals.tests.expectations.Operator;
 
 /**
  * Expectation definition that asserts a JSON-Path expression in the output satisfies
@@ -29,8 +28,7 @@ import lombok.ToString;
  * @param <R> result/output type
  * @param <T> input/request type
  */
-@ToString
-public class OutputJsonPathCompareExpectation<R, T> implements Expectation<R, T> {
+public class OutputJsonPathCompareExpectation<R, T> extends Expectation<R, T> {
 
     private final String jsonPath;
     private final Operator operator;
@@ -39,13 +37,16 @@ public class OutputJsonPathCompareExpectation<R, T> implements Expectation<R, T>
     /**
      * Creates a JSONPath comparison expectation.
      *
+     * @param id            unique identifier for this expectation
      * @param jsonPath      JSONPath expression to evaluate against the output
      * @param operator      comparison operator to apply
      * @param expectedValue expected comparison value
      */
-    public OutputJsonPathCompareExpectation(String jsonPath,
+    public OutputJsonPathCompareExpectation(String id,
+                                            String jsonPath,
                                             Operator operator,
                                             Object expectedValue) {
+        super(id);
         this.jsonPath = normalizePath(jsonPath);
         this.operator = operator;
         this.expectedValue = expectedValue;

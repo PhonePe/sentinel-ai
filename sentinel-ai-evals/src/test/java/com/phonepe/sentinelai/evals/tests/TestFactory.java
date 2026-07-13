@@ -38,7 +38,6 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.evals.ExpectationReport;
 import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.LLMIdentifier;
-import com.phonepe.sentinelai.evals.tests.metrics.LLMModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.Metric;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry;
@@ -103,7 +102,6 @@ public class TestFactory {
             this.output = output;
         }
 
-
         @Override
         public CompletableFuture<ModelOutput> compute(ModelRunContext context,
                                                       Collection<ModelOutputDefinition> outputDefinitions,
@@ -128,6 +126,11 @@ public class TestFactory {
                                            allMessages,
                                            usage);
             });
+        }
+
+        @Override
+        public String modelName() {
+            return "test-model";
         }
     }
 
@@ -163,10 +166,14 @@ public class TestFactory {
      * Suitable for simple expectation tests that don't require specific context state.
      */
     public static <T> EvalExpectationContext<T> context() {
-        return new EvalExpectationContext<>(DEFAULT_RUN_ID,
-                                            null,
-                                            List.of(),
-                                            new ModelUsageStats());
+        return EvalExpectationContext.<T>builder()
+                .runId(DEFAULT_RUN_ID)
+                .request(null)
+                .oldMessages(List.of())
+                .modelUsageStats(new ModelUsageStats())
+                .modelName(null)
+                .latencyMs(null)
+                .build();
     }
 
     /**
@@ -177,10 +184,14 @@ public class TestFactory {
      * @return context with the given message history
      */
     public static <T> EvalExpectationContext<T> contextWith(List<AgentMessage> oldMessages) {
-        return new EvalExpectationContext<>(DEFAULT_RUN_ID,
-                                            null,
-                                            oldMessages,
-                                            new ModelUsageStats());
+        return EvalExpectationContext.<T>builder()
+                .runId(DEFAULT_RUN_ID)
+                .request(null)
+                .oldMessages(oldMessages)
+                .modelUsageStats(new ModelUsageStats())
+                .modelName(null)
+                .latencyMs(null)
+                .build();
     }
 
     /**
@@ -190,10 +201,14 @@ public class TestFactory {
      * @return context with the given request
      */
     public static <R> EvalExpectationContext<R> contextWith(R request) {
-        return new EvalExpectationContext<>(DEFAULT_RUN_ID,
-                                            request,
-                                            List.of(),
-                                            new ModelUsageStats());
+        return EvalExpectationContext.<R>builder()
+                .runId(DEFAULT_RUN_ID)
+                .request(request)
+                .oldMessages(List.of())
+                .modelUsageStats(new ModelUsageStats())
+                .modelName(null)
+                .latencyMs(null)
+                .build();
     }
 
     /**
@@ -205,10 +220,14 @@ public class TestFactory {
      */
     public static <R> EvalExpectationContext<R> contextWith(R request,
                                                             List<AgentMessage> oldMessages) {
-        return new EvalExpectationContext<>(DEFAULT_RUN_ID,
-                                            request,
-                                            oldMessages,
-                                            new ModelUsageStats());
+        return EvalExpectationContext.<R>builder()
+                .runId(DEFAULT_RUN_ID)
+                .request(request)
+                .oldMessages(oldMessages)
+                .modelUsageStats(new ModelUsageStats())
+                .modelName(null)
+                .latencyMs(null)
+                .build();
     }
 
     /**
@@ -222,10 +241,14 @@ public class TestFactory {
     public static <R> EvalExpectationContext<R> contextWith(String runId,
                                                             R request,
                                                             List<AgentMessage> oldMessages) {
-        return new EvalExpectationContext<>(runId,
-                                            request,
-                                            oldMessages,
-                                            new ModelUsageStats());
+        return EvalExpectationContext.<R>builder()
+                .runId(runId)
+                .request(request)
+                .oldMessages(oldMessages)
+                .modelUsageStats(new ModelUsageStats())
+                .modelName(null)
+                .latencyMs(null)
+                .build();
     }
 
     /**
@@ -281,23 +304,33 @@ public class TestFactory {
         return MetricExecutorRegistry.withDefaults(null,
                                                    EmbeddingModelFactory.noOp(),
                                                    new LLMIdentifier("mock"),
-                                                   (LLMModelFactory) id -> (context,
-                                                                            outputDefinitions,
-                                                                            oldMessages,
-                                                                            tools,
-                                                                            toolRunner,
-                                                                            earlyTerminationStrategy,
-                                                                            agentMessagesPreProcessors) -> {
-                                                       final var data = JsonNodeFactory.instance.objectNode();
-                                                       data.put(Agent.OUTPUT_VARIABLE_NAME,
-                                                                "{\"score\":0.0,\"reason\":\"mock\"}");
-                                                       final var safeMessages = Objects.requireNonNullElse(oldMessages,
-                                                                                                           List.<AgentMessage>of());
-                                                       return CompletableFuture.completedFuture(ModelOutput.success(
-                                                                                                                    data,
-                                                                                                                    List.of(),
-                                                                                                                    safeMessages,
-                                                                                                                    new ModelUsageStats()));
+                                                   id -> new Model() {
+                                                       @Override
+                                                       public CompletableFuture<ModelOutput> compute(
+                                                                                                     ModelRunContext context,
+                                                                                                     Collection<ModelOutputDefinition> outputDefinitions,
+                                                                                                     List<AgentMessage> oldMessages,
+                                                                                                     Map<String, ExecutableTool> tools,
+                                                                                                     ToolRunner toolRunner,
+                                                                                                     EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                                                     List<AgentMessagesPreProcessor> agentMessagesPreProcessors) {
+                                                           final var data = JsonNodeFactory.instance.objectNode();
+                                                           data.put(Agent.OUTPUT_VARIABLE_NAME,
+                                                                    "{\"score\":0.0,\"reason\":\"mock\"}");
+                                                           final var safeMessages = Objects.requireNonNullElse(
+                                                                                                               oldMessages,
+                                                                                                               List.<AgentMessage>of());
+                                                           return CompletableFuture.completedFuture(ModelOutput.success(
+                                                                                                                        data,
+                                                                                                                        List.of(),
+                                                                                                                        safeMessages,
+                                                                                                                        new ModelUsageStats()));
+                                                       }
+
+                                                       @Override
+                                                       public String modelName() {
+                                                           return "mock";
+                                                       }
                                                    });
     }
 

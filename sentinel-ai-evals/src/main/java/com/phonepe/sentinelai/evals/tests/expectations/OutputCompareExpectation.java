@@ -19,32 +19,34 @@ package com.phonepe.sentinelai.evals.tests.expectations;
 import com.phonepe.sentinelai.evals.tests.Expectation;
 
 /**
- * Expectation definition that asserts the output equals an expected value.
- *
- * Computation is performed by {@code OutputEqualsExpectationExecutor}.
+ * Expectation that compares the entire output value against an expected value using an {@link Operator}.
  *
  * @param <R> result/output type
  * @param <T> input/request type
  */
-public class OutputEqualsExpectation<R, T> implements Expectation<R, T> {
+public class OutputCompareExpectation<R, T> extends Expectation<R, T> {
 
-    private final R expectedOutput;
+    private final Object expectedValue;
+    private final Operator operator;
 
     /**
-     * Creates an equality expectation for the full output value.
+     * Creates an output comparison expectation.
      *
-     * @param expectedOutput expected output value
+     * @param id            unique identifier for this expectation
+     * @param expectedValue expected value to compare against
+     * @param operator      comparison operator to apply
      */
-    public OutputEqualsExpectation(R expectedOutput) {
-        this.expectedOutput = expectedOutput;
+    public OutputCompareExpectation(String id, Object expectedValue, Operator operator) {
+        super(id);
+        this.expectedValue = expectedValue;
+        this.operator = operator;
     }
 
-    /**
-     * Returns the expected output value.
-     *
-     * @return expected output
-     */
-    public R getExpectedOutput() {
-        return expectedOutput;
+    public Object getExpectedValue() {
+        return expectedValue;
+    }
+
+    public Operator getOperator() {
+        return operator;
     }
 }
