@@ -55,7 +55,7 @@ public class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>> implemen
 
     @Override
     public void consume(JsonNode output, A agent) {
-        log.info("Ankush consume:: Into External tool extensions with output {} agent {}", output, agent);
+        log.info("Ankush consume:: Into External tool extensions with output ");
     }
 
     @Override

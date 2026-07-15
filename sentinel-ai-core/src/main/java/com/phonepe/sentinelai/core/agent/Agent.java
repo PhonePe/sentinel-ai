@@ -690,7 +690,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                       List<AgentMessage> messages,
                                       JsonNode data) {
         extensions.forEach(extension -> {
-            log.info("Ankush :: Processing the extension data locally in agent class data {}", data);
+            log.info("Ankush :: Processing the extension data locally in agent class data");
             final var outputDefinition = extension.outputSchema(
                                                                 ProcessingMode.DIRECT);
             final var outputName = outputDefinition.map(
