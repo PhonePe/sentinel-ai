@@ -45,6 +45,7 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
                                            AgentRunContext<R> metadata,
                                            A agent,
                                            ProcessingMode processingMode) {
+
         // Nothing to do here by default
     }
 

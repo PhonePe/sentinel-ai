@@ -37,22 +37,36 @@ import java.util.Optional;
 public class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
 
     @Override
+    public void addAdditionalToolMetaData(R request,
+                                          AgentRunContext<R> metadata,
+                                          A agent,
+                                          ProcessingMode processingMode) {
+        log.info("Ankush addAdditionalToolMetaData:: Into External tool extensions with meta {} request {}",
+                 metadata,
+                 request);
+    }
+
+    @Override
     public ExtensionPromptSchema additionalSystemPrompts(R request,
                                                          AgentRunContext<R> metadata,
                                                          A agent,
                                                          ProcessingMode processingMode) {
+        log.info("Ankush additionalSystemPrompts:: Into External tool extensions with metadata {} request {}",
+                 metadata,
+                 agent);
         return null;
     }
 
     @Override
     public void consume(JsonNode output, A agent) {
-        log.info("Consuming the External tool agent");
+        log.info("Ankush consume:: Into External tool extensions with output {} agent {}", output, agent);
     }
 
     @Override
     public List<FactList> facts(R request,
                                 AgentRunContext<R> context,
                                 A agent) {
+        log.info("Ankush facts:: Into External tool extensions with context {} request {}", context, request);
         return List.of();
     }
 
