@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.phonepe.sentinel-ai</groupId>
         <artifactId>sentinel-ai</artifactId>
-        <version>1.1.1-alpha8</version>
+        <version>1.1.1-alpha8-ankush</version>
     </parent>
 
     <artifactId>sentinel-ai-evals</artifactId>
