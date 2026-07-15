@@ -40,11 +40,6 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
         List<Object> hints;
     }
 
-    ExtensionPromptSchema additionalSystemPrompts(R request,
-                                                  AgentRunContext<R> metadata,
-                                                  A agent,
-                                                  ProcessingMode processingMode);
-
     //TODO : Ankush to use this while doing the actual tool processing via Agent extensions
     default void addAdditionalToolMetaData(R request,
                                            AgentRunContext<R> metadata,
@@ -52,6 +47,11 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
                                            ProcessingMode processingMode) {
         // Nothing to do here by default
     }
+
+    ExtensionPromptSchema additionalSystemPrompts(R request,
+                                                  AgentRunContext<R> metadata,
+                                                  A agent,
+                                                  ProcessingMode processingMode);
 
     /**
      * Simplified model output consumption method
