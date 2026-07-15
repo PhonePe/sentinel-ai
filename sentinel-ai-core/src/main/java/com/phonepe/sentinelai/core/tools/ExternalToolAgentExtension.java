@@ -50,7 +50,7 @@ public class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>> implemen
                                                          A agent,
                                                          ProcessingMode processingMode) {
         log.info("Ankush additionalSystemPrompts:: Into External tool extensions with metadata");
-        return null;
+        return new ExtensionPromptSchema(List.of(), List.of());
     }
 
     @Override
