@@ -41,9 +41,7 @@ public class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>> implemen
                                           AgentRunContext<R> metadata,
                                           A agent,
                                           ProcessingMode processingMode) {
-        log.info("Ankush addAdditionalToolMetaData:: Into External tool extensions with meta {} request {}",
-                 metadata,
-                 request);
+        log.info("Ankush addAdditionalToolMetaData:: Into External tool extensions with meta ");
     }
 
     @Override
@@ -51,9 +49,7 @@ public class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>> implemen
                                                          AgentRunContext<R> metadata,
                                                          A agent,
                                                          ProcessingMode processingMode) {
-        log.info("Ankush additionalSystemPrompts:: Into External tool extensions with metadata {} request {}",
-                 metadata,
-                 agent);
+        log.info("Ankush additionalSystemPrompts:: Into External tool extensions with metadata");
         return null;
     }
 
@@ -66,7 +62,7 @@ public class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>> implemen
     public List<FactList> facts(R request,
                                 AgentRunContext<R> context,
                                 A agent) {
-        log.info("Ankush facts:: Into External tool extensions with context {} request {}", context, request);
+        log.info("Ankush facts:: Into External tool extensions with context");
         return List.of();
     }
 
