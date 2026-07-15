@@ -127,6 +127,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final String systemPrompt;
     @Getter
     private final AgentSetup setup;
+    @Getter
     private final List<AgentExtension<R, T, A>> extensions;
     private final ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker;
     private final OutputValidator<R, T> outputValidator;
@@ -689,6 +690,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                       List<AgentMessage> messages,
                                       JsonNode data) {
         extensions.forEach(extension -> {
+            log.info("Ankush :: Processing the extension data locally in agent class data {}",data);
             final var outputDefinition = extension.outputSchema(
                                                                 ProcessingMode.DIRECT);
             final var outputName = outputDefinition.map(
