@@ -316,8 +316,10 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                             return tool.accept(new ExecutableToolVisitor<>() {
                                 @Override
                                 public ToolCallResponse visit(ExternalTool externalTool) {
-                                    agent.getExtensions().forEach(extension->{
-                                        log.info("Ankush :: Before executiong the external tools {} and context {}",extension,context);
+                                    agent.getExtensions().forEach(extension -> {
+                                        log.info("Ankush :: Before executiong the external tools {} and context {}",
+                                                 extension,
+                                                 context);
                                     });
                                     return runExternalTool(context, externalTool, toolCall);
                                 }
