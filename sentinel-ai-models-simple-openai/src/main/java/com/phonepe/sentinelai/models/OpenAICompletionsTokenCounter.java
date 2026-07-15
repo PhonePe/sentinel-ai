@@ -42,7 +42,7 @@ import java.util.Objects;
  */
 public class OpenAICompletionsTokenCounter implements TokenCounter {
 
-    private final EncodingRegistry encodingRegistry = Encodings
+    private static final EncodingRegistry encodingRegistry = Encodings
             .newDefaultEncodingRegistry();
 
     /**
