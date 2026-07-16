@@ -141,6 +141,7 @@ public class OpenAIMessageUtils {
 
                     @Override
                     public ChatMessage visit(ToolCall toolCall) {
+                        log.info("Ankush:: agent response in tool call {} ", toolCall);
                         return ChatMessage.AssistantMessage.of(List.of(
                                                                        new io.github.sashirestela.openai.common.tool.ToolCall(0,
                                                                                                                               toolCall.getToolCallId(),

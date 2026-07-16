@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.core.agent;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Primitives;
 
@@ -206,7 +207,6 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
         return response;
     }
 
-
     /**
      * Convert parameters string received from LLM to actual parameters for tool call
      *
@@ -265,6 +265,7 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
         }
     }
 
+
     private ToolCallResponse runTool(AgentRunContext<R> context,
                                      Map<String, ExecutableTool> tools,
                                      ToolCall toolCall) {
@@ -318,6 +319,7 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                             return tool.accept(new ExecutableToolVisitor<>() {
                                 @Override
                                 public ToolCallResponse visit(ExternalTool externalTool) {
+                                    final var toolArguments = toolCallArgumentsAsMap(toolCall.getArguments());
                                     Map<String, Object> externalToolCustomArguments = new HashMap<>();
                                     agent.getExtensions().stream().filter(ExternalToolAgentExtension.class::isInstance)
                                             .map(ExternalToolAgentExtension.class::cast).forEach(extension -> {
@@ -326,13 +328,20 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                                                                                                       context,
                                                                                                                       agent));
                                             });
-                                    Map<String, Object> currentCustomParams = Objects.requireNonNullElse(context
-                                            .getRequestMetadata()
-                                            .getCustomParams(), new HashMap<>());
-                                    externalToolCustomArguments.putAll(currentCustomParams);
-                                    context.getRequestMetadata().setCustomParams(externalToolCustomArguments);
-                                    log.info("Ankush :: Finally external tool context is {}", context);
-                                    return runExternalTool(context, externalTool, toolCall);
+                                    if (context.getRequestMetadata() != null) {
+                                        Map<String, Object> currentCustomParams = Objects.requireNonNullElse(context
+                                                .getRequestMetadata()
+                                                .getCustomParams(), new HashMap<>());
+                                        externalToolCustomArguments.putAll(currentCustomParams);
+                                        context.getRequestMetadata().setCustomParams(externalToolCustomArguments);
+                                    }
+                                    toolArguments.putAll(externalToolCustomArguments);
+                                    final var updatedToolCall = new ToolCall(toolCall.getSessionId(),
+                                                                             toolCall.getRunId(),
+                                                                             toolCall.getToolCallId(),
+                                                                             toolCall.getToolName(),
+                                                                             toJsonString(toolArguments));
+                                    return runExternalTool(context, externalTool, updatedToolCall);
                                 }
 
                                 @Override
@@ -401,6 +410,11 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
 
     }
 
+    @SneakyThrows
+    private String toJsonString(Map<String, Object> data) {
+        return setup.getMapper().writeValueAsString(data);
+    }
+
     /**
      * Convert tool response to string to send to LLM. For void return type a fixed success string is sent to LLM.
      *
@@ -421,6 +435,15 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
             }
         }
         return setup.getMapper().writeValueAsString(result);
+    }
+
+    @SneakyThrows
+    private HashMap<String, Object> toolCallArgumentsAsMap(String arguments) {
+        if (arguments == null || arguments.isBlank()) {
+            return new HashMap<>();
+        }
+        return setup.getMapper().readValue(arguments, new TypeReference<HashMap<String, Object>>() {
+        });
     }
 
 }

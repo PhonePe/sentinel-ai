@@ -1200,6 +1200,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                          AgentMessages agentMessages,
                                                                          ModelUsageStats stats,
                                                                          Stopwatch stopwatch) {
+        log.info("Ankush:: handleToolCalls {}", tools);
+        log.info("Ankush:: handleToolCalls toolCalls {}", toolCalls);
         final var toolCallMessages = toolCalls.stream()
                 .filter(toolCall -> !Strings.isNullOrEmpty(toolCall.getId()))
                 .map(toolCall -> new ToolCall(sessionId,
