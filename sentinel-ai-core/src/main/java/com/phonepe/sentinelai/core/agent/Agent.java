@@ -199,7 +199,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         xmlMapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_EMPTY);
         registerTools(ToolUtils.readTools(this));
         registerTools(knownTools);
-        //Ankush : Added extension here for processing
         this.extensions.forEach(extension -> {
             registerToolbox(extension);
             extension.onExtensionRegistrationCompleted(self);
@@ -358,7 +357,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                      new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(AgentUtils
                              .sessionId(context), runId, finalSystemPrompt, false, null));
         messages.addAll(extensionMessages(inputRequest, context));
-        //TODO : Ankush need to check for
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
                                     toXmlContent(inputRequest),
@@ -690,7 +688,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                       List<AgentMessage> messages,
                                       JsonNode data) {
         extensions.forEach(extension -> {
-            log.info("Ankush :: Processing the extension data locally in agent class data");
             final var outputDefinition = extension.outputSchema(
                                                                 ProcessingMode.DIRECT);
             final var outputName = outputDefinition.map(
@@ -903,7 +900,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         if (context.getAgentSetup().getOutputGenerationMode() == OutputGenerationMode.TOOL_BASED) {
             primaryPrompt += "You must provide your entire response in a single tool call. Once the tool is called, the task is complete. DO NOT USE THE TOOL FOR INTERMEDIATE STEPS OR MULTIPLE ITERATIONS.";
         }
-        //Ankush TODO : We cannot use the fact as those are used in System prompt generations
         final var prompt = new SystemPrompt().setName(name())
                 .setCoreInstructions(primaryPrompt)
                 .setPrimaryTask(SystemPrompt.Task.builder()
@@ -929,7 +925,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var generatedSystemPrompt = xmlMapper
                 .writerWithDefaultPrettyPrinter()
                 .writeValueAsString(prompt);
-        log.info("Final system prompt: {}", generatedSystemPrompt);
+        log.debug("Final system prompt: {}", generatedSystemPrompt);
         return generatedSystemPrompt;
 
     }

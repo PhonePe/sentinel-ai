@@ -103,9 +103,6 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                      toolCall.getToolCallId(),
                      toolCall.getToolName(),
                      toolCall.getArguments());
-            log.info("Ankush ::: This is where we need to add the argument of hooker for api calls ");
-            //TODO : Ankush to add the Agent extension for executions
-
             final var response = externalTool.getCallable()
                     .apply(context,
                            toolCall.getToolName(),
@@ -207,6 +204,39 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
         return response;
     }
 
+    private ToolCall buildToolCallWithArguments(ToolCall originalToolCall,
+                                                Map<String, Object> arguments) {
+        return new ToolCall(originalToolCall.getSessionId(),
+                            originalToolCall.getRunId(),
+                            originalToolCall.getToolCallId(),
+                            originalToolCall.getToolName(),
+                            toJsonString(arguments));
+    }
+
+
+    private Map<String, Object> collectExternalToolArguments(AgentRunContext<R> context) {
+        final Map<String, Object> extensionArguments = new HashMap<>();
+        agent.getExtensions().stream()
+                .filter(ExternalToolAgentExtension.class::isInstance)
+                .map(ExternalToolAgentExtension.class::cast)
+                .forEach(extension -> extensionArguments.putAll(extension.getExternalToolArguments(
+                                                                                                   context.getRequest(),
+                                                                                                   context,
+                                                                                                   agent)));
+        return extensionArguments;
+    }
+
+    private void mergeRequestMetadataCustomParams(Map<String, Object> extensionArguments,
+                                                  AgentRunContext<R> context) {
+        if (context.getRequestMetadata() == null) {
+            return;
+        }
+        final var existingCustomParams = Objects.requireNonNullElse(context.getRequestMetadata()
+                .getCustomParams(), new HashMap<String, Object>());
+        extensionArguments.putAll(existingCustomParams);
+        context.getRequestMetadata().setCustomParams(extensionArguments);
+    }
+
     /**
      * Convert parameters string received from LLM to actual parameters for tool call
      *
@@ -218,6 +248,17 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
     private List<Object> params(ToolMethodInfo methodInfo, String params) {
         final var objectMapper = setup.getMapper();
         return ToolUtils.convertToRealParams(methodInfo, params, objectMapper);
+    }
+
+    private ToolCallResponse runExternalToolWithMergedArguments(AgentRunContext<R> context,
+                                                                ExternalTool externalTool,
+                                                                ToolCall toolCall) {
+        final var mergedToolArguments = toolCallArgumentsAsMap(toolCall.getArguments());
+        final var extensionArguments = collectExternalToolArguments(context);
+        mergeRequestMetadataCustomParams(extensionArguments, context);
+        mergedToolArguments.putAll(extensionArguments);
+        final var updatedToolCall = buildToolCallWithArguments(toolCall, mergedToolArguments);
+        return runExternalTool(context, externalTool, updatedToolCall);
     }
 
     @SuppressWarnings("java:S3011")
@@ -238,7 +279,6 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                       toolCall.getToolCallId(),
                       toolCall.getToolName(),
                       toolCall.getArguments());
-            //TODO : Ankush to add the agent extensions for processing, add agent context into extensions processing
             var resultObject = callable.invoke(internalTool.getInstance(),
                                                args.toArray());
             return new ToolCallResponse(AgentUtils.sessionId(context),
@@ -264,7 +304,6 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                         LocalDateTime.now());
         }
     }
-
 
     private ToolCallResponse runTool(AgentRunContext<R> context,
                                      Map<String, ExecutableTool> tools,
@@ -319,29 +358,9 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                             return tool.accept(new ExecutableToolVisitor<>() {
                                 @Override
                                 public ToolCallResponse visit(ExternalTool externalTool) {
-                                    final var toolArguments = toolCallArgumentsAsMap(toolCall.getArguments());
-                                    Map<String, Object> externalToolCustomArguments = new HashMap<>();
-                                    agent.getExtensions().stream().filter(ExternalToolAgentExtension.class::isInstance)
-                                            .map(ExternalToolAgentExtension.class::cast).forEach(extension -> {
-                                                externalToolCustomArguments.putAll(extension.getExternalToolArguments(
-                                                                                                                      context.getRequest(),
-                                                                                                                      context,
-                                                                                                                      agent));
-                                            });
-                                    if (context.getRequestMetadata() != null) {
-                                        Map<String, Object> currentCustomParams = Objects.requireNonNullElse(context
-                                                .getRequestMetadata()
-                                                .getCustomParams(), new HashMap<>());
-                                        externalToolCustomArguments.putAll(currentCustomParams);
-                                        context.getRequestMetadata().setCustomParams(externalToolCustomArguments);
-                                    }
-                                    toolArguments.putAll(externalToolCustomArguments);
-                                    final var updatedToolCall = new ToolCall(toolCall.getSessionId(),
-                                                                             toolCall.getRunId(),
-                                                                             toolCall.getToolCallId(),
-                                                                             toolCall.getToolName(),
-                                                                             toJsonString(toolArguments));
-                                    return runExternalTool(context, externalTool, updatedToolCall);
+                                    return runExternalToolWithMergedArguments(context,
+                                                                              externalTool,
+                                                                              toolCall);
                                 }
 
                                 @Override
