@@ -35,7 +35,10 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -47,6 +50,9 @@ import java.util.function.Supplier;
 @Slf4j
 @UtilityClass
 public class AgentUtils {
+
+    private static final String MASKED_VALUE = "***MASKED***";
+
     public static <T, R> R createIfNotNull(T value,
                                            Function<T, R> mapper,
                                            Supplier<R> defaultValueiSupplier) {
@@ -253,6 +259,45 @@ public class AgentUtils {
             return mapper.apply(obj);
         }
         return null;
+    }
+
+    public boolean isSensitiveKey(String keyName) {
+        if (keyName == null) {
+            return false;
+        }
+        final var normalizedKey = keyName.toLowerCase(Locale.ROOT);
+        return normalizedKey.contains("token")
+                || normalizedKey.contains("authorization")
+                || normalizedKey.contains("api_key")
+                || normalizedKey.contains("apikey")
+                || normalizedKey.contains("secret")
+                || normalizedKey.contains("password");
+    }
+
+    public Object maskSensitiveData(Object value,
+                                    String keyName) {
+        if (value instanceof Map<?, ?> mapValue) {
+            final Map<String, Object> maskedMap = new LinkedHashMap<>();
+            mapValue.forEach((key, mapEntryValue) -> {
+                final var entryKey = Objects.toString(key, "");
+                if (AgentUtils.isSensitiveKey(entryKey)) {
+                    maskedMap.put(entryKey, MASKED_VALUE);
+                }
+                else {
+                    maskedMap.put(entryKey, maskSensitiveData(mapEntryValue, entryKey));
+                }
+            });
+            return maskedMap;
+        }
+        if (value instanceof List<?> listValue) {
+            return listValue.stream()
+                    .map(item -> maskSensitiveData(item, keyName))
+                    .toList();
+        }
+        if (AgentUtils.isSensitiveKey(keyName)) {
+            return MASKED_VALUE;
+        }
+        return value;
     }
 
 }
