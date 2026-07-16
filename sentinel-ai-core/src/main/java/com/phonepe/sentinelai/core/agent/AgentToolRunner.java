@@ -29,6 +29,7 @@ import com.phonepe.sentinelai.core.events.ToolCalledAgentEvent;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExecutableToolVisitor;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
+import com.phonepe.sentinelai.core.tools.ExternalToolAgentExtension;
 import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.tools.ToolMethodInfo;
@@ -316,8 +317,9 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                             return tool.accept(new ExecutableToolVisitor<>() {
                                 @Override
                                 public ToolCallResponse visit(ExternalTool externalTool) {
-                                    agent.getExtensions().forEach(extension -> {
+                                    agent.getExtensions().stream().filter(ExternalToolAgentExtension.class::isInstance).map(ExternalToolAgentExtension.class::cast).forEach(extension -> {
                                         log.info("Ankush :: Before executiong the external tools");
+                                        extension.addAdditionalToolMetaData(context.getRequest(), context, agent);
                                     });
                                     return runExternalTool(context, externalTool, toolCall);
                                 }

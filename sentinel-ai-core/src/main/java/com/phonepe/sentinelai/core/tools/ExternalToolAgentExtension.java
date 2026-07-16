@@ -27,21 +27,41 @@ import com.phonepe.sentinelai.core.agent.ProcessingMode;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
  * @author ankush.nakaskar
  */
 @Slf4j
-public class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
+public abstract class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
+
+
+     public abstract Map<String, Object> getExternalToolArguments(R request,
+                                                  AgentRunContext<R> metadata,
+                                                  A agent);
 
     @Override
     public void addAdditionalToolMetaData(R request,
                                           AgentRunContext<R> metadata,
-                                          A agent,
-                                          ProcessingMode processingMode) {
-        log.info("Ankush addAdditionalToolMetaData:: Into External tool extensions with meta ");
+                                          A agent) {
+        try {
+            log.info("Ankush addAdditionalToolMetaData:: Into External tool extensions with meta ");
+            Map<String, Object> customParams = Objects.requireNonNullElse(metadata.getRequestMetadata()
+                    .getCustomParams(), new HashMap<>());
+            Map<String, Object> newCustomParams = new HashMap<>(customParams);
+            newCustomParams.put("Ankush", "TestingKey:: AuthToken");
+            metadata.getRequestMetadata().setCustomParams(newCustomParams);
+            log.info("Ankush addAdditionalToolMetaData with after key population:: Into External tool extensions with meta {}",
+                     metadata.getRequestMetadata().getCustomParams());
+        }
+        catch (Exception exception) {
+            log.error("Exceptiion in addAdditionalToolMetaData ", exception);
+        }
+
     }
 
     @Override
@@ -62,7 +82,8 @@ public class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>> implemen
     public List<FactList> facts(R request,
                                 AgentRunContext<R> context,
                                 A agent) {
-        log.info("Ankush facts:: Into External tool extensions with context");
+        log.info("Ankush facts:: Into External tool extensions with request {}", request);
+        log.info("Ankush facts:: Into External tool extensions with context {}", context);
         return List.of();
     }
 

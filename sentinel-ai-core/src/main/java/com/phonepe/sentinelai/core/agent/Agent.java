@@ -929,7 +929,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         final var generatedSystemPrompt = xmlMapper
                 .writerWithDefaultPrettyPrinter()
                 .writeValueAsString(prompt);
-        log.debug("Final system prompt: {}", generatedSystemPrompt);
+        log.info("Final system prompt: {}", generatedSystemPrompt);
         return generatedSystemPrompt;
 
     }
