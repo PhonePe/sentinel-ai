@@ -51,6 +51,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -317,10 +318,20 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                             return tool.accept(new ExecutableToolVisitor<>() {
                                 @Override
                                 public ToolCallResponse visit(ExternalTool externalTool) {
-                                    agent.getExtensions().stream().filter(ExternalToolAgentExtension.class::isInstance).map(ExternalToolAgentExtension.class::cast).forEach(extension -> {
-                                        log.info("Ankush :: Before executiong the external tools");
-                                        extension.addAdditionalToolMetaData(context.getRequest(), context, agent);
-                                    });
+                                    Map<String, Object> externalToolCustomArguments = new HashMap<>();
+                                    agent.getExtensions().stream().filter(ExternalToolAgentExtension.class::isInstance)
+                                            .map(ExternalToolAgentExtension.class::cast).forEach(extension -> {
+                                                externalToolCustomArguments.putAll(extension.getExternalToolArguments(
+                                                                                                                      context.getRequest(),
+                                                                                                                      context,
+                                                                                                                      agent));
+                                            });
+                                    Map<String, Object> currentCustomParams = Objects.requireNonNullElse(context
+                                            .getRequestMetadata()
+                                            .getCustomParams(), new HashMap<>());
+                                    externalToolCustomArguments.putAll(currentCustomParams);
+                                    context.getRequestMetadata().setCustomParams(externalToolCustomArguments);
+                                    log.info("Ankush :: Finally external tool context is {}", context);
                                     return runExternalTool(context, externalTool, toolCall);
                                 }
 

@@ -40,10 +40,6 @@ import java.util.Optional;
 public abstract class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
 
 
-     public abstract Map<String, Object> getExternalToolArguments(R request,
-                                                  AgentRunContext<R> metadata,
-                                                  A agent);
-
     @Override
     public void addAdditionalToolMetaData(R request,
                                           AgentRunContext<R> metadata,
@@ -86,6 +82,10 @@ public abstract class ExternalToolAgentExtension<R, T, A extends Agent<R, T, A>>
         log.info("Ankush facts:: Into External tool extensions with context {}", context);
         return List.of();
     }
+
+    public abstract Map<String, Object> getExternalToolArguments(R request,
+                                                                 AgentRunContext<R> metadata,
+                                                                 A agent);
 
     @Override
     public String name() {
