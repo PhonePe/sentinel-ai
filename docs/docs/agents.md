@@ -321,7 +321,7 @@ parameters.
 | **Property**      | **Type**               | **Description**                                                                                                                                               |
 |-------------------|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `request`         | `R`                    | Request object. This is a required parameter.                                                                                                                 |
-| `facts`           | `List<FactList>`       | List of facts to be passed to the agent. This is passed to LLM as 'knowledge' in the system prompt.                                                           |
+| `facts`           | `List<FactList>`       | List of facts to be passed to the agent. This is sent to the LLM as a separate system context message containing 'knowledge' XML. |
 | `requestMetadata` | `AgentRequestMetadata` | Metadata for the request.                                                                                                                                     |
 | `oldMessages`     | `List<AgentMessage>`   | List of old messages to be sent to the LLM for this run. If set to `null`, messages are generated and consumed by the agent in this session.                  |
 | `agentSetup`      | `AgentSetup`           | Setup for the agent. Overrides runtime setup. If set to `null`, the setup provided during agent creation is used. Fields provided at runtime take precedence. |
@@ -415,16 +415,14 @@ may want to keep track of the session or the user the conversation is happening 
 `ModelUsageStats` object from previous calls. This can be used to keep track of the usage of the model and the agent
 across calls. If provided, the agent will merge the usage from current execution to the provided usage stats object.
 
-!!!note "Request metadata passed to model"
-    The request metadata passed to execute calls are serialized and passed to the LLM as part of the structured system
-    prompt.
+    The request metadata passed to execute calls is serialized and sent to the LLM as a separate system context
+    message (not embedded in the system prompt).
 
 | **Property**   | **Type**              | **Description**                                                                                                                                                         |
 |----------------|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `sessionId`    | `String`              | Session ID for the current conversation. This is passed to LLM as additional data in the system prompt.                                                                 |
-| `userId`       | `String`              | A User ID for the user the agent is having the current conversation with. This is passed to LLM as additional data in the system prompt.                                |
-| `customParams` | `Map<String, Object>` | Any other custom parameters that need to be passed to the agent or the tools being invoked by the agent. This is passed to LLM as additional data in the system prompt. |
-| `usageStats`   | `ModelUsageStats`     | Global usage stats object that can be used to track usage of the model across execute calls.                                                                            |
+| `sessionId`    | `String`              | Session ID for the current conversation. This is passed to LLM as a separate system context message.                                       |
+| `userId`       | `String`              | A User ID for the user the agent is having the current conversation with. This is passed to LLM as a separate system context message.      |
+| `customParams` | `Map<String, Object>` | Any other custom parameters that need to be passed to the agent or the tools being invoked by the agent. This is passed to LLM as a separate system context message. |
 
 !!!note
     Request metadata is optional and passing `null` for this param is acceptable.
@@ -436,8 +434,18 @@ Sentinel AI has some special handling to improve LLM performance for agentic use
 ### System Prompts
 
 SentinelAI converts the system prompt in an XML format for easy parsing by the LLM. The string or object passed as the
-system prompt to the agent is passed in a tag called `<role>`. Other information such as tools, properties from request
-metadata as well as facts and additional tasks from the registered extensions are added to the prompt as well.
+system prompt to the agent is passed in a tag called `<role>`. Other information such as tools and additional tasks
+from the registered extensions are added to the prompt as well.
+
+Request metadata (session ID, user ID, custom params) and dynamic facts/knowledge are sent as separate system
+messages positioned after the system prompt but before the user prompt. This separation improves LLM provider
+prompt cache hit rates, since the system prompt remains stable across requests within the same hour while
+per-session data (which changes between conversations) is isolated into its own messages.
+
+!!!info "Cache optimization"
+    The `currentTime` field in the system prompt is truncated to hour resolution to maximize prompt cache reuse.
+    Additionally, the `SystemPrompt` class uses `@JsonInclude(NON_EMPTY)` to ensure stable serialization regardless
+    of which optional fields are populated.
 
 !!!danger "Serializability requirements"
     The system prompt needs to be serializable to XML. If not, an error will be thrown.
@@ -458,20 +466,20 @@ metadata as well as facts and additional tasks from the registered extensions ar
         <role>greet the user</role> <!--(1)!-->
         <tools> <!--(2)!-->
             <tool>
-                <name>test_tool_box_get_location_for_user</name>
-                <description>Get location for user</description>
-            </tool>
-            <tool>
                 <name>simple_agent_get_name</name>
                 <description>Get name of user</description>
             </tool>
             <tool>
-                <name>test_tool_box_get_weather_today</name>
-                <description>Get weather today</description>
-            </tool>
-            <tool>
                 <name>simple_agent_get_salutation</name>
                 <description>Get salutation for user</description>
+            </tool>
+            <tool>
+                <name>test_tool_box_get_location_for_user</name>
+                <description>Get location for user</description>
+            </tool>
+            <tool>
+                <name>test_tool_box_get_weather_today</name>
+                <description>Get weather today</description>
             </tool>
         </tools>
     </primaryTask>
@@ -503,35 +511,43 @@ metadata as well as facts and additional tasks from the registered extensions ar
             </instructions>
         </secondaryTask>
     </secondaryTasks>
-    <additionalData> <!--(4)!-->
-        <sessionId>s1</sessionId>
-        <userId>ss</userId>
-    </additionalData>
-    <knowledge> <!--(5)!-->
-        <facts>
-            <description>Memories about current session</description>
-            <fact>
-                <name>UserName</name>
-                <content>The user's name is Santanu.</content>
-            </fact>
-            <fact>
-                <name>UserLocation</name>
-                <content>The user is located in Bangalore.</content>
-            </fact>
-            <fact>
-                <name>WeatherToday</name>
-                <content>The weather in Bangalore today is sunny.</content>
-            </fact>
-        </facts>
-    </knowledge>
 </SystemPrompt>
 ```
 
+```xml title="Additional data context message (separate system message)"
+<?xml version='1.1' encoding='UTF-8'?>
+<additional_data> <!--(4)!-->
+    <sessionId>s1</sessionId>
+    <userId>ss</userId>
+</additional_data>
+```
+
+```xml title="Knowledge/facts context message (separate system message)"
+Use the following knowledge and facts to enrich your responses.
+<knowledge> <!--(5)!-->
+    <facts>
+        <description>Memories about current session</description>
+        <fact>
+            <name>UserName</name>
+            <content>The user's name is Santanu.</content>
+        </fact>
+        <fact>
+            <name>UserLocation</name>
+            <content>The user is located in Bangalore.</content>
+        </fact>
+        <fact>
+            <name>WeatherToday</name>
+            <content>The weather in Bangalore today is sunny.</content>
+        </fact>
+    </facts>
+</knowledge>
+```
+
 1. System prompt provided to the `Agent` class constructor.
-2. Tools registered with and discovered by the agent.
-3. Secondary tasks provided by extensions
-4. Request metadata passed to the agent
-5. Facts provided by extensions and client
+2. Tools registered with and discovered by the agent (sorted by tool ID for cache stability).
+3. Secondary tasks provided by extensions.
+4. Request metadata passed to the agent — sent as a separate system message after the system prompt.
+5. Facts provided by extensions and client — sent as a separate system message after the system prompt.
 
 ### User prompts
 
@@ -676,7 +692,7 @@ The extensions are loaded in the order they are added.
 
 Extensions can be used to:
 
-- Add facts to the knowledge passed to the agent in the system prompt
+- Add facts to the knowledge passed to the agent as a separate system context message
 - Add custom tools to the agent
 - Get agent to perform additional tasks
 - Generate extra information from the agent

@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.core.agent;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 
@@ -28,6 +29,7 @@ import lombok.Value;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -35,6 +37,7 @@ import java.util.Map;
  * Schema for system prompts.
  */
 @Data
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class SystemPrompt {
     @Data
     public static class AdditionalData {
@@ -76,6 +79,7 @@ public class SystemPrompt {
     @JacksonXmlElementWrapper(localName = "hints")
     private List<Object> hint;
     private String currentTime = LocalDateTime.now()
+            .truncatedTo(ChronoUnit.HOURS)
             .atOffset(ZoneOffset.UTC)
             .format(DateTimeFormatter.ISO_DATE_TIME);
 

@@ -31,8 +31,10 @@ import com.google.common.primitives.Primitives;
 
 import io.appform.signals.signals.ConsumingFireForgetSignal;
 
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
@@ -70,6 +72,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -340,7 +343,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                            mergedAgentSetup);
         var finalSystemPrompt = "";
         try {
-            finalSystemPrompt = systemPrompt(context, facts);
+            finalSystemPrompt = systemPrompt(context);
         }
         catch (JsonProcessingException e) {
             log.error("Error serializing system prompt", e);
@@ -352,9 +355,16 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         }
         //Prepend the system prompt at the beginning of the messages so that it is the first thing the model sees
         messages.add(0,
-                     new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(AgentUtils
-                             .sessionId(context), runId, finalSystemPrompt, false, null));
+                     new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
+                                                                                         AgentUtils
+                                                                                                 .sessionId(context),
+                                                                                         runId,
+                                                                                         finalSystemPrompt,
+                                                                                         false,
+                                                                                         null));
         messages.addAll(extensionMessages(inputRequest, context));
+        messages.addAll(factsContextMessage(context, facts));
+        messages.addAll(additionalDataContextMessage(context));
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
                                     toXmlContent(inputRequest),
@@ -506,7 +516,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                            mergedAgentSetup);
         var finalSystemPrompt = "";
         try {
-            finalSystemPrompt = systemPrompt(context, facts);
+            finalSystemPrompt = systemPrompt(context);
         }
         catch (JsonProcessingException e) {
             log.error("Error serializing system prompt", e);
@@ -525,6 +535,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                          false,
                                                                                          null));
         messages.addAll(extensionMessages(input.getRequest(), context));
+        messages.addAll(factsContextMessage(context, facts));
+        messages.addAll(additionalDataContextMessage(context));
         messages.add(new UserPrompt(AgentUtils.sessionId(context),
                                     context.getRunId(),
                                     toXmlContent(input.getRequest()),
@@ -866,8 +878,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         return Optional.empty();
     }
 
-    private String systemPrompt(AgentRunContext<R> context,
-                                List<FactList> facts) throws JsonProcessingException {
+    private String systemPrompt(AgentRunContext<R> context) throws JsonProcessingException {
         final var secondaryTasks = this.extensions.stream()
                 .flatMap(extension -> extension.additionalSystemPrompts(context
                         .getRequest(),
@@ -877,13 +888,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                         .getTask()
                         .stream())
                 .toList();
-        final var knowledgeFromExtensions = this.extensions.stream()
-                .flatMap(extension -> extension.facts(context.getRequest(),
-                                                      context,
-                                                      self).stream())
-                .toList();
-        final var knowledge = new ArrayList<>(knowledgeFromExtensions);
-        knowledge.addAll(Objects.requireNonNullElseGet(facts, List::of));
         var primaryPrompt = "Your main job is to answer the user query as provided in user prompt in the `user_input` tag. ";
         primaryPrompt += !context.getOldMessages().isEmpty()
                 ? "Use the provided old messages for extra context and information. "
@@ -891,9 +895,6 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         primaryPrompt += (!secondaryTasks.isEmpty())
                 ? "Perform the provided secondary tasks as well and populate the output in "
                         + "designated output field for the task. "
-                : "";
-        primaryPrompt += (!knowledge.isEmpty())
-                ? "Use the provided knowledge and facts to enrich your responses."
                 : "";
         if (context.getAgentSetup().getOutputGenerationMode() == OutputGenerationMode.TOOL_BASED) {
             primaryPrompt += "You must provide your entire response in a single tool call. Once the tool is called, the task is complete. DO NOT USE THE TOOL FOR INTERMEDIATE STEPS OR MULTIPLE ITERATIONS.";
@@ -909,23 +910,73 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                         .description(tool.getToolDefinition()
                                                 .getDescription())
                                         .build())
+                                .sorted(Comparator.comparing(SystemPrompt.ToolSummary::getName))
                                 .toList())
                         .build())
-                .setSecondaryTask(secondaryTasks)
-                .setFacts(knowledge);
-        if (null != context.getRequestMetadata()) {
-            prompt.setAdditionalData(new SystemPrompt.AdditionalData()
-                    .setSessionId(context.getRequestMetadata().getSessionId())
-                    .setUserId(context.getRequestMetadata().getUserId())
-                    .setCustomParams(context.getRequestMetadata()
-                            .getCustomParams()));
-        }
+                .setSecondaryTask(secondaryTasks);
         final var generatedSystemPrompt = xmlMapper
                 .writerWithDefaultPrettyPrinter()
                 .writeValueAsString(prompt);
         log.debug("Final system prompt: {}", generatedSystemPrompt);
         return generatedSystemPrompt;
 
+    }
+
+    private List<AgentMessage> factsContextMessage(AgentRunContext<R> context, List<FactList> inputFacts) {
+        final var knowledgeFromExtensions = this.extensions.stream()
+                .flatMap(extension -> extension.facts(context.getRequest(),
+                                                      context,
+                                                      self).stream())
+                .toList();
+        final var knowledge = new ArrayList<>(knowledgeFromExtensions);
+        knowledge.addAll(Objects.requireNonNullElseGet(inputFacts, List::of));
+        if (knowledge.isEmpty()) {
+            return List.of();
+        }
+        try {
+            final var xml = xmlMapper.writerWithDefaultPrettyPrinter()
+                    .withRootName("knowledge")
+                    .writeValueAsString(knowledge);
+            final var text = "Use the following knowledge and facts to enrich your responses.\n" + xml;
+            return List.of(new GenericText(AgentUtils.sessionId(context),
+                                           context.getRunId(),
+                                           AgentGenericMessage.Role.SYSTEM,
+                                           text));
+        }
+        catch (JsonProcessingException e) {
+            log.error("Error serializing facts context message", e);
+            return List.of();
+        }
+    }
+
+    private List<AgentMessage> additionalDataContextMessage(AgentRunContext<R> context) {
+        if (null == context.getRequestMetadata()) {
+            return List.of();
+        }
+        final var metadata = context.getRequestMetadata();
+        final var hasData = !Strings.isNullOrEmpty(metadata.getSessionId())
+                || !Strings.isNullOrEmpty(metadata.getUserId())
+                || (metadata.getCustomParams() != null && !metadata.getCustomParams().isEmpty());
+        if (!hasData) {
+            return List.of();
+        }
+        try {
+            final var additionalData = new SystemPrompt.AdditionalData()
+                    .setSessionId(metadata.getSessionId())
+                    .setUserId(metadata.getUserId())
+                    .setCustomParams(metadata.getCustomParams());
+            final var xml = xmlMapper.writerWithDefaultPrettyPrinter()
+                    .withRootName("additional_data")
+                    .writeValueAsString(additionalData);
+            return List.of(new GenericText(AgentUtils.sessionId(context),
+                                           context.getRunId(),
+                                           AgentGenericMessage.Role.SYSTEM,
+                                           xml));
+        }
+        catch (JsonProcessingException e) {
+            log.error("Error serializing additional data context message", e);
+            return List.of();
+        }
     }
 
     private List<AgentMessage> extensionMessages(R inputRequest,

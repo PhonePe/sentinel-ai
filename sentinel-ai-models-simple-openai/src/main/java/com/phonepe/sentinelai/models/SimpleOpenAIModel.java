@@ -260,7 +260,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var builder = setupChatRequestBuilder(openAiMessages,
                                                             modelSettings,
                                                             toolsForExecution,
-                                                            outputGenerationMode);
+                                                            outputGenerationMode,
+                                                            context.getUserId());
                 if (outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
                     builder.responseFormat(jsonSchema(schema));
                 }
@@ -476,7 +477,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var builder = setupChatRequestBuilder(openAiMessages,
                                                             modelSettings,
                                                             toolsForExecution,
-                                                            outputGenerationMode);
+                                                            outputGenerationMode,
+                                                            context.getUserId());
                 if (streamProcessingMode.equals(Agent.StreamProcessingMode.TYPED)
                         && outputGenerationMode.equals(OutputGenerationMode.STRUCTURED_OUTPUT)) {
                     builder.responseFormat(jsonSchema(schema));
@@ -964,11 +966,15 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                    List<ChatMessage> openAiMessages,
                                                                    final ModelSettings modelSettings,
                                                                    Map<String, ExecutableTool> toolsForExecution,
-                                                                   OutputGenerationMode outputGenerationMode) {
+                                                                   OutputGenerationMode outputGenerationMode,
+                                                                   final String userId) {
         final var builder = ChatRequest.builder()
                 .messages(openAiMessages)
                 .model(modelName)
                 .n(1);
+        if (!Strings.isNullOrEmpty(userId)) {
+            builder.user(userId);
+        }
         applyModelSettings(modelSettings, builder, toolsForExecution);
         addToolList(toolsForExecution, builder);
         addToolChoice(toolsForExecution, builder, outputGenerationMode);
@@ -987,16 +993,18 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     private void addToolList(Map<String, ExecutableTool> tools,
                              ChatRequest.ChatRequestBuilder requestBuilder) {
         if (!tools.isEmpty()) {
-            requestBuilder.tools(tools.values().stream().map(tool -> {
-                final var toolDefinition = tool.getToolDefinition();
-                return new Tool(ToolType.FUNCTION,
-                                new Tool.ToolFunctionDef(toolDefinition.getId(),
-                                                         toolDefinition
-                                                                 .getDescription(),
-                                                         tool.accept(parameterMapper),
-                                                         toolDefinition
-                                                                 .isStrictSchema()));
-            }).toList());
+            requestBuilder.tools(tools.values().stream()
+                    .sorted(Comparator.comparing(tool -> tool.getToolDefinition().getId()))
+                    .map(tool -> {
+                        final var toolDefinition = tool.getToolDefinition();
+                        return new Tool(ToolType.FUNCTION,
+                                        new Tool.ToolFunctionDef(toolDefinition.getId(),
+                                                                 toolDefinition
+                                                                         .getDescription(),
+                                                                 tool.accept(parameterMapper),
+                                                                 toolDefinition
+                                                                         .isStrictSchema()));
+                    }).toList());
         }
     }
 
