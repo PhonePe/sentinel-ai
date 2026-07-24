@@ -40,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -251,6 +252,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
                                                                           tool.getToolDefinition()
                                                                                   .getDescription())
                                                              .build())
+                                                .sorted(Comparator.comparing(SystemPrompt.ToolSummary::getName))
                                                 .toList())
                                   .build());
                 hints.add(registry.formatCatalog());
