@@ -222,7 +222,6 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
                                                          ProcessingMode processingMode) {
 
         final var tasks = new ArrayList<SystemPrompt.Task>();
-        final var hints = new ArrayList<>();
 
         // In single-skill mode, don't add skill discovery - just inject the skill directly
         if (!singleSkillMode) {
@@ -255,7 +254,6 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
                                                 .sorted(Comparator.comparing(SystemPrompt.ToolSummary::getName))
                                                 .toList())
                                   .build());
-                hints.add(registry.formatCatalog());
             }
         }
         else {
@@ -263,7 +261,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
             final var skillName = registry.getSkillNames().stream().findFirst().orElse(null);
             if (skillName == null) {
                 log.warn("Single skill mode enabled but no skills found in registry");
-                return new ExtensionPromptSchema(tasks, hints);
+                return new ExtensionPromptSchema(tasks);
             }
             tasks.add(
                       SystemPrompt.Task.builder()
@@ -272,7 +270,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
                               .instructions(activateSkill(skillName))
                               .build());
         }
-        return new ExtensionPromptSchema(tasks, hints);
+        return new ExtensionPromptSchema(tasks);
     }
 
     @Override

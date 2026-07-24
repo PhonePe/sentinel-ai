@@ -37,7 +37,6 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
     class ExtensionPromptSchema {
         @JacksonXmlElementWrapper(localName = "tasks")
         List<SystemPrompt.Task> task;
-        List<Object> hints;
     }
 
     ExtensionPromptSchema additionalSystemPrompts(R request,

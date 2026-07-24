@@ -172,7 +172,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
             prompts.add(prompt);
         }
 
-        return new ExtensionPromptSchema(prompts, List.of());
+        return new ExtensionPromptSchema(prompts);
     }
 
     @Override

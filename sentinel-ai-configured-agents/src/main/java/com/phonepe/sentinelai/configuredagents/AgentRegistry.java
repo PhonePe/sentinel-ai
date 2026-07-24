@@ -167,7 +167,7 @@ public class AgentRegistry<R, T, A extends Agent<R, T, A>> implements AgentExten
                             - It is ok to fail the task if no suitable agent is found or agent invocation fails.
                         """
                         .formatted(promptForAgentInvocation))
-                .build()), List.of());
+                .build()));
     }
 
     /**
