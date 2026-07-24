@@ -30,12 +30,15 @@ import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
 import com.phonepe.sentinelai.core.agent.SafeToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessageVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
@@ -217,7 +220,65 @@ public class MessageCompactor {
                                                      new AgentMessageVisitor<JsonNode>() {
                                                          @Override
                                                          public JsonNode visit(AgentGenericMessage genericMessage) {
-                                                             throw new UnsupportedOperationException("Unimplemented method 'visit'");
+                                                             return genericMessage.accept(
+                                                                                          new AgentGenericMessageVisitor<>() {
+                                                                                              @Override
+                                                                                              public JsonNode visit(GenericResource genericResource) {
+                                                                                                  final var node = mapper
+                                                                                                          .createObjectNode();
+                                                                                                  if (genericResource
+                                                                                                          .getRole()
+                                                                                                          == AgentGenericMessage.Role.TOOL_CALL) {
+                                                                                                      node.put("type",
+                                                                                                               CompactMessage.Types.TOOL_CALL_RESPONSE);
+                                                                                                      node.put("callId",
+                                                                                                               genericResource
+                                                                                                                       .getUri());
+                                                                                                      node.put("result",
+                                                                                                               genericResource
+                                                                                                                       .getContent());
+                                                                                                  }
+                                                                                                  else {
+                                                                                                      node.put("type",
+                                                                                                               CompactMessage.Types.CHAT);
+                                                                                                      node.put("role",
+                                                                                                               roleToString(genericResource
+                                                                                                                       .getRole()));
+                                                                                                      node.put("content",
+                                                                                                               genericResource
+                                                                                                                       .getContent());
+                                                                                                  }
+                                                                                                  return node;
+                                                                                              }
+
+                                                                                              @Override
+                                                                                              public JsonNode visit(GenericText genericText) {
+                                                                                                  final var node = mapper
+                                                                                                          .createObjectNode();
+                                                                                                  node.put("type",
+                                                                                                           CompactMessage.Types.CHAT);
+                                                                                                  node.put("role",
+                                                                                                           roleToString(genericText
+                                                                                                                   .getRole()));
+                                                                                                  node.put("content",
+                                                                                                           genericText
+                                                                                                                   .getText());
+                                                                                                  return node;
+                                                                                              }
+
+                                                                                              private String roleToString(AgentGenericMessage.Role role) {
+                                                                                                  return switch (role) {
+                                                                                                      case SYSTEM ->
+                                                                                                          CompactMessage.Roles.SYSTEM;
+                                                                                                      case USER ->
+                                                                                                          CompactMessage.Roles.USER;
+                                                                                                      case ASSISTANT ->
+                                                                                                          CompactMessage.Roles.ASSISTANT;
+                                                                                                      case TOOL_CALL ->
+                                                                                                          CompactMessage.Roles.ASSISTANT;
+                                                                                                  };
+                                                                                              }
+                                                                                          });
                                                          }
 
                                                          @Override
