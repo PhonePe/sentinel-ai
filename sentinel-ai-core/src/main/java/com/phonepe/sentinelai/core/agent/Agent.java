@@ -71,6 +71,7 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -621,7 +622,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                           .getMapper()
                                                                                           .writeValueAsString(agentOutputData))),
                                         false,
-                                        LocalDateTime.now()));
+                                        LocalDateTime.now(ZoneOffset.UTC)));
             return AgentOutput.error(modelOutput.getNewMessages(),
                                      modelOutput.getNewMessages(),
                                      modelOutput.getUsage(),
@@ -875,9 +876,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                         .objective(systemPrompt)
                         .tool(SystemPrompt.toolSummaries(this.knownTools.values()))
                         .build())
-                .setSecondaryTask(secondaryTasks)
-                .setCurrentTime(SystemPrompt.formatCurrentTime(context.getAgentSetup()
-                        .getPromptTimeGranularity()));
+                .setSecondaryTask(secondaryTasks);
         final var generatedSystemPrompt = xmlMapper
                 .writerWithDefaultPrettyPrinter()
                 .writeValueAsString(prompt);
@@ -906,7 +905,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                     context.getRunId(),
                                     toXmlContent(inputRequest),
                                     false,
-                                    LocalDateTime.now()));
+                                    LocalDateTime.now(ZoneOffset.UTC)));
     }
 
     private static Map<String, Object> sortedCustomParams(Map<String, Object> customParams) {

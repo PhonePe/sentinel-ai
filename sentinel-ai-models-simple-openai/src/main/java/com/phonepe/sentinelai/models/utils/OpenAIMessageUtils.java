@@ -44,6 +44,8 @@ import com.phonepe.sentinelai.models.SimpleOpenAIModelOptions;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Slf4j
@@ -118,8 +120,7 @@ public class OpenAIMessageUtils {
 
                     @Override
                     public ChatMessage visit(UserPrompt userPrompt) {
-                        return ChatMessage.UserMessage.of(userPrompt
-                                .getContent());
+                        return ChatMessage.UserMessage.of(withSentAt(userPrompt));
                     }
                 });
             }
@@ -152,6 +153,21 @@ public class OpenAIMessageUtils {
                 });
             }
         });
+    }
+
+    /**
+     * Renders a {@link UserPrompt} into the text sent to the model, prefixing it with an absolute
+     * send-time so the model is aware of when the user turn was sent. The timestamp is taken from
+     * the message's persisted {@code sentAt} (captured once at creation), so replayed history turns
+     * serialize byte-identically and the prompt prefix stays cache-stable.
+     */
+    private static String withSentAt(UserPrompt userPrompt) {
+        final var sentAt = userPrompt.getSentAt();
+        if (sentAt == null) {
+            return userPrompt.getContent();
+        }
+        final var isoUtc = sentAt.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME);
+        return "<sentAt>" + isoUtc + "</sentAt>\n" + userPrompt.getContent();
     }
 
     /**
