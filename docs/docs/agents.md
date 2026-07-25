@@ -123,6 +123,7 @@ Here are all available settings for the `AgentSetup` class:
 | `retrySetup`           | [`RetrySetup`](#retry-setup)            | Retry setup to use for model calls. If not provided, default setup will be added.                                |
 | `autoCompactionSetup`  | [`AutoCompactionSetup`](#auto-compaction-setup) | Configuration for automatic message history compaction. If not provided, default setup will be used. |
 | `maxToolResponsePercentage` | `int`                          | Maximum tool response size as a percentage of the model's context window. Responses exceeding this limit are blocked and replaced with an error. Defaults to `10` (10 %). Set to `0` or negative to use the default. Values above `100` are used as-is (no clamping). See [Large Response Blocking](tools.md#large-response-blocking). |
+| `promptTimeGranularity` | `TimeGranularity`      | Granularity at which the `currentTime` rendered into the system prompt is truncated (`DAY`, `HOURS`, or `MINUTES`). Coarser granularity keeps the system prompt byte-identical for longer, improving prompt cache hit rates. Defaults to `HOURS`. |
 
 !!!danger "Required parameters"
     - The `model`, and `modelSettings` are required parameters. If not provided, an error will be thrown. However, it is
@@ -415,6 +416,7 @@ may want to keep track of the session or the user the conversation is happening 
 `ModelUsageStats` object from previous calls. This can be used to keep track of the usage of the model and the agent
 across calls. If provided, the agent will merge the usage from current execution to the provided usage stats object.
 
+!!!note
     The request metadata passed to execute calls is serialized and sent to the LLM as a separate system context
     message (not embedded in the system prompt).
 
@@ -439,13 +441,41 @@ from the registered extensions are added to the prompt as well.
 
 Request metadata (session ID, user ID, custom params) and dynamic facts/knowledge are sent as separate system
 messages positioned after the system prompt but before the user prompt. This separation improves LLM provider
-prompt cache hit rates, since the system prompt remains stable across requests within the same hour while
-per-session data (which changes between conversations) is isolated into its own messages.
+prompt cache hit rates, since the system prompt remains stable across requests within a single time-granularity
+window (the hour by default) while per-session data (which changes between conversations) is isolated into its own
+messages.
 
 !!!info "Cache optimization"
-    The `currentTime` field in the system prompt is truncated to hour resolution to maximize prompt cache reuse.
-    Additionally, the `SystemPrompt` class uses `@JsonInclude(NON_EMPTY)` to ensure stable serialization regardless
-    of which optional fields are populated.
+    The `currentTime` field in the system prompt is truncated to a configurable granularity (day, hours, or minutes)
+    to maximize prompt cache reuse. It defaults to hour resolution and can be tuned via
+    `AgentSetup.promptTimeGranularity`. Additionally, the `SystemPrompt` class uses `@JsonInclude(NON_EMPTY)` to ensure
+    stable serialization regardless of which optional fields are populated.
+
+#### Prompt time granularity
+
+The `<currentTime>` element rendered into the system prompt is truncated to a configurable granularity before it is
+serialized. Because the system prompt is the largest cacheable prefix sent to the model, keeping it byte-identical
+across successive runs is what lets the LLM provider serve a cached prefix instead of re-processing the whole prompt.
+A coarser granularity keeps `currentTime` unchanged for longer (an entire day, hour, or minute) at the cost of the
+model seeing a slightly staler timestamp.
+
+Control it via `AgentSetup.promptTimeGranularity` using the `TimeGranularity` enum:
+
+| Value     | Truncated to      | `currentTime` stable for | Use when                                                              |
+|-----------|-------------------|--------------------------|-----------------------------------------------------------------------|
+| `DAY`     | Start of the day  | 24 hours                 | The model does not need sub-day time awareness; maximizes cache reuse. |
+| `HOURS`   | Start of the hour | 1 hour (default)         | Sensible default balancing cache reuse and time freshness.            |
+| `MINUTES` | Start of the minute | 1 minute               | The model needs fine-grained time awareness; minimal cache reuse.     |
+
+```java
+final var agentSetup = AgentSetup.builder()
+        .model(model)
+        .modelSettings(modelSettings)
+        .promptTimeGranularity(TimeGranularity.DAY) // maximize prompt cache reuse
+        .build();
+```
+
+If not set, it defaults to `TimeGranularity.HOURS`.
 
 !!!danger "Serializability requirements"
     The system prompt needs to be serializable to XML. If not, an error will be thrown.

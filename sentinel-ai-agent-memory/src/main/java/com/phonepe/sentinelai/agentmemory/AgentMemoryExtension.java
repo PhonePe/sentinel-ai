@@ -49,7 +49,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -151,15 +150,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                            related to the request using the provided tool and use them in processing
                            the request
                         """)
-                .tool(tools.values()
-                        .stream()
-                        .map(tool -> SystemPrompt.ToolSummary.builder()
-                                .name(tool.getToolDefinition().getId())
-                                .description(tool.getToolDefinition()
-                                        .getDescription())
-                                .build())
-                        .sorted(Comparator.comparing(SystemPrompt.ToolSummary::getName))
-                        .toList())
+                .tool(SystemPrompt.toolSummaries(tools.values()))
                 .build());
         //Structured output is not supported in streaming mode so for streaming mode extraction is always out of band
         //For direct mode, extraction can be inline or out of band or disabled altogether based on the memory

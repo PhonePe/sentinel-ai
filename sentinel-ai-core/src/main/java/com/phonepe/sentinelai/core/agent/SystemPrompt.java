@@ -19,6 +19,8 @@ package com.phonepe.sentinelai.core.agent;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 
+import com.phonepe.sentinelai.core.tools.ExecutableTool;
+
 import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
@@ -27,7 +29,8 @@ import lombok.Value;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -66,8 +69,22 @@ public class SystemPrompt {
     private Task primaryTask;
     @JacksonXmlElementWrapper(localName = "secondaryTasks")
     private List<Task> secondaryTask; //Come from extensions
-    private String currentTime = LocalDateTime.now()
-            .truncatedTo(ChronoUnit.HOURS)
-            .atOffset(ZoneOffset.UTC)
-            .format(DateTimeFormatter.ISO_DATE_TIME);
+    private String currentTime;
+
+    public static String formatCurrentTime(TimeGranularity granularity) {
+        return LocalDateTime.now()
+                .truncatedTo(granularity.getChronoUnit())
+                .atOffset(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_DATE_TIME);
+    }
+
+    public static List<ToolSummary> toolSummaries(Collection<ExecutableTool> tools) {
+        return tools.stream()
+                .map(tool -> ToolSummary.builder()
+                        .name(tool.getToolDefinition().getId())
+                        .description(tool.getToolDefinition().getDescription())
+                        .build())
+                .sorted(Comparator.comparing(ToolSummary::getName))
+                .toList();
+    }
 }

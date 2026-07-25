@@ -72,12 +72,12 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -354,22 +354,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                       e)));
         }
         //Prepend the system prompt at the beginning of the messages so that it is the first thing the model sees
-        messages.add(0,
-                     new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
-                                                                                         AgentUtils
-                                                                                                 .sessionId(context),
-                                                                                         runId,
-                                                                                         finalSystemPrompt,
-                                                                                         false,
-                                                                                         null));
-        messages.addAll(extensionMessages(inputRequest, context));
-        messages.addAll(factsContextMessage(context, facts));
-        messages.addAll(additionalDataContextMessage(context));
-        messages.add(new UserPrompt(AgentUtils.sessionId(context),
-                                    context.getRunId(),
-                                    toXmlContent(inputRequest),
-                                    false,
-                                    LocalDateTime.now()));
+        assembleInitialMessages(context, messages, finalSystemPrompt, runId, facts, inputRequest);
         final var processingMode = ProcessingMode.DIRECT;
         final var modelRunContext = new ModelRunContext(name(),
                                                         runId,
@@ -526,22 +511,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                .error(ErrorType.SERIALIZATION_ERROR,
                                                                                       e)));
         }
-        messages.add(0,
-                     new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(
-                                                                                         AgentUtils
-                                                                                                 .sessionId(context),
-                                                                                         runId,
-                                                                                         finalSystemPrompt,
-                                                                                         false,
-                                                                                         null));
-        messages.addAll(extensionMessages(input.getRequest(), context));
-        messages.addAll(factsContextMessage(context, facts));
-        messages.addAll(additionalDataContextMessage(context));
-        messages.add(new UserPrompt(AgentUtils.sessionId(context),
-                                    context.getRunId(),
-                                    toXmlContent(input.getRequest()),
-                                    false,
-                                    LocalDateTime.now()));
+        assembleInitialMessages(context, messages, finalSystemPrompt, runId, facts, input.getRequest());
         final var modelRunContext = new ModelRunContext(name(),
                                                         runId,
                                                         AgentUtils.sessionId(
@@ -903,23 +873,47 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 .setCoreInstructions(primaryPrompt)
                 .setPrimaryTask(SystemPrompt.Task.builder()
                         .objective(systemPrompt)
-                        .tool(this.knownTools.values()
-                                .stream()
-                                .map(tool -> SystemPrompt.ToolSummary.builder()
-                                        .name(tool.getToolDefinition().getId())
-                                        .description(tool.getToolDefinition()
-                                                .getDescription())
-                                        .build())
-                                .sorted(Comparator.comparing(SystemPrompt.ToolSummary::getName))
-                                .toList())
+                        .tool(SystemPrompt.toolSummaries(this.knownTools.values()))
                         .build())
-                .setSecondaryTask(secondaryTasks);
+                .setSecondaryTask(secondaryTasks)
+                .setCurrentTime(SystemPrompt.formatCurrentTime(context.getAgentSetup()
+                        .getPromptTimeGranularity()));
         final var generatedSystemPrompt = xmlMapper
                 .writerWithDefaultPrettyPrinter()
                 .writeValueAsString(prompt);
         log.debug("Final system prompt: {}", generatedSystemPrompt);
         return generatedSystemPrompt;
 
+    }
+
+    private void assembleInitialMessages(AgentRunContext<R> context,
+                                         List<AgentMessage> messages,
+                                         String finalSystemPrompt,
+                                         String runId,
+                                         List<FactList> facts,
+                                         R inputRequest) {
+        //Prepend the system prompt at the beginning of the messages so that it is the first thing the model sees
+        messages.add(0,
+                     new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(AgentUtils.sessionId(context),
+                                                                                         runId,
+                                                                                         finalSystemPrompt,
+                                                                                         false,
+                                                                                         null));
+        messages.addAll(extensionMessages(inputRequest, context));
+        messages.addAll(factsContextMessage(context, facts));
+        messages.addAll(additionalDataContextMessage(context));
+        messages.add(new UserPrompt(AgentUtils.sessionId(context),
+                                    context.getRunId(),
+                                    toXmlContent(inputRequest),
+                                    false,
+                                    LocalDateTime.now()));
+    }
+
+    private static Map<String, Object> sortedCustomParams(Map<String, Object> customParams) {
+        if (customParams == null || customParams.isEmpty()) {
+            return customParams;
+        }
+        return new TreeMap<>(customParams);
     }
 
     private List<AgentMessage> factsContextMessage(AgentRunContext<R> context, List<FactList> inputFacts) {
@@ -964,7 +958,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             final var additionalData = new SystemPrompt.AdditionalData()
                     .setSessionId(metadata.getSessionId())
                     .setUserId(metadata.getUserId())
-                    .setCustomParams(metadata.getCustomParams());
+                    .setCustomParams(sortedCustomParams(metadata.getCustomParams()));
             final var xml = xmlMapper.writerWithDefaultPrettyPrinter()
                     .withRootName("additional_data")
                     .writeValueAsString(additionalData);

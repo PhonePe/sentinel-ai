@@ -101,4 +101,12 @@ public class AgentSetup {
      */
     @Builder.Default
     int maxToolResponsePercentage = DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE;
+
+    /**
+     * Granularity at which the {@code currentTime} rendered into the system prompt is truncated. Coarser granularity
+     * keeps the system prompt byte-identical across successive runs for longer, improving LLM prompt-cache hit rates.
+     * Defaults to {@link TimeGranularity#HOURS}.
+     */
+    @Builder.Default
+    TimeGranularity promptTimeGranularity = TimeGranularity.HOURS;
 }

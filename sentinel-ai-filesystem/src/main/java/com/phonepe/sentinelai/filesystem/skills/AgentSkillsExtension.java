@@ -40,7 +40,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -240,19 +239,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
                                                         4. You can activate multiple skills if needed
                                                         5. Always prefer activating relevant skills over using general tools, as skills may provide specialized capabilities and context
                                                         """)
-                                  .tool(
-                                        tools.values().stream()
-                                                .map(
-                                                     tool -> SystemPrompt.ToolSummary.builder()
-                                                             .name(
-                                                                   tool.getToolDefinition()
-                                                                           .getId())
-                                                             .description(
-                                                                          tool.getToolDefinition()
-                                                                                  .getDescription())
-                                                             .build())
-                                                .sorted(Comparator.comparing(SystemPrompt.ToolSummary::getName))
-                                                .toList())
+                                  .tool(SystemPrompt.toolSummaries(tools.values()))
                                   .build());
             }
         }

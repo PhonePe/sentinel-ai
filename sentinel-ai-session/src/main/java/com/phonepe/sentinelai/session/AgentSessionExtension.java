@@ -68,7 +68,8 @@ import static com.phonepe.sentinelai.session.MessageReadingUtils.rearrangeMessag
 
 /**
  * Manages session for an agent. Saves the message history and summarizes the session after each run.
- * Injects session summary as fact in the system prompt. Also provides messages from the session history to the agent.
+ * Injects session summary as a fact via a separate system context message. Also provides messages from the session
+ * history to the agent.
  */
 @Slf4j
 @Getter(value = AccessLevel.PACKAGE, onMethod_ = {
