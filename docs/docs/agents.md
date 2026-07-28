@@ -321,7 +321,7 @@ parameters.
 | **Property**      | **Type**               | **Description**                                                                                                                                               |
 |-------------------|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `request`         | `R`                    | Request object. This is a required parameter.                                                                                                                 |
-| `facts`           | `List<FactList>`       | List of facts to be passed to the agent. This is sent to the LLM as a separate system context message containing 'knowledge' XML. |
+| `facts`           | `List<FactList>`       | List of facts to be passed to the agent.
 | `requestMetadata` | `AgentRequestMetadata` | Metadata for the request.                                                                                                                                     |
 | `oldMessages`     | `List<AgentMessage>`   | List of old messages to be sent to the LLM for this run. If set to `null`, messages are generated and consumed by the agent in this session.                  |
 | `agentSetup`      | `AgentSetup`           | Setup for the agent. Overrides runtime setup. If set to `null`, the setup provided during agent creation is used. Fields provided at runtime take precedence. |
@@ -416,8 +416,7 @@ may want to keep track of the session or the user the conversation is happening 
 across calls. If provided, the agent will merge the usage from current execution to the provided usage stats object.
 
 !!!note
-    The request metadata passed to execute calls is serialized and sent to the LLM as a separate system context
-    message (not embedded in the system prompt).
+    The request metadata passed to execute calls is serialized and sent to the LLM.
 
 | **Property**   | **Type**              | **Description**                                                                                                                                                         |
 |----------------|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -442,11 +441,6 @@ Request metadata (session ID, user ID, custom params) and dynamic facts/knowledg
 messages positioned after the system prompt but before the user prompt. This separation improves LLM provider
 prompt cache hit rates, since the system prompt remains stable across requests while per-session data (which
 changes between conversations) is isolated into its own messages.
-
-!!!info "Cache optimization"
-    The `SystemPrompt` class uses `@JsonInclude(NON_EMPTY)` to ensure stable serialization regardless of which
-    optional fields are populated, keeping the system prompt byte-identical across successive runs so the LLM
-    provider can serve a cached prefix instead of re-processing the whole prompt.
 
 !!!danger "Serializability requirements"
     The system prompt needs to be serializable to XML. If not, an error will be thrown.
@@ -573,9 +567,6 @@ rendered by the model adapter as a dedicated `<sentAt>` element prefixed before 
   <title>War and Peace</title>
 </user_input>
 ```
-
-Because the value is frozen at capture and persisted immutably, replayed history turns serialize byte-identically
-and sit at the tail after the cacheable prefix, keeping the prompt cache stable.
 
 Original input request for the above would be something like:
 ```java
