@@ -36,6 +36,8 @@ import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,6 +46,11 @@ class OpenAICompletionsTokenCounterTest {
 
     private OpenAICompletionsTokenCounter tokenCounter;
     private Encoding encoder;
+
+    private static String withSentAt(final String content, final LocalDateTime sentAt) {
+        final var isoUtc = sentAt.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME);
+        return "<sentAt>" + isoUtc + "</sentAt>\n" + content;
+    }
 
     @BeforeEach
     void setUp() {
@@ -105,17 +112,18 @@ class OpenAICompletionsTokenCounterTest {
                                                      "System",
                                                      false,
                                                      null);
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
         UserPrompt userPrompt = new UserPrompt("s1",
                                                "r1",
                                                "User",
                                                false,
-                                               LocalDateTime.now());
+                                               sentAt);
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + (TokenCountingConfig.DEFAULT
                         .getMessageOverHead() + countTokens("SYSTEM") + countTokens("System"))
                 + (TokenCountingConfig.DEFAULT
-                        .getMessageOverHead() + countTokens("USER") + countTokens("User"));
+                        .getMessageOverHead() + countTokens("USER") + countTokens(withSentAt("User", sentAt)));
 
         assertEquals(expected,
                      tokenCounter.estimateTokenCount(List.of(systemPrompt,
@@ -214,15 +222,16 @@ class OpenAICompletionsTokenCounterTest {
     @Test
     void testEstimateTokenCountUserPrompt() {
         final var content = "Hello, how are you?";
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
         UserPrompt userPrompt = new UserPrompt("s1",
                                                "r1",
                                                content,
                                                false,
-                                               LocalDateTime.now());
+                                               sentAt);
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + TokenCountingConfig.DEFAULT
-                        .getMessageOverHead() + countTokens("USER") + countTokens(content);
+                        .getMessageOverHead() + countTokens("USER") + countTokens(withSentAt(content, sentAt));
 
         assertEquals(expected,
                      tokenCounter.estimateTokenCount(List.of(userPrompt),

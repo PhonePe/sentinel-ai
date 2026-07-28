@@ -150,14 +150,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                            related to the request using the provided tool and use them in processing
                            the request
                         """)
-                .tool(tools.values()
-                        .stream()
-                        .map(tool -> SystemPrompt.ToolSummary.builder()
-                                .name(tool.getToolDefinition().getId())
-                                .description(tool.getToolDefinition()
-                                        .getDescription())
-                                .build())
-                        .toList())
+                .tool(SystemPrompt.toolSummaries(tools.values()))
                 .build());
         //Structured output is not supported in streaming mode so for streaming mode extraction is always out of band
         //For direct mode, extraction can be inline or out of band or disabled altogether based on the memory
@@ -170,7 +163,7 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
             prompts.add(prompt);
         }
 
-        return new ExtensionPromptSchema(prompts, List.of());
+        return new ExtensionPromptSchema(prompts);
     }
 
     @Override

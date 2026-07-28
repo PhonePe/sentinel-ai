@@ -90,7 +90,7 @@ public class OpenTelemetryAgentExtension<R, T, A extends Agent<R, T, A>> impleme
                                                          AgentRunContext<R> metadata,
                                                          A agent,
                                                          ProcessingMode processingMode) {
-        return new ExtensionPromptSchema(List.of(), List.of());
+        return new ExtensionPromptSchema(List.of());
     }
 
     @Override

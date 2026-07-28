@@ -21,6 +21,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
@@ -35,7 +37,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MessageCompactorTest {
@@ -43,31 +44,50 @@ class MessageCompactorTest {
     private final ObjectMapper mapper = JsonUtils.createMapper();
 
     @Test
-    void testToCompactMessageWithAgentGenericMessageThrowsException() {
-        final var genericMessage = new AgentGenericMessage(
-                                                           "session-1",
-                                                           "run-1",
-                                                           "msg-1",
-                                                           System.currentTimeMillis(),
-                                                           null,
-                                                           AgentGenericMessage.Role.USER) {
-            @Override
-            public <T> T accept(
-                                com.phonepe.sentinelai.core.agentmessages.AgentGenericMessageVisitor<T> visitor) {
-                return null;
-            }
-        };
-
-        assertThrows(
-                     UnsupportedOperationException.class,
-                     () -> MessageCompactor.toCompactMessage(List.of(genericMessage), mapper));
-    }
-
-    @Test
     void testToCompactMessageWithEmptyList() {
         final var result = MessageCompactor.toCompactMessage(List.of(), mapper);
         assertTrue(result.isArray());
         assertEquals(0, result.size());
+    }
+
+    @Test
+    void testToCompactMessageWithGenericResource() {
+        final var genericResource = GenericResource.builder()
+                .sessionId("session-1")
+                .runId("run-1")
+                .role(AgentGenericMessage.Role.SYSTEM)
+                .resourceType(GenericResource.ResourceType.TEXT)
+                .uri("resource-uri")
+                .mimeType("text/plain")
+                .content("Resource content here")
+                .serializedJson("{}")
+                .build();
+
+        final var result = MessageCompactor.toCompactMessage(List.of(genericResource), mapper);
+
+        assertEquals(1, result.size());
+        final var node = result.get(0);
+        assertEquals(CompactMessage.Types.CHAT, node.get("type").asText());
+        assertEquals(CompactMessage.Roles.SYSTEM, node.get("role").asText());
+        assertEquals("Resource content here", node.get("content").asText());
+    }
+
+    @Test
+    void testToCompactMessageWithGenericText() {
+        final var genericText = GenericText.builder()
+                .sessionId("session-1")
+                .runId("run-1")
+                .role(AgentGenericMessage.Role.USER)
+                .text("Hello from generic text")
+                .build();
+
+        final var result = MessageCompactor.toCompactMessage(List.of(genericText), mapper);
+
+        assertEquals(1, result.size());
+        final var node = result.get(0);
+        assertEquals(CompactMessage.Types.CHAT, node.get("type").asText());
+        assertEquals(CompactMessage.Roles.USER, node.get("role").asText());
+        assertEquals("Hello from generic text", node.get("content").asText());
     }
 
     @Test

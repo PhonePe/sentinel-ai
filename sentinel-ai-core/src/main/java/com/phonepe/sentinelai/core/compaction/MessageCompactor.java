@@ -30,12 +30,15 @@ import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
 import com.phonepe.sentinelai.core.agent.SafeToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessageVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
@@ -53,6 +56,7 @@ import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.EventUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +77,134 @@ public class MessageCompactor {
 
     public static final String COMPACTION_SESSION_PREFIX = "compaction-for-";
     private static final String OUTPUT_KEY = "sessionOutput";
+
+    @RequiredArgsConstructor
+    private static final class CompactMessageVisitor implements AgentMessageVisitor<JsonNode> {
+        private final ObjectMapper mapper;
+
+        @Override
+        public JsonNode visit(AgentGenericMessage genericMessage) {
+            return genericMessage.accept(new GenericMessageVisitor(mapper));
+        }
+
+        @Override
+        public JsonNode visit(AgentRequest request) {
+            return request.accept(new RequestVisitor(mapper));
+        }
+
+        @Override
+        public JsonNode visit(AgentResponse response) {
+            return response.accept(new ResponseVisitor(mapper));
+        }
+    }
+
+    @RequiredArgsConstructor
+    private static final class GenericMessageVisitor implements AgentGenericMessageVisitor<JsonNode> {
+        private final ObjectMapper mapper;
+
+        @Override
+        public JsonNode visit(GenericResource genericResource) {
+            final var node = mapper.createObjectNode();
+            if (genericResource.getRole() == AgentGenericMessage.Role.TOOL_CALL) {
+                node.put("type", CompactMessage.Types.TOOL_CALL_RESPONSE);
+                node.put("callId", genericResource.getUri());
+                node.put("result", genericResource.getContent());
+            }
+            else {
+                node.put("type", CompactMessage.Types.CHAT);
+                node.put("role", roleToString(genericResource.getRole()));
+                node.put("content", genericResource.getContent());
+            }
+            return node;
+        }
+
+        @Override
+        public JsonNode visit(GenericText genericText) {
+            final var node = mapper.createObjectNode();
+            node.put("type", CompactMessage.Types.CHAT);
+            node.put("role", roleToString(genericText.getRole()));
+            node.put("content", genericText.getText());
+            return node;
+        }
+    }
+
+    @RequiredArgsConstructor
+    private static final class RequestVisitor implements AgentRequestVisitor<JsonNode> {
+        private final ObjectMapper mapper;
+
+        @Override
+        public JsonNode visit(SystemPrompt systemPrompt) {
+            final var node = mapper.createObjectNode();
+            node.put("type", CompactMessage.Types.CHAT);
+            node.put("role", CompactMessage.Roles.SYSTEM);
+            node.put("content", systemPrompt.getContent());
+            return node;
+        }
+
+        @Override
+        public JsonNode visit(ToolCallResponse toolCallResponse) {
+            final var node = mapper.createObjectNode();
+            node.put("type", CompactMessage.Types.TOOL_CALL_RESPONSE);
+            node.put("callId", toolCallResponse.getToolCallId());
+            node.put("result", toolCallResponse.getResponse());
+            return node;
+        }
+
+        @Override
+        public JsonNode visit(UserPrompt userPrompt) {
+            final var node = mapper.createObjectNode();
+            node.put("type", CompactMessage.Types.CHAT);
+            node.put("role", CompactMessage.Roles.USER);
+            node.put("content", userPrompt.getContent());
+            return node;
+        }
+    }
+
+    @RequiredArgsConstructor
+    private static final class ResponseVisitor implements AgentResponseVisitor<JsonNode> {
+        private final ObjectMapper mapper;
+
+        @Override
+        @SneakyThrows
+        public JsonNode visit(StructuredOutput structuredOutput) {
+            final var node = mapper.createObjectNode();
+            node.put("type", CompactMessage.Types.CHAT);
+            node.put("role", CompactMessage.Roles.ASSISTANT);
+            try {
+                final var jsonNode = mapper.readTree(structuredOutput.getContent());
+                if (jsonNode.has(Agent.OUTPUT_VARIABLE_NAME)) {
+                    node.put("content",
+                             mapper.writeValueAsString(jsonNode.get(Agent.OUTPUT_VARIABLE_NAME)));
+                }
+                else {
+                    node.put("content", structuredOutput.getContent());
+                }
+            }
+            catch (JsonProcessingException e) {
+                log.error("Error parsing structured output content as JSON: %s".formatted(e.getMessage()), e);
+                node.put("content", structuredOutput.getContent());
+            }
+            return node;
+        }
+
+        @Override
+        public JsonNode visit(Text text) {
+            final var node = mapper.createObjectNode();
+            node.put("type", CompactMessage.Types.CHAT);
+            node.put("role", CompactMessage.Roles.ASSISTANT);
+            node.put("content", text.getContent());
+            return node;
+        }
+
+        @Override
+        public JsonNode visit(ToolCall toolCall) {
+            final var node = mapper.createObjectNode();
+            node.put("type", CompactMessage.Types.TOOL_CALL_RESPONSE);
+            node.put("callId", toolCall.getToolCallId());
+            node.put("arguments", toolCall.getArguments());
+            return node;
+        }
+    }
 
     @SneakyThrows
     public static CompletableFuture<Optional<ExtractedSummary>> compactMessages(final String agentName,
@@ -212,132 +344,18 @@ public class MessageCompactor {
     public static JsonNode toCompactMessage(List<AgentMessage> messages,
                                             final ObjectMapper mapper) {
         final var response = mapper.createArrayNode();
+        final var visitor = new CompactMessageVisitor(mapper);
         for (AgentMessage message : messages) {
-            final var convertedNode = message.accept(
-                                                     new AgentMessageVisitor<JsonNode>() {
-                                                         @Override
-                                                         public JsonNode visit(AgentGenericMessage genericMessage) {
-                                                             throw new UnsupportedOperationException("Unimplemented method 'visit'");
-                                                         }
-
-                                                         @Override
-                                                         public JsonNode visit(AgentRequest request) {
-                                                             return request
-                                                                     .accept(new AgentRequestVisitor<>() {
-
-                                                                         @Override
-                                                                         public JsonNode visit(SystemPrompt systemPrompt) {
-                                                                             final var node = mapper
-                                                                                     .createObjectNode();
-                                                                             node.put("type",
-                                                                                      CompactMessage.Types.CHAT);
-                                                                             node.put("role",
-                                                                                      CompactMessage.Roles.SYSTEM);
-                                                                             node.put("content",
-                                                                                      systemPrompt.getContent());
-                                                                             return node;
-                                                                         }
-
-                                                                         @Override
-                                                                         public JsonNode visit(ToolCallResponse toolCallResponse) {
-                                                                             final var node = mapper
-                                                                                     .createObjectNode();
-                                                                             node.put("type",
-                                                                                      CompactMessage.Types.TOOL_CALL_RESPONSE);
-                                                                             node.put("callId",
-                                                                                      toolCallResponse
-                                                                                              .getToolCallId());
-                                                                             node.put("result",
-                                                                                      toolCallResponse
-                                                                                              .getResponse());
-                                                                             return node;
-                                                                         }
-
-                                                                         @Override
-                                                                         public JsonNode visit(UserPrompt userPrompt) {
-                                                                             final var node = mapper.createObjectNode();
-                                                                             node.put("type",
-                                                                                      CompactMessage.Types.CHAT);
-                                                                             node.put("role",
-                                                                                      CompactMessage.Roles.USER);
-                                                                             node.put("content",
-                                                                                      userPrompt.getContent());
-                                                                             return node;
-                                                                         }
-
-                                                                     });
-                                                         }
-
-                                                         @Override
-                                                         public JsonNode visit(AgentResponse response) {
-                                                             return response
-                                                                     .accept(new AgentResponseVisitor<>() {
-
-                                                                         @Override
-                                                                         @SneakyThrows
-                                                                         public JsonNode visit(StructuredOutput structuredOutput) {
-                                                                             final var node = mapper
-                                                                                     .createObjectNode();
-                                                                             node.put("type",
-                                                                                      CompactMessage.Types.CHAT);
-                                                                             node.put("role",
-                                                                                      CompactMessage.Roles.ASSISTANT);
-                                                                             try {
-                                                                                 final var jsonNode = mapper
-                                                                                         .readTree(structuredOutput
-                                                                                                 .getContent());
-                                                                                 if (jsonNode.has(
-                                                                                                  Agent.OUTPUT_VARIABLE_NAME)) {
-                                                                                     node.put("content",
-                                                                                              mapper.writeValueAsString(jsonNode
-                                                                                                      .get(Agent.OUTPUT_VARIABLE_NAME)));
-                                                                                 }
-                                                                                 else {
-                                                                                     node.put("content",
-                                                                                              structuredOutput
-                                                                                                      .getContent());
-                                                                                 }
-                                                                             }
-                                                                             catch (JsonProcessingException e) {
-                                                                                 log.error("Error parsing structured output content as JSON: %s"
-                                                                                         .formatted(e.getMessage()), e);
-                                                                                 node.put("content",
-                                                                                          structuredOutput
-                                                                                                  .getContent());
-                                                                             }
-                                                                             return node;
-                                                                         }
-
-                                                                         @Override
-                                                                         public JsonNode visit(Text text) {
-                                                                             final var node = mapper
-                                                                                     .createObjectNode();
-                                                                             node.put("type",
-                                                                                      CompactMessage.Types.CHAT);
-                                                                             node.put("role",
-                                                                                      CompactMessage.Roles.ASSISTANT);
-                                                                             node.put("content",
-                                                                                      text.getContent());
-                                                                             return node;
-                                                                         }
-
-                                                                         @Override
-                                                                         public JsonNode visit(ToolCall toolCall) {
-                                                                             final var node = mapper
-                                                                                     .createObjectNode();
-                                                                             node.put("type",
-                                                                                      CompactMessage.Types.TOOL_CALL_RESPONSE);
-                                                                             node.put("callId",
-                                                                                      toolCall.getToolCallId());
-                                                                             node.put("arguments",
-                                                                                      toolCall.getArguments());
-                                                                             return node;
-                                                                         }
-                                                                     });
-                                                         }
-                                                     });
-            response.add(convertedNode);
+            response.add(message.accept(visitor));
         }
         return response;
+    }
+
+    private static String roleToString(AgentGenericMessage.Role role) {
+        return switch (role) {
+            case SYSTEM -> CompactMessage.Roles.SYSTEM;
+            case USER -> CompactMessage.Roles.USER;
+            case ASSISTANT, TOOL_CALL -> CompactMessage.Roles.ASSISTANT;
+        };
     }
 }

@@ -34,22 +34,22 @@ import java.util.Map;
 @AllArgsConstructor
 public class AgentRequestMetadata {
     /**
-     * Session ID for the current conversation. This is passed to LLM as additional data in system prompt.
+     * Session ID for the current conversation. This is sent to the LLM as a separate system context message.
      */
     private String sessionId;
     /**
-     * Run ID for the current execution. This is passed to LLM as additional data in system prompt.
+     * Run ID for the current execution. This is sent to the LLM as a separate system context message.
      */
     private String runId;
     /**
-     * A User ID for the user the agent is having the current conversation with. This is passed to LLM as additional
-     * data in system prompt.
+     * A User ID for the user the agent is having the current conversation with. This is sent to the LLM as a separate
+     * system context message.
      */
     private String userId;
 
     /**
      * Any other custom parameters that need to be passed to the agent or the tools being invoked by the agent. This is
-     * passed to LLM as additional data in system prompt.
+     * sent to the LLM as a separate system context message.
      */
     private Map<String, Object> customParams;
 

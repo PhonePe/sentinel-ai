@@ -55,7 +55,6 @@ import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -69,7 +68,8 @@ import static com.phonepe.sentinelai.session.MessageReadingUtils.rearrangeMessag
 
 /**
  * Manages session for an agent. Saves the message history and summarizes the session after each run.
- * Injects session summary as fact in the system prompt. Also provides messages from the session history to the agent.
+ * Injects session summary as a fact via a separate system context message. Also provides messages from the session
+ * history to the agent.
  */
 @Slf4j
 @Getter(value = AccessLevel.PACKAGE, onMethod_ = {
@@ -139,11 +139,7 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                          AgentRunContext<R> context,
                                                          A agent,
                                                          ProcessingMode processingMode) {
-        final var hints = new ArrayList<>();
-        if (!Strings.isNullOrEmpty(AgentUtils.sessionId(context))) {
-            hints.add("USE SESSION INFORMATION TO CONTEXTUALIZE RESPONSES");
-        }
-        return new ExtensionPromptSchema(List.of(), hints);
+        return new ExtensionPromptSchema(List.of());
     }
 
     @Override

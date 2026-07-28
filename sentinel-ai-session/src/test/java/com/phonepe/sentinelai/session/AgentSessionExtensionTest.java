@@ -388,7 +388,6 @@ class AgentSessionExtensionTest {
                                                              null,
                                                              ProcessingMode.DIRECT);
         assertNotNull(result);
-        assertTrue(result.getHints().isEmpty());
     }
 
     /**
@@ -424,8 +423,6 @@ class AgentSessionExtensionTest {
                                                              null,
                                                              ProcessingMode.DIRECT);
         assertNotNull(result);
-        assertEquals(1, result.getHints().size());
-        assertTrue(result.getHints().get(0).toString().contains("SESSION"));
     }
 
     /**

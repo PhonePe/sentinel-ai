@@ -598,8 +598,8 @@ class SimpleOpenAIModelTest {
                                                                                                null)));
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
 
-        // system prompt + user message + 4 tool calls req/resp + structured output
-        assertEquals(2 + 4 + 1, response.getAllMessages().size());
+        // system prompt + additional data context + user message + 4 tool calls req/resp + structured output
+        assertEquals(3 + 4 + 1, response.getAllMessages().size());
         assertFalse(response.getNewMessages().isEmpty());
     }
 

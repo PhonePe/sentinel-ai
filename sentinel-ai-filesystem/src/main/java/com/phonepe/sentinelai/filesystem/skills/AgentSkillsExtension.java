@@ -221,7 +221,6 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
                                                          ProcessingMode processingMode) {
 
         final var tasks = new ArrayList<SystemPrompt.Task>();
-        final var hints = new ArrayList<>();
 
         // In single-skill mode, don't add skill discovery - just inject the skill directly
         if (!singleSkillMode) {
@@ -240,20 +239,8 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
                                                         4. You can activate multiple skills if needed
                                                         5. Always prefer activating relevant skills over using general tools, as skills may provide specialized capabilities and context
                                                         """)
-                                  .tool(
-                                        tools.values().stream()
-                                                .map(
-                                                     tool -> SystemPrompt.ToolSummary.builder()
-                                                             .name(
-                                                                   tool.getToolDefinition()
-                                                                           .getId())
-                                                             .description(
-                                                                          tool.getToolDefinition()
-                                                                                  .getDescription())
-                                                             .build())
-                                                .toList())
+                                  .tool(SystemPrompt.toolSummaries(tools.values()))
                                   .build());
-                hints.add(registry.formatCatalog());
             }
         }
         else {
@@ -261,7 +248,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
             final var skillName = registry.getSkillNames().stream().findFirst().orElse(null);
             if (skillName == null) {
                 log.warn("Single skill mode enabled but no skills found in registry");
-                return new ExtensionPromptSchema(tasks, hints);
+                return new ExtensionPromptSchema(tasks);
             }
             tasks.add(
                       SystemPrompt.Task.builder()
@@ -270,7 +257,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
                               .instructions(activateSkill(skillName))
                               .build());
         }
-        return new ExtensionPromptSchema(tasks, hints);
+        return new ExtensionPromptSchema(tasks);
     }
 
     @Override

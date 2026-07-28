@@ -106,9 +106,8 @@ class AgentSkillsExtensionTest {
         final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
 
         assertNotNull(result);
-        // No skills, so no tasks and no hints
+        // No skills, so no tasks
         assertTrue(result.getTask().isEmpty());
-        assertTrue(result.getHints().isEmpty());
     }
 
     @Test
@@ -124,10 +123,8 @@ class AgentSkillsExtensionTest {
         final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
 
         assertNotNull(result);
-        // Should have 1 task (skill discovery) and 1 hint (catalog)
+        // Should have 1 task (skill discovery)
         assertEquals(1, result.getTask().size());
-        assertEquals(1, result.getHints().size());
-        assertTrue(result.getHints().get(0).toString().contains("my-skill"));
     }
 
     @Test

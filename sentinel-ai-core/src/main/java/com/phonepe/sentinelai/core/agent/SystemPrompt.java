@@ -16,25 +16,23 @@
 
 package com.phonepe.sentinelai.core.agent;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+
+import com.phonepe.sentinelai.core.tools.ExecutableTool;
 
 import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
-import lombok.SneakyThrows;
 import lombok.Value;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Schema for system prompts.
- */
 @Data
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class SystemPrompt {
     @Data
     public static class AdditionalData {
@@ -53,8 +51,6 @@ public class SystemPrompt {
         private Object additionalInstructions;
         @JacksonXmlElementWrapper(localName = "tools")
         private List<ToolSummary> tool;
-        @JacksonXmlElementWrapper(localName = "knowledge")
-        private List<FactList> facts;
     }
 
     @Value
@@ -70,18 +66,14 @@ public class SystemPrompt {
     private Task primaryTask;
     @JacksonXmlElementWrapper(localName = "secondaryTasks")
     private List<Task> secondaryTask; //Come from extensions
-    private AdditionalData additionalData;
-    @JacksonXmlElementWrapper(localName = "knowledge")
-    private List<FactList> facts;
-    @JacksonXmlElementWrapper(localName = "hints")
-    private List<Object> hint;
-    private String currentTime = LocalDateTime.now()
-            .atOffset(ZoneOffset.UTC)
-            .format(DateTimeFormatter.ISO_DATE_TIME);
 
-    @SneakyThrows
-    public static String convert(SystemPrompt prompt, ObjectMapper xmlMapper) {
-        return xmlMapper.writerWithDefaultPrettyPrinter()
-                .writeValueAsString(prompt);
+    public static List<ToolSummary> toolSummaries(Collection<ExecutableTool> tools) {
+        return tools.stream()
+                .map(tool -> ToolSummary.builder()
+                        .name(tool.getToolDefinition().getId())
+                        .description(tool.getToolDefinition().getDescription())
+                        .build())
+                .sorted(Comparator.comparing(ToolSummary::getName))
+                .toList();
     }
 }
