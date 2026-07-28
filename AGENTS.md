@@ -101,3 +101,4 @@ If you encounter test failures related to parallel execution:
 - **Schema Validation**: Always validate JSON schemas for `ConfiguredAgent` inputs.
 - **Error Handling**: Use the `SentinelError` class for consistent error reporting.
 - **Documentation**: Always update the relevant documentation in the `docs/` directory once changes are implemented and verified by passing all tests.
+  After any documentation update, run `BUILD_ONLY=true bash docs/serve.sh` from the repository root and check for documentation build errors before finalizing the work.
