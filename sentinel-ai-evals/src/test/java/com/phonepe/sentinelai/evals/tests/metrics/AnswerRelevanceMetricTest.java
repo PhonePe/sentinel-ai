@@ -98,6 +98,11 @@ class AnswerRelevanceMetricTest {
                                                                          oldMessages,
                                                                          usage));
         }
+
+        @Override
+        public String modelName() {
+            return "test-evaluator";
+        }
     }
 
 
@@ -234,7 +239,9 @@ class AnswerRelevanceMetricTest {
     @Test
     void metricExpectationSkipsWhenJudgeModelThrows() {
         final var throwingModel = new TestEvaluatorModel(null, ErrorType.SUCCESS, true);
-        final var expectation = new MetricExpectation<String, String>(new OutputRelevanceMetric<>(), 0.8);
+        final var expectation = new MetricExpectation<String, String>("metricExpectationSkipsWhenJudgeModelThrows",
+                                                                      new OutputRelevanceMetric<>(),
+                                                                      0.8);
 
         final var report = TestFactory.evaluateWithReport(expectation,
                                                           throwingModel,

@@ -64,14 +64,4 @@ public class OrderedExpectationExecutor<R, T> implements ExpectationExecutor<R, 
         }
         return executorIndex == executors.size();
     }
-
-    /**
-     * Returns the textual representation of the underlying expectation.
-     *
-     * @return expectation description
-     */
-    @Override
-    public String toString() {
-        return expectation.toString();
-    }
 }

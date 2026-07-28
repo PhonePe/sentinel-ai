@@ -306,6 +306,11 @@ class AutoCompactionSetupTest {
                                                           List<AgentMessagesPreProcessor> preProcessors) {
                 return CompletableFuture.completedFuture(null);
             }
+
+            @Override
+            public String modelName() {
+                return "test-model";
+            }
         };
     }
 }

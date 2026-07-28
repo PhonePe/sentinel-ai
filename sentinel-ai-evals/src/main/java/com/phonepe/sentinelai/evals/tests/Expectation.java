@@ -16,8 +16,12 @@
 
 package com.phonepe.sentinelai.evals.tests;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
 /**
- * Marker interface representing the <em>definition</em> of an expectation.
+ * Abstract base class representing the <em>definition</em> of an expectation.
  *
  * An Expectation carries only the configuration data that describes WHAT to assert
  * (e.g. an expected substring, a JSON-Path expression, a metric threshold). All
@@ -27,6 +31,9 @@ package com.phonepe.sentinelai.evals.tests;
  * @param <R> result/output type being evaluated
  * @param <T> input/request type
  */
-@SuppressWarnings("unused")
-public interface Expectation<R, T> {
+@Getter
+@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
+public abstract class Expectation<R, T> {
+
+    private final String id;
 }

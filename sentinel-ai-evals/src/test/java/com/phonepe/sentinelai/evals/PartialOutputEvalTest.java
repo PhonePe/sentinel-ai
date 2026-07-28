@@ -104,6 +104,11 @@ class PartialOutputEvalTest {
                 return ModelOutput.success(data, List.of(), allMessages, usage);
             });
         }
+
+        @Override
+        public String modelName() {
+            return "decision-model";
+        }
     }
 
     @Test
@@ -113,9 +118,13 @@ class PartialOutputEvalTest {
         val dataset = new Dataset("status-only-evals",
                                   List.of(
                                           new TestCase("all good",
-                                                       List.of(Expectations.jsonPathEquals("$.status", "SUCCESS"))),
+                                                       List.of(Expectations.jsonPathEquals("status-success",
+                                                                                           "$.status",
+                                                                                           "SUCCESS"))),
                                           new TestCase("please fail this",
-                                                       List.of(Expectations.jsonPathEquals("$.status", "FAILED")))));
+                                                       List.of(Expectations.jsonPathEquals("status-failed",
+                                                                                           "$.status",
+                                                                                           "FAILED")))));
 
         val report = new EvalEngine().run(dataset, agent);
 

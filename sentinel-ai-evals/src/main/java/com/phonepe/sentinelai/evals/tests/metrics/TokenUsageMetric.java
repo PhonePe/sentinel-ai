@@ -14,28 +14,17 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.evals;
-
-import lombok.Builder;
-import lombok.Value;
-
-import java.util.Optional;
+package com.phonepe.sentinelai.evals.tests.metrics;
 
 /**
- * Report of an expectation evaluation.
+ * A metric that measures the total token usage of an inference call.
  *
- * Supports both pass/fail and metric-based (scored) expectations:
- * - Pass/fail: score and threshold are empty
- * - Scored: score (0.0-1.0) and optional threshold are populated
+ * @param <R> result/output type
+ * @param <T> input/request type
  */
-@Value
-@Builder
-public class ExpectationReport {
-    String expectation;
-    EvalStatus status;
-    String details;
-    @Builder.Default
-    Optional<Double> score = Optional.empty();
-    @Builder.Default
-    Optional<Double> threshold = Optional.empty();
+public class TokenUsageMetric<R, T> implements Metric<R, T> {
+    @Override
+    public String metricName() {
+        return "TokenUsage";
+    }
 }
