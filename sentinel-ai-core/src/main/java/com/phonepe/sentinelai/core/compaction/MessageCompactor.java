@@ -215,8 +215,10 @@ public class MessageCompactor {
                                                                                 final ModelUsageStats stats,
                                                                                 final List<AgentMessage> messages,
                                                                                 final CompactionPrompts prompts,
-                                                                                final int tokenBudget) {
-        final var compactMessages = toCompactMessage(messages, mapper);
+                                                                                final int tokenBudget,
+                                                                                final OutputGenerationMode outputGenerationMode,
+                                                                                final boolean skipToolMessages) {
+        final var compactMessages = toCompactMessage(messages, mapper, skipToolMessages);
         final var messagesForCompaction = new ArrayList<AgentMessage>();
         final var sessionId = Objects.requireNonNullElseGet(inSessionId,
                                                             () -> "temp-" + UUID.randomUUID().toString());
@@ -256,7 +258,8 @@ public class MessageCompactor {
         final var usageStats = Objects.requireNonNullElseGet(stats,
                                                              ModelUsageStats::new);
         final var settingsForCompaction = agentSetup
-                .withOutputGenerationMode(OutputGenerationMode.TOOL_BASED)
+                .withOutputGenerationMode(Objects.requireNonNullElse(outputGenerationMode,
+                                                                     OutputGenerationMode.TOOL_BASED))
                 .withModelSettings(agentSetup
                         .getModelSettings()
                         .withParallelToolCalls(false));
@@ -336,19 +339,56 @@ public class MessageCompactor {
 
     /**
      * Converts a list of AgentMessages to a JsonNode representing a list of CompactMessages without actually creating
-     * CompactMessage Objects.
+     * CompactMessage Objects. Tool-call interactions are always kept.
      *
      * @param messages List of AgentMessages to convert
+     * @param mapper   Object mapper
      * @return JsonNode representing the list of CompactMessages
      */
     public static JsonNode toCompactMessage(List<AgentMessage> messages,
                                             final ObjectMapper mapper) {
+        return toCompactMessage(messages, mapper, false);
+    }
+
+    /**
+     * Converts a list of AgentMessages to a JsonNode representing a list of CompactMessages without actually creating
+     * CompactMessage Objects.
+     *
+     * @param messages         List of AgentMessages to convert
+     * @param mapper           Object mapper
+     * @param skipToolMessages When true, tool-call interactions (requests and responses) are skipped because they are
+     *                         transient execution noise and add no enduring value to a session summary. When false
+     *                         (default), tool-call interactions are kept.
+     * @return JsonNode representing the list of CompactMessages
+     */
+    public static JsonNode toCompactMessage(List<AgentMessage> messages,
+                                            final ObjectMapper mapper,
+                                            final boolean skipToolMessages) {
         final var response = mapper.createArrayNode();
         final var visitor = new CompactMessageVisitor(mapper);
         for (AgentMessage message : messages) {
+            if (skipToolMessages && isToolInteraction(message)) {
+                continue;
+            }
             response.add(message.accept(visitor));
         }
         return response;
+    }
+
+    /**
+     * Checks if a message is a tool-call request or a tool-call response. This includes generic resource messages
+     * that carry a tool-call result.
+     *
+     * @param message Message to check
+     * @return true if the message is a tool-call interaction
+     */
+    private static boolean isToolInteraction(AgentMessage message) {
+        return switch (message.getMessageType()) {
+            case TOOL_CALL_REQUEST_MESSAGE, TOOL_CALL_RESPONSE_MESSAGE -> true;
+            case GENERIC_RESOURCE_MESSAGE -> message instanceof GenericResource genericResource
+                    && genericResource.getRole() == AgentGenericMessage.Role.TOOL_CALL;
+            default -> false;
+        };
     }
 
     private static String roleToString(AgentGenericMessage.Role role) {

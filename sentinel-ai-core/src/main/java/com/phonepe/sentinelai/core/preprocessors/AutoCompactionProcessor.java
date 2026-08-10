@@ -30,6 +30,7 @@ import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 
 import lombok.Builder;
@@ -52,6 +53,8 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
     private final int tokenBudget;
     private final int compactionTriggerThresholdPercentage;
     private final Model model;
+    private final OutputGenerationMode outputGenerationMode;
+    private final boolean skipToolMessages;
 
     @Builder
     public AutoCompactionProcessor(@NonNull AutoCompactionSetup setup) {
@@ -59,12 +62,16 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
         this.compactionTriggerThresholdPercentage = setup.getCompactionTriggerThresholdPercentage();
         this.tokenBudget = setup.getTokenBudget();
         this.model = setup.getModel();
+        this.outputGenerationMode = setup.getOutputGenerationMode();
+        this.skipToolMessages = setup.isSkipToolMessages();
     }
 
     private static Optional<ExtractedSummary> compactMessages(ModelRunContext modelRunContext,
                                                               List<AgentMessage> allMessages,
                                                               CompactionPrompts prompts,
                                                               int tokenBudget,
+                                                              OutputGenerationMode outputGenerationMode,
+                                                              boolean skipToolMessages,
                                                               Model model) {
         try {
             final var agentSetup = null == model
@@ -78,7 +85,9 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
                                                     modelRunContext.getModelUsageStats(),
                                                     allMessages,
                                                     prompts,
-                                                    tokenBudget)
+                                                    tokenBudget,
+                                                    outputGenerationMode,
+                                                    skipToolMessages)
                     .get();
         }
         catch (InterruptedException e) {
@@ -131,6 +140,8 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
                                                      messagesAfterLastCompaction,
                                                      prompts,
                                                      tokenBudget,
+                                                     outputGenerationMode,
+                                                     skipToolMessages,
                                                      model).orElse(null);
         if (null == compactionOutput) {
             log.warn("Message compaction failed for agent {}. Proceeding without compaction.",

@@ -25,6 +25,7 @@ import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 
 import java.util.Collection;
@@ -33,9 +34,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AutoCompactionSetupTest {
 
@@ -43,6 +46,8 @@ class AutoCompactionSetupTest {
     void testDefaultConstants() {
         assertEquals(1500, AutoCompactionSetup.DEFAULT_TOKEN_BUDGET);
         assertEquals(60, AutoCompactionSetup.DEFAULT_COMPACTION_TRIGGER_THRESHOLD);
+        assertEquals(OutputGenerationMode.TOOL_BASED, AutoCompactionSetup.DEFAULT_OUTPUT_GENERATION_MODE);
+        assertFalse(AutoCompactionSetup.DEFAULT_SKIP_TOOL_MESSAGES);
     }
 
     @Test
@@ -52,6 +57,9 @@ class AutoCompactionSetupTest {
         assertEquals(AutoCompactionSetup.DEFAULT_TOKEN_BUDGET, AutoCompactionSetup.DEFAULT.getTokenBudget());
         assertEquals(AutoCompactionSetup.DEFAULT_COMPACTION_TRIGGER_THRESHOLD,
                      AutoCompactionSetup.DEFAULT.getCompactionTriggerThresholdPercentage());
+        assertEquals(OutputGenerationMode.TOOL_BASED, AutoCompactionSetup.DEFAULT.getOutputGenerationMode());
+        assertEquals(OutputGenerationMode.TOOL_BASED, AutoCompactionSetup.DEFAULT.getOutputGenerationMode());
+        assertFalse(AutoCompactionSetup.DEFAULT.isSkipToolMessages());
         assertNull(AutoCompactionSetup.DEFAULT.getModel());
     }
 
@@ -92,6 +100,36 @@ class AutoCompactionSetupTest {
         assertEquals(3000, other.getTokenBudget());
         assertEquals(80, other.getCompactionTriggerThresholdPercentage());
         assertEquals(otherModel, other.getModel());
+    }
+
+    @Test
+    void testMergeKeepsBaseOutputGenerationModeWhenOtherIsDefault() {
+        final var base = AutoCompactionSetup.builder()
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build();
+
+        final var other = AutoCompactionSetup.builder()
+                .outputGenerationMode(AutoCompactionSetup.DEFAULT_OUTPUT_GENERATION_MODE)
+                .build();
+
+        final var result = base.merge(other);
+
+        assertEquals(OutputGenerationMode.STRUCTURED_OUTPUT, result.getOutputGenerationMode());
+    }
+
+    @Test
+    void testMergeKeepsBaseSkipToolMessagesWhenOtherIsDefault() {
+        final var base = AutoCompactionSetup.builder()
+                .skipToolMessages(true)
+                .build();
+
+        final var other = AutoCompactionSetup.builder()
+                .skipToolMessages(AutoCompactionSetup.DEFAULT_SKIP_TOOL_MESSAGES)
+                .build();
+
+        final var result = base.merge(other);
+
+        assertTrue(result.isSkipToolMessages());
     }
 
     @Test
@@ -160,6 +198,36 @@ class AutoCompactionSetupTest {
         assertEquals(2000, result.getTokenBudget()); // kept from base
         assertEquals(80, result.getCompactionTriggerThresholdPercentage());
         assertEquals(baseModel, result.getModel()); // kept from base since other is null
+    }
+
+    @Test
+    void testMergeOverridesOutputGenerationMode() {
+        final var base = AutoCompactionSetup.builder()
+                .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
+                .build();
+
+        final var other = AutoCompactionSetup.builder()
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build();
+
+        final var result = base.merge(other);
+
+        assertEquals(OutputGenerationMode.STRUCTURED_OUTPUT, result.getOutputGenerationMode());
+    }
+
+    @Test
+    void testMergeOverridesSkipToolMessages() {
+        final var base = AutoCompactionSetup.builder()
+                .skipToolMessages(false)
+                .build();
+
+        final var other = AutoCompactionSetup.builder()
+                .skipToolMessages(true)
+                .build();
+
+        final var result = base.merge(other);
+
+        assertTrue(result.isSkipToolMessages());
     }
 
     @Test
@@ -247,6 +315,18 @@ class AutoCompactionSetupTest {
         final var result = base.merge(null);
 
         assertSame(base, result);
+    }
+
+    @Test
+    void testMergeWithNullKeepsOutputGenerationMode() {
+        final var base = AutoCompactionSetup.builder()
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build();
+
+        final var result = base.merge(null);
+
+        assertSame(base, result);
+        assertEquals(OutputGenerationMode.STRUCTURED_OUTPUT, result.getOutputGenerationMode());
     }
 
     @Test

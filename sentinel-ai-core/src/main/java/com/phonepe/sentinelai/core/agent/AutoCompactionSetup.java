@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.core.agent;
 
 import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
 import com.phonepe.sentinelai.core.model.Model;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -33,10 +34,12 @@ import javax.annotation.Nullable;
 @Builder
 @With
 public class AutoCompactionSetup {
-    public static final AutoCompactionSetup DEFAULT = AutoCompactionSetup.builder().build();
-
     public static final int DEFAULT_TOKEN_BUDGET = 1500;
     public static final int DEFAULT_COMPACTION_TRIGGER_THRESHOLD = 60;
+    public static final OutputGenerationMode DEFAULT_OUTPUT_GENERATION_MODE = OutputGenerationMode.TOOL_BASED;
+    public static final boolean DEFAULT_SKIP_TOOL_MESSAGES = false;
+
+    public static final AutoCompactionSetup DEFAULT = AutoCompactionSetup.builder().build();
 
     @Builder.Default
     @NonNull
@@ -47,6 +50,25 @@ public class AutoCompactionSetup {
 
     @Builder.Default
     private final int compactionTriggerThresholdPercentage = DEFAULT_COMPACTION_TRIGGER_THRESHOLD;
+
+    /**
+     * Output generation mode for the compaction run. Some models (for example qwen on vLLM) ignore
+     * {@code tool_choice: required} and never call the output tool. For those models, set this to
+     * {@link OutputGenerationMode#STRUCTURED_OUTPUT} so the schema goes as {@code response_format}
+     * instead of a forced tool call. The default keeps the historical {@link OutputGenerationMode#TOOL_BASED}
+     * behavior.
+     */
+    @Builder.Default
+    @NonNull
+    private final OutputGenerationMode outputGenerationMode = DEFAULT_OUTPUT_GENERATION_MODE;
+
+    /**
+     * When {@code true}, tool-call requests and responses are dropped before summarization because they are
+     * transient execution noise and add no enduring value to a session summary. The default keeps tool-call
+     * interactions so the summarizer sees the full conversation.
+     */
+    @Builder.Default
+    private final boolean skipToolMessages = DEFAULT_SKIP_TOOL_MESSAGES;
 
     @Nullable
     private final Model model;
@@ -62,6 +84,12 @@ public class AutoCompactionSetup {
                         != DEFAULT_COMPACTION_TRIGGER_THRESHOLD
                                 ? other.compactionTriggerThresholdPercentage
                                 : this.compactionTriggerThresholdPercentage)
+                .outputGenerationMode(other.outputGenerationMode != DEFAULT_OUTPUT_GENERATION_MODE
+                        ? other.outputGenerationMode
+                        : this.outputGenerationMode)
+                .skipToolMessages(other.skipToolMessages != DEFAULT_SKIP_TOOL_MESSAGES
+                        ? other.skipToolMessages
+                        : this.skipToolMessages)
                 .model(other.model != null ? other.model : this.model)
                 .build();
     }
