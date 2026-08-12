@@ -64,7 +64,7 @@ class AutoCompactionSetupTest {
     }
 
     @Test
-    void testMergeDoesNotMutateOriginal() {
+    void testMergeDoesNotMutate() {
         final var basePrompts = CompactionPrompts.DEFAULT;
         final var baseModel = createDummyModel();
 
@@ -103,7 +103,7 @@ class AutoCompactionSetupTest {
     }
 
     @Test
-    void testMergeKeepsBaseOutputGenerationModeWhenOtherIsDefault() {
+    void testMergeKeepsOutputModeWhenOtherIsDefault() {
         final var base = AutoCompactionSetup.builder()
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                 .build();
@@ -118,7 +118,7 @@ class AutoCompactionSetupTest {
     }
 
     @Test
-    void testMergeKeepsBaseSkipToolMessagesWhenOtherIsDefault() {
+    void testMergeKeepsSkipToolMessagesWhenOtherIsDefault() {
         final var base = AutoCompactionSetup.builder()
                 .skipToolMessages(true)
                 .build();
@@ -167,7 +167,7 @@ class AutoCompactionSetupTest {
     }
 
     @Test
-    void testMergeOverridesOnlyNonDefaultFields() {
+    void testMergeOverridesNonDefaultFields() {
         final var basePrompts = CompactionPrompts.builder()
                 .summarizationSystemPrompt("Base system")
                 .build();
@@ -201,7 +201,7 @@ class AutoCompactionSetupTest {
     }
 
     @Test
-    void testMergeOverridesOutputGenerationMode() {
+    void testMergeOverridesOutputMode() {
         final var base = AutoCompactionSetup.builder()
                 .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
                 .build();
@@ -245,7 +245,7 @@ class AutoCompactionSetupTest {
     }
 
     @Test
-    void testMergeWithDefaultCompactionTriggerThreshold() {
+    void testMergeWithDefaultThreshold() {
         final var base = AutoCompactionSetup.builder()
                 .compactionTriggerThresholdPercentage(75)
                 .build();
@@ -318,7 +318,7 @@ class AutoCompactionSetupTest {
     }
 
     @Test
-    void testMergeWithNullKeepsOutputGenerationMode() {
+    void testMergeWithNullKeepsOutputMode() {
         final var base = AutoCompactionSetup.builder()
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                 .build();

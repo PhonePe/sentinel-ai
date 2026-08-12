@@ -43,7 +43,7 @@ class MessageCompactorTest {
     private final ObjectMapper mapper = JsonUtils.createMapper();
 
     @Test
-    void testToCompactMessageKeepsChatAndSkipsToolsWhenFlagOn() {
+    void testKeepsChatAndSkipsToolsWhenFlagOn() {
         final var stats = new ModelUsageStats();
         final var messages = List.of(
                                      SystemPrompt.builder()
@@ -87,7 +87,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageKeepsToolCallWhenFlagOff() {
+    void testKeepsToolCallWhenFlagOff() {
         final var toolCall = ToolCall.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -102,7 +102,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageKeepsToolsByDefault() {
+    void testKeepsToolsByDefault() {
         final var stats = new ModelUsageStats();
         final var messages = List.of(
                                      SystemPrompt.builder()
@@ -148,7 +148,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageSkipsToolCallGenericResourceWhenFlagOn() {
+    void testSkipsGenericResourceWhenFlagOn() {
         final var toolResource = GenericResource.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -166,7 +166,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageSkipsToolCallResponseWhenFlagOn() {
+    void testSkipsToolCallResponseWhenFlagOn() {
         final var toolCallResponse = ToolCallResponse.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -182,7 +182,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageSkipsToolCallWhenFlagOn() {
+    void testSkipsToolCallWhenFlagOn() {
         final var toolCall = ToolCall.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -197,14 +197,14 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithEmptyList() {
+    void testWithEmptyList() {
         final var result = MessageCompactor.toCompactMessage(List.of(), mapper);
         assertTrue(result.isArray());
         assertEquals(0, result.size());
     }
 
     @Test
-    void testToCompactMessageWithGenericResource() {
+    void testWithGenericResource() {
         final var genericResource = GenericResource.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -226,7 +226,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithGenericText() {
+    void testWithGenericText() {
         final var genericText = GenericText.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -244,7 +244,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithMultipleMessages() {
+    void testWithMultipleMessages() {
         final var stats = new ModelUsageStats();
         final var messages = List.of(
                                      SystemPrompt.builder()
@@ -273,7 +273,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithStructuredOutput() {
+    void testWithStructuredOutput() {
         final var structuredOutput = StructuredOutput.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -291,7 +291,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithSystemPrompt() {
+    void testWithSystemPrompt() {
         final var systemPrompt = SystemPrompt.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -308,7 +308,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithTextResponse() {
+    void testWithTextResponse() {
         final var textResponse = Text.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -326,7 +326,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithUserPrompt() {
+    void testWithUserPrompt() {
         final var userPrompt = UserPrompt.builder()
                 .sessionId("session-1")
                 .runId("run-1")
