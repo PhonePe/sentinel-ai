@@ -86,12 +86,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
@@ -503,6 +505,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 final var responseData = new StringBuilder();
                 //We use the following to cobble together the fragment of tool call objects we get from the stream
                 final var toolCallData = new HashMap<Integer, io.github.sashirestela.openai.common.tool.ToolCall>();
+                //Providers repeat the finish reason on trailing chunks (usage etc.). Only the first one is handled.
+                final var finishHandled = new AtomicBoolean(false);
 
                 final var outputs = completionResponseStream.map(completionResponse -> {
                     logModelResponse(completionResponse);
@@ -536,6 +540,9 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                     }
                     if (Strings.isNullOrEmpty(finishReason)) {
                         return null; //Continue to next chunk
+                    }
+                    if (!finishHandled.compareAndSet(false, true)) {
+                        return null; //Already handled for this stream, continue to next chunk
                     }
                     //Model has stopped for some reason. Find out reason and handle
                     return switch (finishReason) {
@@ -594,6 +601,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                         .build(),
                                                 stats,
                                                 stopwatch);
+                                toolCallData.clear();
                                 if (generatedOutput.get() != null) {
                                     //If the output generator was called, we use the generated output
                                     if (streamProcessingMode.equals(Agent.StreamProcessingMode.TYPED)) {
@@ -1148,8 +1156,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                          AgentMessages agentMessages,
                                                                          ModelUsageStats stats,
                                                                          Stopwatch stopwatch) {
+        final var seenToolCallIds = new HashSet<String>();
         final var toolCallMessages = toolCalls.stream()
                 .filter(toolCall -> !Strings.isNullOrEmpty(toolCall.getId()))
+                .filter(toolCall -> seenToolCallIds.add(toolCall.getId()))
                 .map(toolCall -> new ToolCall(sessionId,
                                               runId,
                                               toolCall.getId(),
