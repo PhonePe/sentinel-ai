@@ -454,7 +454,6 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                                              sessionMessages,
                                                              prompts,
                                                              compactionSetup.getTokenBudget(),
-                                                             compactionSetup.getOutputGenerationMode(),
                                                              compactionSetup.isSkipToolMessages())
                 .join()
                 .orElse(null);

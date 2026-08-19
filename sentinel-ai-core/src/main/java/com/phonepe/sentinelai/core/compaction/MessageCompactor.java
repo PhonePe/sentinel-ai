@@ -50,7 +50,6 @@ import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
-import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.NonContextualDefaultExternalToolRunner;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.EventUtils;
@@ -69,7 +68,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import static com.phonepe.sentinelai.core.utils.AgentUtils.sessionId;
 
 @Slf4j
 @UtilityClass
@@ -216,7 +214,6 @@ public class MessageCompactor {
                                                                                 final List<AgentMessage> messages,
                                                                                 final CompactionPrompts prompts,
                                                                                 final int tokenBudget,
-                                                                                final OutputGenerationMode outputGenerationMode,
                                                                                 final boolean skipToolMessages) {
         final var compactMessages = toCompactMessage(messages, mapper, skipToolMessages);
         final var messagesForCompaction = new ArrayList<AgentMessage>();
@@ -258,8 +255,6 @@ public class MessageCompactor {
         final var usageStats = Objects.requireNonNullElseGet(stats,
                                                              ModelUsageStats::new);
         final var settingsForCompaction = agentSetup
-                .withOutputGenerationMode(Objects.requireNonNullElse(outputGenerationMode,
-                                                                     OutputGenerationMode.TOOL_BASED))
                 .withModelSettings(agentSetup
                         .getModelSettings()
                         .withParallelToolCalls(false));
