@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.core.preprocessors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.AutoCompactionSetup;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
@@ -29,7 +30,9 @@ import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessContext;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
 import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.Model;
+import com.phonepe.sentinelai.core.model.ModelAttributes;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
+import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 
 import lombok.Builder;
@@ -52,6 +55,8 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
     private final int tokenBudget;
     private final int compactionTriggerThresholdPercentage;
     private final Model model;
+    private final ModelSettings modelSettings;
+    private final boolean skipToolMessages;
 
     @Builder
     public AutoCompactionProcessor(@NonNull AutoCompactionSetup setup) {
@@ -59,26 +64,74 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
         this.compactionTriggerThresholdPercentage = setup.getCompactionTriggerThresholdPercentage();
         this.tokenBudget = setup.getTokenBudget();
         this.model = setup.getModel();
+        this.modelSettings = setup.getModelSettings();
+        this.skipToolMessages = setup.isSkipToolMessages();
+    }
+
+    private static AgentSetup applyCompactionOverrides(AgentSetup agentSetup,
+                                                       Model model,
+                                                       ModelSettings modelSettings) {
+        var result = agentSetup;
+        if (model != null) {
+            result = result.withModel(model);
+        }
+        if (modelSettings != null) {
+            result = result.withModelSettings(modelSettings);
+        }
+        return result;
     }
 
     private static Optional<ExtractedSummary> compactMessages(ModelRunContext modelRunContext,
                                                               List<AgentMessage> allMessages,
                                                               CompactionPrompts prompts,
                                                               int tokenBudget,
-                                                              Model model) {
+                                                              boolean skipToolMessages,
+                                                              Model model,
+                                                              ModelSettings modelSettings) {
         try {
-            final var agentSetup = null == model
-                    ? modelRunContext.getAgentSetup()
-                    : modelRunContext.getAgentSetup().withModel(model);
+            final var sessionAgentSetup = modelRunContext.getAgentSetup();
+            final var sessionModelSettings = sessionAgentSetup.getModelSettings();
+            final var sessionModelAttributes = sessionModelSettings != null
+                    ? sessionModelSettings.getModelAttributes()
+                    : ModelAttributes.DEFAULT_MODEL_ATTRIBUTES;
+            final var sessionContextWindowSize = sessionModelAttributes.getContextWindowSize();
+
+            var effectiveModel = model;
+            var effectiveModelSettings = modelSettings;
+
+            // Safety check: if a compaction model is provided, verify its context window
+            // is at least as large as the session model's context window. If not, fall back
+            // to the session model and session model settings.
+            if (model != null) {
+                final var compactorModelAttributes = modelSettings != null
+                        ? modelSettings.getModelAttributes()
+                        : sessionModelAttributes;
+                final var compactorContextWindowSize = compactorModelAttributes.getContextWindowSize();
+                if (compactorContextWindowSize < sessionContextWindowSize) {
+                    log.warn("Compaction model context window size ({}) is smaller than session model context "
+                            + "window size ({}). Falling back to session model for compaction of agent {}.",
+                             compactorContextWindowSize,
+                             sessionContextWindowSize,
+                             modelRunContext.getAgentName());
+                    effectiveModel = null;
+                    effectiveModelSettings = null;
+                }
+            }
+
+            final var effectiveSetup = applyCompactionOverrides(sessionAgentSetup,
+                                                                effectiveModel,
+                                                                effectiveModelSettings);
+
             return MessageCompactor.compactMessages(modelRunContext.getAgentName(),
                                                     modelRunContext.getSessionId(),
                                                     modelRunContext.getUserId(),
-                                                    agentSetup,
-                                                    agentSetup.getMapper(),
+                                                    effectiveSetup,
+                                                    effectiveSetup.getMapper(),
                                                     modelRunContext.getModelUsageStats(),
                                                     allMessages,
                                                     prompts,
-                                                    tokenBudget)
+                                                    tokenBudget,
+                                                    skipToolMessages)
                     .get();
         }
         catch (InterruptedException e) {
@@ -131,7 +184,9 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
                                                      messagesAfterLastCompaction,
                                                      prompts,
                                                      tokenBudget,
-                                                     model).orElse(null);
+                                                     skipToolMessages,
+                                                     model,
+                                                     modelSettings).orElse(null);
         if (null == compactionOutput) {
             log.warn("Message compaction failed for agent {}. Proceeding without compaction.",
                      modelRunContext.getAgentName());

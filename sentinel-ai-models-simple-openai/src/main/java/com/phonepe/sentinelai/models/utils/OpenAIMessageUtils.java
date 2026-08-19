@@ -61,44 +61,29 @@ public class OpenAIMessageUtils {
         return agentMessage.accept(new AgentMessageVisitor<>() {
             @Override
             public ChatMessage visit(AgentGenericMessage genericMessage) {
-                return genericMessage.accept(
-                                             new AgentGenericMessageVisitor<>() {
-                                                 @Override
-                                                 public ChatMessage visit(GenericResource genericResource) {
-                                                     return switch (genericResource
-                                                             .getRole()) {
-                                                         case SYSTEM -> ChatMessage.SystemMessage
-                                                                 .of(genericResource
-                                                                         .getSerializedJson());
-                                                         case USER -> ChatMessage.UserMessage
-                                                                 .of(genericResource
-                                                                         .getSerializedJson());
-                                                         case ASSISTANT -> ChatMessage.AssistantMessage
-                                                                 .of(genericResource
-                                                                         .getSerializedJson());
-                                                         case TOOL_CALL -> throw new UnsupportedOperationException(
-                                                                                                                   "Tool calls are unsupported in this context");
-                                                     };
-                                                 }
+                return genericMessage.accept(new AgentGenericMessageVisitor<>() {
+                    @Override
+                    public ChatMessage visit(GenericResource genericResource) {
+                        return switch (genericResource.getRole()) {
+                            case SYSTEM -> ChatMessage.SystemMessage.of(genericResource.getSerializedJson());
+                            case USER -> ChatMessage.UserMessage.of(genericResource.getSerializedJson());
+                            case ASSISTANT -> ChatMessage.AssistantMessage.of(genericResource.getSerializedJson());
+                            case TOOL_CALL -> throw new UnsupportedOperationException(
+                                                                                      "Tool calls are unsupported in this context");
+                        };
+                    }
 
-                                                 @Override
-                                                 public ChatMessage visit(GenericText genericText) {
-                                                     return switch (genericText
-                                                             .getRole()) {
-                                                         case SYSTEM -> ChatMessage.SystemMessage
-                                                                 .of(genericText
-                                                                         .getText());
-                                                         case USER -> ChatMessage.UserMessage
-                                                                 .of(genericText
-                                                                         .getText());
-                                                         case ASSISTANT -> ChatMessage.AssistantMessage
-                                                                 .of(genericText
-                                                                         .getText());
-                                                         case TOOL_CALL -> throw new UnsupportedOperationException(
-                                                                                                                   "Tool calls are unsupported in this context");
-                                                     };
-                                                 }
-                                             });
+                    @Override
+                    public ChatMessage visit(GenericText genericText) {
+                        return switch (genericText.getRole()) {
+                            case SYSTEM -> ChatMessage.SystemMessage.of(genericText.getText());
+                            case USER -> ChatMessage.UserMessage.of(genericText.getText());
+                            case ASSISTANT -> ChatMessage.AssistantMessage.of(genericText.getText());
+                            case TOOL_CALL -> throw new UnsupportedOperationException(
+                                                                                      "Tool calls are unsupported in this context");
+                        };
+                    }
+                });
             }
 
             @Override
@@ -106,16 +91,13 @@ public class OpenAIMessageUtils {
                 return request.accept(new AgentRequestVisitor<>() {
                     @Override
                     public ChatMessage visit(SystemPrompt systemPrompt) {
-                        return ChatMessage.SystemMessage.of(systemPrompt
-                                .getContent());
+                        return ChatMessage.SystemMessage.of(systemPrompt.getContent());
                     }
 
                     @Override
                     public ChatMessage visit(ToolCallResponse toolCallResponse) {
-                        return ChatMessage.ToolMessage.of(toolCallResponse
-                                .getResponse(),
-                                                          toolCallResponse
-                                                                  .getToolCallId());
+                        return ChatMessage.ToolMessage.of(toolCallResponse.getResponse(),
+                                                          toolCallResponse.getToolCallId());
                     }
 
                     @Override
@@ -130,14 +112,12 @@ public class OpenAIMessageUtils {
                 return response.accept(new AgentResponseVisitor<>() {
                     @Override
                     public ChatMessage visit(StructuredOutput structuredOutput) {
-                        return ChatMessage.AssistantMessage.of(structuredOutput
-                                .getContent());
+                        return ChatMessage.AssistantMessage.of(structuredOutput.getContent());
                     }
 
                     @Override
                     public ChatMessage visit(Text text) {
-                        return ChatMessage.AssistantMessage.of(text
-                                .getContent());
+                        return ChatMessage.AssistantMessage.of(text.getContent());
                     }
 
                     @Override

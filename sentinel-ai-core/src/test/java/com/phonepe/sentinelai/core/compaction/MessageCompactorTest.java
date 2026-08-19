@@ -36,7 +36,6 @@ import com.phonepe.sentinelai.core.utils.JsonUtils;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MessageCompactorTest {
@@ -44,14 +43,168 @@ class MessageCompactorTest {
     private final ObjectMapper mapper = JsonUtils.createMapper();
 
     @Test
-    void testToCompactMessageWithEmptyList() {
+    void testKeepsChatAndSkipsToolsWhenFlagOn() {
+        final var stats = new ModelUsageStats();
+        final var messages = List.of(
+                                     SystemPrompt.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .content("System message")
+                                             .build(),
+                                     UserPrompt.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .content("User message")
+                                             .build(),
+                                     ToolCall.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .toolCallId("call-123")
+                                             .toolName("get_weather")
+                                             .arguments("{\"city\": \"London\"}")
+                                             .build(),
+                                     ToolCallResponse.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .toolCallId("call-123")
+                                             .toolName("get_weather")
+                                             .response("{\"temperature\": 20}")
+                                             .errorType(ErrorType.SUCCESS)
+                                             .build(),
+                                     Text.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .content("Assistant message")
+                                             .stats(stats)
+                                             .build());
+
+        final var result = MessageCompactor.toCompactMessage(messages, mapper, true);
+
+        assertEquals(3, result.size());
+        assertEquals(CompactMessage.Roles.SYSTEM, result.get(0).get("role").asText());
+        assertEquals(CompactMessage.Roles.USER, result.get(1).get("role").asText());
+        assertEquals(CompactMessage.Roles.ASSISTANT, result.get(2).get("role").asText());
+    }
+
+    @Test
+    void testKeepsToolCallWhenFlagOff() {
+        final var toolCall = ToolCall.builder()
+                .sessionId("session-1")
+                .runId("run-1")
+                .toolCallId("call-123")
+                .toolName("get_weather")
+                .arguments("{\"city\": \"London\"}")
+                .build();
+
+        final var result = MessageCompactor.toCompactMessage(List.of(toolCall), mapper);
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testKeepsToolsByDefault() {
+        final var stats = new ModelUsageStats();
+        final var messages = List.of(
+                                     SystemPrompt.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .content("System message")
+                                             .build(),
+                                     UserPrompt.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .content("User message")
+                                             .build(),
+                                     ToolCall.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .toolCallId("call-123")
+                                             .toolName("get_weather")
+                                             .arguments("{\"city\": \"London\"}")
+                                             .build(),
+                                     ToolCallResponse.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .toolCallId("call-123")
+                                             .toolName("get_weather")
+                                             .response("{\"temperature\": 20}")
+                                             .errorType(ErrorType.SUCCESS)
+                                             .build(),
+                                     Text.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .content("Assistant message")
+                                             .stats(stats)
+                                             .build());
+
+        final var result = MessageCompactor.toCompactMessage(messages, mapper);
+
+        assertEquals(5, result.size());
+        assertEquals(CompactMessage.Roles.SYSTEM, result.get(0).get("role").asText());
+        assertEquals(CompactMessage.Roles.USER, result.get(1).get("role").asText());
+        assertEquals(CompactMessage.Types.TOOL_CALL_RESPONSE, result.get(2).get("type").asText());
+        assertEquals(CompactMessage.Types.TOOL_CALL_RESPONSE, result.get(3).get("type").asText());
+        assertEquals(CompactMessage.Roles.ASSISTANT, result.get(4).get("role").asText());
+    }
+
+    @Test
+    void testSkipsGenericResourceWhenFlagOn() {
+        final var toolResource = GenericResource.builder()
+                .sessionId("session-1")
+                .runId("run-1")
+                .role(AgentGenericMessage.Role.TOOL_CALL)
+                .resourceType(GenericResource.ResourceType.TEXT)
+                .uri("call-123")
+                .mimeType("text/plain")
+                .content("{\"temperature\": 20}")
+                .serializedJson("{}")
+                .build();
+
+        final var result = MessageCompactor.toCompactMessage(List.of(toolResource), mapper, true);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testSkipsToolCallResponseWhenFlagOn() {
+        final var toolCallResponse = ToolCallResponse.builder()
+                .sessionId("session-1")
+                .runId("run-1")
+                .toolCallId("call-123")
+                .toolName("get_weather")
+                .response("{\"temperature\": 20}")
+                .errorType(ErrorType.SUCCESS)
+                .build();
+
+        final var result = MessageCompactor.toCompactMessage(List.of(toolCallResponse), mapper, true);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testSkipsToolCallWhenFlagOn() {
+        final var toolCall = ToolCall.builder()
+                .sessionId("session-1")
+                .runId("run-1")
+                .toolCallId("call-123")
+                .toolName("get_weather")
+                .arguments("{\"city\": \"London\"}")
+                .build();
+
+        final var result = MessageCompactor.toCompactMessage(List.of(toolCall), mapper, true);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testWithEmptyList() {
         final var result = MessageCompactor.toCompactMessage(List.of(), mapper);
         assertTrue(result.isArray());
         assertEquals(0, result.size());
     }
 
     @Test
-    void testToCompactMessageWithGenericResource() {
+    void testWithGenericResource() {
         final var genericResource = GenericResource.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -73,7 +226,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithGenericText() {
+    void testWithGenericText() {
         final var genericText = GenericText.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -91,7 +244,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithMultipleMessages() {
+    void testWithMultipleMessages() {
         final var stats = new ModelUsageStats();
         final var messages = List.of(
                                      SystemPrompt.builder()
@@ -120,7 +273,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithStructuredOutput() {
+    void testWithStructuredOutput() {
         final var structuredOutput = StructuredOutput.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -138,7 +291,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithSystemPrompt() {
+    void testWithSystemPrompt() {
         final var systemPrompt = SystemPrompt.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -155,7 +308,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithTextResponse() {
+    void testWithTextResponse() {
         final var textResponse = Text.builder()
                 .sessionId("session-1")
                 .runId("run-1")
@@ -173,46 +326,7 @@ class MessageCompactorTest {
     }
 
     @Test
-    void testToCompactMessageWithToolCall() {
-        final var toolCall = ToolCall.builder()
-                .sessionId("session-1")
-                .runId("run-1")
-                .toolCallId("call-123")
-                .toolName("get_weather")
-                .arguments("{\"city\": \"London\"}")
-                .build();
-
-        final var result = MessageCompactor.toCompactMessage(List.of(toolCall), mapper);
-
-        assertEquals(1, result.size());
-        final var node = result.get(0);
-        assertEquals(CompactMessage.Types.TOOL_CALL_RESPONSE, node.get("type").asText());
-        assertEquals("call-123", node.get("callId").asText());
-        assertNotNull(node.get("arguments"));
-    }
-
-    @Test
-    void testToCompactMessageWithToolCallResponse() {
-        final var toolCallResponse = ToolCallResponse.builder()
-                .sessionId("session-1")
-                .runId("run-1")
-                .toolCallId("call-123")
-                .toolName("get_weather")
-                .response("{\"temperature\": 20}")
-                .errorType(ErrorType.SUCCESS)
-                .build();
-
-        final var result = MessageCompactor.toCompactMessage(List.of(toolCallResponse), mapper);
-
-        assertEquals(1, result.size());
-        final var node = result.get(0);
-        assertEquals(CompactMessage.Types.TOOL_CALL_RESPONSE, node.get("type").asText());
-        assertEquals("call-123", node.get("callId").asText());
-        assertEquals("{\"temperature\": 20}", node.get("result").asText());
-    }
-
-    @Test
-    void testToCompactMessageWithUserPrompt() {
+    void testWithUserPrompt() {
         final var userPrompt = UserPrompt.builder()
                 .sessionId("session-1")
                 .runId("run-1")

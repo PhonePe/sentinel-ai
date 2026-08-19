@@ -25,6 +25,7 @@ import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessor;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
+import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 
 import java.util.Collection;
@@ -33,9 +34,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AutoCompactionSetupTest {
 
@@ -43,6 +46,7 @@ class AutoCompactionSetupTest {
     void testDefaultConstants() {
         assertEquals(1500, AutoCompactionSetup.DEFAULT_TOKEN_BUDGET);
         assertEquals(60, AutoCompactionSetup.DEFAULT_COMPACTION_TRIGGER_THRESHOLD);
+        assertFalse(AutoCompactionSetup.DEFAULT_SKIP_TOOL_MESSAGES);
     }
 
     @Test
@@ -52,11 +56,13 @@ class AutoCompactionSetupTest {
         assertEquals(AutoCompactionSetup.DEFAULT_TOKEN_BUDGET, AutoCompactionSetup.DEFAULT.getTokenBudget());
         assertEquals(AutoCompactionSetup.DEFAULT_COMPACTION_TRIGGER_THRESHOLD,
                      AutoCompactionSetup.DEFAULT.getCompactionTriggerThresholdPercentage());
+        assertFalse(AutoCompactionSetup.DEFAULT.isSkipToolMessages());
         assertNull(AutoCompactionSetup.DEFAULT.getModel());
+        assertNull(AutoCompactionSetup.DEFAULT.getModelSettings());
     }
 
     @Test
-    void testMergeDoesNotMutateOriginal() {
+    void testMergeDoesNotMutate() {
         final var basePrompts = CompactionPrompts.DEFAULT;
         final var baseModel = createDummyModel();
 
@@ -95,6 +101,40 @@ class AutoCompactionSetupTest {
     }
 
     @Test
+    void testMergeKeepsModelSettingsWhenOtherIsNull() {
+        final var baseSettings = ModelSettings.builder()
+                .maxTokens(1000)
+                .build();
+
+        final var base = AutoCompactionSetup.builder()
+                .modelSettings(baseSettings)
+                .build();
+
+        final var other = AutoCompactionSetup.builder()
+                .modelSettings(null)
+                .build();
+
+        final var result = base.merge(other);
+
+        assertEquals(baseSettings, result.getModelSettings());
+    }
+
+    @Test
+    void testMergeKeepsSkipToolMessagesWhenOtherIsDefault() {
+        final var base = AutoCompactionSetup.builder()
+                .skipToolMessages(true)
+                .build();
+
+        final var other = AutoCompactionSetup.builder()
+                .skipToolMessages(AutoCompactionSetup.DEFAULT_SKIP_TOOL_MESSAGES)
+                .build();
+
+        final var result = base.merge(other);
+
+        assertTrue(result.isSkipToolMessages());
+    }
+
+    @Test
     void testMergeOverridesAllFields() {
         final var basePrompts = CompactionPrompts.builder()
                 .summarizationSystemPrompt("Base system")
@@ -129,7 +169,29 @@ class AutoCompactionSetupTest {
     }
 
     @Test
-    void testMergeOverridesOnlyNonDefaultFields() {
+    void testMergeOverridesModelSettings() {
+        final var baseSettings = ModelSettings.builder()
+                .maxTokens(1000)
+                .build();
+        final var otherSettings = ModelSettings.builder()
+                .maxTokens(2000)
+                .build();
+
+        final var base = AutoCompactionSetup.builder()
+                .modelSettings(baseSettings)
+                .build();
+
+        final var other = AutoCompactionSetup.builder()
+                .modelSettings(otherSettings)
+                .build();
+
+        final var result = base.merge(other);
+
+        assertEquals(otherSettings, result.getModelSettings());
+    }
+
+    @Test
+    void testMergeOverridesNonDefaultFields() {
         final var basePrompts = CompactionPrompts.builder()
                 .summarizationSystemPrompt("Base system")
                 .build();
@@ -163,6 +225,21 @@ class AutoCompactionSetupTest {
     }
 
     @Test
+    void testMergeOverridesSkipToolMessages() {
+        final var base = AutoCompactionSetup.builder()
+                .skipToolMessages(false)
+                .build();
+
+        final var other = AutoCompactionSetup.builder()
+                .skipToolMessages(true)
+                .build();
+
+        final var result = base.merge(other);
+
+        assertTrue(result.isSkipToolMessages());
+    }
+
+    @Test
     void testMergeReturnsNewInstance() {
         final var base = AutoCompactionSetup.DEFAULT;
         final var other = AutoCompactionSetup.builder()
@@ -174,21 +251,6 @@ class AutoCompactionSetupTest {
         assertNotNull(result);
         // Result should be different instance since merge creates new builder
         assertEquals(3000, result.getTokenBudget());
-    }
-
-    @Test
-    void testMergeWithDefaultCompactionTriggerThreshold() {
-        final var base = AutoCompactionSetup.builder()
-                .compactionTriggerThresholdPercentage(75)
-                .build();
-
-        final var other = AutoCompactionSetup.builder()
-                .compactionTriggerThresholdPercentage(AutoCompactionSetup.DEFAULT_COMPACTION_TRIGGER_THRESHOLD)
-                .build();
-
-        final var result = base.merge(other);
-
-        assertEquals(75, result.getCompactionTriggerThresholdPercentage());
     }
 
     @Test
@@ -221,6 +283,21 @@ class AutoCompactionSetupTest {
     }
 
     @Test
+    void testMergeWithDefaultThreshold() {
+        final var base = AutoCompactionSetup.builder()
+                .compactionTriggerThresholdPercentage(75)
+                .build();
+
+        final var other = AutoCompactionSetup.builder()
+                .compactionTriggerThresholdPercentage(AutoCompactionSetup.DEFAULT_COMPACTION_TRIGGER_THRESHOLD)
+                .build();
+
+        final var result = base.merge(other);
+
+        assertEquals(75, result.getCompactionTriggerThresholdPercentage());
+    }
+
+    @Test
     void testMergeWithDefaultTokenBudget() {
         final var base = AutoCompactionSetup.builder()
                 .tokenBudget(2000)
@@ -247,6 +324,22 @@ class AutoCompactionSetupTest {
         final var result = base.merge(null);
 
         assertSame(base, result);
+    }
+
+    @Test
+    void testMergeWithNullKeepsModelSettings() {
+        final var baseSettings = ModelSettings.builder()
+                .maxTokens(1000)
+                .build();
+
+        final var base = AutoCompactionSetup.builder()
+                .modelSettings(baseSettings)
+                .build();
+
+        final var result = base.merge(null);
+
+        assertSame(base, result);
+        assertEquals(baseSettings, result.getModelSettings());
     }
 
     @Test

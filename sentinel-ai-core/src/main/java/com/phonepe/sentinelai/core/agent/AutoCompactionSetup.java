@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.core.agent;
 
 import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
 import com.phonepe.sentinelai.core.model.Model;
+import com.phonepe.sentinelai.core.model.ModelSettings;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -33,10 +34,11 @@ import javax.annotation.Nullable;
 @Builder
 @With
 public class AutoCompactionSetup {
-    public static final AutoCompactionSetup DEFAULT = AutoCompactionSetup.builder().build();
-
     public static final int DEFAULT_TOKEN_BUDGET = 1500;
     public static final int DEFAULT_COMPACTION_TRIGGER_THRESHOLD = 60;
+    public static final boolean DEFAULT_SKIP_TOOL_MESSAGES = false;
+
+    public static final AutoCompactionSetup DEFAULT = AutoCompactionSetup.builder().build();
 
     @Builder.Default
     @NonNull
@@ -48,8 +50,25 @@ public class AutoCompactionSetup {
     @Builder.Default
     private final int compactionTriggerThresholdPercentage = DEFAULT_COMPACTION_TRIGGER_THRESHOLD;
 
+    /**
+     * When {@code true}, tool-call requests and responses are dropped before summarization because they are
+     * transient execution noise and add no enduring value to a session summary. The default keeps tool-call
+     * interactions so the summarizer sees the full conversation.
+     */
+    @Builder.Default
+    private final boolean skipToolMessages = DEFAULT_SKIP_TOOL_MESSAGES;
+
     @Nullable
     private final Model model;
+
+    /**
+     * Model settings to use for the compaction run. When provided, these settings replace the session's
+     * model settings for the compaction call. This allows specifying a different temperature, max tokens,
+     * model attributes (context window size, encoding type), etc. for the compaction model.
+     * When {@code null}, the session's model settings are used.
+     */
+    @Nullable
+    private final ModelSettings modelSettings;
 
     public AutoCompactionSetup merge(@Nullable AutoCompactionSetup other) {
         if (other == null) {
@@ -62,7 +81,13 @@ public class AutoCompactionSetup {
                         != DEFAULT_COMPACTION_TRIGGER_THRESHOLD
                                 ? other.compactionTriggerThresholdPercentage
                                 : this.compactionTriggerThresholdPercentage)
+                .skipToolMessages(other.skipToolMessages != DEFAULT_SKIP_TOOL_MESSAGES
+                        ? other.skipToolMessages
+                        : this.skipToolMessages)
                 .model(other.model != null ? other.model : this.model)
+                .modelSettings(other.modelSettings != null
+                        ? other.modelSettings
+                        : this.modelSettings)
                 .build();
     }
 }

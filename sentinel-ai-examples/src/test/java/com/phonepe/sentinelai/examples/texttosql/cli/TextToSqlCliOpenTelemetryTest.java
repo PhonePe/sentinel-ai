@@ -41,12 +41,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@Disabled
 class TextToSqlCliOpenTelemetryTest {
     private InMemorySpanExporter spanExporter;
     private SdkTracerProvider tracerProvider;
     private OpenTelemetrySdk openTelemetrySdk;
 
+    @Disabled("Flaky on CI: spans are emitted asynchronously")
     @Test
     void cliOpenTelemetryExtensionEmitsSpansForAgentExecution() {
         final var mapper = new ObjectMapper();
