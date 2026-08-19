@@ -35,7 +35,9 @@ import com.phonepe.sentinelai.examples.texttosql.agent.TextToSqlAgent;
 import com.phonepe.sentinelai.examples.texttosql.cli.support.StubTextToSqlModel;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -64,7 +66,8 @@ class TextToSqlCliOpenTelemetryTest {
 
         assertNotNull(output.getData());
         assertEquals("SELECT 1", output.getData().generatedSql());
-        assertFalse(spanExporter.getFinishedSpanItems().isEmpty());
+        await().atMost(5, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertFalse(spanExporter.getFinishedSpanItems().isEmpty()));
     }
 
     @BeforeEach
