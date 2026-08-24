@@ -716,31 +716,22 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     }
 
     @SuppressWarnings("unchecked")
+    @SneakyThrows
     private ToolCall modifyToolCallArguments(AgentRunContext<R> context, ToolCall toolCall) {
-        try {
-
-            final var mapper = context.getAgentSetup()
-                    .getMapper();
-            var argumentNode = mapper
-                    .readTree(toolCall.getArguments());
-            for (final var extension : this.extensions) {
-                argumentNode = extension.modifyToolCallArguments(context, (A) this, toolCall, argumentNode);
-            }
-            return new ToolCall(toolCall.getSessionId(),
-                                toolCall.getRunId(),
-                                toolCall.getMessageId(),
-                                toolCall.getTimestamp(),
-                                toolCall.getToolCallId(),
-                                toolCall.getToolName(),
-                                mapper.writeValueAsString(argumentNode));
+        final var mapper = context.getAgentSetup()
+                .getMapper();
+        var argumentNode = mapper
+                .readTree(toolCall.getArguments());
+        for (final var extension : this.extensions) {
+            argumentNode = extension.modifyToolCallArguments(context, (A) this, toolCall, argumentNode);
         }
-        catch (Exception e) {
-            log.error("Error transforming arguments for tool call %s: %s [Arguments: %s]"
-                    .formatted(toolCall.getToolCallId(),
-                               AgentUtils.rootCause(e).getMessage(),
-                               toolCall.getArguments()));
-            return toolCall;
-        }
+        return new ToolCall(toolCall.getSessionId(),
+                            toolCall.getRunId(),
+                            toolCall.getMessageId(),
+                            toolCall.getTimestamp(),
+                            toolCall.getToolCallId(),
+                            toolCall.getToolName(),
+                            mapper.writeValueAsString(argumentNode));
     }
 
     private ModelOutput makeModelCall(AgentSetup mergedAgentSetup,

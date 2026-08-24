@@ -70,9 +70,15 @@ class AgentTest {
      */
     private static final class ModifyingExtension implements AgentExtension<String, String, TestAgent> {
         private final boolean returnNull;
+        private final boolean throwError;
 
         private ModifyingExtension(boolean returnNull) {
+            this(returnNull, false);
+        }
+
+        private ModifyingExtension(boolean returnNull, boolean throwError) {
             this.returnNull = returnNull;
+            this.throwError = throwError;
         }
 
         @Override
@@ -95,6 +101,9 @@ class AgentTest {
                                                 TestAgent agent,
                                                 ToolCall toolCall,
                                                 JsonNode inputArguments) {
+            if (throwError) {
+                throw new IllegalArgumentException("Invalid input argument");
+            }
             if (returnNull) {
                 return null;
             }
@@ -419,6 +428,124 @@ class AgentTest {
     }
 
     @Test
+    void testToolCallArgumentModificationThrowsError() {
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_structured_tool"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_structured_tool",
+                                                                                 """
+                                                                                         {
+                                                                                            "input": {
+                                                                                                "data" : "Test Data"
+                                                                                            }
+                                                                                         }
+                                                                                         """));
+                            assertFalse(response.isSuccess());
+                            assertEquals(ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                         response.getErrorType());
+                            assertTrue(response.getResponse()
+                                    .contains("Invalid input argument"));
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput("Tool call failed"),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(new ModifyingExtension(false, true)), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Tool call failed"));
+    }
+
+    @Test
+    void testToolCallFailure() {
+
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey("test_agent_throw_tool"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_throw_tool",
+                                                                                 "{}"));
+                            assertFalse(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime
+                                                                             .now());
+                            messages.add(message);
+                            return ModelOutput.error(messages,
+                                                     context.getModelUsageStats(),
+                                                     SentinelError.error(
+                                                                         ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                                                         response.getResponse()));
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertNull(response.getData());
+        final var data = response.getError();
+        assertTrue(data.getMessage().contains("Test exception"));
+    }
+
+    @Test
     void testToolCallModificationNull() {
         final var textAgent = new TestAgent(AgentSetup.builder()
                 .model(new Model() {
@@ -476,64 +603,6 @@ class AgentTest {
                         .build())
                 .build());
         assertTrue(response.getData().contains("Tool call skipped"));
-    }
-
-    @Test
-    void testToolCallFailure() {
-
-        final var textAgent = new TestAgent(AgentSetup.builder()
-                .model(new Model() {
-
-                    @Override
-                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
-                                                                  Collection<ModelOutputDefinition> outputDefinitions,
-                                                                  List<AgentMessage> oldMessages,
-                                                                  Map<String, ExecutableTool> tools,
-                                                                  ToolRunner toolRunner,
-                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
-                                                                  List<AgentMessagesPreProcessor> preProcessors) {
-                        return CompletableFuture.supplyAsync(() -> {
-                            assertTrue(tools.containsKey(
-                                                         "test_agent_throw_tool"));
-                            final var response = toolRunner.runTool(tools,
-                                                                    new ToolCall("s1",
-                                                                                 "r1",
-                                                                                 "TC1",
-                                                                                 "test_agent_throw_tool",
-                                                                                 "{}"));
-                            assertFalse(response.isSuccess());
-                            assertEquals("TC1", response.getToolCallId());
-                            final var messages = new ArrayList<>(oldMessages);
-                            final var message = new ToolCallResponse("s1",
-                                                                     "r1",
-                                                                     response.getToolCallId(),
-                                                                     response.getToolName(),
-                                                                     response.getErrorType(),
-                                                                     response.getResponse(),
-                                                                     LocalDateTime
-                                                                             .now());
-                            messages.add(message);
-                            return ModelOutput.error(messages,
-                                                     context.getModelUsageStats(),
-                                                     SentinelError.error(
-                                                                         ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                                                         response.getResponse()));
-                        });
-                    }
-                })
-                .modelSettings(ModelSettings.builder().build())
-                .mapper(MAPPER)
-                .build(), List.of(), Map.of());
-        final var response = textAgent.execute(AgentInput.<String>builder()
-                .request("Hi")
-                .requestMetadata(AgentRequestMetadata.builder()
-                        .sessionId("s1")
-                        .userId("ss")
-                        .build())
-                .build());
-        assertNull(response.getData());
-        final var data = response.getError();
-        assertTrue(data.getMessage().contains("Test exception"));
     }
 
     @Test

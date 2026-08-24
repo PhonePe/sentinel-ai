@@ -57,6 +57,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.UnaryOperator;
 
+import static com.phonepe.sentinelai.core.utils.AgentUtils.rootCause;
+
 /**
  *
  */
@@ -180,17 +182,22 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                         "Tool call was not approved by the user",
                                         LocalDateTime.now());
         }
-        final var toolCall = toolCallPreProcessor.apply(providedToolCall);
-        if (null == toolCall) {
-            log.info("Tool call {} for tool {} was pre-processed to null, skipping execution",
+        var toolCall = providedToolCall;
+        try {
+            toolCall = toolCallPreProcessor.apply(providedToolCall);
+        }
+        catch (Exception e) {
+            final var rootCause = AgentUtils.rootCause(e).getMessage();
+            log.info("Tool call {} for tool {} failed with error: {}",
                      providedToolCall.getToolCallId(),
-                     providedToolCall.getToolName());
+                     providedToolCall.getToolName(),
+                     rootCause);
             return new ToolCallResponse(AgentUtils.sessionId(context),
                                         context.getRunId(),
                                         providedToolCall.getToolCallId(),
                                         providedToolCall.getToolName(),
                                         ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                        "Tool call was pre-processed to null, skipping execution",
+                                        "Tool call failed with error: " + rootCause,
                                         LocalDateTime.now());
         }
         eventBus.notify(new ToolCalledAgentEvent(agent.name(),
@@ -214,7 +221,6 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                                                 .elapsed(TimeUnit.MILLISECONDS))));
         return response;
     }
-
 
     /**
      * Convert parameters string received from LLM to actual parameters for tool call

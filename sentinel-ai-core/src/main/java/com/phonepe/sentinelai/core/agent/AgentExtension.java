@@ -108,6 +108,7 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
     /**
      * This method can be used to modify the input arguments for a tool call. This can be used to add additional
      * parameters to the tool call or modify the existing parameters.
+     * To fail the tool call in case of invalid input, throw an exception from this method.
      *
      * @param context        Context for the agent run
      * @param agent          Reference to the agent
