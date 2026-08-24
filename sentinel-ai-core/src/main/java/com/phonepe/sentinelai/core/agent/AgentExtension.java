@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 
 import lombok.Value;
@@ -102,6 +103,24 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
                                         A agent,
                                         R request) {
         return List.of();
+    }
+
+    /**
+     * This method can be used to modify the input arguments for a tool call. This can be used to add additional
+     * parameters to the tool call or modify the existing parameters.
+     *
+     * @param context        Context for the agent run
+     * @param agent          Reference to the agent
+     * @param toolCall       Tool call object
+     * @param inputArguments Input arguments for the tool call
+     * @return Modified input arguments for the tool call
+     */
+    @SuppressWarnings("unused")
+    default JsonNode modifyToolCallArguments(AgentRunContext<R> context,
+                                             A agent,
+                                             ToolCall toolCall,
+                                             JsonNode inputArguments) {
+        return inputArguments;
     }
 
     /**

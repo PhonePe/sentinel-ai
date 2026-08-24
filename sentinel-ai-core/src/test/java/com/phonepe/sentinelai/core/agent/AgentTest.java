@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.core.agent;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -48,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,6 +64,56 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AgentTest {
 
     private static final ObjectMapper MAPPER = JsonUtils.createMapper();
+
+    /**
+     * Extension that can modify tool call arguments or return null based on a flag.
+     */
+    private static final class ModifyingExtension implements AgentExtension<String, String, TestAgent> {
+        private final boolean returnNull;
+
+        private ModifyingExtension(boolean returnNull) {
+            this.returnNull = returnNull;
+        }
+
+        @Override
+        public ExtensionPromptSchema additionalSystemPrompts(String request,
+                                                             AgentRunContext<String> context,
+                                                             TestAgent agent,
+                                                             ProcessingMode processingMode) {
+            return new ExtensionPromptSchema(List.of());
+        }
+
+        @Override
+        public List<FactList> facts(String request,
+                                    AgentRunContext<String> context,
+                                    TestAgent agent) {
+            return List.of();
+        }
+
+        @Override
+        public JsonNode modifyToolCallArguments(AgentRunContext<String> context,
+                                                TestAgent agent,
+                                                ToolCall toolCall,
+                                                JsonNode inputArguments) {
+            if (returnNull) {
+                return null;
+            }
+            final var node = (ObjectNode) inputArguments;
+            final var input = (ObjectNode) node.get("input");
+            input.put("data", "Modified Data");
+            return node;
+        }
+
+        @Override
+        public String name() {
+            return "modifying-extension";
+        }
+
+        @Override
+        public Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode) {
+            return Optional.empty();
+        }
+    }
 
     private static final class TestAgent extends Agent<String, String, TestAgent> {
 
@@ -307,6 +359,126 @@ class AgentTest {
     }
 
     @Test
+    void testToolCallArgumentModification() {
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_structured_tool"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_structured_tool",
+                                                                                 """
+                                                                                         {
+                                                                                            "input": {
+                                                                                                "data" : "Test Data"
+                                                                                            }
+                                                                                         }
+                                                                                         """));
+                            assertTrue(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput(
+                                                                        "Hello " + response
+                                                                                .getResponse()),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(new ModifyingExtension(false)), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Hello Modified Data"));
+    }
+
+    @Test
+    void testToolCallModificationNull() {
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_structured_tool"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_structured_tool",
+                                                                                 """
+                                                                                         {
+                                                                                            "input": {
+                                                                                                "data" : "Test Data"
+                                                                                            }
+                                                                                         }
+                                                                                         """));
+                            assertFalse(response.isSuccess());
+                            assertEquals(ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                         response.getErrorType());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime
+                                                                             .now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput("Tool call skipped"),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(new ModifyingExtension(true)), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Tool call skipped"));
+    }
+
+    @Test
     void testToolCallFailure() {
 
         final var textAgent = new TestAgent(AgentSetup.builder()
@@ -549,5 +721,4 @@ class AgentTest {
             String output
     ) {
     }
-
 }
