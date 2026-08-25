@@ -455,7 +455,7 @@ class AgentTest {
                                                                                          }
                                                                                          """));
                             assertFalse(response.isSuccess());
-                            assertEquals(ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                            assertEquals(ErrorType.TOOL_CALL_PREPROCESSING_FAILURE,
                                          response.getErrorType());
                             assertTrue(response.getResponse()
                                     .contains("Invalid input argument"));
@@ -485,6 +485,7 @@ class AgentTest {
                         .userId("ss")
                         .build())
                 .build());
+        System.out.println("Response: " + response);
         assertTrue(response.getData().contains("Tool call failed"));
     }
 

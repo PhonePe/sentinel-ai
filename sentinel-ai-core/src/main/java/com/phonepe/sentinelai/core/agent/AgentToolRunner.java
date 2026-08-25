@@ -57,8 +57,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.UnaryOperator;
 
-import static com.phonepe.sentinelai.core.utils.AgentUtils.rootCause;
-
 /**
  *
  */
@@ -182,32 +180,43 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                         "Tool call was not approved by the user",
                                         LocalDateTime.now());
         }
+        eventBus.notify(new ToolCalledAgentEvent(agent.name(),
+                                                 context.getRunId(),
+                                                 AgentUtils.sessionId(context),
+                                                 AgentUtils.userId(context),
+                                                 providedToolCall.getToolCallId(),
+                                                 providedToolCall.getToolName(),
+                                                 providedToolCall.getArguments()));
+        final var stopwatch = Stopwatch.createStarted();
         var toolCall = providedToolCall;
         try {
             toolCall = toolCallPreProcessor.apply(providedToolCall);
         }
         catch (Exception e) {
             final var rootCause = AgentUtils.rootCause(e).getMessage();
+            final var response = "Tool call failed with error: " + rootCause;
             log.info("Tool call {} for tool {} failed with error: {}",
                      providedToolCall.getToolCallId(),
                      providedToolCall.getToolName(),
                      rootCause);
+            eventBus.notify(new ToolCallCompletedAgentEvent(agent.name(),
+                                                            context.getRunId(),
+                                                            AgentUtils.sessionId(context),
+                                                            AgentUtils.userId(context),
+                                                            toolCall.getToolCallId(),
+                                                            toolCall.getToolName(),
+                                                            ErrorType.TOOL_CALL_PREPROCESSING_FAILURE,
+                                                            response,
+                                                            Duration.ofMillis(stopwatch
+                                                                    .elapsed(TimeUnit.MILLISECONDS))));
             return new ToolCallResponse(AgentUtils.sessionId(context),
                                         context.getRunId(),
                                         providedToolCall.getToolCallId(),
                                         providedToolCall.getToolName(),
-                                        ErrorType.TOOL_CALL_PERMANENT_FAILURE,
-                                        "Tool call failed with error: " + rootCause,
+                                        ErrorType.TOOL_CALL_PREPROCESSING_FAILURE,
+                                        response,
                                         LocalDateTime.now());
         }
-        eventBus.notify(new ToolCalledAgentEvent(agent.name(),
-                                                 context.getRunId(),
-                                                 AgentUtils.sessionId(context),
-                                                 AgentUtils.userId(context),
-                                                 toolCall.getToolCallId(),
-                                                 toolCall.getToolName(),
-                                                 toolCall.getArguments()));
-        final var stopwatch = Stopwatch.createStarted();
         final var response = runTool(context, tools, toolCall);
         eventBus.notify(new ToolCallCompletedAgentEvent(agent.name(),
                                                         context.getRunId(),
