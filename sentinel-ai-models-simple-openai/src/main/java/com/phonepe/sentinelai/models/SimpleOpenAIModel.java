@@ -42,8 +42,10 @@ import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.agent.StreamConsumer;
 import com.phonepe.sentinelai.core.agent.ToolRunner;
+import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
+import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
@@ -356,11 +358,24 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 };
 
                 if (shouldLoop(output)) {
+                    final var modelOutput = Objects.requireNonNullElseGet(output,
+                                                                          () -> new ModelOutput(null,
+                                                                                                newMessages,
+                                                                                                allMessages,
+                                                                                                stats,
+                                                                                                null));
+                    final var agentMessages = AgentMessages
+                            .builder()
+                            .newMessages(newMessages)
+                            .allMessages(allMessages)
+                            .openAiMessages(openAiMessages)
+                            .build();
                     output = evaluateRunTerminationStrategy(context,
                                                             earlyTerminationStrategy,
                                                             modelSettings,
-                                                            output,
-                                                            stats);
+                                                            modelOutput,
+                                                            stats,
+                                                            agentMessages);
                 }
                 prevMessages = List.copyOf(allMessages);
             } while (shouldLoop(output));
@@ -589,16 +604,17 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                     .toList();
 
                             if (!calls.isEmpty()) {
+                                final var agentMessages = AgentMessages
+                                        .builder()
+                                        .newMessages(newMessages)
+                                        .allMessages(allMessages)
+                                        .openAiMessages(openAiMessages)
+                                        .build();
                                 handleToolCalls(context,
                                                 toolsForExecution,
                                                 toolRunner,
                                                 calls,
-                                                AgentMessages
-                                                        .builder()
-                                                        .newMessages(newMessages)
-                                                        .allMessages(allMessages)
-                                                        .openAiMessages(openAiMessages)
-                                                        .build(),
+                                                agentMessages,
                                                 stats,
                                                 stopwatch);
                                 toolCallData.clear();
@@ -646,11 +662,24 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                 // usage etc. will get missed. Usage for example comes only after the full response is received.
                 output = outputs.isEmpty() ? null : outputs.get(outputs.size() - 1);
                 if (shouldLoop(output)) {
+                    final var modelOutput = Objects.requireNonNullElseGet(output,
+                                                                          () -> new ModelOutput(null,
+                                                                                                newMessages,
+                                                                                                allMessages,
+                                                                                                stats,
+                                                                                                null));
+                    AgentMessages agentMessages2 = AgentMessages
+                            .builder()
+                            .newMessages(newMessages)
+                            .allMessages(allMessages)
+                            .openAiMessages(openAiMessages)
+                            .build();
                     output = evaluateRunTerminationStrategy(context,
                                                             earlyTerminationStrategy,
                                                             modelSettings,
-                                                            output,
-                                                            stats);
+                                                            modelOutput,
+                                                            stats,
+                                                            agentMessages2);
                 }
                 prevMessages = List.copyOf(allMessages); // Keep a copy. we need to find delta
             } while (shouldLoop(output));
@@ -829,22 +858,57 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                               EarlyTerminationStrategy earlyTerminationStrategy,
                                                               ModelSettings modelSettings,
                                                               ModelOutput output,
-                                                              ModelUsageStats stats) {
+                                                              ModelUsageStats stats,
+                                                              AgentMessages agentMessages) {
         final var strategyResponse = earlyTerminationStrategy.evaluate(
                                                                        modelSettings,
                                                                        context,
                                                                        output);
         if (isEarlyTermination(strategyResponse)) {
-            output = ModelOutput.error(Optional.ofNullable(output)
+            return ModelOutput.error(Optional.ofNullable(output)
                     .map(ModelOutput::getAllMessages)
                     .orElse(List.of()),
-                                       stats,
-                                       new SentinelError(strategyResponse
-                                               .getErrorType(),
-                                                         strategyResponse
-                                                                 .getReason()));
+                                     stats,
+                                     new SentinelError(strategyResponse
+                                             .getErrorType(),
+                                                       strategyResponse
+                                                               .getReason()));
+        }
+        if (null != strategyResponse && strategyResponse.getResponseType()
+                == EarlyTerminationStrategyResponse.ResponseType.INSTRUCT) {
+            sendFeedbackToModel(context, strategyResponse.getReason(), agentMessages);
         }
         return output;
+    }
+
+    /**
+     * Adds the feedback instruction from an early termination strategy to the model
+     * conversation as a user message. The model receives the instruction on the next
+     * model call of the same run. The run continues.
+     */
+    private static void sendFeedbackToModel(final ModelRunContext context,
+                                            final String instruction,
+                                            final AgentMessages agentMessages) {
+        if (Strings.isNullOrEmpty(instruction)) {
+            log.warn("Early termination strategy requested feedback with an empty instruction. Ignoring.");
+            return;
+        }
+        log.warn("Sending feedback to model in run {}: {}", context.getRunId(), instruction);
+        final var feedbackMessage = new GenericText(context.getSessionId(),
+                                                    context.getRunId(),
+                                                    AgentGenericMessage.Role.USER,
+                                                    instruction);
+        final var messagesBeforeFeedback = List.copyOf(agentMessages.getAllMessages());
+        agentMessages.getAllMessages().add(feedbackMessage);
+        agentMessages.getNewMessages().add(feedbackMessage);
+        final var stopwatch = Stopwatch.createStarted();
+        raiseMessageReceivedEvent(context,
+                                  List.of(feedbackMessage),
+                                  agentMessages.getAllMessages(),
+                                  stopwatch);
+        raiseMessageSentEvent(context,
+                              messagesBeforeFeedback,
+                              agentMessages.getAllMessages());
     }
 
     private static Chat.Choice extractResponse(Chat completionResponse) {

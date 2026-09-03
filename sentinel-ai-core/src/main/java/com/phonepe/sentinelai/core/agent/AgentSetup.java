@@ -41,8 +41,14 @@ import java.util.function.UnaryOperator;
 @With
 public class AgentSetup {
     /** Default maximum tool response size as a percentage of the model context window (10 %). */
+    /** Default maximum tool response size as a percentage of the model context window (10 %). */
     public static final int DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE = 10;
 
+    /**
+     * Default maximum number of times the same tool call may repeat consecutively in a run
+     * before the tool runner blocks further identical calls (3).
+     */
+    public static final int DEFAULT_MAX_IDENTICAL_TOOL_CALLS = 3;
     /**
      * The object mapper to use for serialization/deserialization. If not provided, a default one will be created.
      */
@@ -101,4 +107,13 @@ public class AgentSetup {
      */
     @Builder.Default
     int maxToolResponsePercentage = DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE;
+
+    /**
+     * Maximum number of times the same tool call (same tool name and identical arguments) may
+     * repeat consecutively in a run before the tool runner blocks further identical calls and
+     * returns an error response to the model. The guard resets the count when a different tool
+     * call arrives. Any value that is {@code <= 0} disables the guard.
+     */
+    @Builder.Default
+    int maxIdenticalToolCalls = DEFAULT_MAX_IDENTICAL_TOOL_CALLS;
 }

@@ -41,6 +41,7 @@ public class SafeToolRunner implements ToolRunner {
     private final Model model;
     private final String sessionId;
     private final String runId;
+    private final RepeatedToolCallGuard repeatedToolCallGuard;
 
     public SafeToolRunner(@NonNull ToolRunner delegate,
                           @NonNull AgentSetup agentSetup,
@@ -52,10 +53,18 @@ public class SafeToolRunner implements ToolRunner {
         this.model = model;
         this.sessionId = sessionId;
         this.runId = runId;
+        this.repeatedToolCallGuard = new RepeatedToolCallGuard(agentSetup.getMaxIdenticalToolCalls(),
+                                                               sessionId,
+                                                               runId);
     }
 
     @Override
     public ToolCallResponse runTool(Map<String, ExecutableTool> tools, ToolCall toolCall) {
+        final var blockedResponse = repeatedToolCallGuard.registerCall(toolCall);
+        if (null != blockedResponse) {
+            // The call repeats an earlier call in this run. Do not run the tool, tell the model.
+            return blockedResponse;
+        }
         final var response = runToolInternal(tools, toolCall);
         // Resolve effective percentage; fall back to default if out of valid range (<=0 or >100)
         final int configuredPct = agentSetup.getMaxToolResponsePercentage();
