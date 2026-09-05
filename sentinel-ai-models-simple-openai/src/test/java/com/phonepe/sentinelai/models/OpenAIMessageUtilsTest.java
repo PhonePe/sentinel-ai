@@ -62,7 +62,7 @@ class OpenAIMessageUtilsTest {
         return Stream.of(Arguments.of(SystemPrompt.builder().sessionId(SESSION_ID).content("rules").build(),
                                       ChatMessage.SystemMessage.class,
                                       "rules"),
-                         Arguments.of(new UserPrompt(SESSION_ID, RUN_ID, "hi", false, SENT_AT),
+                         Arguments.of(UserPrompt.text(SESSION_ID, RUN_ID, "hi", SENT_AT),
                                       ChatMessage.UserMessage.class,
                                       "<sentAt>2026-07-25T10:00:00Z</sentAt>\nhi"),
                          Arguments.of(ToolCallResponse.builder()
@@ -163,9 +163,8 @@ class OpenAIMessageUtilsTest {
                 .sessionId(SESSION_ID)
                 .content("rules")
                 .build(),
-                                                    new UserPrompt(SESSION_ID, RUN_ID, "hi", false, SENT_AT),
+                                                    UserPrompt.text(SESSION_ID, RUN_ID, "hi", SENT_AT),
                                                     new Text(SESSION_ID, RUN_ID, "hello", new ModelUsageStats(), 1L));
-
         final var converted = OpenAIMessageUtils.convertToOpenAIMessages(messages);
 
         assertEquals(3, converted.size());
@@ -180,10 +179,10 @@ class OpenAIMessageUtilsTest {
                 .sessionId(SESSION_ID)
                 .content("rules")
                 .build(),
-                                                    new UserPrompt(SESSION_ID, RUN_ID, "old", false, SENT_AT),
+                                                    UserPrompt.text(SESSION_ID, RUN_ID, "old", SENT_AT),
                                                     new Text(SESSION_ID, RUN_ID, "answer", new ModelUsageStats(), 1L),
-                                                    new UserPrompt(SESSION_ID, RUN_ID, "summary", true, SENT_AT),
-                                                    new UserPrompt(SESSION_ID, RUN_ID, "new", false, SENT_AT));
+                                                    UserPrompt.compactedText(SESSION_ID, RUN_ID, "summary", SENT_AT),
+                                                    UserPrompt.text(SESSION_ID, RUN_ID, "new", SENT_AT));
 
         final var converted = OpenAIMessageUtils.convertToOpenAIMessages(messages);
 

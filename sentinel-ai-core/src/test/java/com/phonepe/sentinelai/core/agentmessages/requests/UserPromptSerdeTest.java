@@ -38,23 +38,20 @@ class UserPromptSerdeTest {
 
     @Test
     void repeatedSerializationIsStable() throws Exception {
-        final var prompt = new UserPrompt("session-1",
-                                          "run-1",
-                                          "<user_input><data>hi</data></user_input>",
-                                          false,
-                                          LocalDateTime.of(2026, 7, 25, 10, 0, 0));
+        final var prompt = UserPrompt.text("session-1",
+                                           "run-1",
+                                           "<user_input><data>hi</data></user_input>",
+                                           LocalDateTime.of(2026, 7, 25, 10, 0, 0));
 
         assertEquals(mapper.writeValueAsString(prompt), mapper.writeValueAsString(prompt));
     }
 
     @Test
     void sentAtSurvivesRoundTripUnchanged() throws Exception {
-        final var original = new UserPrompt("session-1",
-                                            "run-1",
-                                            "<user_input><data>hello</data></user_input>",
-                                            false,
-                                            LocalDateTime.of(2026, 7, 25, 10, 0, 0));
-
+        final var original = UserPrompt.text("session-1",
+                                             "run-1",
+                                             "<user_input><data>hello</data></user_input>",
+                                             LocalDateTime.of(2026, 7, 25, 10, 0, 0));
         final var json = mapper.writeValueAsString(original);
         final var revived = mapper.readValue(json, UserPrompt.class);
 

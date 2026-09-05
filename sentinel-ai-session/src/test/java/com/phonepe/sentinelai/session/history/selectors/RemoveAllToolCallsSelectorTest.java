@@ -48,9 +48,9 @@ class RemoveAllToolCallsSelectorTest {
     void testMultipleSessions() {
         var selector = new RemoveAllToolCallsSelector();
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt("session-1", "run-1", "u1", LocalDateTime.now()),
+                                                   UserPrompt.text("session-1", "run-1", "u1", LocalDateTime.now()),
                                                    new ToolCall("session-1", "run-1", "tc-1", "tool", "{}"),
-                                                   new UserPrompt("session-2", "run-2", "u2", LocalDateTime.now()),
+                                                   UserPrompt.text("session-2", "run-2", "u2", LocalDateTime.now()),
                                                    new ToolCall("session-2", "run-2", "tc-2", "tool", "{}")
         );
         final var result = selector.select("session-1", new ArrayList<>(messages));
@@ -63,10 +63,10 @@ class RemoveAllToolCallsSelectorTest {
         var selector = new RemoveAllToolCallsSelector();
         final var sessionId = "s-3";
         final var runId = "r-3";
-        final var messages = List.of(new UserPrompt(sessionId,
-                                                    runId,
-                                                    "u3",
-                                                    LocalDateTime.now()),
+        final var messages = List.of(UserPrompt.text(sessionId,
+                                                     runId,
+                                                     "u3",
+                                                     LocalDateTime.now()),
                                      new Text(sessionId,
                                               runId,
                                               "t3",
@@ -86,7 +86,7 @@ class RemoveAllToolCallsSelectorTest {
         var selector = new RemoveAllToolCallsSelector();
         final var sessionId = "s-6";
         final var runId = "r-6";
-        var userPrompt = new UserPrompt(sessionId, runId, "user", LocalDateTime.now());
+        var userPrompt = UserPrompt.text(sessionId, runId, "user", LocalDateTime.now());
         var textResponse = new Text(sessionId, runId, "text", new ModelUsageStats(), 100);
         var genericText = new GenericText(sessionId, runId, Role.USER, "generic");
         final var messages = List.<AgentMessage>of(
@@ -115,7 +115,7 @@ class RemoveAllToolCallsSelectorTest {
         var selector = new RemoveAllToolCallsSelector();
         final var sessionId = "s-5";
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt(sessionId, "run-1", "user1", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, "run-1", "user1", LocalDateTime.now()),
                                                    new ToolCall(sessionId, "run-1", "tc-1", "tool1", "{}"),
                                                    new ToolCallResponse(sessionId,
                                                                         "run-1",
@@ -125,7 +125,7 @@ class RemoveAllToolCallsSelectorTest {
                                                                         "resp1",
                                                                         LocalDateTime.now()),
                                                    new Text(sessionId, "run-1", "text1", new ModelUsageStats(), 100),
-                                                   new UserPrompt(sessionId, "run-2", "user2", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, "run-2", "user2", LocalDateTime.now()),
                                                    new ToolCall(sessionId, "run-2", "tc-2", "tool2", "{}"),
                                                    new ToolCallResponse(sessionId,
                                                                         "run-2",
@@ -147,10 +147,10 @@ class RemoveAllToolCallsSelectorTest {
         final var sessionId = "s-1";
         final var runId = "r-1";
         final var messages = new ArrayList<AgentMessage>();
-        messages.add(new UserPrompt(sessionId,
-                                    runId,
-                                    "u1",
-                                    LocalDateTime.now()));
+        messages.add(UserPrompt.text(sessionId,
+                                     runId,
+                                     "u1",
+                                     LocalDateTime.now()));
         messages.add(new Text(sessionId,
                               runId,
                               "t1",
@@ -201,7 +201,7 @@ class RemoveAllToolCallsSelectorTest {
         final var sessionId = "s-7";
         final var runId = "r-7";
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                                    new ToolCall(sessionId, runId, "tc-orphan", "tool", "{}"),
                                                    new Text(sessionId, runId, "text", new ModelUsageStats(), 100)
         );
@@ -216,7 +216,7 @@ class RemoveAllToolCallsSelectorTest {
         final var sessionId = "s-8";
         final var runId = "r-8";
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
                                                                         "tc-orphan",
@@ -236,7 +236,7 @@ class RemoveAllToolCallsSelectorTest {
         var selector = new RemoveAllToolCallsSelector();
         final var runId = "r-9";
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt(null, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(null, runId, "user", LocalDateTime.now()),
                                                    new ToolCall(null, runId, "tc-1", "tool", "{}"),
                                                    new Text(null, runId, "text", new ModelUsageStats(), 100)
         );

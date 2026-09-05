@@ -55,7 +55,7 @@ class FailedToolCallRemovalPreFilterTest {
         var runId = "run-3";
         var toolCallId = "tc-success";
         var messages = List.<AgentMessage>of(
-                                             new UserPrompt(sessionId, runId, "user message", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now()),
                                              new ToolCall(sessionId,
                                                           runId,
                                                           "msg-1",
@@ -88,7 +88,7 @@ class FailedToolCallRemovalPreFilterTest {
         var successId = "tc-success";
         var failId = "tc-fail";
         var messages = List.<AgentMessage>of(
-                                             new UserPrompt(sessionId, runId, "user message", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now()),
                                              new ToolCall(sessionId,
                                                           runId,
                                                           "msg-1",
@@ -130,7 +130,7 @@ class FailedToolCallRemovalPreFilterTest {
         var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-8";
         var messages = List.<AgentMessage>of(
-                                             new UserPrompt(sessionId, "run-1", "user 1", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, "run-1", "user 1", LocalDateTime.now()),
                                              new ToolCall(sessionId, "run-1", "msg-1", null, "tc-1", "tool", "{}"),
                                              new ToolCallResponse(sessionId,
                                                                   "run-1",
@@ -141,7 +141,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.SUCCESS,
                                                                   "ok",
                                                                   LocalDateTime.now()),
-                                             new UserPrompt(sessionId, "run-2", "user 2", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, "run-2", "user 2", LocalDateTime.now()),
                                              new ToolCall(sessionId, "run-2", "msg-3", null, "tc-2", "tool", "{}"),
                                              new ToolCallResponse(sessionId,
                                                                   "run-2",
@@ -166,7 +166,7 @@ class FailedToolCallRemovalPreFilterTest {
         var filter = new FailedToolCallRemovalPreFilter();
         var sessionId = "session-7";
         var runId = "run-7";
-        var userPrompt = new UserPrompt(sessionId, runId, "user message", LocalDateTime.now());
+        var userPrompt = UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now());
         var textResponse = new Text(sessionId, runId, "response", new ModelUsageStats(), 100);
         var messages = List.<AgentMessage>of(
                                              userPrompt,
@@ -195,7 +195,7 @@ class FailedToolCallRemovalPreFilterTest {
         var runId = "run-2";
         var toolCallId = "tc-failed";
         var messages = List.<AgentMessage>of(
-                                             new UserPrompt(sessionId, runId, "user message", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now()),
                                              new ToolCall(sessionId,
                                                           runId,
                                                           "msg-1",
@@ -285,7 +285,7 @@ class FailedToolCallRemovalPreFilterTest {
         var runId = "run-12";
         var messages = List.<AgentMessage>of(
                                              new GenericText(sessionId, runId, Role.USER, "generic text"),
-                                             new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                              new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
         );
         var result = filter.filter(messages);
@@ -300,7 +300,7 @@ class FailedToolCallRemovalPreFilterTest {
         var messages = List.<AgentMessage>of(
                                              new SystemPrompt(sessionId, runId, "system", true, "m"),
                                              new GenericText(sessionId, runId, Role.USER, "generic"),
-                                             new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                              new ToolCall(sessionId, runId, "msg-1", null, "tc-1", "tool", "{}"),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -326,7 +326,7 @@ class FailedToolCallRemovalPreFilterTest {
         var sessionId = "session-1";
         var runId = "run-1";
         var messages = List.<AgentMessage>of(
-                                             new UserPrompt(sessionId, runId, "user message", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now()),
                                              new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
         );
         var result = filter.filter(messages);
@@ -370,7 +370,7 @@ class FailedToolCallRemovalPreFilterTest {
         var sessionId = "session-13";
         var runId = "run-13";
         var messages = List.<AgentMessage>of(
-                                             new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                              new StructuredOutput(sessionId,
                                                                   runId,
                                                                   "{\"key\": \"value\"}",
@@ -398,7 +398,7 @@ class FailedToolCallRemovalPreFilterTest {
         var runId = "run-11";
         var messages = List.<AgentMessage>of(
                                              new SystemPrompt(sessionId, runId, "system prompt", true, "method"),
-                                             new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                              new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
         );
         var result = filter.filter(messages);
@@ -411,7 +411,7 @@ class FailedToolCallRemovalPreFilterTest {
         var sessionId = "session-9";
         var runId = "run-9";
         var messages = List.<AgentMessage>of(
-                                             new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                              new ToolCall(sessionId, runId, "msg-1", null, "tc-orphan", "tool", "{}"),
                                              new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
         );
@@ -425,7 +425,7 @@ class FailedToolCallRemovalPreFilterTest {
         var sessionId = "session-10";
         var runId = "run-10";
         var messages = List.<AgentMessage>of(
-                                             new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                             UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-1",

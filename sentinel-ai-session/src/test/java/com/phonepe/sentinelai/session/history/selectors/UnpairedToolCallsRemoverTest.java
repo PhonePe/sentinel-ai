@@ -91,7 +91,7 @@ class UnpairedToolCallsRemoverTest {
         final var unpairedReqId = "unpaired-req";
         final var unpairedRespId = "unpaired-resp";
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                                    new ToolCall(sessionId,
                                                                 runId,
                                                                 pairedReqId,
@@ -143,7 +143,7 @@ class UnpairedToolCallsRemoverTest {
         final var sessionId = "s6";
         final var runId = "r6";
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                                    new ToolCall(sessionId, runId, "req-1", null, "tc-1", "tool1", "{}"),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -174,7 +174,7 @@ class UnpairedToolCallsRemoverTest {
     void testMultipleSessions() {
         var remover = new UnpairedToolCallsRemover();
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt("session-1", "run-1", "u1", LocalDateTime.now()),
+                                                   UserPrompt.text("session-1", "run-1", "u1", LocalDateTime.now()),
                                                    new ToolCall("session-1",
                                                                 "run-1",
                                                                 "req-1",
@@ -191,7 +191,7 @@ class UnpairedToolCallsRemoverTest {
                                                                         null,
                                                                         "r1",
                                                                         LocalDateTime.now()),
-                                                   new UserPrompt("session-2", "run-2", "u2", LocalDateTime.now()),
+                                                   UserPrompt.text("session-2", "run-2", "u2", LocalDateTime.now()),
                                                    new ToolCall("session-2",
                                                                 "run-2",
                                                                 "req-2",
@@ -245,7 +245,7 @@ class UnpairedToolCallsRemoverTest {
         final var sessionId = "s5";
         final var runId = "r5";
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                                    new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
         );
         final var result = remover.select(sessionId, new ArrayList<>(messages));
@@ -300,7 +300,7 @@ class UnpairedToolCallsRemoverTest {
         var remover = new UnpairedToolCallsRemover();
         final var sessionId = "s9";
         final var runId = "r9";
-        var userPrompt = new UserPrompt(sessionId, runId, "user", LocalDateTime.now());
+        var userPrompt = UserPrompt.text(sessionId, runId, "user", LocalDateTime.now());
         var textResponse = new Text(sessionId, runId, "response", new ModelUsageStats(), 100);
         final var messages = List.<AgentMessage>of(
                                                    userPrompt,
@@ -329,10 +329,10 @@ class UnpairedToolCallsRemoverTest {
         final var pairedReqId = "paired-req-msg";
         final var pairedRespId = "paired-resp-msg";
         final var messages = new ArrayList<AgentMessage>();
-        messages.add(new UserPrompt(sessionId,
-                                    runId,
-                                    "u",
-                                    LocalDateTime.now()));
+        messages.add(UserPrompt.text(sessionId,
+                                     runId,
+                                     "u",
+                                     LocalDateTime.now()));
         messages.add(new ToolCall(sessionId,
                                   runId,
                                   reqOnlyId,
@@ -397,7 +397,7 @@ class UnpairedToolCallsRemoverTest {
         final var runId = "r13";
         final var messages = List.<AgentMessage>of(
                                                    new GenericText(sessionId, runId, Role.USER, "generic text"),
-                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                                    new ToolCall(sessionId, runId, "req-1", null, "tc-1", "tool", "{}"),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -422,7 +422,7 @@ class UnpairedToolCallsRemoverTest {
         final var messages = List.<AgentMessage>of(
                                                    new SystemPrompt(sessionId, runId, "system", true, "m"),
                                                    new GenericText(sessionId, runId, Role.USER, "generic"),
-                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                                    new ToolCall(sessionId,
                                                                 runId,
                                                                 "req-1",
@@ -450,7 +450,7 @@ class UnpairedToolCallsRemoverTest {
         var remover = new UnpairedToolCallsRemover();
         final var runId = "r10";
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt(null, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(null, runId, "user", LocalDateTime.now()),
                                                    new ToolCall(null, runId, "req-1", null, "tc-1", "tool", "{}"),
                                                    new ToolCallResponse(null,
                                                                         runId,
@@ -472,7 +472,7 @@ class UnpairedToolCallsRemoverTest {
         final var sessionId = "s14";
         final var runId = "r14";
         final var messages = List.<AgentMessage>of(
-                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                                    new ToolCall(sessionId, runId, "req-1", null, "tc-1", "tool", "{}"),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -500,7 +500,7 @@ class UnpairedToolCallsRemoverTest {
         final var runId = "r12";
         final var messages = List.<AgentMessage>of(
                                                    new SystemPrompt(sessionId, runId, "system prompt", true, "method"),
-                                                   new UserPrompt(sessionId, runId, "user", LocalDateTime.now()),
+                                                   UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                                    new ToolCall(sessionId, runId, "req-1", null, "tc-1", "tool", "{}"),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,

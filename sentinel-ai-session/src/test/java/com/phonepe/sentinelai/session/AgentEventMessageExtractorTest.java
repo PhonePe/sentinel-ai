@@ -46,7 +46,7 @@ class AgentEventMessageExtractorTest {
         var extractor = new AgentEventMessageExtractor();
         var sessionId = "session-12";
         var runId = "run-12";
-        var userPrompt = new UserPrompt(sessionId, runId, "user message", LocalDateTime.now());
+        var userPrompt = UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now());
         var textResponse = new Text(sessionId, runId, "response", new ModelUsageStats(), 100);
         var newMessages = List.<AgentMessage>of(userPrompt);
         var allMessages = List.<AgentMessage>of(userPrompt, textResponse);
@@ -91,14 +91,14 @@ class AgentEventMessageExtractorTest {
         var sessionId = "session-11";
         var runId = "run-11";
         var newMessages = List.<AgentMessage>of(
-                                                new UserPrompt(sessionId, runId, "message 1", LocalDateTime.now()),
+                                                UserPrompt.text(sessionId, runId, "message 1", LocalDateTime.now()),
                                                 new Text(sessionId, runId, "response 1", new ModelUsageStats(), 100),
-                                                new UserPrompt(sessionId, runId, "message 2", LocalDateTime.now())
+                                                UserPrompt.text(sessionId, runId, "message 2", LocalDateTime.now())
         );
         var allMessages = List.<AgentMessage>of(
-                                                new UserPrompt(sessionId, runId, "message 1", LocalDateTime.now()),
+                                                UserPrompt.text(sessionId, runId, "message 1", LocalDateTime.now()),
                                                 new Text(sessionId, runId, "response 1", new ModelUsageStats(), 100),
-                                                new UserPrompt(sessionId, runId, "message 2", LocalDateTime.now())
+                                                UserPrompt.text(sessionId, runId, "message 2", LocalDateTime.now())
         );
         var event = MessageReceivedAgentEvent.builder()
                 .agentName("test-agent")
@@ -154,10 +154,10 @@ class AgentEventMessageExtractorTest {
         var sessionId = "session-2";
         var runId = "run-2";
         var newMessages = List.<AgentMessage>of(
-                                                new UserPrompt(sessionId, runId, "user message", LocalDateTime.now())
+                                                UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now())
         );
         var allMessages = List.<AgentMessage>of(
-                                                new UserPrompt(sessionId, runId, "user message", LocalDateTime.now()),
+                                                UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now()),
                                                 new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
         );
         var event = MessageReceivedAgentEvent.builder()
@@ -185,7 +185,7 @@ class AgentEventMessageExtractorTest {
                                                 new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
         );
         var allMessages = List.<AgentMessage>of(
-                                                new UserPrompt(sessionId, runId, "user message", LocalDateTime.now()),
+                                                UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now()),
                                                 new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
         );
         var event = MessageSentAgentEvent.builder()

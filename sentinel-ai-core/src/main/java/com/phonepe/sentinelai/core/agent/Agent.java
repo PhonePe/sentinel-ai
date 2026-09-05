@@ -615,14 +615,13 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                             .stream()
                             .map(OutputValidationResults.ValidationFailure::getMessage)
                             .toList());
-            messages.add(new UserPrompt(AgentUtils.sessionId(context),
-                                        context.getRunId(),
-                                        toXmlContent(new ValidationErrorFixPrompt(validationErrors,
-                                                                                  mergedAgentSetup
-                                                                                          .getMapper()
-                                                                                          .writeValueAsString(agentOutputData))),
-                                        false,
-                                        LocalDateTime.now(ZoneOffset.UTC)));
+            messages.add(UserPrompt.text(AgentUtils.sessionId(context),
+                                         context.getRunId(),
+                                         toXmlContent(new ValidationErrorFixPrompt(validationErrors,
+                                                                                   mergedAgentSetup
+                                                                                           .getMapper()
+                                                                                           .writeValueAsString(agentOutputData))),
+                                         LocalDateTime.now(ZoneOffset.UTC)));
             return AgentOutput.error(modelOutput.getNewMessages(),
                                      modelOutput.getNewMessages(),
                                      modelOutput.getUsage(),
@@ -901,11 +900,10 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         messages.addAll(extensionMessages(inputRequest, context));
         messages.addAll(factsContextMessage(context, facts));
         messages.addAll(additionalDataContextMessage(context));
-        messages.add(new UserPrompt(AgentUtils.sessionId(context),
-                                    context.getRunId(),
-                                    toXmlContent(inputRequest),
-                                    false,
-                                    LocalDateTime.now(ZoneOffset.UTC)));
+        messages.add(UserPrompt.text(AgentUtils.sessionId(context),
+                                     context.getRunId(),
+                                     toXmlContent(inputRequest),
+                                     LocalDateTime.now(ZoneOffset.UTC)));
     }
 
     private static Map<String, Object> sortedCustomParams(Map<String, Object> customParams) {

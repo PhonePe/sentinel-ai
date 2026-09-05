@@ -113,11 +113,10 @@ class OpenAICompletionsTokenCounterTest {
                                                      false,
                                                      null);
         final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
-        UserPrompt userPrompt = new UserPrompt("s1",
-                                               "r1",
-                                               "User",
-                                               false,
-                                               sentAt);
+        UserPrompt userPrompt = UserPrompt.text("s1",
+                                                "r1",
+                                                "User",
+                                                sentAt);
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + (TokenCountingConfig.DEFAULT
@@ -223,12 +222,10 @@ class OpenAICompletionsTokenCounterTest {
     void testEstimateTokenCountUserPrompt() {
         final var content = "Hello, how are you?";
         final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
-        UserPrompt userPrompt = new UserPrompt("s1",
-                                               "r1",
-                                               content,
-                                               false,
-                                               sentAt);
-
+        UserPrompt userPrompt = UserPrompt.text("s1",
+                                                "r1",
+                                                content,
+                                                sentAt);
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + TokenCountingConfig.DEFAULT
                         .getMessageOverHead() + countTokens("USER") + countTokens(withSentAt(content, sentAt));
