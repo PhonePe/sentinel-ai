@@ -32,11 +32,13 @@ import com.phonepe.sentinelai.core.agent.SafeToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessageVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
@@ -362,6 +364,12 @@ public class MessageCompactor {
         final var response = mapper.createArrayNode();
         final var visitor = new CompactMessageVisitor(mapper);
         for (AgentMessage message : messages) {
+            if (message.getMessageType().equals(AgentMessageType.USER_PROMPT_REQUEST_MESSAGE)
+                    && message instanceof UserPrompt userPrompt
+                    && !userPrompt.getContentType().equals(MediaTypes.MessageContentType.TEXT)) {
+                log.trace("Skipping non text user prompt: {}", message.getMessageId());
+                continue;
+            }
             if (skipToolMessages && isToolInteraction(message)) {
                 continue;
             }

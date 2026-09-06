@@ -35,7 +35,7 @@ import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
-import com.phonepe.sentinelai.core.agentmessages.CommonTypes;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
@@ -111,12 +111,17 @@ public class OpenAIMessageUtils {
                     public ChatMessage visit(UserPrompt userPrompt) {
                         return switch (userPrompt.getContentType()) {
                             case TEXT -> ChatMessage.UserMessage.of(withSentAt(userPrompt));
-                            case AUDIO -> ChatMessage.UserMessage.of(ContentPartInputAudio
-                                    .of(InputAudio.of(userPrompt.getContent(), convert(userPrompt.getAudioFormat()))));
-                            case IMAGE -> ChatMessage.UserMessage.of(ContentPartImageUrl
-                                    .of(ImageUrl.of(userPrompt.getContent(), convert(userPrompt.getImageDetail()))));
+                            case AUDIO -> ChatMessage.UserMessage.of(List.of(ContentPartInputAudio
+                                    .of(InputAudio.of(userPrompt.getContent(), convert(userPrompt.getAudioFormat())))));
+                            case IMAGE_URL -> ChatMessage.UserMessage.of(List.of(ContentPartImageUrl
+                                    .of(ImageUrl.of(userPrompt.getContent(), convert(userPrompt.getImageDetail())))));
+                            case IMAGE_DATA -> ChatMessage.UserMessage.of(List.of(ContentPartImageUrl
+                                    .of(ImageUrl.of("data:image/png;base64," + userPrompt.getContent(),
+                                                    convert(userPrompt.getImageDetail())))));
                             case FILE -> throw new UnsupportedOperationException(
                                                                                  "File content type is not supported in OpenAI message conversion");
+                            default -> throw new IllegalArgumentException("Unexpected value: " + userPrompt
+                                    .getContentType());
                         };
                     }
                 });
@@ -150,14 +155,14 @@ public class OpenAIMessageUtils {
         });
     }
 
-    private InputAudioFormat convert(final CommonTypes.AudioFormat audioFormat) {
+    private InputAudioFormat convert(final MediaTypes.AudioFormat audioFormat) {
         return switch (audioFormat) {
             case WAV -> InputAudioFormat.WAV;
             case MP3 -> InputAudioFormat.MP3;
         };
     }
 
-    private ImageDetail convert(final CommonTypes.ImageDetail imageDetail) {
+    private ImageDetail convert(final MediaTypes.ImageDetail imageDetail) {
         return switch (imageDetail) {
             case AUTO -> ImageDetail.AUTO;
             case LOW -> ImageDetail.LOW;

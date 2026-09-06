@@ -19,9 +19,9 @@ package com.phonepe.sentinelai.core.agentmessages.requests;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
-import com.phonepe.sentinelai.core.agentmessages.CommonTypes.AudioFormat;
-import com.phonepe.sentinelai.core.agentmessages.CommonTypes.ImageDetail;
-import com.phonepe.sentinelai.core.agentmessages.CommonTypes.MessageContentType;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType;
 
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -30,6 +30,7 @@ import lombok.ToString;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Objects;
@@ -88,9 +89,9 @@ public class UserPrompt extends AgentRequest {
                               runId,
                               null,
                               null,
-                              MessageContentType.TEXT,
+                              MessageContentType.AUDIO,
                               content,
-                              true,
+                              false,
                               ImageDetail.AUTO,
                               audioFormat,
                               null,
@@ -116,34 +117,16 @@ public class UserPrompt extends AgentRequest {
     public static UserPrompt file(String sessionId,
                                   String runId,
                                   String content,
+                                  String fileId,
                                   String fileName,
                                   LocalDateTime sentAt) {
         return new UserPrompt(sessionId,
                               runId,
                               null,
                               null,
-                              MessageContentType.TEXT,
+                              MessageContentType.FILE,
                               content,
-                              true,
-                              ImageDetail.AUTO,
-                              AudioFormat.WAV,
-                              null,
-                              fileName,
-                              sentAt);
-    }
-
-    public static UserPrompt fileFromId(String sessionId,
-                                        String runId,
-                                        String fileId,
-                                        String fileName,
-                                        LocalDateTime sentAt) {
-        return new UserPrompt(sessionId,
-                              runId,
-                              null,
-                              null,
-                              MessageContentType.TEXT,
-                              "",
-                              true,
+                              false,
                               ImageDetail.AUTO,
                               AudioFormat.WAV,
                               fileId,
@@ -151,18 +134,37 @@ public class UserPrompt extends AgentRequest {
                               sentAt);
     }
 
-    public static UserPrompt image(String sessionId,
-                                   String runId,
-                                   String content,
-                                   ImageDetail imageDetail,
-                                   LocalDateTime sentAt) {
+    public static UserPrompt imageData(String sessionId,
+                                       String runId,
+                                       String content,
+                                       ImageDetail imageDetail,
+                                       LocalDateTime sentAt) {
         return new UserPrompt(sessionId,
                               runId,
                               null,
                               null,
-                              MessageContentType.TEXT,
+                              MessageContentType.IMAGE_DATA,
                               content,
-                              true,
+                              false,
+                              imageDetail,
+                              AudioFormat.WAV,
+                              null,
+                              null,
+                              sentAt);
+    }
+
+    public static UserPrompt imageURL(String sessionId,
+                                      String runId,
+                                      URL url,
+                                      ImageDetail imageDetail,
+                                      LocalDateTime sentAt) {
+        return new UserPrompt(sessionId,
+                              runId,
+                              null,
+                              null,
+                              MessageContentType.IMAGE_URL,
+                              url.toString(),
+                              false,
                               imageDetail,
                               AudioFormat.WAV,
                               null,

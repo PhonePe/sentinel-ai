@@ -19,11 +19,11 @@ package com.phonepe.sentinelai.core.agentmessages;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
-public class CommonTypes {
+public class MediaTypes {
 
     public enum AudioFormat {
         WAV,
-        MP3,
+        MP3
     }
 
     public enum ImageDetail {
@@ -41,7 +41,12 @@ public class CommonTypes {
         /**
          * Image content type
          */
-        IMAGE,
+        IMAGE_DATA,
+
+        /**
+         * Image URL
+         */
+        IMAGE_URL,
 
         /**
          * Audio content type
@@ -49,7 +54,7 @@ public class CommonTypes {
         AUDIO,
 
         /**
-         * FILE
+         * File content type
          */
         FILE,
     }

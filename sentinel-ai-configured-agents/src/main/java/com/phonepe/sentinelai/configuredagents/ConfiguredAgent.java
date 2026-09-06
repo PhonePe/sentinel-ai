@@ -87,8 +87,8 @@ public class ConfiguredAgent {
     @SneakyThrows
     public final CompletableFuture<AgentOutput<JsonNode>> executeAsync(AgentInput<JsonNode> input) {
         final var mapper = input.getAgentSetup().getMapper();
-        return rootAgent.executeAsync(new AgentInput<>(mapper
-                .writeValueAsString(input.getRequest()),
+        return rootAgent.executeAsync(new AgentInput<>(mapper.writeValueAsString(input.getRequest()),
+                                                       input.getMedia(),
                                                        input.getFacts(),
                                                        input.getRequestMetadata(),
                                                        input.getOldMessages(),

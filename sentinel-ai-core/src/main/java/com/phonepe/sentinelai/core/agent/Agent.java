@@ -70,7 +70,9 @@ import lombok.SneakyThrows;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.URI;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -355,14 +357,12 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                       e)));
         }
         //Prepend the system prompt at the beginning of the messages so that it is the first thing the model sees
-        assembleInitialMessages(context, messages, finalSystemPrompt, runId, facts, inputRequest);
+        assembleInitialMessages(context, messages, finalSystemPrompt, runId, facts, input);
         final var processingMode = ProcessingMode.DIRECT;
         final var modelRunContext = new ModelRunContext(name(),
                                                         runId,
-                                                        AgentUtils.sessionId(
-                                                                             context),
-                                                        AgentUtils.userId(
-                                                                          context),
+                                                        AgentUtils.sessionId(context),
+                                                        AgentUtils.userId(context),
                                                         mergedAgentSetup,
                                                         modelUsageStats,
                                                         processingMode);
@@ -512,7 +512,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                                .error(ErrorType.SERIALIZATION_ERROR,
                                                                                       e)));
         }
-        assembleInitialMessages(context, messages, finalSystemPrompt, runId, facts, input.getRequest());
+        assembleInitialMessages(context, messages, finalSystemPrompt, runId, facts, input);
         final var modelRunContext = new ModelRunContext(name(),
                                                         runId,
                                                         AgentUtils.sessionId(
@@ -889,7 +889,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                          String finalSystemPrompt,
                                          String runId,
                                          List<FactList> facts,
-                                         R inputRequest) {
+                                         AgentInput<R> input) {
+        final var inputRequest = input.getRequest();
         //Prepend the system prompt at the beginning of the messages so that it is the first thing the model sees
         messages.add(0,
                      new com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt(AgentUtils.sessionId(context),
@@ -904,6 +905,43 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                      context.getRunId(),
                                      toXmlContent(inputRequest),
                                      LocalDateTime.now(ZoneOffset.UTC)));
+
+        messages.addAll(input.getMedia()
+                .stream()
+                .map(mediaInput -> fromMedia(AgentUtils.sessionId(context),
+                                             context.getRunId(),
+                                             mediaInput))
+                .toList());
+    }
+
+    @SneakyThrows
+    private static UserPrompt fromMedia(final String sessionId,
+                                        final String runId,
+                                        final MediaInput mediaInput) {
+        return switch (mediaInput.getContentType()) {
+            case IMAGE_DATA -> UserPrompt.imageData(sessionId,
+                                                    runId,
+                                                    mediaInput.getContent(),
+                                                    mediaInput.getImageDetail(),
+                                                    LocalDateTime.now(ZoneId.systemDefault()));
+            case IMAGE_URL -> UserPrompt.imageURL(sessionId,
+                                                  runId,
+                                                  URI.create(mediaInput.getContent()).toURL(),
+                                                  mediaInput.getImageDetail(),
+                                                  LocalDateTime.now(ZoneId.systemDefault()));
+            case AUDIO -> UserPrompt.audio(sessionId,
+                                           runId,
+                                           mediaInput.getContent(),
+                                           mediaInput.getAudioFormat(),
+                                           LocalDateTime.now(ZoneId.systemDefault()));
+            case FILE -> UserPrompt.file(sessionId,
+                                         runId,
+                                         mediaInput.getContent(),
+                                         mediaInput.getFileId(),
+                                         mediaInput.getFileName(),
+                                         LocalDateTime.now(ZoneId.systemDefault()));
+            default -> throw new IllegalArgumentException("Unsupported media type: " + mediaInput.getContentType());
+        };
     }
 
     private static Map<String, Object> sortedCustomParams(Map<String, Object> customParams) {
