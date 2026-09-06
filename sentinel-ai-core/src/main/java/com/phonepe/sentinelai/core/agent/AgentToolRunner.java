@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.core.agent;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Primitives;
 
@@ -29,6 +30,7 @@ import com.phonepe.sentinelai.core.events.ToolCalledAgentEvent;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExecutableToolVisitor;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
+import com.phonepe.sentinelai.core.tools.ExternalToolAgentExtension;
 import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.tools.ToolMethodInfo;
@@ -50,6 +52,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -62,6 +65,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Value
 public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunner {
+
     private static final Set<Class<? extends Exception>> UNHANDLED_EXCEPTION_TYPES = Set
             .of(
                 NullPointerException.class,
@@ -90,39 +94,6 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                                    context.getRunId(),
                                                    toolCall,
                                                    e);
-    }
-
-    private static <R> ToolCallResponse runExternalTool(AgentRunContext<R> context,
-                                                        ExternalTool externalTool,
-                                                        ToolCall toolCall) {
-        try {
-            log.debug("Calling external tool: {} [{}] Arguments: {}",
-                      toolCall.getToolCallId(),
-                      toolCall.getToolName(),
-                      toolCall.getArguments());
-            final var response = externalTool.getCallable()
-                    .apply(context,
-                           toolCall.getToolName(),
-                           toolCall.getArguments());
-            log.debug("Tool response: {}", response);
-            final var error = response.error();
-            if (!error.equals(ErrorType.SUCCESS)) {
-                ToolUtils.printToolCallError(toolCall, response.response());
-                return new ToolCallResponse(AgentUtils.sessionId(context),
-                                            context.getRunId(),
-                                            toolCall.getToolCallId(),
-                                            toolCall.getToolName(),
-                                            error,
-                                            "Tool call failed. External tool error: %s"
-                                                    .formatted(Objects.toString(
-                                                                                response.response())),
-                                            LocalDateTime.now());
-            }
-            return successResponse(response, toolCall, context);
-        }
-        catch (Exception e) {
-            return processUnhandledException(context, toolCall, e);
-        }
     }
 
     private static <R> ToolCallResponse successResponse(ExternalTool.ExternalToolResponse response,
@@ -201,6 +172,52 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
         return response;
     }
 
+    private ToolCall buildToolCallWithArguments(ToolCall originalToolCall,
+                                                Map<String, Object> arguments) {
+        return new ToolCall(originalToolCall.getSessionId(),
+                            originalToolCall.getRunId(),
+                            originalToolCall.getToolCallId(),
+                            originalToolCall.getToolName(),
+                            toJsonString(arguments));
+    }
+
+    private Map<String, Object> collectExternalToolArguments(AgentRunContext<R> context) {
+        final Map<String, Object> extensionArguments = new HashMap<>();
+        agent.getExtensions().stream()
+                .filter(ExternalToolAgentExtension.class::isInstance)
+                .map(ExternalToolAgentExtension.class::cast)
+                .forEach(extension -> extensionArguments.putAll(extension.getExternalToolArguments(
+                                                                                                   context.getRequest(),
+                                                                                                   context,
+                                                                                                   agent)));
+        return extensionArguments;
+    }
+
+
+    private String maskedArgumentsForLog(String arguments) {
+        if (arguments == null || arguments.isBlank()) {
+            return arguments;
+        }
+        try {
+            final var parsedArguments = setup.getMapper().readValue(arguments, new TypeReference<Object>() {
+            });
+            return setup.getMapper().writeValueAsString(AgentUtils.maskSensitiveData(parsedArguments, null));
+        }
+        catch (Exception e) {
+            return arguments;
+        }
+    }
+
+    private void mergeRequestMetadataCustomParams(Map<String, Object> extensionArguments,
+                                                  AgentRunContext<R> context) {
+        if (context.getRequestMetadata() == null) {
+            return;
+        }
+        final var existingCustomParams = Objects.requireNonNullElse(context.getRequestMetadata()
+                .getCustomParams(), new HashMap<String, Object>());
+        extensionArguments.putAll(existingCustomParams);
+        context.getRequestMetadata().setCustomParams(extensionArguments);
+    }
 
     /**
      * Convert parameters string received from LLM to actual parameters for tool call
@@ -213,6 +230,50 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
     private List<Object> params(ToolMethodInfo methodInfo, String params) {
         final var objectMapper = setup.getMapper();
         return ToolUtils.convertToRealParams(methodInfo, params, objectMapper);
+    }
+
+    private ToolCallResponse runExternalTool(AgentRunContext<R> context,
+                                             ExternalTool externalTool,
+                                             ToolCall toolCall) {
+        try {
+            log.info("Calling external tool: {} [{}] Arguments: {}",
+                     toolCall.getToolCallId(),
+                     toolCall.getToolName(),
+                     maskedArgumentsForLog(toolCall.getArguments()));
+            final var response = externalTool.getCallable()
+                    .apply(context,
+                           toolCall.getToolName(),
+                           toolCall.getArguments());
+            log.debug("Tool response: {}", response);
+            final var error = response.error();
+            if (!error.equals(ErrorType.SUCCESS)) {
+                ToolUtils.printToolCallError(toolCall, response.response());
+                return new ToolCallResponse(AgentUtils.sessionId(context),
+                                            context.getRunId(),
+                                            toolCall.getToolCallId(),
+                                            toolCall.getToolName(),
+                                            error,
+                                            "Tool call failed. External tool error: %s"
+                                                    .formatted(Objects.toString(
+                                                                                response.response())),
+                                            LocalDateTime.now());
+            }
+            return successResponse(response, toolCall, context);
+        }
+        catch (Exception e) {
+            return processUnhandledException(context, toolCall, e);
+        }
+    }
+
+    private ToolCallResponse runExternalToolWithMergedArguments(AgentRunContext<R> context,
+                                                                ExternalTool externalTool,
+                                                                ToolCall toolCall) {
+        final var mergedToolArguments = toolCallArgumentsAsMap(toolCall.getArguments());
+        final var extensionArguments = collectExternalToolArguments(context);
+        mergeRequestMetadataCustomParams(extensionArguments, context);
+        mergedToolArguments.putAll(extensionArguments);
+        final var updatedToolCall = buildToolCallWithArguments(toolCall, mergedToolArguments);
+        return runExternalTool(context, externalTool, updatedToolCall);
     }
 
     @SuppressWarnings("java:S3011")
@@ -232,7 +293,7 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
             log.debug("Calling internal tool: {} [{}] Arguments: {}",
                       toolCall.getToolCallId(),
                       toolCall.getToolName(),
-                      toolCall.getArguments());
+                      maskedArgumentsForLog(toolCall.getArguments()));
             var resultObject = callable.invoke(internalTool.getInstance(),
                                                args.toArray());
             return new ToolCallResponse(AgentUtils.sessionId(context),
@@ -312,7 +373,9 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                             return tool.accept(new ExecutableToolVisitor<>() {
                                 @Override
                                 public ToolCallResponse visit(ExternalTool externalTool) {
-                                    return runExternalTool(context, externalTool, toolCall);
+                                    return runExternalToolWithMergedArguments(context,
+                                                                              externalTool,
+                                                                              toolCall);
                                 }
 
                                 @Override
@@ -381,6 +444,11 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
 
     }
 
+    @SneakyThrows
+    private String toJsonString(Map<String, Object> data) {
+        return setup.getMapper().writeValueAsString(data);
+    }
+
     /**
      * Convert tool response to string to send to LLM. For void return type a fixed success string is sent to LLM.
      *
@@ -401,6 +469,15 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
             }
         }
         return setup.getMapper().writeValueAsString(result);
+    }
+
+    @SneakyThrows
+    private HashMap<String, Object> toolCallArgumentsAsMap(String arguments) {
+        if (arguments == null || arguments.isBlank()) {
+            return new HashMap<>();
+        }
+        return setup.getMapper().readValue(arguments, new TypeReference<HashMap<String, Object>>() {
+        });
     }
 
 }

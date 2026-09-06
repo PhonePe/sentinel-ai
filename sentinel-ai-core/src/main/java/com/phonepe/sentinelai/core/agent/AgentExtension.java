@@ -39,6 +39,13 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
         List<SystemPrompt.Task> task;
     }
 
+    default void addAdditionalToolMetaData(R request,
+                                           AgentRunContext<R> metadata,
+                                           A agent) {
+
+        // Nothing to do here by default
+    }
+
     ExtensionPromptSchema additionalSystemPrompts(R request,
                                                   AgentRunContext<R> metadata,
                                                   A agent,

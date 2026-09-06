@@ -130,6 +130,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private final String systemPrompt;
     @Getter
     private final AgentSetup setup;
+    @Getter
     private final List<AgentExtension<R, T, A>> extensions;
     private final ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker;
     private final OutputValidator<R, T> outputValidator;
