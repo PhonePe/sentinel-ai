@@ -22,7 +22,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
@@ -49,9 +51,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -184,6 +188,57 @@ class AgentTest {
                         .build())
                 .build());
         assertTrue(response.getData().contains("Session summary: Test Data"));
+    }
+
+    @Test
+    void testMediaInputEndToEnd() {
+        final var capturedMessages = new AtomicReference<List<AgentMessage>>();
+        final var base64Image = "iVBORw0KGgoAAAANSUhEUg";
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            capturedMessages.set(new ArrayList<>(oldMessages));
+                            return ModelOutput.success(createTextOutput("Image received"),
+                                                       List.of(),
+                                                       oldMessages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Describe this image")
+                .media(List.of(MediaInput.imageContent(base64Image, ImageDetail.AUTO)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Image received"));
+
+        final var messages = capturedMessages.get();
+        assertNotNull(messages);
+
+        final var imagePrompts = messages
+                .stream()
+                .filter(m -> m instanceof UserPrompt)
+                .map(m -> (UserPrompt) m)
+                .filter(up -> up.getContentType()
+                        == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.IMAGE_DATA)
+                .toList();
+        assertEquals(1, imagePrompts.size());
+        assertEquals(base64Image, imagePrompts.get(0).getContent());
+        assertEquals(ImageDetail.AUTO, imagePrompts.get(0).getImageDetail());
     }
 
     @Test

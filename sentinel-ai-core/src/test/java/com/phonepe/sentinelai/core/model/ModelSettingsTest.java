@@ -35,6 +35,33 @@ class ModelSettingsTest {
     }
 
     @Test
+    void mergeDisableToolsFromLhsKeptWhenRhsNull() {
+        final var lhs = ModelSettings.builder().disableTools(true).build();
+        final var rhs = ModelSettings.builder().build();
+
+        var merged = ModelSettings.merge(lhs, rhs);
+        assertEquals(Boolean.TRUE, merged.getDisableTools());
+    }
+
+    @Test
+    void mergeDisableToolsFromRhsOverridesLhs() {
+        final var lhs = ModelSettings.builder().disableTools(false).build();
+        final var rhs = ModelSettings.builder().disableTools(true).build();
+
+        var merged = ModelSettings.merge(lhs, rhs);
+        assertEquals(Boolean.TRUE, merged.getDisableTools());
+    }
+
+    @Test
+    void mergeDisableToolsNullWhenBothNull() {
+        final var lhs = ModelSettings.builder().build();
+        final var rhs = ModelSettings.builder().build();
+
+        var merged = ModelSettings.merge(lhs, rhs);
+        assertNull(merged.getDisableTools());
+    }
+
+    @Test
     void mergeEmptyLogitBiasTakesEmptyMap() {
         final var lhsMap = Map.of("x", 9);
         final var rhsMap = Map.<String, Integer>of();

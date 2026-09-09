@@ -166,6 +166,44 @@ class MessageCompactorTest {
     }
 
     @Test
+    void testSkipsNonTextUserPrompts() {
+        final var stats = new ModelUsageStats();
+        final var sentAt = java.time.LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+        final var messages = List.of(
+                                     SystemPrompt.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .content("System message")
+                                             .build(),
+                                     UserPrompt.text("session-1", "run-1", "User message", sentAt),
+                                     UserPrompt.imageData("session-1",
+                                                          "run-1",
+                                                          "iVBORw0KGgoAAAANS",
+                                                          com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
+                                                          sentAt),
+                                     UserPrompt.audio("session-1",
+                                                      "run-1",
+                                                      "base64audiodata",
+                                                      com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.MP3,
+                                                      sentAt),
+                                     Text.builder()
+                                             .sessionId("session-1")
+                                             .runId("run-1")
+                                             .content("Assistant message")
+                                             .stats(stats)
+                                             .build());
+
+        final var result = MessageCompactor.toCompactMessage(messages, mapper);
+
+        // System + text UserPrompt + Assistant = 3. Image and audio UserPrompts must be skipped.
+        assertEquals(3, result.size());
+        assertEquals(CompactMessage.Roles.SYSTEM, result.get(0).get("role").asText());
+        assertEquals(CompactMessage.Roles.USER, result.get(1).get("role").asText());
+        assertEquals("User message", result.get(1).get("content").asText());
+        assertEquals(CompactMessage.Roles.ASSISTANT, result.get(2).get("role").asText());
+    }
+
+    @Test
     void testSkipsToolCallResponseWhenFlagOn() {
         final var toolCallResponse = ToolCallResponse.builder()
                 .sessionId("session-1")

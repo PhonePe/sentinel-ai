@@ -20,6 +20,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 
 import java.time.LocalDateTime;
@@ -35,6 +38,56 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class UserPromptSerdeTest {
 
     private final ObjectMapper mapper = JsonUtils.createMapper();
+
+    @Test
+    void audioRoundTrip() throws Exception {
+        final var original = UserPrompt.audio("session-1",
+                                              "run-1",
+                                              "base64audiodata",
+                                              AudioFormat.MP3,
+                                              LocalDateTime.of(2026, 7, 25, 10, 0, 0));
+        final var json = mapper.writeValueAsString(original);
+        final var revived = mapper.readValue(json, UserPrompt.class);
+
+        assertEquals(MessageContentType.AUDIO, revived.getContentType());
+        assertEquals(original.getContent(), revived.getContent());
+        assertEquals(original.getAudioFormat(), revived.getAudioFormat());
+        assertEquals(json, mapper.writeValueAsString(revived));
+    }
+
+    @Test
+    void fileRoundTrip() throws Exception {
+        final var original = UserPrompt.file("session-1",
+                                             "run-1",
+                                             "file-content-here",
+                                             "file-123",
+                                             "report.pdf",
+                                             LocalDateTime.of(2026, 7, 25, 10, 0, 0));
+        final var json = mapper.writeValueAsString(original);
+        final var revived = mapper.readValue(json, UserPrompt.class);
+
+        assertEquals(MessageContentType.FILE, revived.getContentType());
+        assertEquals(original.getContent(), revived.getContent());
+        assertEquals(original.getFileId(), revived.getFileId());
+        assertEquals(original.getFileName(), revived.getFileName());
+        assertEquals(json, mapper.writeValueAsString(revived));
+    }
+
+    @Test
+    void imageDataRoundTrip() throws Exception {
+        final var original = UserPrompt.imageData("session-1",
+                                                  "run-1",
+                                                  "iVBORw0KGgoAAAANS",
+                                                  ImageDetail.HIGH,
+                                                  LocalDateTime.of(2026, 7, 25, 10, 0, 0));
+        final var json = mapper.writeValueAsString(original);
+        final var revived = mapper.readValue(json, UserPrompt.class);
+
+        assertEquals(MessageContentType.IMAGE_DATA, revived.getContentType());
+        assertEquals(original.getContent(), revived.getContent());
+        assertEquals(original.getImageDetail(), revived.getImageDetail());
+        assertEquals(json, mapper.writeValueAsString(revived));
+    }
 
     @Test
     void repeatedSerializationIsStable() throws Exception {

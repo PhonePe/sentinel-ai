@@ -60,7 +60,7 @@ public class UserPrompt extends AgentRequest {
                       MessageContentType contentType,
                       @NonNull String content,
                       boolean compacted,
-                      ImageDetail detail,
+                      ImageDetail imageDetail,
                       AudioFormat audioFormat,
                       String fileId,
                       String fileName,
@@ -73,7 +73,7 @@ public class UserPrompt extends AgentRequest {
         this.contentType = Objects.requireNonNullElse(contentType, MessageContentType.TEXT);
         this.content = content;
         this.compacted = compacted;
-        this.imageDetail = Objects.requireNonNullElse(detail, ImageDetail.AUTO);
+        this.imageDetail = Objects.requireNonNullElse(imageDetail, ImageDetail.AUTO);
         this.audioFormat = Objects.requireNonNullElse(audioFormat, AudioFormat.WAV);
         this.fileId = fileId;
         this.fileName = fileName;

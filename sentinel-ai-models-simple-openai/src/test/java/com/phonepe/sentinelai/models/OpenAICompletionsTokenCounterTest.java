@@ -81,6 +81,28 @@ class OpenAICompletionsTokenCounterTest {
     }
 
     @Test
+    void testEstimateTokenCountAudioPrompt() {
+        final var audioData = "base64audiodata";
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+        UserPrompt audioPrompt = UserPrompt.audio("s1",
+                                                  "r1",
+                                                  audioData,
+                                                  com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.WAV,
+                                                  sentAt);
+
+        // Audio content is counted as text (the base64 data), not a fixed image cost.
+        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
+                + TokenCountingConfig.DEFAULT.getMessageOverHead()
+                + countTokens("USER")
+                + countTokens(audioData);
+
+        assertEquals(expected,
+                     tokenCounter.estimateTokenCount(List.of(audioPrompt),
+                                                     TokenCountingConfig.DEFAULT,
+                                                     EncodingType.CL100K_BASE));
+    }
+
+    @Test
     void testEstimateTokenCountEmptyMessages() {
         assertEquals(TokenCountingConfig.DEFAULT.getMessageOverHead(),
                      tokenCounter.estimateTokenCount(List.of(),

@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.models;
 
 import io.github.sashirestela.openai.common.content.ContentPart.ContentPartImageUrl;
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartInputAudio;
 import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
 import io.github.sashirestela.openai.common.tool.ToolType;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
@@ -163,6 +164,25 @@ class OpenAIMessageUtilsTest {
 
         assertInstanceOf(expectedType, converted);
         assertEquals(expectedContent, content(converted));
+    }
+
+    @Test
+    void convertAudioPrompt() {
+        final var audioData = "base64audiodata";
+        final var userPrompt = UserPrompt.audio(SESSION_ID,
+                                                RUN_ID,
+                                                audioData,
+                                                com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.MP3,
+                                                SENT_AT);
+
+        final var converted = assertInstanceOf(ChatMessage.UserMessage.class,
+                                               OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(userPrompt));
+
+        @SuppressWarnings("unchecked") final var contentParts = (List<ContentPartInputAudio>) converted.getContent();
+        assertEquals(1, contentParts.size());
+        assertEquals(audioData, contentParts.get(0).getInputAudio().getData());
+        assertEquals(io.github.sashirestela.openai.common.audio.InputAudioFormat.MP3,
+                     contentParts.get(0).getInputAudio().getFormat());
     }
 
     @Test
