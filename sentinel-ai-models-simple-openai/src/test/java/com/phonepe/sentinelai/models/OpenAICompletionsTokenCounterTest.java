@@ -41,6 +41,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OpenAICompletionsTokenCounterTest {
 
@@ -102,6 +103,51 @@ class OpenAICompletionsTokenCounterTest {
         assertEquals(expected,
                      tokenCounter.estimateTokenCount(List.of(genericText),
                                                      TokenCountingConfig.DEFAULT,
+                                                     EncodingType.CL100K_BASE));
+    }
+
+    @Test
+    void testEstimateTokenCountImagePromptCountsFixedCostNotBase64() {
+        final var base64Data = "iVBORw0KGgoAAAANSUhEUg".repeat(1000); // ~23KB of base64
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+        UserPrompt imagePrompt = UserPrompt.imageData("s1",
+                                                      "r1",
+                                                      base64Data,
+                                                      com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
+                                                      sentAt);
+
+        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
+                + TokenCountingConfig.DEFAULT.getMessageOverHead()
+                + countTokens("USER")
+                + TokenCountingConfig.DEFAULT.getImageTokenCost();
+
+        final var actual = tokenCounter.estimateTokenCount(List.of(imagePrompt),
+                                                           TokenCountingConfig.DEFAULT,
+                                                           EncodingType.CL100K_BASE);
+        assertEquals(expected, actual);
+        // The base64 payload must not be counted as text. 23K chars would be ~7K text tokens.
+        assertTrue(actual < 1000, "Image tokens should be a fixed cost, not proportional to base64 length");
+    }
+
+    @Test
+    void testEstimateTokenCountImagePromptWithCustomCost() {
+        final var base64Data = "iVBORw0KGgoAAAANSUhEUg".repeat(1000);
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+        UserPrompt imagePrompt = UserPrompt.imageData("s1",
+                                                      "r1",
+                                                      base64Data,
+                                                      com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
+                                                      sentAt);
+        final var config = TokenCountingConfig.DEFAULT.withImageTokenCost(1575);
+
+        final var expected = config.getAssistantPrimingOverhead()
+                + config.getMessageOverHead()
+                + countTokens("USER")
+                + config.getImageTokenCost();
+
+        assertEquals(expected,
+                     tokenCounter.estimateTokenCount(List.of(imagePrompt),
+                                                     config,
                                                      EncodingType.CL100K_BASE));
     }
 

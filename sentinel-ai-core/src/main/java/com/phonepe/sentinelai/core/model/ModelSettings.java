@@ -86,6 +86,14 @@ public class ModelSettings {
     Reasoning reasoning;
 
     /**
+     * Whether to disable tools for this agent. If true, the agent will not be able to use any tools.
+     * This is useful for testing and debugging, or for agents that do not need to use tools.
+     *
+     * NOTE: If this is set, tool tool based output will be disabled for the model.
+     */
+    Boolean disableTools;
+
+    /**
      * Attributes of the model.
      * Context window size, token counting overheads etc.
      */
@@ -132,6 +140,8 @@ public class ModelSettings {
                                          : lhs.getLogitBias(),
                                  rhs.getReasoning() != null ? rhs.getReasoning()
                                          : lhs.getReasoning(),
+                                 rhs.getDisableTools() != null ? rhs.getDisableTools()
+                                         : lhs.getDisableTools(),
                                  mergedModelAttributes);
     }
 

@@ -220,8 +220,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
         //Stats for the run
         final var stats = context.getModelUsageStats();
-        final var outputGenerationMode = Objects.requireNonNullElse(agentSetup
-                .getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
+        final var outputGenerationMode = determineMode(agentSetup, modelSettings);
         final var outputGenerator = Objects.requireNonNullElseGet(agentSetup
                 .getOutputGenerationTool(), IdentityOutputGenerator::new);
         final var toolsForExecution = new HashMap<>(Objects
@@ -447,8 +446,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         final var stats = context.getModelUsageStats();
         final var toolsForExecution = new HashMap<>(Objects
                 .requireNonNullElseGet(tools, Map::of));
-        final var outputGenerationMode = Objects.requireNonNullElse(agentSetup
-                .getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
+        final var outputGenerationMode = determineMode(agentSetup, modelSettings);
         final var outputGenerator = Objects.requireNonNullElseGet(agentSetup
                 .getOutputGenerationTool(), IdentityOutputGenerator::new);
         final var generatedOutput = new AtomicReference<String>(null);
@@ -568,7 +566,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                     newMessages,
                                                     stopwatch);
                             }
-                            else {
+                            else
+
+                            {
+
                                 yield processStreamingOutput(context,
                                                              responseData.toString(),
                                                              //We just take what we gathered return that
@@ -580,6 +581,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                             }
                         }
                         case FinishReasons.FUNCTION_CALL, FinishReasons.TOOL_CALLS -> {
+
                             //Model is waiting for us to run tools and respond back
                             final var calls = toolCallData
                                     .values()
@@ -605,6 +607,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                 if (generatedOutput.get() != null) {
                                     //If the output generator was called, we use the generated output
                                     if (streamProcessingMode.equals(Agent.StreamProcessingMode.TYPED)) {
+
                                         yield processOutput(context,
                                                             generatedOutput.get(),
                                                             oldMessages,
@@ -613,7 +616,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                             newMessages,
                                                             stopwatch);
                                     }
-                                    else {
+                                    else
+
+                                    {
+
                                         yield processStreamingOutput(context,
                                                                      generatedOutput.get(),
                                                                      oldMessages,
@@ -622,6 +628,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                      newMessages,
                                                                      stopwatch);
                                     }
+
                                 }
                             }
                             yield null; //Continue to next chunk
@@ -637,9 +644,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                      SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON,
                                                                          finishReason));
                     };
-                })
-                        .filter(Objects::nonNull)
-                        .toList();
+                }).filter(Objects::nonNull).toList();
                 //NOTE::DO NOT MERGE THE STREAM WITH BELOW
                 //The flow is intentionally done this way
                 // This needs to be done in two steps to ensure all chunks are consumed. Otherwise, some stuff like
@@ -970,11 +975,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                  SentinelError.error(ErrorType.NO_RESPONSE));
     }
 
-    private ChatRequest.ChatRequestBuilder setupChatRequestBuilder(
-                                                                   List<ChatMessage> openAiMessages,
+    private ChatRequest.ChatRequestBuilder setupChatRequestBuilder(final List<ChatMessage> openAiMessages,
                                                                    final ModelSettings modelSettings,
-                                                                   Map<String, ExecutableTool> toolsForExecution,
-                                                                   OutputGenerationMode outputGenerationMode,
+                                                                   final Map<String, ExecutableTool> toolsForExecution,
+                                                                   final OutputGenerationMode outputGenerationMode,
                                                                    final String userId) {
         final var builder = ChatRequest.builder()
                 .messages(openAiMessages)
@@ -984,9 +988,29 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             builder.user(userId);
         }
         applyModelSettings(modelSettings, builder, toolsForExecution);
-        addToolList(toolsForExecution, builder);
-        addToolChoice(toolsForExecution, builder, outputGenerationMode);
+        if (toolsDisabled(modelSettings)) {
+            log.debug("Tool calls are disabled for this model");
+        }
+        else {
+            addToolList(toolsForExecution, builder);
+            addToolChoice(toolsForExecution, builder, outputGenerationMode);
+        }
         return builder;
+    }
+
+    private static boolean toolsDisabled(final ModelSettings modelSettings) {
+        return null != modelSettings && Objects.requireNonNullElse(modelSettings.getDisableTools(), false);
+    }
+
+    private static OutputGenerationMode determineMode(final AgentSetup agentSetup,
+                                                      final ModelSettings modelSettings) {
+        if (toolsDisabled(modelSettings)) {
+            log.info("Tools are disabled for this model. Using structured output mode");
+            return OutputGenerationMode.STRUCTURED_OUTPUT;
+        }
+
+        return Objects.requireNonNullElse(agentSetup
+                .getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
     }
 
     private static ResponseFormat jsonSchema(ObjectNode schema) {
