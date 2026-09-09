@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.models;
 
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartImageUrl;
 import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
 import io.github.sashirestela.openai.common.tool.ToolType;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
@@ -27,6 +28,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
@@ -57,6 +59,12 @@ class OpenAIMessageUtilsTest {
     private static final String SESSION_ID = "session-1";
     private static final String RUN_ID = "run-1";
     private static final LocalDateTime SENT_AT = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+
+    static Stream<Arguments> imageDetails() {
+        return Stream.of(Arguments.of(ImageDetail.AUTO),
+                         Arguments.of(ImageDetail.LOW),
+                         Arguments.of(ImageDetail.HIGH));
+    }
 
     static Stream<Arguments> messages() {
         return Stream.of(Arguments.of(SystemPrompt.builder().sessionId(SESSION_ID).content("rules").build(),
@@ -155,6 +163,65 @@ class OpenAIMessageUtilsTest {
 
         assertInstanceOf(expectedType, converted);
         assertEquals(expectedContent, content(converted));
+    }
+
+    @Test
+    void convertImageDataPrompt() {
+        final var base64Data = "iVBORw0KGgoAAAANS";
+        final var userPrompt = UserPrompt.imageData(SESSION_ID,
+                                                    RUN_ID,
+                                                    base64Data,
+                                                    ImageDetail.AUTO,
+                                                    SENT_AT);
+
+        final var converted = assertInstanceOf(ChatMessage.UserMessage.class,
+                                               OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(userPrompt));
+
+        @SuppressWarnings("unchecked") final var contentParts = (List<ContentPartImageUrl>) converted.getContent();
+        assertEquals(1, contentParts.size());
+        final var imageUrl = contentParts.get(0).getImageUrl();
+        assertEquals("data:image/png;base64," + base64Data, imageUrl.getUrl());
+        assertEquals(io.github.sashirestela.openai.common.content.ImageDetail.AUTO, imageUrl.getDetail());
+    }
+
+    @ParameterizedTest(name = "detail={0}")
+    @MethodSource("imageDetails")
+    void convertImageDataWithDifferentDetailLevels(ImageDetail detail) {
+        final var userPrompt = UserPrompt.imageData(SESSION_ID,
+                                                    RUN_ID,
+                                                    "base64data",
+                                                    detail,
+                                                    SENT_AT);
+
+        final var converted = assertInstanceOf(ChatMessage.UserMessage.class,
+                                               OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(userPrompt));
+
+        @SuppressWarnings("unchecked") final var contentParts = (List<ContentPartImageUrl>) converted.getContent();
+        assertEquals(1, contentParts.size());
+        final var expectedOpenAiDetail = switch (detail) {
+            case AUTO -> io.github.sashirestela.openai.common.content.ImageDetail.AUTO;
+            case LOW -> io.github.sashirestela.openai.common.content.ImageDetail.LOW;
+            case HIGH -> io.github.sashirestela.openai.common.content.ImageDetail.HIGH;
+        };
+        assertEquals(expectedOpenAiDetail, contentParts.get(0).getImageUrl().getDetail());
+    }
+
+    @Test
+    void convertImageUrlPrompt() throws java.net.MalformedURLException {
+        final var userPrompt = UserPrompt.imageURL(SESSION_ID,
+                                                   RUN_ID,
+                                                   java.net.URI.create("https://example.com/image.png").toURL(),
+                                                   ImageDetail.HIGH,
+                                                   SENT_AT);
+
+        final var converted = assertInstanceOf(ChatMessage.UserMessage.class,
+                                               OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(userPrompt));
+
+        @SuppressWarnings("unchecked") final var contentParts = (List<ContentPartImageUrl>) converted.getContent();
+        assertEquals(1, contentParts.size());
+        final var imageUrl = contentParts.get(0).getImageUrl();
+        assertEquals("https://example.com/image.png", imageUrl.getUrl());
+        assertEquals(io.github.sashirestela.openai.common.content.ImageDetail.HIGH, imageUrl.getDetail());
     }
 
     @Test

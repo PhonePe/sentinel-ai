@@ -32,8 +32,10 @@ import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.MediaInput;
 import com.phonepe.sentinelai.core.agent.StreamConsumer;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
@@ -304,6 +306,39 @@ class SimpleOpenAIModelStreamingTest {
         assertTrue(response2.getUsage().getTotalTokens() > 1);
         assertTrue(stats.getTotalTokens() > 1);
         log.info("Session stats: {}", stats);
+    }
+
+    @Test
+    @SneakyThrows
+    void testImageUploadStreaming(final WireMockRuntimeInfo wiremock) {
+        //Setup stub for SSE with image response
+        stubFor(post("/chat/completions?api-version=2024-10-21")
+                .willReturn(okForContentType("text/event-stream",
+                                             readStubFile(1,
+                                                          "image-stream",
+                                                          getClass()))));
+
+        final var objectMapper = JsonUtils.createMapper();
+        final var executor = Executors.newCachedThreadPool();
+        final var httpClient = new OkHttpClient.Builder().build();
+        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        final var base64Image = "iVBORw0KGgoAAAANS";
+        final var response = agent.executeAsyncStreaming(AgentInput
+                .<String>builder()
+                .request("Describe the image")
+                .media(List.of(MediaInput.imageContent(base64Image, ImageDetail.AUTO)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build(), createStreamConsumer(outputStream))
+                .join();
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertNotNull(response.getData());
+        assertTrue(response.getData().contains("A man with dark hair and glasses"));
+        assertTrue(response.getUsage().getTotalTokens() > 1);
     }
 
     @Test

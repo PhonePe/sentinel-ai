@@ -78,6 +78,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -662,5 +663,55 @@ class SimpleOpenAIModelTest {
                          return output;
                      }));
         assertTrue(outputToolCalled.get());
+    }
+
+    @Test
+    @SneakyThrows
+    void testToolsDisabled(final WireMockRuntimeInfo wiremock) {
+        TestUtils.setupMocks(1, "no-tools", getClass());
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var model = setupModel("gpt-4o", wiremock, objectMapper);
+        final var agent = SimpleAgent.builder()
+                .setup(AgentSetup.builder()
+                        .mapper(objectMapper)
+                        .model(model)
+                        .modelSettings(ModelSettings.builder()
+                                .temperature(0.1f)
+                                .seed(42)
+                                .disableTools(true)
+                                .build())
+                        .build())
+                .build();
+
+        final var requestMetadata = AgentRequestMetadata.builder()
+                .sessionId("s1")
+                .userId("ss")
+                .build();
+        final var response = agent.execute(AgentInput.<UserInput>builder()
+                .request(new UserInput("Hi?"))
+                .requestMetadata(requestMetadata)
+                .build());
+        log.info("Agent response: {}", response.getData());
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertNotNull(response.getData());
+        assertTrue(response.getData().message().contains("Santanu"));
+        // No tool call messages should be present since tools are disabled
+        assertEquals(0,
+                     response.getAllMessages()
+                             .stream()
+                             .filter(m -> m.getMessageType()
+                                     .equals(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE))
+                             .count());
+        assertEquals(0,
+                     response.getAllMessages()
+                             .stream()
+                             .filter(m -> m.getMessageType()
+                                     .equals(AgentMessageType.TOOL_CALL_RESPONSE_MESSAGE))
+                             .count());
+        // Only one model call should have been made (no tool-call loop)
+        assertEquals(1, response.getUsage().getRequestsForRun());
+        assertTrue(response.getUsage().getTotalTokens() > 1);
     }
 }
