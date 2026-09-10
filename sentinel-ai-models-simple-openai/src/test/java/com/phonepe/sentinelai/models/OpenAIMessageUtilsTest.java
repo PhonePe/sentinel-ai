@@ -186,6 +186,19 @@ class OpenAIMessageUtilsTest {
     }
 
     @Test
+    void convertFilePromptThrowsException() {
+        final var userPrompt = UserPrompt.file(SESSION_ID,
+                                               RUN_ID,
+                                               "file content",
+                                               "file-123",
+                                               "report.txt",
+                                               SENT_AT);
+
+        assertThrows(UnsupportedOperationException.class,
+                     () -> OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(userPrompt));
+    }
+
+    @Test
     void convertImageDataPrompt() {
         final var base64Data = "iVBORw0KGgoAAAANS";
         final var userPrompt = UserPrompt.imageData(SESSION_ID,
@@ -243,6 +256,7 @@ class OpenAIMessageUtilsTest {
         assertEquals("https://example.com/image.png", imageUrl.getUrl());
         assertEquals(io.github.sashirestela.openai.common.content.ImageDetail.HIGH, imageUrl.getDetail());
     }
+
 
     @Test
     void convertList() {

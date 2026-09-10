@@ -371,6 +371,7 @@ public class MessageCompactor {
                 continue;
             }
             if (skipToolMessages && isToolInteraction(message)) {
+                log.trace("Skipping tool interaction message as requested: {}", message.getMessageId());
                 continue;
             }
             response.add(message.accept(visitor));

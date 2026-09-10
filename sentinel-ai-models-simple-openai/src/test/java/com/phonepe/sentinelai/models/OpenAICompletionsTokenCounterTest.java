@@ -174,6 +174,28 @@ class OpenAICompletionsTokenCounterTest {
     }
 
     @Test
+    void testEstimateTokenCountImageUrlPrompt() throws java.net.MalformedURLException {
+        final var imageUrl = "https://example.com/image.png";
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+        UserPrompt imagePrompt = UserPrompt.imageURL("s1",
+                                                     "r1",
+                                                     java.net.URI.create(imageUrl).toURL(),
+                                                     com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
+                                                     sentAt);
+
+        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
+                + TokenCountingConfig.DEFAULT.getMessageOverHead()
+                + countTokens("USER")
+                + TokenCountingConfig.DEFAULT.getImageTokenCost();
+
+        assertEquals(expected,
+                     tokenCounter.estimateTokenCount(List.of(imagePrompt),
+                                                     TokenCountingConfig.DEFAULT,
+                                                     EncodingType.CL100K_BASE));
+    }
+
+
+    @Test
     void testEstimateTokenCountMultipleMessages() {
         SystemPrompt systemPrompt = new SystemPrompt("s1",
                                                      "r1",
