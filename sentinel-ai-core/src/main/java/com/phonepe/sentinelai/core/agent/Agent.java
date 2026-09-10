@@ -720,8 +720,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     private ToolCall modifyToolCallArguments(AgentRunContext<R> context, ToolCall toolCall) {
         final var mapper = context.getAgentSetup()
                 .getMapper();
-        var argumentNode = mapper
-                .readTree(toolCall.getArguments());
+        var argumentNode = mapper.readTree(toolCall.getArguments());
         for (final var extension : this.extensions) {
             argumentNode = extension.modifyToolCallArguments(context, (A) this, toolCall, argumentNode);
         }
