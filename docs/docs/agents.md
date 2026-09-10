@@ -704,3 +704,24 @@ Extensions can be used to:
 - Generate extra information from the agent
 
 To create an extension derive and implement the `AgentExtension` interface.
+
+### Tool Call Argument Preprocessing
+
+Extensions can preprocess tool call arguments before the tool runs. Override `modifyToolCallArguments` in your
+extension to inspect or modify the arguments. All registered extensions are applied in order. To fail the tool call
+(for example, on invalid input), throw an exception from this method. The tool call then fails with
+`ErrorType.TOOL_CALL_PREPROCESSING_FAILURE` and the error message is returned to the model.
+
+```java
+@Override
+public JsonNode modifyToolCallArguments(AgentRunContext<MyRequest> context,
+                                        MyAgent agent,
+                                        ToolCall toolCall,
+                                        JsonNode inputArguments) {
+    if ("my_tool".equals(toolCall.getToolName())) {
+        // Add or modify arguments
+        ((ObjectNode) inputArguments).put("region", "in");
+    }
+    return inputArguments;
+}
+```
