@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.UnaryOperator;
 
 /**
  *
@@ -75,6 +76,8 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
     ToolRunApprovalSeeker<R, T, A> toolRunApprovalSeeker;
 
     AgentRunContext<R> context;
+
+    UnaryOperator<ToolCall> toolCallPreProcessor;
 
     /**
      * This returns a temporary failure for unhandled exceptions. Can be used to retry if needed.
@@ -155,24 +158,24 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
 
     @Override
     public ToolCallResponse runTool(Map<String, ExecutableTool> tools,
-                                    ToolCall toolCall) {
+                                    ToolCall providedToolCall) {
         final var eventBus = context.getAgentSetup().getEventBus();
-        if (!toolRunApprovalSeeker.seekApproval(agent, context, toolCall)) {
+        if (!toolRunApprovalSeeker.seekApproval(agent, context, providedToolCall)) {
             log.info("Tool call {} for tool {} was not approved by the user",
-                     toolCall.getToolCallId(),
-                     toolCall.getToolName());
+                     providedToolCall.getToolCallId(),
+                     providedToolCall.getToolName());
             eventBus.notify(new ToolCallApprovalDeniedAgentEvent(agent.name(),
                                                                  context.getRunId(),
                                                                  AgentUtils
                                                                          .sessionId(context),
                                                                  AgentUtils
                                                                          .userId(context),
-                                                                 toolCall.getToolCallId(),
-                                                                 toolCall.getToolName()));
+                                                                 providedToolCall.getToolCallId(),
+                                                                 providedToolCall.getToolName()));
             return new ToolCallResponse(AgentUtils.sessionId(context),
                                         context.getRunId(),
-                                        toolCall.getToolCallId(),
-                                        toolCall.getToolName(),
+                                        providedToolCall.getToolCallId(),
+                                        providedToolCall.getToolName(),
                                         ErrorType.TOOL_CALL_PERMANENT_FAILURE,
                                         "Tool call was not approved by the user",
                                         LocalDateTime.now());
@@ -181,17 +184,44 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                                  context.getRunId(),
                                                  AgentUtils.sessionId(context),
                                                  AgentUtils.userId(context),
-                                                 toolCall.getToolCallId(),
-                                                 toolCall.getToolName(),
-                                                 toolCall.getArguments()));
+                                                 providedToolCall.getToolCallId(),
+                                                 providedToolCall.getToolName(),
+                                                 providedToolCall.getArguments()));
         final var stopwatch = Stopwatch.createStarted();
+        var toolCall = providedToolCall;
+        try {
+            toolCall = toolCallPreProcessor.apply(providedToolCall);
+        }
+        catch (Exception e) {
+            final var rootCause = AgentUtils.rootCause(e).getMessage();
+            final var response = "Tool call failed with error: " + rootCause;
+            log.info("Tool call {} for tool {} failed with error: {}",
+                     providedToolCall.getToolCallId(),
+                     providedToolCall.getToolName(),
+                     rootCause);
+            eventBus.notify(new ToolCallCompletedAgentEvent(agent.name(),
+                                                            context.getRunId(),
+                                                            AgentUtils.sessionId(context),
+                                                            AgentUtils.userId(context),
+                                                            toolCall.getToolCallId(),
+                                                            toolCall.getToolName(),
+                                                            ErrorType.TOOL_CALL_PREPROCESSING_FAILURE,
+                                                            response,
+                                                            Duration.ofMillis(stopwatch
+                                                                    .elapsed(TimeUnit.MILLISECONDS))));
+            return new ToolCallResponse(AgentUtils.sessionId(context),
+                                        context.getRunId(),
+                                        providedToolCall.getToolCallId(),
+                                        providedToolCall.getToolName(),
+                                        ErrorType.TOOL_CALL_PREPROCESSING_FAILURE,
+                                        response,
+                                        LocalDateTime.now());
+        }
         final var response = runTool(context, tools, toolCall);
         eventBus.notify(new ToolCallCompletedAgentEvent(agent.name(),
                                                         context.getRunId(),
-                                                        AgentUtils.sessionId(
-                                                                             context),
-                                                        AgentUtils.userId(
-                                                                          context),
+                                                        AgentUtils.sessionId(context),
+                                                        AgentUtils.userId(context),
                                                         toolCall.getToolCallId(),
                                                         toolCall.getToolName(),
                                                         response.getErrorType(),
@@ -200,7 +230,6 @@ public class AgentToolRunner<R, T, A extends Agent<R, T, A>> implements ToolRunn
                                                                 .elapsed(TimeUnit.MILLISECONDS))));
         return response;
     }
-
 
     /**
      * Convert parameters string received from LLM to actual parameters for tool call
