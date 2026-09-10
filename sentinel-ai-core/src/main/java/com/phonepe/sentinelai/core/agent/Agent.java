@@ -955,7 +955,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
             final var text = "Use the following knowledge and facts to enrich your responses.\n" + xml;
             return List.of(new GenericText(AgentUtils.sessionId(context),
                                            context.getRunId(),
-                                           AgentGenericMessage.Role.SYSTEM,
+                                           AgentGenericMessage.Role.USER,
                                            text));
         }
         catch (JsonProcessingException e) {
@@ -985,7 +985,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                     .writeValueAsString(additionalData);
             return List.of(new GenericText(AgentUtils.sessionId(context),
                                            context.getRunId(),
-                                           AgentGenericMessage.Role.SYSTEM,
+                                           AgentGenericMessage.Role.USER,
                                            xml));
         }
         catch (JsonProcessingException e) {
