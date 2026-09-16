@@ -17,8 +17,7 @@
 package com.phonepe.sentinelai.evals.tests.metrics;
 
 import com.phonepe.sentinelai.evals.tests.Expectation;
-
-import lombok.ToString;
+import com.phonepe.sentinelai.evals.tests.expectations.Operator;
 
 /**
  * Expectation definition that wraps a {@link Metric} with an optional pass/fail threshold.
@@ -28,30 +27,46 @@ import lombok.ToString;
  * @param <R> result/output type
  * @param <T> input/request type
  */
-@ToString
-public class MetricExpectation<R, T> implements Expectation<R, T> {
+public class MetricExpectation<R, T> extends Expectation<R, T> {
 
     private final Metric<R, T> metric;
     private final Double threshold;
+    private final Operator operator;
 
     /**
      * Creates a metric expectation without threshold enforcement.
      *
+     * @param id     unique identifier for this expectation
      * @param metric metric to execute and report
      */
-    public MetricExpectation(Metric<R, T> metric) {
-        this(metric, null);
+    public MetricExpectation(String id, Metric<R, T> metric) {
+        this(id, metric, null, null);
     }
 
     /**
      * Creates a metric expectation with an optional threshold.
      *
+     * @param id        unique identifier for this expectation
      * @param metric    metric to execute
      * @param threshold minimum score required to pass; {@code null} reports the score without failing
      */
-    public MetricExpectation(Metric<R, T> metric, Double threshold) {
+    public MetricExpectation(String id, Metric<R, T> metric, Double threshold) {
+        this(id, metric, threshold, null);
+    }
+
+    /**
+     * Creates a metric expectation with an optional threshold and comparison operator.
+     *
+     * @param id        unique identifier for this expectation
+     * @param metric    metric to execute
+     * @param threshold minimum score required to pass; {@code null} reports the score without failing
+     * @param operator  comparison operator to apply against the threshold; {@code null} defaults to {@code GTE}
+     */
+    public MetricExpectation(String id, Metric<R, T> metric, Double threshold, Operator operator) {
+        super(id);
         this.metric = metric;
         this.threshold = threshold;
+        this.operator = operator;
     }
 
     /**
@@ -61,6 +76,10 @@ public class MetricExpectation<R, T> implements Expectation<R, T> {
      */
     public Metric<R, T> getMetric() {
         return metric;
+    }
+
+    public Operator getOperator() {
+        return operator;
     }
 
     /**

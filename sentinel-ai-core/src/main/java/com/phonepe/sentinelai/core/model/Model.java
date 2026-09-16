@@ -39,7 +39,6 @@ public interface Model {
 
     static int TOKEN_COUNT_UNKNOWN = -1;
 
-
     /**
      * Process messages and generate structured output. Supports both structured and tool based outputs.
      * Response will consist of a JsonNode in the form of a Map where the keys are the
@@ -75,6 +74,13 @@ public interface Model {
                                    AgentSetup agentSetup) {
         return TOKEN_COUNT_UNKNOWN;
     }
+
+    /**
+     * Returns the model name identifier used for cost calculation and metrics.
+     *
+     * @return the model name, never {@code null}
+     */
+    String modelName();
 
     /**
      * Streams output from the model based on the provided context and messages. Supports tool calls.

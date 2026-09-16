@@ -233,6 +233,11 @@ class AgentTest {
                         });
                     }
 
+                    @Override
+                    public String modelName() {
+                        return "test-model";
+                    }
+
                 })
                 .modelSettings(ModelSettings.builder().build())
                 .mapper(MAPPER)
@@ -295,6 +300,11 @@ class AgentTest {
                                                        context.getModelUsageStats());
                         });
                     }
+
+                    @Override
+                    public String modelName() {
+                        return "test-model";
+                    }
                 })
                 .modelSettings(ModelSettings.builder().build())
                 .mapper(MAPPER)
@@ -352,6 +362,11 @@ class AgentTest {
                                                        messages,
                                                        context.getModelUsageStats());
                         });
+                    }
+
+                    @Override
+                    public String modelName() {
+                        return "test-model";
                     }
                 })
                 .modelSettings(ModelSettings.builder().build())
@@ -530,6 +545,11 @@ class AgentTest {
                                                                          response.getResponse()));
                         });
                     }
+
+                    @Override
+                    public String modelName() {
+                        return "test-model";
+                    }
                 })
                 .modelSettings(ModelSettings.builder().build())
                 .mapper(MAPPER)
@@ -648,6 +668,11 @@ class AgentTest {
                                                        context.getModelUsageStats());
                         });
                     }
+
+                    @Override
+                    public String modelName() {
+                        return "test-model";
+                    }
                 })
                 .modelSettings(ModelSettings.builder().build())
                 .mapper(MAPPER)
@@ -708,6 +733,11 @@ class AgentTest {
                                                                          response.getResponse()));
                         });
                     }
+
+                    @Override
+                    public String modelName() {
+                        return "test-model";
+                    }
                 })
                 .modelSettings(ModelSettings.builder().build())
                 .mapper(MAPPER)
@@ -767,6 +797,11 @@ class AgentTest {
                                                        messages,
                                                        context.getModelUsageStats());
                         });
+                    }
+
+                    @Override
+                    public String modelName() {
+                        return "test-model";
                     }
                 })
                 .modelSettings(ModelSettings.builder().build())

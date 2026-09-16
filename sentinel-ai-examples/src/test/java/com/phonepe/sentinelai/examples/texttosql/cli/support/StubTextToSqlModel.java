@@ -73,4 +73,9 @@ public class StubTextToSqlModel implements Model {
             return ModelOutput.success(data, List.of(), allMessages, usage);
         });
     }
+
+    @Override
+    public String modelName() {
+        return "stub-text-to-sql";
+    }
 }
