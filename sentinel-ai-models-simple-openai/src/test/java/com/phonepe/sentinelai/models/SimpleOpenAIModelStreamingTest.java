@@ -323,7 +323,7 @@ class SimpleOpenAIModelStreamingTest {
         final var httpClient = new OkHttpClient.Builder().build();
         final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
         final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
-        final var base64Image = "iVBORw0KGgoAAAANS";
+        final var base64Image = "data:image/png;base64,iVBORw0KGgoAAAANS";
         final var response = agent.executeAsyncStreaming(AgentInput
                 .<String>builder()
                 .request("Describe the image")

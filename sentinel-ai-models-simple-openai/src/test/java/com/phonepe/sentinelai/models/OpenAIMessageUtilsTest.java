@@ -203,7 +203,7 @@ class OpenAIMessageUtilsTest {
         final var base64Data = "iVBORw0KGgoAAAANS";
         final var userPrompt = UserPrompt.imageData(SESSION_ID,
                                                     RUN_ID,
-                                                    base64Data,
+                                                    "data:image/png;base64," + base64Data,
                                                     ImageDetail.AUTO,
                                                     SENT_AT);
 
@@ -222,7 +222,7 @@ class OpenAIMessageUtilsTest {
     void convertImageDataWithDifferentDetailLevels(ImageDetail detail) {
         final var userPrompt = UserPrompt.imageData(SESSION_ID,
                                                     RUN_ID,
-                                                    "base64data",
+                                                    "data:image/png;base64,base64data",
                                                     detail,
                                                     SENT_AT);
 

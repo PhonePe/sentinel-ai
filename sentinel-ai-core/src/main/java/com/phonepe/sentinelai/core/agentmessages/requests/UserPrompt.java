@@ -16,6 +16,8 @@
 
 package com.phonepe.sentinelai.core.agentmessages.requests;
 
+import com.google.common.base.Preconditions;
+
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
@@ -139,6 +141,8 @@ public class UserPrompt extends AgentRequest {
                                        String content,
                                        ImageDetail imageDetail,
                                        LocalDateTime sentAt) {
+        Preconditions.checkArgument(content.matches("^data:image/(png|jpeg|jpg);base64,([A-Za-z0-9+/=]+)$"),
+                                    "Image data should be of the format data:image/{png|jpeg};base64,<actual base64 image content>");
         return new UserPrompt(sessionId,
                               runId,
                               null,

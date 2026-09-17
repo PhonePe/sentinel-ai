@@ -28,6 +28,7 @@ import com.phonepe.sentinelai.core.utils.JsonUtils;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Locks in the cache-stability guarantee for the per-user-message send time: a {@link UserPrompt}
@@ -77,7 +78,7 @@ class UserPromptSerdeTest {
     void imageDataRoundTrip() throws Exception {
         final var original = UserPrompt.imageData("session-1",
                                                   "run-1",
-                                                  "iVBORw0KGgoAAAANS",
+                                                  "data:image/jpeg;base64,iVBORw0KGgoAAAANS",
                                                   ImageDetail.HIGH,
                                                   LocalDateTime.of(2026, 7, 25, 10, 0, 0));
         final var json = mapper.writeValueAsString(original);
@@ -113,5 +114,16 @@ class UserPromptSerdeTest {
 
         // Serializing the revived message must be byte-identical to the first serialization.
         assertEquals(json, mapper.writeValueAsString(revived));
+    }
+
+    @Test
+    @SuppressWarnings("java:S5778")
+    void testImageFilePrefixAssertion() {
+        assertThrows(IllegalArgumentException.class,
+                     () -> UserPrompt.imageData("session-1",
+                                                "run-1",
+                                                "iVBORw0KGgoAAAANS",
+                                                ImageDetail.HIGH,
+                                                LocalDateTime.of(2026, 7, 25, 10, 0, 0)));
     }
 }

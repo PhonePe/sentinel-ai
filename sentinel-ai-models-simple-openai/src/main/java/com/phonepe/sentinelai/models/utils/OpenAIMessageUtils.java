@@ -116,7 +116,7 @@ public class OpenAIMessageUtils {
                             case IMAGE_URL -> ChatMessage.UserMessage.of(List.of(ContentPartImageUrl
                                     .of(ImageUrl.of(userPrompt.getContent(), convert(userPrompt.getImageDetail())))));
                             case IMAGE_DATA -> ChatMessage.UserMessage.of(List.of(ContentPartImageUrl
-                                    .of(ImageUrl.of("data:image/png;base64," + userPrompt.getContent(),
+                                    .of(ImageUrl.of(userPrompt.getContent(),
                                                     convert(userPrompt.getImageDetail())))));
                             case FILE -> throw new UnsupportedOperationException(
                                                                                  "File content type is not supported in OpenAI message conversion");

@@ -410,7 +410,7 @@ class AgentTest {
     @Test
     void testMediaInputEndToEnd() {
         final var capturedMessages = new AtomicReference<List<AgentMessage>>();
-        final var base64Image = "iVBORw0KGgoAAAANSUhEUg";
+        final var base64Image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg";
         final var textAgent = new TestAgent(AgentSetup.builder()
                 .model(new Model() {
                     @Override

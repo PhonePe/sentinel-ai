@@ -178,7 +178,7 @@ class MessageCompactorTest {
                                      UserPrompt.text("session-1", "run-1", "User message", sentAt),
                                      UserPrompt.imageData("session-1",
                                                           "run-1",
-                                                          "iVBORw0KGgoAAAANS",
+                                                          "data:image/png;base64,iVBORw0KGgoAAAANS",
                                                           com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
                                                           sentAt),
                                      UserPrompt.audio("session-1",

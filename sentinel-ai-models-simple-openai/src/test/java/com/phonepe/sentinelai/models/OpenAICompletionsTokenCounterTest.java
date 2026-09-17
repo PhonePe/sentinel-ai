@@ -134,7 +134,7 @@ class OpenAICompletionsTokenCounterTest {
         final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
         UserPrompt imagePrompt = UserPrompt.imageData("s1",
                                                       "r1",
-                                                      base64Data,
+                                                      "data:image/png;base64," + base64Data,
                                                       com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
                                                       sentAt);
 
@@ -157,7 +157,7 @@ class OpenAICompletionsTokenCounterTest {
         final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
         UserPrompt imagePrompt = UserPrompt.imageData("s1",
                                                       "r1",
-                                                      base64Data,
+                                                      "data:image/png;base64," + base64Data,
                                                       com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
                                                       sentAt);
         final var config = TokenCountingConfig.DEFAULT.withImageTokenCost(1575);
