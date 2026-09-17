@@ -65,6 +65,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Basic tests for {@link Agent}
  */
 @Slf4j
+@SuppressWarnings("java:S9357")
 class AgentTest {
 
     private static final ObjectMapper MAPPER = JsonUtils.createMapper();
@@ -233,7 +234,7 @@ class AgentTest {
 
         final var audioPrompts = messages
                 .stream()
-                .filter(m -> m instanceof UserPrompt)
+                .filter(UserPrompt.class::isInstance)
                 .map(m -> (UserPrompt) m)
                 .filter(up -> up.getContentType()
                         == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.AUDIO)
@@ -346,7 +347,7 @@ class AgentTest {
 
         final var filePrompts = messages
                 .stream()
-                .filter(m -> m instanceof UserPrompt)
+                .filter(UserPrompt.class::isInstance)
                 .map(m -> (UserPrompt) m)
                 .filter(up -> up.getContentType()
                         == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.FILE)
@@ -397,7 +398,7 @@ class AgentTest {
 
         final var imageUrlPrompts = messages
                 .stream()
-                .filter(m -> m instanceof UserPrompt)
+                .filter(UserPrompt.class::isInstance)
                 .map(m -> (UserPrompt) m)
                 .filter(up -> up.getContentType()
                         == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.IMAGE_URL)
@@ -448,7 +449,7 @@ class AgentTest {
 
         final var imagePrompts = messages
                 .stream()
-                .filter(m -> m instanceof UserPrompt)
+                .filter(UserPrompt.class::isInstance)
                 .map(m -> (UserPrompt) m)
                 .filter(up -> up.getContentType()
                         == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.IMAGE_DATA)
@@ -877,7 +878,7 @@ class AgentTest {
                         .userId("ss")
                         .build())
                 .build());
-        assertTrue(response.getData().equals("Tool call not approved"));
+        assertEquals("Tool call not approved", response.getData());
     }
 
     @Test
