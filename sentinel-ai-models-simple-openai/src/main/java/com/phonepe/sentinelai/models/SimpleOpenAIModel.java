@@ -991,8 +991,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
             addToolList(toolsForExecution, builder);
             addToolChoice(toolsForExecution, builder, outputGenerationMode);
             if (!toolsForExecution.isEmpty()) {
-                builder.parallelToolCalls(Objects.requireNonNullElse(modelSettings
-                        .getParallelToolCalls(), true));
+                builder.parallelToolCalls(modelSettings == null
+                        || Objects.requireNonNullElse(modelSettings.getParallelToolCalls(), true));
             }
         }
         return builder;
