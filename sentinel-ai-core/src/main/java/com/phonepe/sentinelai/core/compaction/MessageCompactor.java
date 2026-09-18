@@ -32,11 +32,13 @@ import com.phonepe.sentinelai.core.agent.SafeToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessageVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
@@ -61,10 +63,12 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -75,6 +79,9 @@ public class MessageCompactor {
 
     public static final String COMPACTION_SESSION_PREFIX = "compaction-for-";
     private static final String OUTPUT_KEY = "sessionOutput";
+    private static final Set<MediaTypes.MessageContentType> ALLOWED_CONTENT_TYPES = EnumSet.of(
+                                                                                               MediaTypes.MessageContentType.TEXT,
+                                                                                               MediaTypes.MessageContentType.IMAGE_URL);
 
     @RequiredArgsConstructor
     private static final class CompactMessageVisitor implements AgentMessageVisitor<JsonNode> {
@@ -362,7 +369,14 @@ public class MessageCompactor {
         final var response = mapper.createArrayNode();
         final var visitor = new CompactMessageVisitor(mapper);
         for (AgentMessage message : messages) {
+            if (message.getMessageType().equals(AgentMessageType.USER_PROMPT_REQUEST_MESSAGE)
+                    && message instanceof UserPrompt userPrompt
+                    && !ALLOWED_CONTENT_TYPES.contains(userPrompt.getContentType())) {
+                log.trace("Skipping non compactable user prompt: {}", message.getMessageId());
+                continue;
+            }
             if (skipToolMessages && isToolInteraction(message)) {
+                log.trace("Skipping tool interaction message as requested: {}", message.getMessageId());
                 continue;
             }
             response.add(message.accept(visitor));

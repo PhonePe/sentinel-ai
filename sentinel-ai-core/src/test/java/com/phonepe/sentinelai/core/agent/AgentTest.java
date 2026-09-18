@@ -23,7 +23,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
@@ -51,9 +53,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -61,6 +65,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Basic tests for {@link Agent}
  */
 @Slf4j
+@SuppressWarnings("java:S9357")
 class AgentTest {
 
     private static final ObjectMapper MAPPER = JsonUtils.createMapper();
@@ -188,6 +193,59 @@ class AgentTest {
     }
 
     @Test
+    void testAudioMediaInputEndToEnd() {
+        final var capturedMessages = new AtomicReference<List<AgentMessage>>();
+        final var audioData = "base64audiodata";
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            capturedMessages.set(new ArrayList<>(oldMessages));
+                            return ModelOutput.success(createTextOutput("Audio received"),
+                                                       List.of(),
+                                                       oldMessages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Transcribe this audio")
+                .media(List.of(MediaInput.audio(audioData,
+                                                com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.WAV)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Audio received"));
+
+        final var messages = capturedMessages.get();
+        assertNotNull(messages);
+
+        final var audioPrompts = messages
+                .stream()
+                .filter(UserPrompt.class::isInstance)
+                .map(m -> (UserPrompt) m)
+                .filter(up -> up.getContentType()
+                        == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.AUDIO)
+                .toList();
+        assertEquals(1, audioPrompts.size());
+        assertEquals(audioData, audioPrompts.get(0).getContent());
+        assertEquals(com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.WAV,
+                     audioPrompts.get(0).getAudioFormat());
+    }
+
+    @Test
     void testContextAwareToolCall() {
 
         final var textAgent = new TestAgent(AgentSetup.builder()
@@ -245,6 +303,160 @@ class AgentTest {
                         .build())
                 .build());
         assertTrue(response.getData().contains("Session summary: Test Data"));
+    }
+
+    @Test
+    void testFileMediaInputEndToEnd() {
+        final var capturedMessages = new AtomicReference<List<AgentMessage>>();
+        final var fileContent = "file content data";
+        final var fileName = "report.txt";
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            capturedMessages.set(new ArrayList<>(oldMessages));
+                            return ModelOutput.success(createTextOutput("File received"),
+                                                       List.of(),
+                                                       oldMessages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Analyze this file")
+                .media(List.of(MediaInput.fileContent(fileContent, fileName)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("File received"));
+
+        final var messages = capturedMessages.get();
+        assertNotNull(messages);
+
+        final var filePrompts = messages
+                .stream()
+                .filter(UserPrompt.class::isInstance)
+                .map(m -> (UserPrompt) m)
+                .filter(up -> up.getContentType()
+                        == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.FILE)
+                .toList();
+        assertEquals(1, filePrompts.size());
+        assertEquals(fileContent, filePrompts.get(0).getContent());
+        assertEquals(fileName, filePrompts.get(0).getFileName());
+    }
+
+    @Test
+    void testImageUrlMediaInputEndToEnd() {
+        final var capturedMessages = new AtomicReference<List<AgentMessage>>();
+        final var imageUrl = "https://example.com/image.png";
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            capturedMessages.set(new ArrayList<>(oldMessages));
+                            return ModelOutput.success(createTextOutput("URL image received"),
+                                                       List.of(),
+                                                       oldMessages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Describe this image")
+                .media(List.of(MediaInput.imageUrl(imageUrl, ImageDetail.HIGH)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("URL image received"));
+
+        final var messages = capturedMessages.get();
+        assertNotNull(messages);
+
+        final var imageUrlPrompts = messages
+                .stream()
+                .filter(UserPrompt.class::isInstance)
+                .map(m -> (UserPrompt) m)
+                .filter(up -> up.getContentType()
+                        == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.IMAGE_URL)
+                .toList();
+        assertEquals(1, imageUrlPrompts.size());
+        assertEquals(imageUrl, imageUrlPrompts.get(0).getContent());
+        assertEquals(ImageDetail.HIGH, imageUrlPrompts.get(0).getImageDetail());
+    }
+
+    @Test
+    void testMediaInputEndToEnd() {
+        final var capturedMessages = new AtomicReference<List<AgentMessage>>();
+        final var base64Image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg";
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            capturedMessages.set(new ArrayList<>(oldMessages));
+                            return ModelOutput.success(createTextOutput("Image received"),
+                                                       List.of(),
+                                                       oldMessages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Describe this image")
+                .media(List.of(MediaInput.imageContent(base64Image, ImageDetail.AUTO)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Image received"));
+
+        final var messages = capturedMessages.get();
+        assertNotNull(messages);
+
+        final var imagePrompts = messages
+                .stream()
+                .filter(UserPrompt.class::isInstance)
+                .map(m -> (UserPrompt) m)
+                .filter(up -> up.getContentType()
+                        == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.IMAGE_DATA)
+                .toList();
+        assertEquals(1, imagePrompts.size());
+        assertEquals(base64Image, imagePrompts.get(0).getContent());
+        assertEquals(ImageDetail.AUTO, imagePrompts.get(0).getImageDetail());
     }
 
     @Test
@@ -666,7 +878,7 @@ class AgentTest {
                         .userId("ss")
                         .build())
                 .build());
-        assertTrue(response.getData().equals("Tool call not approved"));
+        assertEquals("Tool call not approved", response.getData());
     }
 
     @Test

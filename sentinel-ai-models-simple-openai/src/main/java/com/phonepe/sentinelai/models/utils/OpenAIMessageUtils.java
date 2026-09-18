@@ -16,6 +16,12 @@
 
 package com.phonepe.sentinelai.models.utils;
 
+import io.github.sashirestela.openai.common.audio.InputAudioFormat;
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartImageUrl;
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartImageUrl.ImageUrl;
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartInputAudio;
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartInputAudio.InputAudio;
+import io.github.sashirestela.openai.common.content.ImageDetail;
 import io.github.sashirestela.openai.common.function.FunctionCall;
 import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
 import io.github.sashirestela.openai.common.tool.ToolType;
@@ -29,6 +35,7 @@ import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
@@ -102,7 +109,20 @@ public class OpenAIMessageUtils {
 
                     @Override
                     public ChatMessage visit(UserPrompt userPrompt) {
-                        return ChatMessage.UserMessage.of(withSentAt(userPrompt));
+                        return switch (userPrompt.getContentType()) {
+                            case TEXT -> ChatMessage.UserMessage.of(withSentAt(userPrompt));
+                            case AUDIO -> ChatMessage.UserMessage.of(List.of(ContentPartInputAudio
+                                    .of(InputAudio.of(userPrompt.getContent(), convert(userPrompt.getAudioFormat())))));
+                            case IMAGE_URL -> ChatMessage.UserMessage.of(List.of(ContentPartImageUrl
+                                    .of(ImageUrl.of(userPrompt.getContent(), convert(userPrompt.getImageDetail())))));
+                            case IMAGE_DATA -> ChatMessage.UserMessage.of(List.of(ContentPartImageUrl
+                                    .of(ImageUrl.of(userPrompt.getContent(),
+                                                    convert(userPrompt.getImageDetail())))));
+                            case FILE -> throw new UnsupportedOperationException(
+                                                                                 "File content type is not supported in OpenAI message conversion");
+                            default -> throw new IllegalArgumentException("Unexpected value: " + userPrompt
+                                    .getContentType());
+                        };
                     }
                 });
             }
@@ -133,6 +153,21 @@ public class OpenAIMessageUtils {
                 });
             }
         });
+    }
+
+    private InputAudioFormat convert(final MediaTypes.AudioFormat audioFormat) {
+        return switch (audioFormat) {
+            case WAV -> InputAudioFormat.WAV;
+            case MP3 -> InputAudioFormat.MP3;
+        };
+    }
+
+    private ImageDetail convert(final MediaTypes.ImageDetail imageDetail) {
+        return switch (imageDetail) {
+            case AUTO -> ImageDetail.AUTO;
+            case LOW -> ImageDetail.LOW;
+            case HIGH -> ImageDetail.HIGH;
+        };
     }
 
     /**

@@ -146,6 +146,7 @@ configure the model. The class is available in the core library itself and provi
 | `presencePenalty`   | `Float`                | Penalty for adding new tokens based on their presence in the output so far.                    |
 | `frequencyPenalty`  | `Float`                | Penalty for adding new tokens based on how many times they have appeared in the output so far. |
 | `logitBias`         | `Map<String, Integer>` | Controls the likelihood of specific tokens being generated.                                    |
+| `disableTools`      | `Boolean`              | Disables tool calls for this agent. When `true`, tools are not sent to the model and `STRUCTURED_OUTPUT` mode is used. Useful for models that do not support tool calling. |
 
 ### Auto Compaction Setup
 
@@ -198,12 +199,21 @@ Some models support additional configuration options that are not part of the st
 
 You can tune how Sentinel AI estimates token usage for OpenAI models by providing a `TokenCountingConfig`. This is useful for adjusting for specific prompt formats or model-specific overheads.
 
+| **Setting**                 | **Type** | **Default** | **Description**                                                                                                       |
+|-----------------------------|----------|-------------|----------------------------------------------------------------------------------------------------------------------|
+| `messageOverHead`           | `int`    | 3           | Overhead tokens per message.                                                                                           |
+| `nameOverhead`             | `int`    | 1           | Overhead tokens if `name` is provided in message.                                                                     |
+| `assistantPrimingOverhead` | `int`    | 3           | Tokens added at the end of the prompt to prime assistant.                                                              |
+| `formattingOverhead`       | `int`    | 10          | Overhead for structured tool arguments.                                                                               |
+| `imageTokenCost`            | `int`    | 765         | Fixed token cost per image content part. Vision models do not tokenize the base64 payload as text, so each image part contributes this fixed cost instead. |
+
 ```java
 final var tokenConfig = TokenCountingConfig.builder()
         .messageOverHead(3) // Overhead tokens per message
         .nameOverhead(1)    // Overhead tokens if 'name' is provided in message
         .assistantPrimingOverhead(3) // Tokens added at the end of the prompt to prime assistant
         .formattingOverhead(10) // Overhead for structured tool arguments
+        .imageTokenCost(765) // Fixed token cost per image content part
         .build();
 
 final var modelOptions = SimpleOpenAIModelOptions.builder()
@@ -264,7 +274,7 @@ The `RetrySetup` class is a configuration class that is used to configure the re
 | `delayAfterFailedAttempt` | `Duration`             | Delay after a failed attempt before retrying.                                                   |
 | `retriableErrorTypes` | `Set<ErrorTypes>` | Specific error types to retry on. If not provided, a pre-defined set of error types are retried. See [Error Handling](errors.md) for details. |
                                      
- ### Sample setup
+### Sample setup
 
 Sample code for creating settings for an agent:
 
@@ -321,10 +331,11 @@ parameters.
 | **Property**      | **Type**               | **Description**                                                                                                                                               |
 |-------------------|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `request`         | `R`                    | Request object. This is a required parameter.                                                                                                                 |
-| `facts`           | `List<FactList>`       | List of facts to be passed to the agent.
-| `requestMetadata` | `AgentRequestMetadata` | Metadata for the request.                                                                                                                                     |
-| `oldMessages`     | `List<AgentMessage>`   | List of old messages to be sent to the LLM for this run. If set to `null`, messages are generated and consumed by the agent in this session.                  |
-| `agentSetup`      | `AgentSetup`           | Setup for the agent. Overrides runtime setup. If set to `null`, the setup provided during agent creation is used. Fields provided at runtime take precedence. |
+| `media`           | `List<MediaInput>`     | Media (images, audio) to attach to the request. Sent to the LLM as content parts in a user message. Defaults to an empty list.                                   |
+| `facts`           | `List<FactList>`       | List of facts to be passed to the agent.                                                                                                                       |
+| `requestMetadata` | `AgentRequestMetadata` | Metadata for the request.                                                                                                                                       |
+| `oldMessages`     | `List<AgentMessage>`   | List of old messages to be sent to the LLM for this run. If set to `null`, messages are generated and consumed by the agent in this session.                      |
+| `agentSetup`      | `AgentSetup`           | Setup for the agent. Overrides runtime setup. If set to `null`, the setup provided during agent creation is used. Fields provided at runtime take precedence.     |
 
 ## The `AgentOutput` class
 
@@ -406,6 +417,35 @@ Output from the above would be something like:
   "topics" : [ "Historical fiction", "Napoleonic Wars", "Russian society", "Philosophy of history", "Love and relationships", "Fate and free will", "Family dynamics", "War and its consequences" ]
 }
 ```
+
+## Media Inputs
+
+The `AgentInput.media` property accepts a list of `MediaInput` objects. Each entry is sent to the LLM as a separate
+user message content part after the serialized request. Supported media types depend on the model implementation. The
+`SimpleOpenAIModel` supports images (base64 data or URL) and audio.
+
+| **Factory method**                                          | **Description**                                                                                                     |
+|-------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| `MediaInput.imageUrl(url, detail)`                          | Image referenced by a public URL. `detail` is `AUTO`, `LOW` or `HIGH`.                                              |
+| `MediaInput.imageContent(dataUrl, detail)`                   | Base64 image data, for example `data:image/png;base64,...`.                                                        |
+| `MediaInput.audio(base64Data, audioFormat)`                  | Audio as base64 data. `audioFormat` is `WAV` or `MP3`.                                                              |
+
+```java
+final var response = agent.execute(
+        AgentInput.<BookInfo>builder()
+                .request(new BookInfo("978-0393096729", "War and Peace"))
+                .media(List.of(
+                        MediaInput.imageUrl("https://example.com/cover.png", ImageDetail.LOW),
+                        MediaInput.audio(audioBase64, AudioFormat.MP3)))
+                .build());
+```
+
+!!!note
+    Media messages are not included in automatic message compaction. Only text user prompts are compacted.
+
+!!!warning
+    Image `data` URLs are validated. The value must match the format `data:image/{png|jpeg|jpg};base64,<base64 data>`.
+    Not all models support all media types. Check your model documentation before use.
 
 ## Request Metadata
 
@@ -575,6 +615,9 @@ agent.execute(
               .request(new BookInfo("978-0393096729", "War and Peace"))
               .build());
 ```
+
+Media inputs provided via `AgentInput.media` (see [Media Inputs](#media-inputs)) are appended after the user prompt as
+separate content parts in the same turn. They are not part of the XML request object.
 
 ## Customizing Agent Behaviour
 

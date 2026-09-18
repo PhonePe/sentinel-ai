@@ -22,6 +22,9 @@ import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.EncodingType;
 
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartImageUrl;
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartInputAudio;
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartText;
 import io.github.sashirestela.openai.domain.chat.ChatMessage.AssistantMessage;
 import io.github.sashirestela.openai.domain.chat.ChatMessage.DeveloperMessage;
 import io.github.sashirestela.openai.domain.chat.ChatMessage.ResponseMessage;
@@ -38,7 +41,8 @@ import java.util.Objects;
 /**
  * Token counter for OpenAI completions models
  *
- * Uses the overheads and the encoding defined in the {@link TokenCountingConfig}
+ * Uses the overheads and the encoding defined in the
+ * {@link TokenCountingConfig}
  */
 public class OpenAICompletionsTokenCounter implements TokenCounter {
 
@@ -50,9 +54,51 @@ public class OpenAICompletionsTokenCounter implements TokenCounter {
      */
     private static int countString(final Encoding encoder,
                                    final String content) {
-        return Strings.isNullOrEmpty(content) ? 0 : encoder.encodeOrdinary(
-                                                                           content)
-                .size();
+        return Strings.isNullOrEmpty(content) ? 0
+                : encoder.encodeOrdinary(
+                                         content)
+                        .size();
+    }
+
+    /**
+     * Counts tokens in a user message content. Content is either a plain string or
+     * a list of
+     * content parts. Image parts carry base64 data or URLs. Vision models do not
+     * tokenize that
+     * payload as text. They count a patch grid derived from image resolution
+     * instead. Counting
+     * the raw string would inflate the estimate by orders of magnitude. So each
+     * image part
+     * contributes a fixed cost from the config. Text parts are counted normally.
+     */
+    private static int countUserMessageContent(final Encoding encoder,
+                                               final Object content,
+                                               final TokenCountingConfig tokenCountingConfig) {
+        if (content == null) {
+            return 0;
+        }
+        if (content instanceof String text) {
+            return countString(encoder, text);
+        }
+        if (content instanceof List<?> parts) {
+            var total = 0;
+            for (final var part : parts) {
+                if (part instanceof ContentPartImageUrl) {
+                    total += tokenCountingConfig.getImageTokenCost();
+                }
+                else if (part instanceof ContentPartInputAudio audioPart) {
+                    total += countString(encoder, audioPart.getInputAudio().getData());
+                }
+                else if (part instanceof ContentPartText textPart) {
+                    total += countString(encoder, Objects.toString(textPart.getText()));
+                }
+                else {
+                    total += countString(encoder, Objects.toString(part));
+                }
+            }
+            return total;
+        }
+        return countString(encoder, Objects.toString(content));
     }
 
     /**
@@ -64,7 +110,8 @@ public class OpenAICompletionsTokenCounter implements TokenCounter {
      * - For DeveloperMessage, add tokens for content and name (if present)
      * - For SystemMessage, add tokens for content and name (if present)
      * - For UserMessage, add tokens for content and name (if present)
-     * - For AssistantMessage, add tokens for content, name (if present), refusal, and tool calls
+     * - For AssistantMessage, add tokens for content, name (if present), refusal,
+     * and tool calls
      * - For ToolMessage, add tokens for tool call ID and content
      * - Finally, add a fixed overhead for assistant priming defined in the config
      */
@@ -97,7 +144,6 @@ public class OpenAICompletionsTokenCounter implements TokenCounter {
                 }
             }
 
-
             if (convertedMessage instanceof SystemMessage systemMessage) {
                 totalTokens += countString(encoder, systemMessage.getContent());
                 if (!Strings.isNullOrEmpty(systemMessage.getName())) {
@@ -108,9 +154,9 @@ public class OpenAICompletionsTokenCounter implements TokenCounter {
             }
 
             if (convertedMessage instanceof UserMessage userMessage) {
-                totalTokens += countString(encoder,
-                                           Objects.toString(userMessage
-                                                   .getContent()));
+                totalTokens += countUserMessageContent(encoder,
+                                                       userMessage.getContent(),
+                                                       tokenCountingConfig);
                 if (!Strings.isNullOrEmpty(userMessage.getName())) {
                     totalTokens += tokenCountingConfig.getNameOverhead();
                     totalTokens += countString(encoder, userMessage.getName());

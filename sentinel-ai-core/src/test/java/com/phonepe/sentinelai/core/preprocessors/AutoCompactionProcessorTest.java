@@ -119,7 +119,7 @@ class AutoCompactionProcessorTest {
     }
 
     private static List<AgentMessage> messages() {
-        return List.of(new UserPrompt("session-1", "run-1", "hi", false, null));
+        return List.of(UserPrompt.text("session-1", "run-1", "hi", null));
     }
 
     private static AutoCompactionProcessor processor(Model model, ModelSettings modelSettings, int threshold) {

@@ -25,6 +25,8 @@ import lombok.With;
 @With
 public class TokenCountingConfig {
 
+    public static final int DEFAULT_IMAGE_TOKEN_COST = 765;
+
     public static final TokenCountingConfig DEFAULT = TokenCountingConfig
             .builder()
             .messageOverHead(3)
@@ -47,9 +49,22 @@ public class TokenCountingConfig {
      * Overhead for system priming in tokens. Once every message
      */
     int assistantPrimingOverhead;
+
     /**
      * Overhead for formatting in tokens.
      * Once every message. Used for structued arguments to tool calls etc.
      */
     int formattingOverhead;
+
+    /**
+     * Fixed token cost per image content part. Vision models do not tokenize the
+     * base64 payload;
+     * they count a patch grid derived from image resolution. Without this, the
+     * estimator counts
+     * every base64 character as text and massively overcounts image messages.
+     * The default is a conservative high-detail worst case (OpenAI-style ~765
+     * tokens).
+     */
+    @Builder.Default
+    int imageTokenCost = DEFAULT_IMAGE_TOKEN_COST;
 }
