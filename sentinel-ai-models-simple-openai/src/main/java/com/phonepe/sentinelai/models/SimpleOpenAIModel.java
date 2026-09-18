@@ -337,7 +337,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                            allMessages,
                                                                                            newMessages,
                                                                                            oldMessages)
-                            .orElse(null);
+                                                                                                   .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(oldMessages,
                                                                    stats,
                                                                    SentinelError
@@ -566,9 +566,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                     newMessages,
                                                     stopwatch);
                             }
-                            else
-
-                            {
+                            else {
 
                                 yield processStreamingOutput(context,
                                                              responseData.toString(),
@@ -616,9 +614,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                             newMessages,
                                                             stopwatch);
                                     }
-                                    else
-
-                                    {
+                                    else {
 
                                         yield processStreamingOutput(context,
                                                                      generatedOutput.get(),
@@ -994,6 +990,10 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         else {
             addToolList(toolsForExecution, builder);
             addToolChoice(toolsForExecution, builder, outputGenerationMode);
+            if (!toolsForExecution.isEmpty()) {
+                builder.parallelToolCalls(Objects.requireNonNullElse(modelSettings
+                        .getParallelToolCalls(), true));
+            }
         }
         return builder;
     }
@@ -1102,10 +1102,6 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         }
         if (modelSettings.getTopP() != null) {
             builder.topP(Double.valueOf(modelSettings.getTopP()));
-        }
-        if (!tools.isEmpty()) {
-            builder.parallelToolCalls(Objects.requireNonNullElse(modelSettings
-                    .getParallelToolCalls(), true));
         }
         if (modelSettings.getSeed() != null) {
             builder.seed(modelSettings.getSeed());

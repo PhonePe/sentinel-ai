@@ -24,6 +24,8 @@ import com.google.common.base.Stopwatch;
 
 import org.apache.commons.text.StringSubstitutor;
 
+import jdk.javadoc.internal.doclets.formats.html.resources.standard;
+
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
@@ -63,10 +65,12 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -77,6 +81,9 @@ public class MessageCompactor {
 
     public static final String COMPACTION_SESSION_PREFIX = "compaction-for-";
     private static final String OUTPUT_KEY = "sessionOutput";
+    private static final Set<MediaTypes.MessageContentType> ALLOWED_CONTENT_TYPES = EnumSet.of(
+                                                                                               MediaTypes.MessageContentType.TEXT,
+                                                                                               MediaTypes.MessageContentType.IMAGE_URL);
 
     @RequiredArgsConstructor
     private static final class CompactMessageVisitor implements AgentMessageVisitor<JsonNode> {
@@ -366,8 +373,8 @@ public class MessageCompactor {
         for (AgentMessage message : messages) {
             if (message.getMessageType().equals(AgentMessageType.USER_PROMPT_REQUEST_MESSAGE)
                     && message instanceof UserPrompt userPrompt
-                    && !userPrompt.getContentType().equals(MediaTypes.MessageContentType.TEXT)) {
-                log.trace("Skipping non text user prompt: {}", message.getMessageId());
+                    && !ALLOWED_CONTENT_TYPES.contains(userPrompt.getContentType())) {
+                log.trace("Skipping non compactable user prompt: {}", message.getMessageId());
                 continue;
             }
             if (skipToolMessages && isToolInteraction(message)) {
