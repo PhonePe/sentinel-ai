@@ -18,7 +18,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <commons-text.version>1.13.1</commons-text.version>
         <jolt.version>0.1.8</jolt.version>
-        <handlebars.version>4.3.0</handlebars.version>
+        <handlebars.version>4.5.2</handlebars.version>
         <handlebars-guava-cache.version>4.3.0</handlebars-guava-cache.version>
     </properties>
 
