@@ -71,7 +71,7 @@ import java.util.Set;
 public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
         implements
         AgentExtension<R, T, A> {
-    private static int DEFAULT_DIRECT_INJECTION_THRESHOLD = 5;
+    private static final int DEFAULT_DIRECT_INJECTION_THRESHOLD = 5;
     private static final String READ_SKILL_REFERENCE_TOOL_ID = "agent_skills_extension_read_skill_reference";
     private static final String LIST_SKILLS_TOOL_ID = "agent_skills_extension_list_skills";
     private final SkillRegistry registry = new SkillRegistry();
@@ -92,8 +92,7 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
      */
     @SneakyThrows
     @Builder(builderMethodName = "withMultipleSkills", builderClassName = "MultiSkillBuilder")
-    public AgentSkillsExtension(
-                                @NonNull String baseDir,
+    public AgentSkillsExtension(@NonNull String baseDir,
                                 @NonNull List<String> skillsDirectories,
                                 Integer directInjectionThreshold,
                                 Collection<String> skillsToLoad) {
@@ -174,6 +173,10 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
     }
 
     private static Map<String, ExecutableTool> readTools(AgentSkillsExtension<?, ?, ?> extension) {
+        // No skills discovered: the extension is inert and registers no tools
+        if (!extension.registry.hasSkills()) {
+            return Map.of();
+        }
         final var allTools = ToolUtils.readTools(extension);
         // In single skill mode, we won't have the list skills and activate skill tools -
         // the instructions will be injected directly via system prompts
@@ -206,18 +209,15 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
         response.append("# Skill Activated: ").append(skill.getName()).append("\n\n");
         response.append(skill.getInstructions());
 
-        addSection(
-                   response,
+        addSection(response,
                    "Available Reference Files",
                    Objects.requireNonNullElseGet(skill.getReferenceFiles(), Map::<String, Path>of)
                            .keySet());
-        addSection(
-                   response,
+        addSection(response,
                    "Available Scripts",
                    Objects.requireNonNullElseGet(skill.getScriptFiles(), Map::<String, Path>of)
                            .keySet());
-        addSection(
-                   response,
+        addSection(response,
                    "Available Assets",
                    Objects.requireNonNullElseGet(skill.getAssetFiles(), Map::<String, Path>of)
                            .keySet());
@@ -227,13 +227,12 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
     }
 
     @Override
-    public ExtensionPromptSchema additionalSystemPrompts(
-                                                         R request,
+    public ExtensionPromptSchema additionalSystemPrompts(R request,
                                                          AgentRunContext<R> metadata,
                                                          A agent,
                                                          ProcessingMode processingMode) {
 
-        final var tasks = new ArrayList<SystemPrompt.Task>();
+        final var tasks = new ArrayList<Task>();
 
         // In single-skill mode, don't add skill discovery - just inject the skill directly
         if (singleSkillMode) {
@@ -241,17 +240,21 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
             final var skillName = registry.getSkillNames().stream().findFirst().orElse(null);
             if (skillName == null) {
                 log.warn("Single skill mode enabled but no skills found in registry");
-                return new ExtensionPromptSchema(tasks);
             }
-            tasks.add(SystemPrompt.Task.builder()
-                    .objective("Use the provided instructions to assist with the user's request")
-                    .instructions(activateSkill(skillName))
-                    .build());
+            else {
+                tasks.add(Task.builder()
+                        .objective("Use the provided instructions to assist with the user's request")
+                        .instructions(activateSkill(skillName))
+                        .build());
+            }
         }
         else {
-            final var skills = registry.getSkillCatalog();
-            if (skills.size() <= directInjectionThreshold) {
-                log.debug("Skills count {} below injection threshold {}", skills.size(), directInjectionThreshold);
+            final var skillCount = registry.numSkills();
+            if (skillCount == 0) {
+                log.debug("No skills discovered; skipping skill prompt injection");
+            }
+            else if (skillCount <= directInjectionThreshold) {
+                log.debug("Skills count {} below injection threshold {}", skillCount, directInjectionThreshold);
                 tasks.add(Task.builder()
                         .objective("Additional capability using skills.")
                         .instructions("""
@@ -262,19 +265,18 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
             }
             else {
                 // Add task for skill discovery and activation
-                tasks.add(
-                          SystemPrompt.Task.builder()
-                                  .objective("Check if any available skills are relevant to the user's request")
-                                  .instructions("""
-                                          Before proceeding with the main task:
-                                          1. Review the available skills catalog below
-                                          2. If a skill seems relevant to the user's request, use the activate_skill tool
-                                          3. Once activated, follow the skill's instructions carefully
-                                          4. You can activate multiple skills if needed
-                                          5. Always prefer activating relevant skills over using general tools, as skills may provide specialized capabilities and context
-                                          """)
-                                  .tool(SystemPrompt.toolSummaries(tools.values()))
-                                  .build());
+                tasks.add(Task.builder()
+                        .objective("Check if any available skills are relevant to the user's request")
+                        .instructions("""
+                                Before proceeding with the main task:
+                                1. Review the available skills catalog below
+                                2. If a skill seems relevant to the user's request, use the activate_skill tool
+                                3. Once activated, follow the skill's instructions carefully
+                                4. You can activate multiple skills if needed
+                                5. Always prefer activating relevant skills over using general tools, as skills may provide specialized capabilities and context
+                                """)
+                        .tool(SystemPrompt.toolSummaries(tools.values()))
+                        .build());
             }
         }
         return new ExtensionPromptSchema(tasks);
@@ -349,6 +351,4 @@ public class AgentSkillsExtension<R, T, A extends Agent<R, T, A>>
             log.info("Skills catalog:\n{}", registry.formatCatalog());
         }
     }
-
-
 }

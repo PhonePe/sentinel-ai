@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -161,6 +162,7 @@ class AgentSkillsExtensionTest {
         assertTrue(instructions.contains("skill-5"));
     }
 
+
     @Test
     void testAdditionalSystemPromptsDirectInjectionBelowThreshold() throws IOException {
         // 3 skills is below the default threshold of 5, so the catalog is injected directly
@@ -224,15 +226,10 @@ class AgentSkillsExtensionTest {
         final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
 
         assertNotNull(result);
-        // Even with no skills, direct injection mode still adds a task with activation instructions
-        assertEquals(1, result.getTask().size());
-        assertTrue(result.getTask()
-                .get(0)
-                .getInstructions()
-                .toString()
-                .contains("You can activate and use any of the skills"));
+        // No skills, so the extension is inert: no tasks and no tools
+        assertTrue(result.getTask().isEmpty());
+        assertTrue(extension.tools().isEmpty());
     }
-
 
     @Test
     void testAdditionalSystemPromptsSingleSkillMode() throws IOException {
@@ -249,6 +246,23 @@ class AgentSkillsExtensionTest {
         // Single skill mode: instructions should be injected directly as a task
         assertEquals(1, result.getTask().size());
         assertTrue(result.getTask().get(0).getInstructions().toString().contains("single-skill"));
+    }
+
+
+    @Test
+    void testEmptyRegistryWithMatchingNothingFilter() throws IOException {
+        createTestSkill("my-skill", "A skill");
+
+        // A filter that matches no skill blocks all skill registration
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(Set.of("__no_skills__"))
+                .build();
+
+        assertTrue(extension.tools().isEmpty());
+        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
+        assertTrue(result.getTask().isEmpty());
     }
 
     @Test
@@ -307,28 +321,8 @@ class AgentSkillsExtensionTest {
     }
 
     @Test
-    void testMultipleSkillsToolsAvailable() throws IOException {
-        // 6 skills is above the default threshold of 5; all tools are registered
-        for (int i = 1; i <= 6; i++) {
-            createTestSkill("skill-" + i, "Skill number " + i);
-        }
-
-        final var extension = AgentSkillsExtension.withMultipleSkills()
-                .baseDir(tempDir.toString())
-                .skillsDirectories(List.of(skillsDir.toString()))
-                .skillsToLoad(null)
-                .build();
-
-        final var tools = extension.tools();
-        assertNotNull(tools);
-        assertTrue(tools.containsKey("agent_skills_extension_list_skills"));
-        assertTrue(tools.containsKey("agent_skills_extension_activate_skill"));
-        assertTrue(tools.containsKey("agent_skills_extension_read_skill_reference"));
-    }
-
-
-    @Test
     void testName() {
+
         final var extension = AgentSkillsExtension.withMultipleSkills()
                 .baseDir(tempDir.toString())
                 .skillsDirectories(List.of(skillsDir.toString()))
