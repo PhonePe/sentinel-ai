@@ -95,10 +95,7 @@ public class SkillRegistry {
 
         skillCatalog
                 .values()
-                .forEach(
-                         metadata -> sb.append(
-                                               String.format(
-                                                             "- **%s**: %s%n",
+                .forEach(metadata -> sb.append(String.format("- **%s**: %s%n",
                                                              metadata.getName(),
                                                              metadata.getDescription())));
         return sb.toString();

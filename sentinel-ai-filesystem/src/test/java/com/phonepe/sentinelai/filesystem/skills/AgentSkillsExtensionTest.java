@@ -96,6 +96,124 @@ class AgentSkillsExtensionTest {
     }
 
     @Test
+    void testAdditionalSystemPromptsCustomDirectInjectionThreshold() throws IOException {
+        createTestSkill("skill-one", "First skill");
+        createTestSkill("skill-two", "Second skill");
+
+        // Threshold of 1 forces discovery mode with 2 skills
+        final var discoveryModeExtension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .directInjectionThreshold(1)
+                .build();
+
+        final var discoveryResult = discoveryModeExtension.additionalSystemPrompts(
+                                                                                   null,
+                                                                                   null,
+                                                                                   null,
+                                                                                   ProcessingMode.DIRECT);
+        assertTrue(discoveryResult.getTask()
+                .get(0)
+                .getInstructions()
+                .toString()
+                .contains("Review the available skills catalog"));
+
+        // Threshold of 2 allows direct injection with 2 skills
+        final var directInjectionExtension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .directInjectionThreshold(2)
+                .build();
+
+        final var directInjectionResult = directInjectionExtension.additionalSystemPrompts(
+                                                                                           null,
+                                                                                           null,
+                                                                                           null,
+                                                                                           ProcessingMode.DIRECT);
+        assertTrue(directInjectionResult.getTask()
+                .get(0)
+                .getInstructions()
+                .toString()
+                .contains("You can activate and use any of the skills"));
+    }
+
+    @Test
+    void testAdditionalSystemPromptsDirectInjectionAtExactThreshold() throws IOException {
+        // 5 skills equals the default threshold of 5, so direct injection still applies
+        for (int i = 1; i <= 5; i++) {
+            createTestSkill("skill-" + i, "Skill number " + i);
+        }
+
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTask().size());
+        final var instructions = result.getTask().get(0).getInstructions().toString();
+        assertTrue(instructions.contains("Available Skills"));
+        assertTrue(instructions.contains("skill-5"));
+    }
+
+    @Test
+    void testAdditionalSystemPromptsDirectInjectionBelowThreshold() throws IOException {
+        // 3 skills is below the default threshold of 5, so the catalog is injected directly
+        createTestSkill("skill-one", "First skill");
+        createTestSkill("skill-two", "Second skill");
+        createTestSkill("skill-three", "Third skill");
+
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTask().size());
+        final var instructions = result.getTask().get(0).getInstructions().toString();
+        // The full catalog (names and descriptions) should be injected directly
+        assertTrue(instructions.contains("Available Skills"));
+        assertTrue(instructions.contains("skill-one"));
+        assertTrue(instructions.contains("First skill"));
+        assertTrue(instructions.contains("skill-two"));
+        assertTrue(instructions.contains("Second skill"));
+        assertTrue(instructions.contains("skill-three"));
+        assertTrue(instructions.contains("Third skill"));
+        assertTrue(instructions.contains("You can activate and use any of the skills"));
+    }
+
+    @Test
+    void testAdditionalSystemPromptsDiscoveryModeAboveThreshold() throws IOException {
+        // 6 skills is above the default threshold of 5, so discovery instructions are used
+        for (int i = 1; i <= 6; i++) {
+            createTestSkill("skill-" + i, "Skill number " + i);
+        }
+
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTask().size());
+        final var instructions = result.getTask().get(0).getInstructions().toString();
+        // Discovery mode does not inject the catalog directly
+        assertTrue(instructions.contains("Review the available skills catalog"));
+        assertFalse(instructions.contains("Available Skills"));
+    }
+
+    @Test
     void testAdditionalSystemPromptsEmptyRegistry() {
         final var extension = AgentSkillsExtension.withMultipleSkills()
                 .baseDir(tempDir.toString())
@@ -106,26 +224,15 @@ class AgentSkillsExtensionTest {
         final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
 
         assertNotNull(result);
-        // No skills, so no tasks
-        assertTrue(result.getTask().isEmpty());
-    }
-
-    @Test
-    void testAdditionalSystemPromptsMultiSkillMode() throws IOException {
-        createTestSkill("my-skill", "A great skill");
-
-        final var extension = AgentSkillsExtension.withMultipleSkills()
-                .baseDir(tempDir.toString())
-                .skillsDirectories(List.of(skillsDir.toString()))
-                .skillsToLoad(null)
-                .build();
-
-        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
-
-        assertNotNull(result);
-        // Should have 1 task (skill discovery)
+        // Even with no skills, direct injection mode still adds a task with activation instructions
         assertEquals(1, result.getTask().size());
+        assertTrue(result.getTask()
+                .get(0)
+                .getInstructions()
+                .toString()
+                .contains("You can activate and use any of the skills"));
     }
+
 
     @Test
     void testAdditionalSystemPromptsSingleSkillMode() throws IOException {
@@ -201,7 +308,10 @@ class AgentSkillsExtensionTest {
 
     @Test
     void testMultipleSkillsToolsAvailable() throws IOException {
-        createTestSkill("skill-one", "First skill");
+        // 6 skills is above the default threshold of 5; all tools are registered
+        for (int i = 1; i <= 6; i++) {
+            createTestSkill("skill-" + i, "Skill number " + i);
+        }
 
         final var extension = AgentSkillsExtension.withMultipleSkills()
                 .baseDir(tempDir.toString())
@@ -215,6 +325,7 @@ class AgentSkillsExtensionTest {
         assertTrue(tools.containsKey("agent_skills_extension_activate_skill"));
         assertTrue(tools.containsKey("agent_skills_extension_read_skill_reference"));
     }
+
 
     @Test
     void testName() {
@@ -237,6 +348,7 @@ class AgentSkillsExtensionTest {
 
         assertTrue(extension.outputSchema(ProcessingMode.DIRECT).isEmpty());
     }
+
 
     @Test
     void testReadSkillReference() throws IOException {
@@ -359,6 +471,46 @@ class AgentSkillsExtensionTest {
         assertNotNull(tools);
         assertFalse(tools.containsKey("agent_skills_extension_list_skills"));
         assertFalse(tools.containsKey("agent_skills_extension_activate_skill"));
+        assertTrue(tools.containsKey("agent_skills_extension_read_skill_reference"));
+    }
+
+    @Test
+    void testToolsAboveThresholdIncludeListSkills() throws IOException {
+        // 6 skills is above the default threshold of 5; all tools are registered
+        for (int i = 1; i <= 6; i++) {
+            createTestSkill("skill-" + i, "Skill number " + i);
+        }
+
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        final var tools = extension.tools();
+        assertNotNull(tools);
+        assertTrue(tools.containsKey("agent_skills_extension_list_skills"));
+        assertTrue(tools.containsKey("agent_skills_extension_activate_skill"));
+        assertTrue(tools.containsKey("agent_skills_extension_read_skill_reference"));
+    }
+
+    @Test
+    void testToolsBelowThresholdExcludeListSkills() throws IOException {
+        // 3 skills is below the default threshold of 5; the listSkills tool is not needed
+        createTestSkill("skill-one", "First skill");
+        createTestSkill("skill-two", "Second skill");
+        createTestSkill("skill-three", "Third skill");
+
+        final var extension = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null)
+                .build();
+
+        final var tools = extension.tools();
+        assertNotNull(tools);
+        assertFalse(tools.containsKey("agent_skills_extension_list_skills"));
+        assertTrue(tools.containsKey("agent_skills_extension_activate_skill"));
         assertTrue(tools.containsKey("agent_skills_extension_read_skill_reference"));
     }
 
