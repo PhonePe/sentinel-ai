@@ -19,6 +19,7 @@ The `ErrorType` enum defines the categories of errors that can occur during agen
 | `FILTERED` | The generated content was filtered by the provider. | No |
 | `LENGTH_EXCEEDED` | The generated content exceeded the maximum allowed length/tokens. | No |
 | `TOOL_CALL_PERMANENT_FAILURE` | A tool call failed with a non-recoverable error. | No |
+| `TOOL_CALL_PREPROCESSING_FAILURE` | A tool call failed during argument preprocessing by an extension. | No |
 | `TOOL_CALL_TEMPORARY_FAILURE` | A tool call failed with a transient error. | Yes |
 | `TOOL_CALL_TIMEOUT` | A tool call exceeded its configured timeout. | Yes |
 | `JSON_ERROR` | Error parsing JSON response from the model. | Yes |

@@ -41,6 +41,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OpenAICompletionsTokenCounterTest {
 
@@ -80,6 +81,28 @@ class OpenAICompletionsTokenCounterTest {
     }
 
     @Test
+    void testEstimateTokenCountAudioPrompt() {
+        final var audioData = "base64audiodata";
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+        UserPrompt audioPrompt = UserPrompt.audio("s1",
+                                                  "r1",
+                                                  audioData,
+                                                  com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.WAV,
+                                                  sentAt);
+
+        // Audio content is counted as text (the base64 data), not a fixed image cost.
+        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
+                + TokenCountingConfig.DEFAULT.getMessageOverHead()
+                + countTokens("USER")
+                + countTokens(audioData);
+
+        assertEquals(expected,
+                     tokenCounter.estimateTokenCount(List.of(audioPrompt),
+                                                     TokenCountingConfig.DEFAULT,
+                                                     EncodingType.CL100K_BASE));
+    }
+
+    @Test
     void testEstimateTokenCountEmptyMessages() {
         assertEquals(TokenCountingConfig.DEFAULT.getMessageOverHead(),
                      tokenCounter.estimateTokenCount(List.of(),
@@ -106,6 +129,73 @@ class OpenAICompletionsTokenCounterTest {
     }
 
     @Test
+    void testEstimateTokenCountImagePromptCountsFixedCostNotBase64() {
+        final var base64Data = "iVBORw0KGgoAAAANSUhEUg".repeat(1000); // ~23KB of base64
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+        UserPrompt imagePrompt = UserPrompt.imageData("s1",
+                                                      "r1",
+                                                      "data:image/png;base64," + base64Data,
+                                                      com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
+                                                      sentAt);
+
+        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
+                + TokenCountingConfig.DEFAULT.getMessageOverHead()
+                + countTokens("USER")
+                + TokenCountingConfig.DEFAULT.getImageTokenCost();
+
+        final var actual = tokenCounter.estimateTokenCount(List.of(imagePrompt),
+                                                           TokenCountingConfig.DEFAULT,
+                                                           EncodingType.CL100K_BASE);
+        assertEquals(expected, actual);
+        // The base64 payload must not be counted as text. 23K chars would be ~7K text tokens.
+        assertTrue(actual < 1000, "Image tokens should be a fixed cost, not proportional to base64 length");
+    }
+
+    @Test
+    void testEstimateTokenCountImagePromptWithCustomCost() {
+        final var base64Data = "iVBORw0KGgoAAAANSUhEUg".repeat(1000);
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+        UserPrompt imagePrompt = UserPrompt.imageData("s1",
+                                                      "r1",
+                                                      "data:image/png;base64," + base64Data,
+                                                      com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
+                                                      sentAt);
+        final var config = TokenCountingConfig.DEFAULT.withImageTokenCost(1575);
+
+        final var expected = config.getAssistantPrimingOverhead()
+                + config.getMessageOverHead()
+                + countTokens("USER")
+                + config.getImageTokenCost();
+
+        assertEquals(expected,
+                     tokenCounter.estimateTokenCount(List.of(imagePrompt),
+                                                     config,
+                                                     EncodingType.CL100K_BASE));
+    }
+
+    @Test
+    void testEstimateTokenCountImageUrlPrompt() throws java.net.MalformedURLException {
+        final var imageUrl = "https://example.com/image.png";
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+        UserPrompt imagePrompt = UserPrompt.imageURL("s1",
+                                                     "r1",
+                                                     java.net.URI.create(imageUrl).toURL(),
+                                                     com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
+                                                     sentAt);
+
+        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
+                + TokenCountingConfig.DEFAULT.getMessageOverHead()
+                + countTokens("USER")
+                + TokenCountingConfig.DEFAULT.getImageTokenCost();
+
+        assertEquals(expected,
+                     tokenCounter.estimateTokenCount(List.of(imagePrompt),
+                                                     TokenCountingConfig.DEFAULT,
+                                                     EncodingType.CL100K_BASE));
+    }
+
+
+    @Test
     void testEstimateTokenCountMultipleMessages() {
         SystemPrompt systemPrompt = new SystemPrompt("s1",
                                                      "r1",
@@ -113,11 +203,10 @@ class OpenAICompletionsTokenCounterTest {
                                                      false,
                                                      null);
         final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
-        UserPrompt userPrompt = new UserPrompt("s1",
-                                               "r1",
-                                               "User",
-                                               false,
-                                               sentAt);
+        UserPrompt userPrompt = UserPrompt.text("s1",
+                                                "r1",
+                                                "User",
+                                                sentAt);
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + (TokenCountingConfig.DEFAULT
@@ -223,12 +312,10 @@ class OpenAICompletionsTokenCounterTest {
     void testEstimateTokenCountUserPrompt() {
         final var content = "Hello, how are you?";
         final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
-        UserPrompt userPrompt = new UserPrompt("s1",
-                                               "r1",
-                                               content,
-                                               false,
-                                               sentAt);
-
+        UserPrompt userPrompt = UserPrompt.text("s1",
+                                                "r1",
+                                                content,
+                                                sentAt);
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + TokenCountingConfig.DEFAULT
                         .getMessageOverHead() + countTokens("USER") + countTokens(withSentAt(content, sentAt));

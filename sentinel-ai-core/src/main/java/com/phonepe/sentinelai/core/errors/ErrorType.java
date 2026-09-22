@@ -31,6 +31,7 @@ public enum ErrorType {
     FILTERED("Content filtered", false),
     LENGTH_EXCEEDED("Content length exceeded", false),
     TOOL_CALL_PERMANENT_FAILURE("Tool call failed permanently for tool: %s", false),
+    TOOL_CALL_PREPROCESSING_FAILURE("Tool call failed in preprocessing: %s", false),
     TOOL_CALL_TEMPORARY_FAILURE("Tool call failed temporarily for tool: %s", true),
     TOOL_CALL_TIMEOUT("Tool call timed out for tool: %s", true),
     JSON_ERROR("Error parsing JSON. Error: %s", true),

@@ -315,18 +315,17 @@ public class AgentMemoryExtension<R, T, A extends Agent<R, T, A>> implements Age
                                                                                                  .writeValueAsString(extractionTaskPrompt()),
                                                                                          false,
                                                                                          null));
-        messages.add(new UserPrompt(sessionId,
-                                    context.getRunId(),
-                                    "You must extract memory from the following conversation between user and agent :"
-                                            + " " + objectMapper
-                                                    .writeValueAsString(Map.of(
-                                                                               "conversation",
-                                                                               objectMapper
-                                                                                       .writeValueAsString(data
-                                                                                               .getOutput()
-                                                                                               .getNewMessages()))),
-                                    false,
-                                    LocalDateTime.now()));
+        messages.add(UserPrompt.text(sessionId,
+                                     context.getRunId(),
+                                     "You must extract memory from the following conversation between user and agent :"
+                                             + " " + objectMapper
+                                                     .writeValueAsString(Map.of(
+                                                                                "conversation",
+                                                                                objectMapper
+                                                                                        .writeValueAsString(data
+                                                                                                .getOutput()
+                                                                                                .getNewMessages()))),
+                                     LocalDateTime.now()));
         final var runId = "mem-extraction-" + UUID.randomUUID();
         final var agentSetup = data.getAgentSetup();
         final var modelRunContext = new ModelRunContext(agent.name(),

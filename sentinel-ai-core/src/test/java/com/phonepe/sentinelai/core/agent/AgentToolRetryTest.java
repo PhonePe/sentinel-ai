@@ -96,7 +96,8 @@ class AgentToolRetryTest {
         final var toolRunner = new AgentToolRunner<String, String, TestAgent>(agent,
                                                                               setup,
                                                                               approvalSeeker,
-                                                                              context);
+                                                                              context,
+                                                                              t -> t);
 
         final var callCount = new AtomicInteger(0);
         final var toolDefinition = ToolDefinition.builder()
@@ -150,7 +151,8 @@ class AgentToolRetryTest {
         final var toolRunner = new AgentToolRunner<String, String, TestAgent>(agent,
                                                                               setup,
                                                                               approvalSeeker,
-                                                                              context);
+                                                                              context,
+                                                                              t -> t);
 
         final var testTool = new TestTool();
         final var method = TestTool.class.getMethod("slowMethod");

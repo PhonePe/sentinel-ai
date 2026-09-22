@@ -16,13 +16,16 @@
 
 package com.phonepe.sentinelai.core.agent;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
 import com.phonepe.sentinelai.core.earlytermination.NeverTerminateEarlyStrategy;
@@ -48,10 +51,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -59,9 +65,69 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Basic tests for {@link Agent}
  */
 @Slf4j
+@SuppressWarnings("java:S9357")
 class AgentTest {
 
     private static final ObjectMapper MAPPER = JsonUtils.createMapper();
+
+    /**
+     * Extension that can modify tool call arguments or return null based on a flag.
+     */
+    private static final class ModifyingExtension implements AgentExtension<String, String, TestAgent> {
+        private final boolean returnNull;
+        private final boolean throwError;
+
+        private ModifyingExtension(boolean returnNull) {
+            this(returnNull, false);
+        }
+
+        private ModifyingExtension(boolean returnNull, boolean throwError) {
+            this.returnNull = returnNull;
+            this.throwError = throwError;
+        }
+
+        @Override
+        public ExtensionPromptSchema additionalSystemPrompts(String request,
+                                                             AgentRunContext<String> context,
+                                                             TestAgent agent,
+                                                             ProcessingMode processingMode) {
+            return new ExtensionPromptSchema(List.of());
+        }
+
+        @Override
+        public List<FactList> facts(String request,
+                                    AgentRunContext<String> context,
+                                    TestAgent agent) {
+            return List.of();
+        }
+
+        @Override
+        public JsonNode modifyToolCallArguments(AgentRunContext<String> context,
+                                                TestAgent agent,
+                                                ToolCall toolCall,
+                                                JsonNode inputArguments) {
+            if (throwError) {
+                throw new IllegalArgumentException("Invalid input argument");
+            }
+            if (returnNull) {
+                return null;
+            }
+            final var node = (ObjectNode) inputArguments;
+            final var input = (ObjectNode) node.get("input");
+            input.put("data", "Modified Data");
+            return node;
+        }
+
+        @Override
+        public String name() {
+            return "modifying-extension";
+        }
+
+        @Override
+        public Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode) {
+            return Optional.empty();
+        }
+    }
 
     private static final class TestAgent extends Agent<String, String, TestAgent> {
 
@@ -127,6 +193,59 @@ class AgentTest {
     }
 
     @Test
+    void testAudioMediaInputEndToEnd() {
+        final var capturedMessages = new AtomicReference<List<AgentMessage>>();
+        final var audioData = "base64audiodata";
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            capturedMessages.set(new ArrayList<>(oldMessages));
+                            return ModelOutput.success(createTextOutput("Audio received"),
+                                                       List.of(),
+                                                       oldMessages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Transcribe this audio")
+                .media(List.of(MediaInput.audio(audioData,
+                                                com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.WAV)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Audio received"));
+
+        final var messages = capturedMessages.get();
+        assertNotNull(messages);
+
+        final var audioPrompts = messages
+                .stream()
+                .filter(UserPrompt.class::isInstance)
+                .map(m -> (UserPrompt) m)
+                .filter(up -> up.getContentType()
+                        == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.AUDIO)
+                .toList();
+        assertEquals(1, audioPrompts.size());
+        assertEquals(audioData, audioPrompts.get(0).getContent());
+        assertEquals(com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.WAV,
+                     audioPrompts.get(0).getAudioFormat());
+    }
+
+    @Test
     void testContextAwareToolCall() {
 
         final var textAgent = new TestAgent(AgentSetup.builder()
@@ -184,6 +303,160 @@ class AgentTest {
                         .build())
                 .build());
         assertTrue(response.getData().contains("Session summary: Test Data"));
+    }
+
+    @Test
+    void testFileMediaInputEndToEnd() {
+        final var capturedMessages = new AtomicReference<List<AgentMessage>>();
+        final var fileContent = "file content data";
+        final var fileName = "report.txt";
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            capturedMessages.set(new ArrayList<>(oldMessages));
+                            return ModelOutput.success(createTextOutput("File received"),
+                                                       List.of(),
+                                                       oldMessages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Analyze this file")
+                .media(List.of(MediaInput.fileContent(fileContent, fileName)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("File received"));
+
+        final var messages = capturedMessages.get();
+        assertNotNull(messages);
+
+        final var filePrompts = messages
+                .stream()
+                .filter(UserPrompt.class::isInstance)
+                .map(m -> (UserPrompt) m)
+                .filter(up -> up.getContentType()
+                        == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.FILE)
+                .toList();
+        assertEquals(1, filePrompts.size());
+        assertEquals(fileContent, filePrompts.get(0).getContent());
+        assertEquals(fileName, filePrompts.get(0).getFileName());
+    }
+
+    @Test
+    void testImageUrlMediaInputEndToEnd() {
+        final var capturedMessages = new AtomicReference<List<AgentMessage>>();
+        final var imageUrl = "https://example.com/image.png";
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            capturedMessages.set(new ArrayList<>(oldMessages));
+                            return ModelOutput.success(createTextOutput("URL image received"),
+                                                       List.of(),
+                                                       oldMessages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Describe this image")
+                .media(List.of(MediaInput.imageUrl(imageUrl, ImageDetail.HIGH)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("URL image received"));
+
+        final var messages = capturedMessages.get();
+        assertNotNull(messages);
+
+        final var imageUrlPrompts = messages
+                .stream()
+                .filter(UserPrompt.class::isInstance)
+                .map(m -> (UserPrompt) m)
+                .filter(up -> up.getContentType()
+                        == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.IMAGE_URL)
+                .toList();
+        assertEquals(1, imageUrlPrompts.size());
+        assertEquals(imageUrl, imageUrlPrompts.get(0).getContent());
+        assertEquals(ImageDetail.HIGH, imageUrlPrompts.get(0).getImageDetail());
+    }
+
+    @Test
+    void testMediaInputEndToEnd() {
+        final var capturedMessages = new AtomicReference<List<AgentMessage>>();
+        final var base64Image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg";
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            capturedMessages.set(new ArrayList<>(oldMessages));
+                            return ModelOutput.success(createTextOutput("Image received"),
+                                                       List.of(),
+                                                       oldMessages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Describe this image")
+                .media(List.of(MediaInput.imageContent(base64Image, ImageDetail.AUTO)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Image received"));
+
+        final var messages = capturedMessages.get();
+        assertNotNull(messages);
+
+        final var imagePrompts = messages
+                .stream()
+                .filter(UserPrompt.class::isInstance)
+                .map(m -> (UserPrompt) m)
+                .filter(up -> up.getContentType()
+                        == com.phonepe.sentinelai.core.agentmessages.MediaTypes.MessageContentType.IMAGE_DATA)
+                .toList();
+        assertEquals(1, imagePrompts.size());
+        assertEquals(base64Image, imagePrompts.get(0).getContent());
+        assertEquals(ImageDetail.AUTO, imagePrompts.get(0).getImageDetail());
     }
 
     @Test
@@ -307,6 +580,128 @@ class AgentTest {
     }
 
     @Test
+    void testToolCallArgumentModification() {
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_structured_tool"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_structured_tool",
+                                                                                 """
+                                                                                         {
+                                                                                            "input": {
+                                                                                                "data" : "Test Data"
+                                                                                            }
+                                                                                         }
+                                                                                         """));
+                            assertTrue(response.isSuccess());
+                            assertEquals("TC1", response.getToolCallId());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput(
+                                                                        "Hello " + response
+                                                                                .getResponse()),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(new ModifyingExtension(false)), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Hello Modified Data"));
+    }
+
+    @Test
+    void testToolCallArgumentModificationThrowsError() {
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_structured_tool"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_structured_tool",
+                                                                                 """
+                                                                                         {
+                                                                                            "input": {
+                                                                                                "data" : "Test Data"
+                                                                                            }
+                                                                                         }
+                                                                                         """));
+                            assertFalse(response.isSuccess());
+                            assertEquals(ErrorType.TOOL_CALL_PREPROCESSING_FAILURE,
+                                         response.getErrorType());
+                            assertTrue(response.getResponse()
+                                    .contains("Invalid input argument"));
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime.now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput("Tool call failed"),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(new ModifyingExtension(false, true)), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        System.out.println("Response: " + response);
+        assertTrue(response.getData().contains("Tool call failed"));
+    }
+
+    @Test
     void testToolCallFailure() {
 
         final var textAgent = new TestAgent(AgentSetup.builder()
@@ -321,8 +716,7 @@ class AgentTest {
                                                                   EarlyTerminationStrategy earlyTerminationStrategy,
                                                                   List<AgentMessagesPreProcessor> preProcessors) {
                         return CompletableFuture.supplyAsync(() -> {
-                            assertTrue(tools.containsKey(
-                                                         "test_agent_throw_tool"));
+                            assertTrue(tools.containsKey("test_agent_throw_tool"));
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
@@ -362,6 +756,66 @@ class AgentTest {
         assertNull(response.getData());
         final var data = response.getError();
         assertTrue(data.getMessage().contains("Test exception"));
+    }
+
+    @Test
+    void testToolCallModificationNull() {
+        final var textAgent = new TestAgent(AgentSetup.builder()
+                .model(new Model() {
+                    @Override
+                    public CompletableFuture<ModelOutput> compute(ModelRunContext context,
+                                                                  Collection<ModelOutputDefinition> outputDefinitions,
+                                                                  List<AgentMessage> oldMessages,
+                                                                  Map<String, ExecutableTool> tools,
+                                                                  ToolRunner toolRunner,
+                                                                  EarlyTerminationStrategy earlyTerminationStrategy,
+                                                                  List<AgentMessagesPreProcessor> preProcessors) {
+                        return CompletableFuture.supplyAsync(() -> {
+                            assertTrue(tools.containsKey(
+                                                         "test_agent_structured_tool"));
+                            final var response = toolRunner.runTool(tools,
+                                                                    new ToolCall("s1",
+                                                                                 "r1",
+                                                                                 "TC1",
+                                                                                 "test_agent_structured_tool",
+                                                                                 """
+                                                                                         {
+                                                                                            "input": {
+                                                                                                "data" : "Test Data"
+                                                                                            }
+                                                                                         }
+                                                                                         """));
+                            assertFalse(response.isSuccess());
+                            assertEquals(ErrorType.TOOL_CALL_PERMANENT_FAILURE,
+                                         response.getErrorType());
+                            final var messages = new ArrayList<>(oldMessages);
+                            final var message = new ToolCallResponse("s1",
+                                                                     "r1",
+                                                                     response.getToolCallId(),
+                                                                     response.getToolName(),
+                                                                     response.getErrorType(),
+                                                                     response.getResponse(),
+                                                                     LocalDateTime
+                                                                             .now());
+                            messages.add(message);
+                            return ModelOutput.success(createTextOutput("Tool call skipped"),
+                                                       List.of(message),
+                                                       messages,
+                                                       context.getModelUsageStats());
+                        });
+                    }
+                })
+                .modelSettings(ModelSettings.builder().build())
+                .mapper(MAPPER)
+                .build(), List.of(new ModifyingExtension(true)), Map.of());
+        final var response = textAgent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build());
+        assertTrue(response.getData().contains("Tool call skipped"));
     }
 
     @Test
@@ -424,7 +878,7 @@ class AgentTest {
                         .userId("ss")
                         .build())
                 .build());
-        assertTrue(response.getData().equals("Tool call not approved"));
+        assertEquals("Tool call not approved", response.getData());
     }
 
     @Test
@@ -549,5 +1003,4 @@ class AgentTest {
             String output
     ) {
     }
-
 }

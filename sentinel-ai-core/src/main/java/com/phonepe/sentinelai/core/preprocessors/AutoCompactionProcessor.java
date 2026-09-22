@@ -195,11 +195,10 @@ public class AutoCompactionProcessor implements AgentMessagesPreProcessor {
         final var mapper = modelRunContext.getAgentSetup().getMapper();
         final var outputAllMessages = new ArrayList<AgentMessage>(allMessages);
         final var outputNewMessages = new ArrayList<AgentMessage>(newMessages);
-        final var userPrompt = new UserPrompt(modelRunContext.getSessionId(),
-                                              modelRunContext.getRunId(),
-                                              continuationPrompt(compactionOutput, mapper),
-                                              true,
-                                              LocalDateTime.now());
+        final var userPrompt = UserPrompt.compactedText(modelRunContext.getSessionId(),
+                                                        modelRunContext.getRunId(),
+                                                        continuationPrompt(compactionOutput, mapper),
+                                                        LocalDateTime.now());
         outputAllMessages.add(userPrompt);
         outputNewMessages.add(userPrompt);
         return new AgentMessagesPreProcessResult(outputAllMessages, outputNewMessages);

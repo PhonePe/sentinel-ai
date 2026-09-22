@@ -16,6 +16,8 @@
 
 package com.phonepe.sentinelai.models;
 
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartImageUrl;
+import io.github.sashirestela.openai.common.content.ContentPart.ContentPartInputAudio;
 import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
 import io.github.sashirestela.openai.common.tool.ToolType;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
@@ -27,6 +29,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
@@ -58,11 +61,17 @@ class OpenAIMessageUtilsTest {
     private static final String RUN_ID = "run-1";
     private static final LocalDateTime SENT_AT = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
 
+    static Stream<Arguments> imageDetails() {
+        return Stream.of(Arguments.of(ImageDetail.AUTO),
+                         Arguments.of(ImageDetail.LOW),
+                         Arguments.of(ImageDetail.HIGH));
+    }
+
     static Stream<Arguments> messages() {
         return Stream.of(Arguments.of(SystemPrompt.builder().sessionId(SESSION_ID).content("rules").build(),
                                       ChatMessage.SystemMessage.class,
                                       "rules"),
-                         Arguments.of(new UserPrompt(SESSION_ID, RUN_ID, "hi", false, SENT_AT),
+                         Arguments.of(UserPrompt.text(SESSION_ID, RUN_ID, "hi", SENT_AT),
                                       ChatMessage.UserMessage.class,
                                       "<sentAt>2026-07-25T10:00:00Z</sentAt>\nhi"),
                          Arguments.of(ToolCallResponse.builder()
@@ -158,14 +167,105 @@ class OpenAIMessageUtilsTest {
     }
 
     @Test
+    void convertAudioPrompt() {
+        final var audioData = "base64audiodata";
+        final var userPrompt = UserPrompt.audio(SESSION_ID,
+                                                RUN_ID,
+                                                audioData,
+                                                com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.MP3,
+                                                SENT_AT);
+
+        final var converted = assertInstanceOf(ChatMessage.UserMessage.class,
+                                               OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(userPrompt));
+
+        @SuppressWarnings("unchecked") final var contentParts = (List<ContentPartInputAudio>) converted.getContent();
+        assertEquals(1, contentParts.size());
+        assertEquals(audioData, contentParts.get(0).getInputAudio().getData());
+        assertEquals(io.github.sashirestela.openai.common.audio.InputAudioFormat.MP3,
+                     contentParts.get(0).getInputAudio().getFormat());
+    }
+
+    @Test
+    void convertFilePromptThrowsException() {
+        final var userPrompt = UserPrompt.file(SESSION_ID,
+                                               RUN_ID,
+                                               "file content",
+                                               "file-123",
+                                               "report.txt",
+                                               SENT_AT);
+
+        assertThrows(UnsupportedOperationException.class,
+                     () -> OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(userPrompt));
+    }
+
+    @Test
+    void convertImageDataPrompt() {
+        final var base64Data = "iVBORw0KGgoAAAANS";
+        final var userPrompt = UserPrompt.imageData(SESSION_ID,
+                                                    RUN_ID,
+                                                    "data:image/png;base64," + base64Data,
+                                                    ImageDetail.AUTO,
+                                                    SENT_AT);
+
+        final var converted = assertInstanceOf(ChatMessage.UserMessage.class,
+                                               OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(userPrompt));
+
+        @SuppressWarnings("unchecked") final var contentParts = (List<ContentPartImageUrl>) converted.getContent();
+        assertEquals(1, contentParts.size());
+        final var imageUrl = contentParts.get(0).getImageUrl();
+        assertEquals("data:image/png;base64," + base64Data, imageUrl.getUrl());
+        assertEquals(io.github.sashirestela.openai.common.content.ImageDetail.AUTO, imageUrl.getDetail());
+    }
+
+    @ParameterizedTest(name = "detail={0}")
+    @MethodSource("imageDetails")
+    void convertImageDataWithDifferentDetailLevels(ImageDetail detail) {
+        final var userPrompt = UserPrompt.imageData(SESSION_ID,
+                                                    RUN_ID,
+                                                    "data:image/png;base64,base64data",
+                                                    detail,
+                                                    SENT_AT);
+
+        final var converted = assertInstanceOf(ChatMessage.UserMessage.class,
+                                               OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(userPrompt));
+
+        @SuppressWarnings("unchecked") final var contentParts = (List<ContentPartImageUrl>) converted.getContent();
+        assertEquals(1, contentParts.size());
+        final var expectedOpenAiDetail = switch (detail) {
+            case AUTO -> io.github.sashirestela.openai.common.content.ImageDetail.AUTO;
+            case LOW -> io.github.sashirestela.openai.common.content.ImageDetail.LOW;
+            case HIGH -> io.github.sashirestela.openai.common.content.ImageDetail.HIGH;
+        };
+        assertEquals(expectedOpenAiDetail, contentParts.get(0).getImageUrl().getDetail());
+    }
+
+    @Test
+    void convertImageUrlPrompt() throws java.net.MalformedURLException {
+        final var userPrompt = UserPrompt.imageURL(SESSION_ID,
+                                                   RUN_ID,
+                                                   java.net.URI.create("https://example.com/image.png").toURL(),
+                                                   ImageDetail.HIGH,
+                                                   SENT_AT);
+
+        final var converted = assertInstanceOf(ChatMessage.UserMessage.class,
+                                               OpenAIMessageUtils.convertIndividualMessageToOpenAIFormat(userPrompt));
+
+        @SuppressWarnings("unchecked") final var contentParts = (List<ContentPartImageUrl>) converted.getContent();
+        assertEquals(1, contentParts.size());
+        final var imageUrl = contentParts.get(0).getImageUrl();
+        assertEquals("https://example.com/image.png", imageUrl.getUrl());
+        assertEquals(io.github.sashirestela.openai.common.content.ImageDetail.HIGH, imageUrl.getDetail());
+    }
+
+
+    @Test
     void convertList() {
         final List<AgentMessage> messages = List.of(SystemPrompt.builder()
                 .sessionId(SESSION_ID)
                 .content("rules")
                 .build(),
-                                                    new UserPrompt(SESSION_ID, RUN_ID, "hi", false, SENT_AT),
+                                                    UserPrompt.text(SESSION_ID, RUN_ID, "hi", SENT_AT),
                                                     new Text(SESSION_ID, RUN_ID, "hello", new ModelUsageStats(), 1L));
-
         final var converted = OpenAIMessageUtils.convertToOpenAIMessages(messages);
 
         assertEquals(3, converted.size());
@@ -180,10 +280,10 @@ class OpenAIMessageUtilsTest {
                 .sessionId(SESSION_ID)
                 .content("rules")
                 .build(),
-                                                    new UserPrompt(SESSION_ID, RUN_ID, "old", false, SENT_AT),
+                                                    UserPrompt.text(SESSION_ID, RUN_ID, "old", SENT_AT),
                                                     new Text(SESSION_ID, RUN_ID, "answer", new ModelUsageStats(), 1L),
-                                                    new UserPrompt(SESSION_ID, RUN_ID, "summary", true, SENT_AT),
-                                                    new UserPrompt(SESSION_ID, RUN_ID, "new", false, SENT_AT));
+                                                    UserPrompt.compactedText(SESSION_ID, RUN_ID, "summary", SENT_AT),
+                                                    UserPrompt.text(SESSION_ID, RUN_ID, "new", SENT_AT));
 
         final var converted = OpenAIMessageUtils.convertToOpenAIMessages(messages);
 

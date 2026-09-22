@@ -233,7 +233,7 @@ class EventUtilsTest {
     @Test
     void raiseMessageReceivedEventWithExplicitArgsNotifiesCorrectEvent() {
         final var stopwatch = Stopwatch.createStarted();
-        final var msg = new UserPrompt(SESSION_ID, RUN_ID, "hello", LocalDateTime.now());
+        final var msg = UserPrompt.text(SESSION_ID, RUN_ID, "hello", LocalDateTime.now());
 
         EventUtils.raiseMessageReceivedEvent(AGENT_NAME,
                                              RUN_ID,
@@ -256,8 +256,8 @@ class EventUtilsTest {
     @Test
     void raiseMessageReceivedEventWithModelRunContextNotifiesCorrectEvent() {
         final var stopwatch = Stopwatch.createStarted();
-        final var msg1 = new UserPrompt(SESSION_ID, RUN_ID, "msg1", LocalDateTime.now());
-        final var msg2 = new UserPrompt(SESSION_ID, RUN_ID, "msg2", LocalDateTime.now());
+        final var msg1 = UserPrompt.text(SESSION_ID, RUN_ID, "msg1", LocalDateTime.now());
+        final var msg2 = UserPrompt.text(SESSION_ID, RUN_ID, "msg2", LocalDateTime.now());
         final List<AgentMessage> allMessages = List.of(msg1, msg2);
         final List<AgentMessage> newMessages = List.of(msg2);
 
@@ -278,8 +278,8 @@ class EventUtilsTest {
 
     @Test
     void raiseMessageSentEventAllMessagesAreNewRaisesEventWithAll() {
-        final var msg1 = new UserPrompt(SESSION_ID, RUN_ID, "first", LocalDateTime.now());
-        final var msg2 = new UserPrompt(SESSION_ID, RUN_ID, "second", LocalDateTime.now());
+        final var msg1 = UserPrompt.text(SESSION_ID, RUN_ID, "first", LocalDateTime.now());
+        final var msg2 = UserPrompt.text(SESSION_ID, RUN_ID, "second", LocalDateTime.now());
         final List<AgentMessage> prevMessages = List.of();
         final List<AgentMessage> currentAllMessages = List.of(msg1, msg2);
 
@@ -305,7 +305,7 @@ class EventUtilsTest {
 
     @Test
     void raiseMessageSentEventNoNewMessagesDoesNotNotify() {
-        final var msg1 = new UserPrompt(SESSION_ID, RUN_ID, "old message", LocalDateTime.now());
+        final var msg1 = UserPrompt.text(SESSION_ID, RUN_ID, "old message", LocalDateTime.now());
 
         EventUtils.raiseMessageSentEvent(modelRunContext, List.of(msg1), List.of(msg1));
 
@@ -314,8 +314,8 @@ class EventUtilsTest {
 
     @Test
     void raiseMessageSentEventSendsOnlyNewRequestMessages() {
-        final var msg1 = new UserPrompt(SESSION_ID, RUN_ID, null, null, "old message", false, LocalDateTime.now());
-        final var msg2 = new UserPrompt(SESSION_ID, RUN_ID, null, null, "new message", false, LocalDateTime.now());
+        final var msg1 = UserPrompt.text(SESSION_ID, RUN_ID, "old message", LocalDateTime.now());
+        final var msg2 = UserPrompt.text(SESSION_ID, RUN_ID, "new message", LocalDateTime.now());
 
         EventUtils.raiseMessageSentEvent(modelRunContext, List.of(msg1), List.of(msg1, msg2));
 

@@ -62,7 +62,7 @@ class TextToSqlCliOpenTelemetryTest {
                                              List.of(otelExtension),
                                              (context, output) -> OutputValidationResults.success());
 
-        final var output = agent.execute(new AgentInput<>("show me one row", null, null, null, null));
+        final var output = agent.execute(new AgentInput<>("show me one row", List.of(), null, null, null, null));
 
         assertNotNull(output.getData());
         assertEquals("SELECT 1", output.getData().generatedSql());

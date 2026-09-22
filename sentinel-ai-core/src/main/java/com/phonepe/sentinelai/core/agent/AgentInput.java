@@ -20,6 +20,7 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Builder.Default;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.With;
@@ -40,10 +41,14 @@ public class AgentInput<R> {
     @NonNull
     R request;
 
+    @Default
+    List<MediaInput> media = List.of();
+
     /**
      * List of facts to be passed to the agent. This is passed to LLM as 'knowledge' in system prompt.
      */
     List<FactList> facts;
+
     /**
      * Metadata for the request
      */
