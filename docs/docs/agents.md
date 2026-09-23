@@ -123,6 +123,8 @@ Here are all available settings for the `AgentSetup` class:
 | `retrySetup`           | [`RetrySetup`](#retry-setup)            | Retry setup to use for model calls. If not provided, default setup will be added.                                |
 | `autoCompactionSetup`  | [`AutoCompactionSetup`](#auto-compaction-setup) | Configuration for automatic message history compaction. If not provided, default setup will be used. |
 | `maxToolResponsePercentage` | `int`                          | Maximum tool response size as a percentage of the model's context window. Responses exceeding this limit are blocked and replaced with an error. Defaults to `10` (10 %). Set to `0` or negative to use the default. Values above `100` are used as-is (no clamping). See [Large Response Blocking](tools.md#large-response-blocking). |
+| `toolLoopProtectionSetup` | [`ToolLoopProtectionSetup`](#tool-loop-protection-setup) | Configuration for protection against tool call loops. If not provided, the default setup will be used. |
+| `loopExemptTools` | `Set<String>`             | Names of tools exempt from loop repeat and cycle detection. Defaults to an empty set. |
 
 !!!danger "Required parameters"
     - The `model`, and `modelSettings` are required parameters. If not provided, an error will be thrown. However, it is
@@ -273,7 +275,42 @@ The `RetrySetup` class is a configuration class that is used to configure the re
 | `totalAttempts`   | `int`                  | Total number of attempts to make. This includes the successful attempts.                        |
 | `delayAfterFailedAttempt` | `Duration`             | Delay after a failed attempt before retrying.                                                   |
 | `retriableErrorTypes` | `Set<ErrorTypes>` | Specific error types to retry on. If not provided, a pre-defined set of error types are retried. See [Error Handling](errors.md) for details. |
-                                     
+
+### Tool Loop Protection Setup
+
+The `ToolLoopProtectionSetup` class configures the protection against model runs that repeat
+the same tool calls in a loop without progress. The protection works on model rounds. A
+round is one model call and the tool calls the model requested in it. Tool calls inside one
+round run in parallel, so a round is compared as a set: the order of the calls inside the
+round does not matter.
+
+| **Setting**            | **Type** | **Description**                                                                                                   |
+|------------------------|----------|-------------------------------------------------------------------------------------------------------------------|
+| `enabled`              | `boolean` | Master switch for the complete protection. Defaults to `true`.                                                    |
+| `windowSize`           | `int`    | Number of rounds kept in the sliding window for repeat and cycle detection. Defaults to `20`.                     |
+| `instructionThreshold` | `int`    | Number of repeats of an identical round that triggers an instruction to the model. Defaults to `3`.               |
+| `terminationThreshold` | `int`   | Number of repeats of an identical round that terminates the run with `TOOL_LOOP_DETECTED`. Defaults to `5`.       |
+| `maxToolRounds`        | `int`    | Maximum number of model rounds with tool calls in a run. Defaults to `25`. A value `<= 0` disables this cap.       |
+| `maxToolCalls`         | `int`    | Maximum number of tool calls in a run. Defaults to `50`. A value `<= 0` disables this cap.                        |
+
+The protection uses three layers:
+
+1. **Round repeat detection:** if the same round (same set of tool calls with canonical
+   arguments) repeats often enough inside the sliding window, the protection first sends an
+   instruction to the model, then terminates the run if the repeat continues.
+2. **Cycle detection:** if the sequence of rounds ends with a cycle of length 2 to 5 that
+   repeats at least twice, for example A, B, A, B, the protection first sends an
+   instruction to the model, then terminates the run if the cycle continues.
+3. **Budgets:** the run is terminated when it exceeds the maximum number of tool rounds or
+   tool calls. This backstop also catches loops with always-changing arguments.
+
+The arguments are canonicalized before comparison: JSON objects are serialized with
+recursively sorted keys, so two argument strings that differ only in key order or whitespace
+produce the same key. Tools listed in `loopExemptTools` are exempt from repeat and cycle
+detection. The run is terminated with `TOOL_CALL_BUDGET_EXCEEDED` when a budget is exceeded,
+and with `TOOL_LOOP_DETECTED` when a loop is detected after the instruction was ignored. See
+[Error Handling](errors.md) for details.
+
 ### Sample setup
 
 Sample code for creating settings for an agent:

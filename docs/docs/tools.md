@@ -275,3 +275,28 @@ defaults to `128 000` tokens.
     large payloads (e.g. file contents, search results), consider adding pagination or filtering parameters so the
     LLM can request smaller chunks.
 
+
+## Tool Loop Protection
+
+Sometimes a model gets stuck and repeats the same tool calls with the same arguments, round after round, without
+making progress. Sentinel AI detects such loops and recovers them in two steps: it first sends an instruction to the
+model asking it to stop repeating the calls, and it terminates the run with a `TOOL_LOOP_DETECTED` error if the model
+ignores the instruction.
+
+The detection works on model rounds: one round is one model call and the tool calls the model requested in it.
+Parallel tool calls inside one round are compared as a set, so their order does not matter. Two kinds of loops are
+detected:
+
+1. **Repeated rounds**: the same set of tool calls (with canonicalized arguments) occurs again and again.
+2. **Cycles**: a pattern of 2 to 5 different rounds that repeats, for example A, B, A, B.
+
+Tool call arguments are canonicalized before comparison, so two calls with the same JSON content but different key order
+or whitespace count as identical. On top of the loop detection, two budgets act as a backstop: the run terminates with
+`TOOL_CALL_BUDGET_EXCEEDED` when it exceeds the maximum number of tool rounds or tool calls. This also stops loops
+with always-changing arguments.
+
+The protection is enabled by default and is configured with the `toolLoopProtectionSetup` field in `AgentSetup`. Tools
+that are expected to be called repeatedly with the same arguments (e.g. polling tools) can be excluded from repeat and
+cycle detection with `loopExemptTools`. See [Tool Loop Protection Setup](agents.md#tool-loop-protection-setup) for the
+full configuration reference.
+
