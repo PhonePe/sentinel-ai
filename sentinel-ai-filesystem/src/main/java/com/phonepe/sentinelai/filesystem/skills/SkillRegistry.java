@@ -95,10 +95,7 @@ public class SkillRegistry {
 
         skillCatalog
                 .values()
-                .forEach(
-                         metadata -> sb.append(
-                                               String.format(
-                                                             "- **%s**: %s%n",
+                .forEach(metadata -> sb.append(String.format("- **%s**: %s%n",
                                                              metadata.getName(),
                                                              metadata.getDescription())));
         return sb.toString();
@@ -131,13 +128,11 @@ public class SkillRegistry {
 
     /** Get skill catalog (name + description only) */
     public Map<String, String> getSkillCatalog() {
-        return skillCatalog.entrySet().stream()
-                .collect(
-                         Collectors.toMap(
-                                          Map.Entry::getKey,
-                                          e -> e.getValue().getDescription(),
-                                          (a, b) -> a,
-                                          LinkedHashMap::new));
+        return skillCatalog.entrySet()
+                .stream()
+                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey,
+                                                      e -> e.getValue().getDescription(),
+                                                      (a, b) -> a));
     }
 
     /** Get all discovered skill names */
@@ -199,5 +194,9 @@ public class SkillRegistry {
 
         log.info("Loaded skill from path: {} ({})", skillPath, skillName);
         return Optional.of(skill);
+    }
+
+    public int numSkills() {
+        return skillCatalog.size();
     }
 }
