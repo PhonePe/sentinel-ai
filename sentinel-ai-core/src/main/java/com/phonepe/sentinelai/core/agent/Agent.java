@@ -58,6 +58,9 @@ import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.InternalTool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.tools.ToolRunApprovalSeeker;
+import com.phonepe.sentinelai.core.tools.loopdetection.ToolLoopProtection;
+import com.phonepe.sentinelai.core.tools.loopdetection.ToolLoopProtectionSetup;
+import com.phonepe.sentinelai.core.tools.loopdetection.ToolLoopProtectionStrategy;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.EventUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
@@ -732,6 +735,23 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                             mapper.writeValueAsString(argumentNode));
     }
 
+    /**
+     * Wraps the configured early termination strategy with tool loop protection for one
+     * run. Creates fresh protection state per run, so rounds from previous runs do not
+     * leak into the current run.
+     *
+     * @param mergedAgentSetup The merged agent setup of the run.
+     * @return The strategy to use for the run.
+     */
+    private EarlyTerminationStrategy toolLoopProtectedStrategy(AgentSetup mergedAgentSetup) {
+        final var protectionSetup = Objects.requireNonNullElse(mergedAgentSetup.getToolLoopProtectionSetup(),
+                                                               ToolLoopProtectionSetup.DEFAULT);
+        final var protection = new ToolLoopProtection(protectionSetup,
+                                                      mergedAgentSetup.getMapper(),
+                                                      mergedAgentSetup.getLoopExemptTools());
+        return new ToolLoopProtectionStrategy(earlyTerminationStrategy, protection);
+    }
+
     private ModelOutput makeModelCall(AgentSetup mergedAgentSetup,
                                       ModelRunContext modelRunContext,
                                       List<ModelOutputDefinition> outputDefinitions,
@@ -739,6 +759,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                       AgentRunContext<R> context) {
         ModelOutput modelOutput;
         final var stopwatch = Stopwatch.createStarted();
+        final var runStrategy = toolLoopProtectedStrategy(mergedAgentSetup);
         try {
             final var toolRunner = new AgentToolRunner<>(self,
                                                          mergedAgentSetup,
@@ -757,7 +778,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                              messages,
                              knownTools,
                              safeRunner,
-                             earlyTerminationStrategy,
+                             runStrategy,
                              agentMessagesPreProcessors)
                     .get();
         }
@@ -794,6 +815,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
         CompletableFuture<ModelOutput> modelFuture;
         ModelOutput modelOutput;
         final var stopwatch = Stopwatch.createStarted();
+        final var runStrategy = toolLoopProtectedStrategy(mergedAgentSetup);
 
         final var toolRunner = new AgentToolRunner<>(self,
                                                      mergedAgentSetup,
@@ -813,7 +835,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                     messages,
                                     knownTools,
                                     safeRunner,
-                                    earlyTerminationStrategy,
+                                    runStrategy,
                                     streamHandler,
                                     agentMessagesPreProcessors);
             }
@@ -824,7 +846,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                 messages,
                                 knownTools,
                                 safeRunner,
-                                earlyTerminationStrategy,
+                                runStrategy,
                                 streamHandler,
                                 agentMessagesPreProcessors);
             }

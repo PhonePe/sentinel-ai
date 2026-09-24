@@ -28,8 +28,21 @@ import lombok.Value;
 public class EarlyTerminationStrategyResponse {
 
     public enum ResponseType {
+        /**
+         * Terminate the model run early. The model layer should stop the run and return
+         * the error type and reason to the caller.
+         */
         TERMINATE,
-        CONTINUE
+        /**
+         * Continue the model run.
+         */
+        CONTINUE,
+        /**
+         * Send the feedback message in the response back to the model as a user message,
+         * and continue the run. Use this instead of {@link #TERMINATE} when the model can
+         * recover from the detected condition if it receives an instruction.
+         */
+        INSTRUCT
     }
 
     ResponseType responseType;
@@ -43,6 +56,20 @@ public class EarlyTerminationStrategyResponse {
                                                     ErrorType.SUCCESS,
                                                     ErrorType.SUCCESS
                                                             .getMessage());
+    }
+
+    /**
+     * Ask the model layer to send the given instruction text to the model as a user
+     * message and continue the run.
+     *
+     * @param instruction Text to send to the model. The model layer must add this text
+     *                    to the conversation before the next model call.
+     * @return Response of type {@link ResponseType#INSTRUCT}
+     */
+    public static EarlyTerminationStrategyResponse instructWithFeedback(String instruction) {
+        return new EarlyTerminationStrategyResponse(ResponseType.INSTRUCT,
+                                                    ErrorType.SUCCESS,
+                                                    instruction);
     }
 
     public static EarlyTerminationStrategyResponse terminate(ErrorType errorType,
