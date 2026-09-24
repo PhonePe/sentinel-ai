@@ -28,6 +28,7 @@ import com.phonepe.sentinelai.core.model.IdentityOutputGenerator;
 import com.phonepe.sentinelai.core.model.ModelAttributes;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
+import com.phonepe.sentinelai.core.tools.loopdetection.ToolLoopProtectionSetup;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -179,6 +181,15 @@ public class AgentUtils {
                                                                             rhs,
                                                                             AgentSetup::getMaxToolResponsePercentage),
                                                                       AgentSetup.DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE))
+                .toolLoopProtectionSetup(Objects.requireNonNullElse(
+                                                                    value(lhs,
+                                                                          rhs,
+                                                                          AgentSetup::getToolLoopProtectionSetup),
+                                                                    ToolLoopProtectionSetup.DEFAULT))
+                .loopExemptTools(Objects.requireNonNullElse(value(lhs,
+                                                                  rhs,
+                                                                  AgentSetup::getLoopExemptTools),
+                                                            Set.of()))
 
                 .build();
     }
