@@ -47,6 +47,8 @@ public enum ErrorType {
     MALFORMED_MODEL_CALL_RESPONSE_ERROR("Model call response is malformed: %s", false),
     UNKNOWN("Unknown response", true),
     MODEL_RUN_TERMINATED("Model run was terminated", false),
+    TOOL_LOOP_DETECTED("Tool loop detected: %s", false),
+    TOOL_CALL_BUDGET_EXCEEDED("Tool call budget exceeded: %s", false),
     PREPROCESSOR_RUN_FAILURE("Agent messages preprocessor failed: %s", true),
     PREPROCESSOR_MESSAGES_OUTPUT_INVALID("Invalid output from Pre-Processor: %s", false);
 
