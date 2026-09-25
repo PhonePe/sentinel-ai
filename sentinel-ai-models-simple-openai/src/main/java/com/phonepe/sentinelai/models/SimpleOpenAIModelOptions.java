@@ -25,6 +25,7 @@ import java.util.Objects;
 /**
  * Class for model specific options for {@link SimpleOpenAIModel}.
  */
+@Deprecated
 @Value
 public class SimpleOpenAIModelOptions {
     public static final ToolChoice DEFAULT_TOOL_CHOICE = ToolChoice.DEFAULT;

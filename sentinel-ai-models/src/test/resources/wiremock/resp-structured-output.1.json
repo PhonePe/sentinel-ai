@@ -1,0 +1,28 @@
+{
+  "id": "resp_test",
+  "object": "response",
+  "created_at": 1755064668,
+  "model": "gpt-4o-mini-2024-07-18",
+  "status": "completed",
+  "output": [
+    {
+      "type": "function_call",
+      "id": "fc_1",
+      "call_id": "call_xahkBrmHggGoieTQwQjHRCU3",
+      "name": "test_agent_get_name",
+      "arguments": "{}",
+      "status": "completed"
+    }
+  ],
+  "usage": {
+    "input_tokens": 284,
+    "output_tokens": 31,
+    "total_tokens": 315,
+    "input_token_details": {
+      "cached_tokens": 0
+    },
+    "output_token_details": {
+      "reasoning_tokens": 0
+    }
+  }
+}

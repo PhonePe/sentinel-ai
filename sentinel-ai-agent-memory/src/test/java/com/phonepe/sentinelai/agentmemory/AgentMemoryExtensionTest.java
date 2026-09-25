@@ -21,9 +21,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.openai.SimpleOpenAIAzure;
-
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
@@ -39,8 +36,9 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.core.utils.TestUtils;
-import com.phonepe.sentinelai.models.SimpleOpenAIModel;
+import com.phonepe.sentinelai.models.TestStubs;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
+import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -183,23 +181,17 @@ class AgentMemoryExtensionTest {
     @Test
     @SneakyThrows
     void testInlineExtraction(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(9, "met.inline", getClass());
+        TestStubs.setupMocks(9, "met.inline", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var httpClient = new OkHttpClient.Builder().build();
-        final var model = new SimpleOpenAIModel<>("global:LLM_GLOBAL_GPT_4O_PRD",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(objectMapper)
-                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
-                                                          .build(),
-                                                  objectMapper);
+        final var model = ChatCompletionsModel.builder()
+                .modelName("global:LLM_GLOBAL_GPT_4O_PRD")
+                .baseUrl(wiremock.getHttpBaseUrl())
+                .apiKey("test-key")
+                .mapper(objectMapper)
+                .transport(OkHttpModelTransport.of(httpClient))
+                .build();
 
         final var requestMetadata = AgentRequestMetadata.builder()
                 .sessionId("s1")
@@ -258,23 +250,17 @@ class AgentMemoryExtensionTest {
     @Test
     @SneakyThrows
     void testOutOfBandExtraction(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(11, "met.async", getClass());
+        TestStubs.setupMocks(11, "met.async", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var httpClient = new OkHttpClient.Builder().build();
-        final var model = new SimpleOpenAIModel<>("global:LLM_GLOBAL_GPT_4O_PRD",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(objectMapper)
-                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
-                                                          .build(),
-                                                  objectMapper);
+        final var model = ChatCompletionsModel.builder()
+                .modelName("global:LLM_GLOBAL_GPT_4O_PRD")
+                .baseUrl(wiremock.getHttpBaseUrl())
+                .apiKey("test-key")
+                .mapper(objectMapper)
+                .transport(OkHttpModelTransport.of(httpClient))
+                .build();
 
         final var requestMetadata = AgentRequestMetadata.builder()
                 .sessionId("s1")

@@ -55,6 +55,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+@Deprecated
 @Slf4j
 @UtilityClass
 public class OpenAIMessageUtils {

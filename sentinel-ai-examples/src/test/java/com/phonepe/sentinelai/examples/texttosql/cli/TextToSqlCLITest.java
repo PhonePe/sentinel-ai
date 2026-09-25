@@ -20,8 +20,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -42,7 +40,7 @@ import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.filesystem.skills.AgentSkillsExtension;
 import com.phonepe.sentinelai.instrumentation.otel.OpenTelemetryAgentExtension;
-import com.phonepe.sentinelai.models.SimpleOpenAIModel;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -102,27 +100,27 @@ class TextToSqlCLITest {
             config.getAgent().setStreaming(false);
 
             final var mapper = JsonUtils.createMapper();
-            final var clientAdapter = (OkHttpClientAdapter) invokeStaticMethod(
-                                                                               "buildTrustedHttpClient",
-                                                                               new Class<?>[]{
-                                                                                       CliConfig.class
-                                                                               },
-                                                                               config);
+            final var httpClient = (OkHttpClient) invokeStaticMethod(
+                                                                     "buildTrustedHttpClient",
+                                                                     new Class<?>[]{
+                                                                             CliConfig.class
+                                                                     },
+                                                                     config);
             final var model = invokeStaticMethod(
-                                                 "buildOpenAIModel",
+                                                 "buildModel",
                                                  new Class<?>[]{
                                                          CliConfig.class,
-                                                         OkHttpClientAdapter.class,
+                                                         OkHttpClient.class,
                                                          ObjectMapper.class
                                                  },
                                                  config,
-                                                 clientAdapter,
+                                                 httpClient,
                                                  mapper);
 
             final var m = TextToSqlCLI.class.getDeclaredMethod(
                                                                "buildAgentSetup",
                                                                CliConfig.class,
-                                                               com.phonepe.sentinelai.models.SimpleOpenAIModel.class,
+                                                               ChatCompletionsModel.class,
                                                                ObjectMapper.class);
             m.setAccessible(true);
             final var agentSetup = m.invoke(null, config, model, mapper);
@@ -156,20 +154,20 @@ class TextToSqlCLITest {
                                                                          "buildTrustedHttpClient",
                                                                          CliConfig.class);
             buildClient.setAccessible(true);
-            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var httpClient = (OkHttpClient) buildClient.invoke(null, config);
 
             final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                        "buildOpenAIModel",
+                                                                        "buildModel",
                                                                         CliConfig.class,
-                                                                        OkHttpClientAdapter.class,
+                                                                        OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        SimpleOpenAIModel.class,
+                                                                        ChatCompletionsModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -183,7 +181,6 @@ class TextToSqlCLITest {
             final var buildOtel = TextToSqlCLI.class.getDeclaredMethod("buildOpenTelemetryExtension");
             buildOtel.setAccessible(true);
             final var otelExtension = buildOtel.invoke(null);
-
             final var buildAgent = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgent",
                                                                         AgentSetup.class,
@@ -220,20 +217,20 @@ class TextToSqlCLITest {
                                                                          "buildTrustedHttpClient",
                                                                          CliConfig.class);
             buildClient.setAccessible(true);
-            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var httpClient = (OkHttpClient) buildClient.invoke(null, config);
 
             final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                        "buildOpenAIModel",
+                                                                        "buildModel",
                                                                         CliConfig.class,
-                                                                        OkHttpClientAdapter.class,
+                                                                        OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        SimpleOpenAIModel.class,
+                                                                        ChatCompletionsModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -282,18 +279,18 @@ class TextToSqlCLITest {
                                                                          "buildTrustedHttpClient",
                                                                          CliConfig.class);
             buildClient.setAccessible(true);
-            final var clientAdapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var okHttpClient = (OkHttpClient) buildClient.invoke(null, config);
 
             final var m = TextToSqlCLI.class.getDeclaredMethod(
-                                                               "buildOpenAIModel",
+                                                               "buildModel",
                                                                CliConfig.class,
-                                                               OkHttpClientAdapter.class,
+                                                               OkHttpClient.class,
                                                                ObjectMapper.class);
             m.setAccessible(true);
-            final var model = m.invoke(null, config, clientAdapter, mapper);
+            final var model = m.invoke(null, config, okHttpClient, mapper);
 
             assertNotNull(model);
-            assertInstanceOf(SimpleOpenAIModel.class, model);
+            assertInstanceOf(ChatCompletionsModel.class, model);
         }
     }
 
@@ -311,17 +308,11 @@ class TextToSqlCLITest {
             config.getOpenai().setModel("gpt-4o");
             config.getOpenai().setBaseUrl("http://localhost:" + wmInfo.getHttpPort());
 
-            // Build the adapter via reflection (static method)
+            // Build the client via reflection (static method)
             final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var okHttpClient = (OkHttpClient) buildClient.invoke(null, config);
 
-            // Extract the private OkHttpClient from the adapter via reflection
-            final var okHttpClientField = OkHttpClientAdapter.class.getDeclaredField("okHttpClient");
-            okHttpClientField.setAccessible(true);
-            final var okHttpClient = (OkHttpClient) okHttpClientField.get(adapter);
-
-            // Make a real HTTP call to WireMock — this triggers the interceptor
             final var request = new Request.Builder()
                     .url("http://localhost:" + wmInfo.getHttpPort() + "/test")
                     .addHeader("Authorization", "old-value")
@@ -349,7 +340,7 @@ class TextToSqlCLITest {
     class BuildTrustedHttpClientTests {
 
         @Test
-        void returnsNonNullAdapter() throws Exception {
+        void returnsNonNullClient() throws Exception {
             final var config = new CliConfig();
             config.getOpenai().setApiKey("test-api-key");
             config.getOpenai().setBearerPrefix("Bearer ");
@@ -361,7 +352,7 @@ class TextToSqlCLITest {
             final var result = m.invoke(null, config);
 
             assertNotNull(result);
-            assertInstanceOf(OkHttpClientAdapter.class, result);
+            assertInstanceOf(OkHttpClient.class, result);
         }
     }
 
@@ -603,20 +594,20 @@ class TextToSqlCLITest {
 
             final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var httpClient = (OkHttpClient) buildClient.invoke(null, config);
 
             final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                        "buildOpenAIModel",
+                                                                        "buildModel",
                                                                         CliConfig.class,
-                                                                        OkHttpClientAdapter.class,
+                                                                        OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        SimpleOpenAIModel.class,
+                                                                        ChatCompletionsModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -659,20 +650,20 @@ class TextToSqlCLITest {
         private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
             final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var httpClient = (OkHttpClient) buildClient.invoke(null, config);
 
             final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                        "buildOpenAIModel",
+                                                                        "buildModel",
                                                                         CliConfig.class,
-                                                                        OkHttpClientAdapter.class,
+                                                                        OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        SimpleOpenAIModel.class,
+                                                                        ChatCompletionsModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -757,20 +748,20 @@ class TextToSqlCLITest {
         private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
             final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var httpClient = (OkHttpClient) buildClient.invoke(null, config);
 
             final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                        "buildOpenAIModel",
+                                                                        "buildModel",
                                                                         CliConfig.class,
-                                                                        OkHttpClientAdapter.class,
+                                                                        OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        SimpleOpenAIModel.class,
+                                                                        ChatCompletionsModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -815,20 +806,20 @@ class TextToSqlCLITest {
         private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
             final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var httpClient = (OkHttpClient) buildClient.invoke(null, config);
 
             final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                        "buildOpenAIModel",
+                                                                        "buildModel",
                                                                         CliConfig.class,
-                                                                        OkHttpClientAdapter.class,
+                                                                        OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        SimpleOpenAIModel.class,
+                                                                        ChatCompletionsModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -860,7 +851,7 @@ class TextToSqlCLITest {
     }
 
     // =========================================================================
-    // buildOpenAIModel (via reflection)
+    // buildModel (via reflection)
     // =========================================================================
 
     @Nested
@@ -896,20 +887,20 @@ class TextToSqlCLITest {
         private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
             final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var httpClient = (OkHttpClient) buildClient.invoke(null, config);
 
             final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                        "buildOpenAIModel",
+                                                                        "buildModel",
                                                                         CliConfig.class,
-                                                                        OkHttpClientAdapter.class,
+                                                                        OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        SimpleOpenAIModel.class,
+                                                                        ChatCompletionsModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -1089,20 +1080,20 @@ class TextToSqlCLITest {
         private TextToSqlAgent buildAgent(CliConfig config, ObjectMapper mapper) throws Exception {
             final var buildClient = TextToSqlCLI.class.getDeclaredMethod("buildTrustedHttpClient", CliConfig.class);
             buildClient.setAccessible(true);
-            final var adapter = (OkHttpClientAdapter) buildClient.invoke(null, config);
+            final var httpClient = (OkHttpClient) buildClient.invoke(null, config);
 
             final var buildModel = TextToSqlCLI.class.getDeclaredMethod(
-                                                                        "buildOpenAIModel",
+                                                                        "buildModel",
                                                                         CliConfig.class,
-                                                                        OkHttpClientAdapter.class,
+                                                                        OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (SimpleOpenAIModel<?>) buildModel.invoke(null, config, adapter, mapper);
+            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        SimpleOpenAIModel.class,
+                                                                        ChatCompletionsModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);

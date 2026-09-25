@@ -60,7 +60,7 @@ The `Model` class is a generic abstraction for an LLM model used by an agent. A 
 be instantiated for usage in the agent.
 
 Currently, we support _only_ OpenAI API compliant model endpoints. The corresponding implementation of `Model` for this
-is the `SimpleOpenAIModel` class. The class is available in the `sentinel-ai-models-simple-openai` module.
+is the `ChatCompletionsModel` class. The class is available in the `sentinel-ai-models` module.
 
 The module needs to be added to the project dependencies as follows:
 
@@ -68,29 +68,30 @@ The module needs to be added to the project dependencies as follows:
 
 <dependency>
     <groupId>com.phonepe.sentinel-ai</groupId>
-    <artifactId>sentinel-ai-models-simple-openai</artifactId>
+    <artifactId>sentinel-ai-models</artifactId>
 </dependency>
 ```
 
-This will add the required dependencies to instantiate the model with the SimpleOpenAI client library. The library
-itself is very flexible, and you should read the documentation for the library to understand how to use it.
-The model can be instantiated as follows:
+The module is vendor-neutral. It uses OkHttp for HTTP transport and Jackson for JSON. No third-party LLM client SDK is
+required. The model can be instantiated as follows:
 
 ```java
-final var model = new SimpleOpenAIModel<>(
-        "gpt-4o",
-        SimpleOpenAI.builder()
-                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
-                .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(httpClient))
-                .build(),
-        objectMapper
-);
+final var model = ChatCompletionsModel.builder()
+        .modelName("gpt-4o")
+        .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+        .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
+        .mapper(objectMapper)
+        .transport(OkHttpModelTransport.of(httpClient))
+        .build();
 ```
 
-!!!tip "Type parameter for `SimpleOpenAIModel`"
-    The `SimpleOpenAIModel` is a generic class. The type is inferred from the type of the model. Leave it as `<>`.
+!!!tip "Authentication"
+    Set `apiKey` to send it as a `Bearer` token. Leave it null when your `OkHttpClient` handles authentication with its
+    own interceptors (for example, in production environments with tightened security).
+
+!!!warning "Deprecated module"
+    The older `sentinel-ai-models-simple-openai` module is deprecated. Migrate to `ChatCompletionsModel` in the
+    `sentinel-ai-models` module.
 
 !!!note "Endpoint and api key"
     The `OPENAI_ENDPOINT` and `OPENAI_API_KEY` are environment variables that need to be set in the system. The
@@ -195,7 +196,7 @@ final var agentSetup = AgentSetup.builder()
 
 ### Model Specific Options
 
-Some models support additional configuration options that are not part of the standard `ModelSettings`. For example, `SimpleOpenAIModel` supports `SimpleOpenAIModelOptions`.
+Some models support additional configuration options that are not part of the standard `ModelSettings`. For example, models in the `sentinel-ai-models` module support `ModelOptions`.
 
 #### Token Counting Configuration
 
@@ -218,20 +219,21 @@ final var tokenConfig = TokenCountingConfig.builder()
         .imageTokenCost(765) // Fixed token cost per image content part
         .build();
 
-final var modelOptions = SimpleOpenAIModelOptions.builder()
+final var modelOptions = ModelOptions.builder()
         .tokenCountingConfig(tokenConfig)
-        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
+        .toolChoice(ModelOptions.ToolChoice.AUTO)
         .build();
 
-final var model = new SimpleOpenAIModel<>(
-        "gpt-4o",
-        client,
-        objectMapper,
-        modelOptions // Pass options here
-);
+final var model = ChatCompletionsModel.builder()
+        .modelName("gpt-4o")
+        .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+        .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
+        .mapper(objectMapper)
+        .modelOptions(modelOptions) // Pass options here
+        .build();
 ```
 
-The `toolChoice` field on `SimpleOpenAIModelOptions` controls the `tool_choice` parameter sent to the model. Sentinel AI
+The `toolChoice` field on `ModelOptions` controls the `tool_choice` parameter sent to the model. Sentinel AI
 automatically resolves the effective OpenAI `tool_choice` value by combining `toolChoice` with the active
 `outputGenerationMode`. This is needed because `TOOL_BASED` mode previously forced `tool_choice` to `required`,
 and some models (e.g. Qwen, Kimi on vLLM) do not call tools reliably in this configuration. The `toolChoice` option
@@ -255,16 +257,16 @@ The resolution rules are:
 
 ```java
 // Use AUTO tool choice for models that ignore REQUIRED (e.g. Qwen, Kimi on vLLM)
-final var modelOptions = SimpleOpenAIModelOptions.builder()
-        .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
+final var modelOptions = ModelOptions.builder()
+        .toolChoice(ModelOptions.ToolChoice.AUTO)
         .build();
 
-final var model = new SimpleOpenAIModel<>(
-        "qwen-plus",
-        client,
-        objectMapper,
-        modelOptions
-);
+final var model = ChatCompletionsModel.builder()
+        .modelName("qwen-plus")
+        .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+        .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
+        .modelOptions(modelOptions)
+        .build();
 ```
 
 ### Retry Setup
@@ -459,7 +461,7 @@ Output from the above would be something like:
 
 The `AgentInput.media` property accepts a list of `MediaInput` objects. Each entry is sent to the LLM as a separate
 user message content part after the serialized request. Supported media types depend on the model implementation. The
-`SimpleOpenAIModel` supports images (base64 data or URL) and audio.
+`ChatCompletionsModel` supports images (base64 data or URL) and audio.
 
 | **Factory method**                                          | **Description**                                                                                                     |
 |-------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|

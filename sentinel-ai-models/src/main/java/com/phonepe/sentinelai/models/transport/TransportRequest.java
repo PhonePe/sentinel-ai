@@ -1,0 +1,31 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.phonepe.sentinelai.models.transport;
+
+import java.util.Map;
+
+/**
+ * Value object describing a single HTTP call. Transports build their client specific request
+ * objects from this record. The body is the fully serialized JSON request body.
+ */
+public record TransportRequest(
+        String url,
+        String method,
+        Map<String, String> headers,
+        byte[] body
+) {
+}

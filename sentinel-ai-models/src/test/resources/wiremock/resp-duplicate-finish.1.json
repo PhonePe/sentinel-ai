@@ -1,0 +1,15 @@
+event: response.output_item.added
+data: {"output_index": 0, "item": {"type": "function_call", "call_id": "call_vSPWTYELRVxrN3uoH68X77r2", "name": "test_agent_get_name"}}
+
+event: response.function_call_arguments.delta
+data: {"item_id": "fc_1", "output_index": 0, "delta": "{}"}
+
+event: response.output_item.done
+data: {"output_index": 0, "item": {"type": "function_call", "id": "fc_1", "call_id": "call_vSPWTYELRVxrN3uoH68X77r2", "name": "test_agent_get_name", "arguments": "{}", "status": "completed"}}
+
+event: response.completed
+data: {"response": {"id": "resp_test", "object": "response", "created_at": 1755064668, "model": "gpt-4o-mini-2024-07-18", "status": "completed", "output": [{"type": "function_call", "id": "fc_1", "call_id": "call_vSPWTYELRVxrN3uoH68X77r2", "name": "test_agent_get_name", "arguments": "{}", "status": "completed"}], "usage": {"input_tokens": 388, "output_tokens": 13, "total_tokens": 401, "input_token_details": {"cached_tokens": 0}, "output_token_details": {"reasoning_tokens": 0}}}}
+
+event: response.completed
+data: {"response": {"id": "resp_test", "object": "response", "created_at": 1755064668, "model": "gpt-4o-mini-2024-07-18", "status": "completed", "output": [{"type": "function_call", "id": "fc_1", "call_id": "call_vSPWTYELRVxrN3uoH68X77r2", "name": "test_agent_get_name", "arguments": "{}", "status": "completed"}], "usage": {"input_tokens": 388, "output_tokens": 13, "total_tokens": 401, "input_token_details": {"cached_tokens": 0}, "output_token_details": {"reasoning_tokens": 0}}}}
+

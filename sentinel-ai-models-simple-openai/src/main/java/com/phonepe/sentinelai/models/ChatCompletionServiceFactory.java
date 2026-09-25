@@ -25,6 +25,7 @@ import io.github.sashirestela.openai.service.ChatCompletionServices;
  * agents but need to use different ChatCompletionServices instances. For example, with multiple provders
  * for different models. For example, OpenAI for some models, Open Router for some models etc.
  */
+@Deprecated
 @FunctionalInterface
 public interface ChatCompletionServiceFactory {
     ChatCompletionServices get(final String modelName);

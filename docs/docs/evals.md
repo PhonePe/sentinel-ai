@@ -185,7 +185,13 @@ Custom judge prompts must contain `{request}` and `{answer}` placeholders, which
 ObjectMapper mapper = ...;
 
 // Wire the judge model via factory + identifier (preferred API)
-LLMModelFactory llmFactory = id -> new SimpleOpenAIModel<>(id.modelId(), openAiProvider, mapper, options);
+LLMModelFactory llmFactory = id -> ChatCompletionsModel.builder()
+        .modelName(id.modelId())
+        .baseUrl(baseUrl)
+        .apiKey(apiKey)
+        .mapper(mapper)
+        .modelOptions(options)
+        .build();
 
 var metricExecutorRegistry = MetricExecutorRegistry.withDefaults(
         new EmbeddingModelIdentifier("text-embedding-3-small"),

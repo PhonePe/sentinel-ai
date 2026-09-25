@@ -21,12 +21,15 @@ import com.phonepe.sentinelai.core.model.Model;
 /**
  * Factory that creates a {@link Model} from an {@link LLMIdentifier}.
  *
- * <p>Implement this interface to wire a concrete LLM backend (e.g. {@code SimpleOpenAIModel})
+ * <p>Implement this interface to wire a concrete LLM backend (e.g. {@code ChatCompletionsModel})
  * into the {@link MetricExecutorRegistry}:
  *
  * <pre>{@code
- * LLMModelFactory factory = identifier -> new SimpleOpenAIModel<>(
- *         identifier.modelId(), openAiProvider, mapper, options);
+ * LLMModelFactory factory = identifier -> ChatCompletionsModel.builder()
+ *         .modelName(identifier.modelId())
+ *         .baseUrl(baseUrl)
+ *         .apiKey(apiKey)
+ *         .build();
  *
  * MetricExecutorRegistry registry = MetricExecutorRegistry.withDefaults(
  *         embeddingIdentifier, embeddingFactory,

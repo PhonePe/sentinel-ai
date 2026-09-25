@@ -17,18 +17,18 @@
 package com.phonepe.sentinelai.configuredagents;
 
 import com.phonepe.sentinelai.core.model.Model;
-import com.phonepe.sentinelai.models.SimpleOpenAIModel;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
 
 import lombok.AllArgsConstructor;
 
 /**
- * A simple model factory that creates SimpleOpenAIModel instances based on the provided agent configuration.
- * The way it works is that, the name from the modelConfig is passed to a new instance of SimpleOpenAIModel, this name
- * is used by SimpleOpenAI model to fetch the relevant API provider from the
- * {@link com.phonepe.sentinelai.models.ChatCompletionServiceFactory}.
+ * A simple model factory that creates {@link ChatCompletionsModel} instances based on the provided
+ * agent configuration. The model name from the model configuration replaces the default model name;
+ * every other setting (base URL, auth, transport, protocol) is inherited from the default model.
+ * Only {@link ChatCompletionsModel} is supported as the default model.
  */
 @AllArgsConstructor
-public class SimpleOpenAIModelFactory implements ModelFactory {
+public class ChatCompletionsModelFactory implements ModelFactory {
 
     @Override
     public Model build(AgentConfiguration agentConfig,
@@ -37,15 +37,17 @@ public class SimpleOpenAIModelFactory implements ModelFactory {
         if (providedSetting == null) {
             return defaultModel;
         }
-        if (defaultModel instanceof SimpleOpenAIModel<?> simpleOpenAIModel) {
-            final var aiProviderFactory = simpleOpenAIModel
-                    .getOpenAIProviderFactory();
+        if (defaultModel instanceof ChatCompletionsModel chatCompletionsModel) {
             final var modelName = providedSetting.getName();
-            final var serviceProvider = aiProviderFactory.get(modelName);
-            return new SimpleOpenAIModel<>(modelName,
-                                           serviceProvider,
-                                           simpleOpenAIModel.getMapper(),
-                                           simpleOpenAIModel.getModelOptions());
+            return ChatCompletionsModel.builder()
+                    .modelName(modelName)
+                    .baseUrl(chatCompletionsModel.getBaseUrl())
+                    .protocol(chatCompletionsModel.getProtocol())
+                    .transport(chatCompletionsModel.getTransport())
+                    .mapper(chatCompletionsModel.getMapper())
+                    .modelOptions(chatCompletionsModel.getModelOptions())
+                    .tokenCounter(chatCompletionsModel.getTokenCounter())
+                    .build();
         }
         throw new IllegalArgumentException("Unsupported model type: " + defaultModel
                 .getClass()

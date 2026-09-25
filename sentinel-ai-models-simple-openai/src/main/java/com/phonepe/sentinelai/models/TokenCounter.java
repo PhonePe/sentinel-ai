@@ -27,6 +27,7 @@ import java.util.List;
  * By default, Sentinel AI uses OpenAICompletionsTokenCounter for OpenAI models.
  * However certain proviers like anthropic have an endpoint thar can provide precise counts. Override that if needed.
  */
+@Deprecated
 public interface TokenCounter {
     /**
      * Count tokens in the given text

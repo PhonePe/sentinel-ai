@@ -20,8 +20,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.google.common.base.Strings;
 
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.openai.SimpleOpenAI;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 
 import org.eclipse.jetty.http.HttpHeader;
@@ -47,7 +45,8 @@ import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.filesystem.skills.AgentSkillsExtension;
 import com.phonepe.sentinelai.instrumentation.otel.OpenTelemetryAgentExtension;
 import com.phonepe.sentinelai.instrumentation.otel.OpenTelemetryAgentExtensionSetup;
-import com.phonepe.sentinelai.models.SimpleOpenAIModel;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
+import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPSSEServerConfig;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
@@ -225,7 +224,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      */
     static AgentSetup buildAgentSetup(
                                       CliConfig config,
-                                      SimpleOpenAIModel<SimpleOpenAI> model,
+                                      ChatCompletionsModel model,
                                       ObjectMapper mapper) {
         log.info(
                  "Configuring agent setup [temperature={}, maxTokens={}, streaming={}]",
@@ -249,22 +248,23 @@ public class TextToSqlCLI implements Callable<Integer> {
     // Initialisation steps
     // -------------------------------------------------------------------------
 
-    static SimpleOpenAIModel<SimpleOpenAI> buildOpenAIModel(
-                                                            CliConfig config,
-                                                            OkHttpClientAdapter clientAdapter,
-                                                            ObjectMapper mapper) {
+    static ChatCompletionsModel buildModel(
+                                           CliConfig config,
+                                           OkHttpClient httpClient,
+                                           ObjectMapper mapper) {
         log.info(
-                 "Building OpenAI model [name={}, baseUrl={}]",
+                 "Building OpenAI Chat Completions model [name={}, baseUrl={}]",
                  config.getOpenai().getModel(),
                  config.getOpenai().getBaseUrl());
-        final var openAI = SimpleOpenAI.builder()
+        final var model = ChatCompletionsModel.builder()
+                .modelName(config.getOpenai().getModel())
                 .baseUrl(config.getOpenai().getBaseUrl())
                 .apiKey(config.getOpenai().getApiKey())
-                .objectMapper(new ObjectMapper())
-                .clientAdapter(clientAdapter)
+                .mapper(mapper)
+                .transport(OkHttpModelTransport.of(httpClient))
                 .build();
-        log.info("OpenAI model built successfully");
-        return new SimpleOpenAIModel<>(config.getOpenai().getModel(), openAI, mapper);
+        log.info("Model built successfully");
+        return model;
     }
 
     static OpenTelemetryAgentExtension<String, SqlQueryResult, TextToSqlAgent> buildOpenTelemetryExtension() {
@@ -279,11 +279,10 @@ public class TextToSqlCLI implements Callable<Integer> {
     }
 
     /**
-     * Builds an {@link OkHttpClientAdapter} backed by the system default SSL context and
-     * interceptors that inject the OpenAI authorization header on every outgoing request.
+     * Builds an {@link OkHttpClient} with interceptors that inject the OpenAI authorization header on
+     * every outgoing request.
      */
-    @SneakyThrows
-    static OkHttpClientAdapter buildTrustedHttpClient(CliConfig config) {
+    static OkHttpClient buildTrustedHttpClient(CliConfig config) {
         log.info("Building HTTP client");
 
         final var apiKey = config.getOpenai().getApiKey();
@@ -319,7 +318,7 @@ public class TextToSqlCLI implements Callable<Integer> {
                 .build();
 
         log.info("HTTP client built successfully");
-        return new OkHttpClientAdapter(httpClient);
+        return httpClient;
     }
 
     /**
@@ -569,8 +568,8 @@ public class TextToSqlCLI implements Callable<Integer> {
 
         final var dbPath = initializeDatabase(config);
 
-        final var clientAdapter = buildTrustedHttpClient(config);
-        final var model = buildOpenAIModel(config, clientAdapter, mapper);
+        final var httpClient = buildTrustedHttpClient(config);
+        final var model = buildModel(config, httpClient, mapper);
         final var agentSetup = buildAgentSetup(config, model, mapper);
 
         final var skillsExtension = buildSkillsExtension();

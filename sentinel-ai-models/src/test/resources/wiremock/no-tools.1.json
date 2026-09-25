@@ -1,0 +1,28 @@
+{
+  "id" : "chatcmpl-notools01",
+  "object" : "chat.completion",
+  "created" : 1755064668,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "system_fingerprint" : "fp_efad92c60b",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "{\"output\":{\"message\":\"Hello, Santanu! How can I assist you today?\",\"username\":\"Santanu\"}}"
+    },
+    "finish_reason" : "stop"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 284,
+    "completion_tokens" : 31,
+    "total_tokens" : 315,
+    "completion_tokens_details" : {
+      "audio_tokens" : 0,
+      "reasoning_tokens" : 0
+    },
+    "prompt_tokens_details" : {
+      "audio_tokens" : 0,
+      "cached_tokens" : 0
+    }
+  }
+}

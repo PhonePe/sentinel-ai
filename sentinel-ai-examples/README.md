@@ -844,11 +844,11 @@ public class TextToSqlCLI implements Callable<Integer> {
         // 2. Initialise SQLite database (schema + seed data)
         Path dbPath = initializeDatabase(config);
 
-        // 3. Build OkHttpClient with API key interceptor
-        OkHttpClientAdapter clientAdapter = buildTrustedHttpClient(config);
+        // 3. Build OkHttpClient with auth interceptor
+        OkHttpClient httpClient = buildTrustedHttpClient(config);
 
-        // 4. Build OpenAI model
-        SimpleOpenAIModel<?> model = buildOpenAIModel(config, clientAdapter, mapper);
+        // 4. Build OpenAI Chat Completions model
+        ChatCompletionsModel model = buildModel(config, httpClient, mapper);
 
         // 5. Build AgentSetup (temperature, maxTokens, output mode)
         AgentSetup agentSetup = AgentSetup.builder()

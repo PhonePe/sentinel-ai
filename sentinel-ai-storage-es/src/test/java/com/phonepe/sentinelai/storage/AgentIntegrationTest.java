@@ -22,9 +22,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.openai.SimpleOpenAIAzure;
-
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
@@ -44,9 +41,10 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.core.utils.TestUtils;
 import com.phonepe.sentinelai.embedding.HuggingfaceEmbeddingModel;
-import com.phonepe.sentinelai.models.SimpleOpenAIModel;
+import com.phonepe.sentinelai.models.TestStubs;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
+import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
 import com.phonepe.sentinelai.session.AgentSessionExtension;
 import com.phonepe.sentinelai.session.AgentSessionExtensionSetup;
 import com.phonepe.sentinelai.session.SessionExtraDataOperator;
@@ -153,32 +151,20 @@ class AgentIntegrationTest extends ESIntegrationTestBase {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(15, "nme", getClass());
+        TestStubs.setupMocks(15, "nme", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(objectMapper)
-                                                          .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder()
-                                                                  .callTimeout(Duration
-                                                                          .ofSeconds(180))
-                                                                  .connectTimeout(Duration
-                                                                          .ofSeconds(120))
-                                                                  .readTimeout(Duration
-                                                                          .ofSeconds(180))
-                                                                  .writeTimeout(Duration
-                                                                          .ofSeconds(120))
-                                                                  .build()))
-                                                          .build(),
-                                                  objectMapper);
+        final var model = ChatCompletionsModel.builder()
+                .modelName("gpt-4o")
+                .baseUrl(wiremock.getHttpBaseUrl())
+                .apiKey("test-key")
+                .mapper(objectMapper)
+                .transport(OkHttpModelTransport.of(new OkHttpClient.Builder().callTimeout(Duration.ofSeconds(180))
+                        .connectTimeout(Duration.ofSeconds(120)).readTimeout(Duration.ofSeconds(180)).writeTimeout(
+                                                                                                                   Duration.ofSeconds(120))
+                        .build()))
+                .build();
         final var requestMetadata = AgentRequestMetadata.builder()
                 .sessionId("s1")
                 .userId("ss")

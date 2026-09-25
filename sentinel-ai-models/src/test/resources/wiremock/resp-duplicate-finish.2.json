@@ -1,0 +1,39 @@
+event: response.output_item.added
+data: {"output_index": 0, "item": {"type": "message", "role": "assistant"}}
+
+event: response.output_text.delta
+data: {"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": "{\""}
+
+event: response.output_text.delta
+data: {"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": "output"}
+
+event: response.output_text.delta
+data: {"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": "\":\""}
+
+event: response.output_text.delta
+data: {"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": "Hello"}
+
+event: response.output_text.delta
+data: {"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": ","}
+
+event: response.output_text.delta
+data: {"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": " Sant"}
+
+event: response.output_text.delta
+data: {"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": "anu"}
+
+event: response.output_text.delta
+data: {"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": "!"}
+
+event: response.output_text.delta
+data: {"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": "\"}"}
+
+event: response.output_item.done
+data: {"output_index": 0, "item": {"type": "message", "id": "msg_1", "role": "assistant", "status": "completed", "content": [{"type": "output_text", "text": "{\"output\": \"Hello, Santanu! How can I assist you today?\"}", "annotations": []}]}}
+
+event: response.completed
+data: {"response": {"id": "resp_test", "object": "response", "created_at": 1755064668, "model": "gpt-4o-mini-2024-07-18", "status": "completed", "output": [{"type": "message", "id": "msg_1", "role": "assistant", "status": "completed", "content": [{"type": "output_text", "text": "{\"output\": \"Hello, Santanu! How can I assist you today?\"}", "annotations": []}]}], "usage": {"input_tokens": 412, "output_tokens": 22, "total_tokens": 434, "input_token_details": {"cached_tokens": 0}, "output_token_details": {"reasoning_tokens": 0}}}}
+
+event: response.completed
+data: {"response": {"id": "resp_test", "object": "response", "created_at": 1755064668, "model": "gpt-4o-mini-2024-07-18", "status": "completed", "output": [{"type": "message", "id": "msg_1", "role": "assistant", "status": "completed", "content": [{"type": "output_text", "text": "{\"output\": \"Hello, Santanu! How can I assist you today?\"}", "annotations": []}]}], "usage": {"input_tokens": 412, "output_tokens": 22, "total_tokens": 434, "input_token_details": {"cached_tokens": 0}, "output_token_details": {"reasoning_tokens": 0}}}}
+

@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * that interact with different models. For example, when used with Agent Registry where
  * sub-agents might use different models.
  */
+@Deprecated
 @NoArgsConstructor
 public class DefaultChatCompletionServiceFactory implements ChatCompletionServiceFactory {
     private final AtomicReference<ChatCompletionServices> defaultProvider = new AtomicReference<>();

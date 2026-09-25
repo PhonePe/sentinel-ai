@@ -1,0 +1,374 @@
+/*
+ * Copyright (c) 2025 Original Author(s), PhonePe India Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.phonepe.sentinelai.models;
+
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.github.tomakehurst.wiremock.stubbing.Scenario;
+
+import org.junit.jupiter.api.Test;
+
+import com.phonepe.sentinelai.core.agent.Agent;
+import com.phonepe.sentinelai.core.agent.AgentInput;
+import com.phonepe.sentinelai.core.agent.AgentOutput;
+import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
+import com.phonepe.sentinelai.core.agent.AgentSetup;
+import com.phonepe.sentinelai.core.agent.MediaInput;
+import com.phonepe.sentinelai.core.agent.StreamConsumer;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
+import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
+import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
+import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.model.ModelUsageStats;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
+import com.phonepe.sentinelai.core.tools.Tool;
+import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
+
+import lombok.NonNull;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
+
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.okForContentType;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Tests streaming with {@link AbstractModel} via {@link TestModel}. Port of the old
+ * {@code SimpleOpenAIModelStreamingTest}; SSE fixtures are identical, the endpoint is plain
+ * {@code /chat/completions}.
+ */
+@Slf4j
+@WireMockTest
+class AbstractModelStreamingTest {
+
+    private static final class TestAgent extends Agent<String, String, TestAgent> {
+
+        private final AtomicInteger getNameCalls = new AtomicInteger();
+
+        public TestAgent(@NonNull AgentSetup setup) {
+            super(String.class,
+                  "Greet the user by name and respond to queries",
+                  setup,
+                  List.of(),
+                  Map.of());
+        }
+
+        @Tool("Get location of the user")
+        public String getLocation(@JsonPropertyDescription("User name") String name) {
+            if (name.equalsIgnoreCase("santanu")) {
+                return "Bangalore";
+            }
+            throw new IllegalArgumentException("Invalid parameter");
+        }
+
+        @Tool("Get name of the user")
+        public String getName() {
+            getNameCalls.incrementAndGet();
+            return "Santanu";
+        }
+
+        @Tool("Get weather for city")
+        public String getWeather(@JsonPropertyDescription("City name") String city) {
+            if (city.equalsIgnoreCase("bangalore")) {
+                return "Sunny";
+            }
+            throw new IllegalArgumentException("Invalid parameter");
+        }
+
+        @Override
+        public String name() {
+            return "test-agent";
+        }
+    }
+
+    private static long countMessages(final List<AgentMessage> messages,
+                                      final Class<? extends AgentMessage> type) {
+        return messages.stream().filter(type::isInstance).count();
+    }
+
+    private static StreamConsumer createStreamConsumer(final PrintStream outputStream) {
+        return new StreamConsumer() {
+            @Override
+            public void consumeContent(final String content) {
+                print(content.getBytes(), outputStream);
+            }
+        };
+    }
+
+    private static AgentOutput<String> execute(final WireMockRuntimeInfo wiremock,
+                                               final OkHttpClient client) throws FileNotFoundException {
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var stats = new ModelUsageStats(); // We want to collect stats from the whole session
+        final var executor = Executors.newCachedThreadPool();
+        final var agent = setupAgent(wiremock, objectMapper, client, executor);
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        return agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .usageStats(stats)
+                        .build())
+                .build(), createStreamConsumer(outputStream))
+                .join();
+    }
+
+    private static void print(final byte[] data, final PrintStream outputStream) {
+        try {
+            outputStream.write(data);
+            outputStream.flush();
+            log.info("RECEIVED: {}", new String(data));
+        }
+        catch (final Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static TestAgent setupAgent(final WireMockRuntimeInfo wiremock,
+                                        final com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+                                        final OkHttpClient httpClient,
+                                        final ExecutorService executor) {
+        final var model = TestModel.of("gpt-4o",
+                                       wiremock.getHttpBaseUrl(),
+                                       objectMapper,
+                                       OkHttpModelTransport.of(httpClient),
+                                       ModelOptions.builder()
+                                               .toolChoice(ModelOptions.ToolChoice.AUTO)
+                                               .build());
+        return new TestAgent(AgentSetup.builder()
+                .model(model)
+                .mapper(objectMapper)
+                .modelSettings(ModelSettings.builder()
+                        .parallelToolCalls(false)
+                        .temperature(0.1f)
+                        .seed(1)
+                        .build())
+                .executorService(executor)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+    }
+
+    @Test
+    @SneakyThrows
+    void duplicateFinishChunk(final WireMockRuntimeInfo wiremock) {
+        TestStubs.setupMocks(2, "duplicate-finish", getClass());
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var executor = Executors.newCachedThreadPool();
+        final var httpClient = new OkHttpClient.Builder().build();
+        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .build(), createStreamConsumer(outputStream))
+                .join();
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertEquals(1, agent.getNameCalls.get());
+        assertEquals(1, countMessages(response.getAllMessages(), ToolCall.class));
+        assertEquals(1, countMessages(response.getAllMessages(), ToolCallResponse.class));
+    }
+
+    @Test
+    @SneakyThrows
+    void duplicateStopChunk(final WireMockRuntimeInfo wiremock) {
+        TestStubs.setupMocks(1, "duplicate-stop", getClass());
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var executor = Executors.newCachedThreadPool();
+        final var httpClient = new OkHttpClient.Builder().build();
+        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .build(), createStreamConsumer(outputStream))
+                .join();
+        assertEquals(1, countMessages(response.getAllMessages(), StructuredOutput.class));
+    }
+
+    @Test
+    @SneakyThrows
+    void testAgent(final WireMockRuntimeInfo wiremock) {
+        // Setup stub for SSE
+        setupSseStubs();
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var stats = new ModelUsageStats(); // We want to collect stats from the whole session
+        final var executor = Executors.newCachedThreadPool();
+        final var httpClient = new OkHttpClient.Builder().build();
+        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .usageStats(stats)
+                        .build())
+                .build(), createStreamConsumer(outputStream))
+                .join();
+        var responseString = response.getData();
+        log.info("Agent response: {}", responseString);
+        assertNotNull(responseString);
+        // The following needs to be done because the model is not deterministic and might call
+        // tools at different times across runs
+        final var sunnyFound = new AtomicBoolean(responseString.contains("sunny"));
+        final var nameFound = new AtomicBoolean(responseString.contains("Santanu"));
+        assertTrue(response.getUsage().getTotalTokens() > 1); // All chunks consumed
+        final var response2 = agent.executeAsyncTextStreaming(AgentInput.<String>builder()
+                .request("How is the weather?")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .usageStats(stats)
+                        .build())
+                .oldMessages(response.getAllMessages())
+                .build(), createStreamConsumer(outputStream))
+                .join();
+        responseString = response2.getData();
+        log.info("Agent response: {}", responseString);
+        sunnyFound.compareAndSet(false, responseString.contains("sunny"));
+        nameFound.compareAndSet(false, responseString.contains("Santanu"));
+        assertTrue(sunnyFound.get() && nameFound.get());
+        assertTrue(response2.getUsage().getTotalTokens() > 1);
+        assertTrue(stats.getTotalTokens() > 1);
+        log.info("Session stats: {}", stats);
+    }
+
+    @Test
+    @SneakyThrows
+    void testImageUploadStreaming(final WireMockRuntimeInfo wiremock) {
+        // Setup stub for SSE with image response
+        stubFor(post(TestStubs.ENDPOINT).willReturn(okForContentType("text/event-stream",
+                                                                     TestStubs.readStubFile(1,
+                                                                                            "image-stream",
+                                                                                            getClass()))));
+
+        final var objectMapper = JsonUtils.createMapper();
+        final var executor = Executors.newCachedThreadPool();
+        final var httpClient = new OkHttpClient.Builder().build();
+        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        final var base64Image = "data:image/png;base64,iVBORw0KGgoAAAANS";
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Describe the image")
+                .media(List.of(MediaInput.imageContent(base64Image, ImageDetail.AUTO)))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .build(), createStreamConsumer(outputStream))
+                .join();
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertNotNull(response.getData());
+        assertTrue(response.getData().contains("A man with dark hair and glasses"));
+        assertTrue(response.getUsage().getTotalTokens() > 1);
+    }
+
+    @Test
+    @SneakyThrows
+    void testPreProcessorIsCalled(final WireMockRuntimeInfo wiremock) {
+        setupSseStubs();
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var executor = Executors.newCachedThreadPool();
+        final var httpClient = new OkHttpClient.Builder().build();
+        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
+        final var preProcessorCalled = new AtomicBoolean(false);
+        agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
+            preProcessorCalled.set(true);
+            return new AgentMessagesPreProcessResult(null, null);
+        });
+
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .build(), createStreamConsumer(outputStream))
+                .join();
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertTrue(preProcessorCalled.get());
+    }
+
+    @Test
+    @SneakyThrows
+    void testPreProcessorsThrowingException(final WireMockRuntimeInfo wiremock) {
+        setupSseStubs();
+        final var objectMapper = JsonUtils.createMapper();
+
+        final var executor = Executors.newCachedThreadPool();
+        final var httpClient = new OkHttpClient.Builder().build();
+        final var agent = setupAgent(wiremock, objectMapper, httpClient, executor);
+        agent.registerAgentMessagesPreProcessor((ctx, allMessages, newMessages) -> {
+            throw new RuntimeException("Errored");
+        });
+
+        final var outputStream = new PrintStream(new FileOutputStream("/dev/stdout"), true);
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .build(), createStreamConsumer(outputStream))
+                .join();
+        assertEquals(ErrorType.PREPROCESSOR_RUN_FAILURE, response.getError().getErrorType());
+    }
+
+    @Test
+    @SneakyThrows
+    void testTimeouts(final WireMockRuntimeInfo wiremock) {
+        TestStubs.setupMocksWithTimeout(Duration.ofSeconds(1));
+
+        final var httpClient = new OkHttpClient.Builder().readTimeout(Duration.ofMillis(100)).build();
+
+        final var response = execute(wiremock, httpClient);
+        assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
+                   response.getError().getErrorType(),
+                   "Expected TIMEOUT after retries, got: " + response.getError());
+    }
+
+    private void setupSseStubs() {
+        // Setup stub for SSE
+        IntStream.rangeClosed(1, 5).forEach(i -> stubFor(post(TestStubs.ENDPOINT)
+                .inScenario("model-test")
+                .whenScenarioStateIs(i == 1 ? Scenario.STARTED : Objects.toString(i))
+                .willReturn(okForContentType("text/event-stream",
+                                             TestStubs.readStubFile(i, "events", getClass())))
+                .willSetStateTo(Objects.toString(i + 1))));
+    }
+}

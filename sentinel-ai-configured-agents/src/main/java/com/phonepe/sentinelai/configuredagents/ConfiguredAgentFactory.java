@@ -76,7 +76,7 @@ public class ConfiguredAgentFactory {
                                                                 agentSetupProvider,
                                                                 ConfigDrivenAgentSetupProvider::new);
         this.modelFactory = Objects.requireNonNullElseGet(modelFactory,
-                                                          SimpleOpenAIModelFactory::new);
+                                                          ChatCompletionsModelFactory::new);
     }
 
     public final ConfiguredAgent createAgent(@NonNull final AgentMetadata agentMetadata,

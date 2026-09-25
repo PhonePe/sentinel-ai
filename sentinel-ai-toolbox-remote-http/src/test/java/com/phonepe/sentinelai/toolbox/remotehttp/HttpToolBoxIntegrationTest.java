@@ -19,9 +19,6 @@ package com.phonepe.sentinelai.toolbox.remotehttp;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.openai.SimpleOpenAIAzure;
-
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agent.Agent;
@@ -33,7 +30,9 @@ import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
-import com.phonepe.sentinelai.models.SimpleOpenAIModel;
+import com.phonepe.sentinelai.models.TestStubs;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
+import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpToolReaders;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.InMemoryHttpToolSource;
 
@@ -108,7 +107,7 @@ class HttpToolBoxIntegrationTest {
     @SneakyThrows
     @Test
     void test(WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(5, "tt", getClass());
+        TestStubs.setupMocks(5, "tt", getClass());
         final var objectMapper = JsonUtils.createMapper();
         setupApiMocks();
         final var okHttpClient = new OkHttpClient.Builder().callTimeout(Duration
@@ -117,19 +116,13 @@ class HttpToolBoxIntegrationTest {
                 .readTimeout(Duration.ofSeconds(180))
                 .writeTimeout(Duration.ofSeconds(120))
                 .build();
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(objectMapper)
-                                                          .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                                                          .build(),
-                                                  objectMapper);
+        final var model = ChatCompletionsModel.builder()
+                .modelName("gpt-4o")
+                .baseUrl(wiremock.getHttpBaseUrl())
+                .apiKey("test-key")
+                .mapper(objectMapper)
+                .transport(OkHttpModelTransport.of(okHttpClient))
+                .build();
 
         final var toolSource = InMemoryHttpToolSource.builder()
                 .mapper(objectMapper)

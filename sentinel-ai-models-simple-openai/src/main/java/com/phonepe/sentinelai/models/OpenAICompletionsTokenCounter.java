@@ -44,6 +44,7 @@ import java.util.Objects;
  * Uses the overheads and the encoding defined in the
  * {@link TokenCountingConfig}
  */
+@Deprecated
 public class OpenAICompletionsTokenCounter implements TokenCounter {
 
     private final EncodingRegistry encodingRegistry = Encodings

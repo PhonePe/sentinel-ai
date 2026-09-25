@@ -7,7 +7,8 @@ Sentinel AI is a Java-based multi-module framework for building intelligent agen
 
 ## Project Structure
 - `sentinel-ai-core`: Core agent logic, `Agent` base class, `Model` interface, and tool execution engine.
-- `sentinel-ai-models-simple-openai`: Implementation for OpenAI models.
+- `sentinel-ai-models`: Vendor-neutral model implementations. Contains `AbstractModel` plus Chat Completions protocol support over OkHttp.
+- `sentinel-ai-models-simple-openai` (DEPRECATED): Legacy OpenAI implementation. Use `sentinel-ai-models` instead.
 - `sentinel-ai-embedding`: Abstractions and implementations for embedding models.
 - `sentinel-ai-agent-memory`: Extensible memory management (short-term/long-term).
 - `sentinel-ai-session`: Session tracking and state persistence.

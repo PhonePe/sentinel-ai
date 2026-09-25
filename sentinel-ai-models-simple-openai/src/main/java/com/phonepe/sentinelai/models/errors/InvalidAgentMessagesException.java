@@ -20,6 +20,7 @@ package com.phonepe.sentinelai.models.errors;
 /**
  * Error signifying invalid agent messages.
  */
+@Deprecated
 public class InvalidAgentMessagesException extends RuntimeException {
     public InvalidAgentMessagesException(String message) {
         super(message);

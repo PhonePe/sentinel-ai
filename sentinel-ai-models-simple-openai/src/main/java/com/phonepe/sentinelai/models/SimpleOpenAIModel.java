@@ -111,11 +111,16 @@ import static com.phonepe.sentinelai.models.utils.OpenAIMessageUtils.convertToOp
  * <p>
  * Please check <a href="https://github.com/sashirestela/simple-openai">Simple OpenAI Repo</a>
  * for details of client usage
+ * <p>
+ * Deprecated: this module depends on the unmaintained {@code simple-openai} library.
+ * Use {@code com.phonepe.sentinelai.models.openai.ChatCompletionsModel} from the
+ * {@code sentinel-ai-models} module instead. This class stays for backward compatibility
+ * and will be removed in a future release.
  */
+@Deprecated
 @Slf4j
 @Getter
 public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Model {
-
     /**
      * This is a conduit for passing around list of messages together. All fields are mandatory.
      */

@@ -491,8 +491,8 @@ public Integer call() {
 
     final var dbPath = initializeDatabase(config);//(1)!
 
-    final var clientAdapter = buildTrustedHttpClient(config);//(2)!
-    final var model = buildOpenAIModel(config, clientAdapter, mapper);//(3)!
+    final var httpClient = buildTrustedHttpClient(config);//(2)!
+    final var model = buildModel(config, httpClient, mapper);//(3)!
     final var agentSetup = buildAgentSetup(config, model, mapper);//(4)!
 
     final var skillsExtension = buildSkillsExtension();//(5)!
@@ -523,7 +523,7 @@ public Integer call() {
 
 1. **`initializeDatabase`** — Creates + seeds the SQLite file if absent
 2. **`buildTrustedHttpClient`** — Builds an `OkHttpClient` with an auth-injection interceptor for the configured provider
-3. **`buildOpenAIModel`** — Creates a `SimpleOpenAIModel<SqlQueryResult>` wired to the configured endpoint
+3. **`buildModel`** — Creates a `ChatCompletionsModel` wired to the configured endpoint
 4. **`buildAgentSetup`** — Sets temperature, max tokens, and `TOOL_BASED` output mode
 5. **`buildSkillsExtension`** — Extracts bundled `SKILL.md` to a temp dir (or uses `--skills-dir`) and builds `AgentSkillsExtension`
 6. **`buildAgent`** — Constructs `TextToSqlAgent` with the skills extension, OpenTelemetry extension, and a pass-through output validator

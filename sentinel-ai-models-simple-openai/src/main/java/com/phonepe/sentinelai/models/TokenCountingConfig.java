@@ -20,6 +20,7 @@ import lombok.Builder;
 import lombok.Value;
 import lombok.With;
 
+@Deprecated
 @Value
 @Builder
 @With

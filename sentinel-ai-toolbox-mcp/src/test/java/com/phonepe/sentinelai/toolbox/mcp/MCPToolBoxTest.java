@@ -19,8 +19,6 @@ package com.phonepe.sentinelai.toolbox.mcp;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
@@ -34,8 +32,9 @@ import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.core.utils.TestUtils;
-import com.phonepe.sentinelai.models.SimpleOpenAIModel;
+import com.phonepe.sentinelai.models.TestStubs;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
+import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
 
 import lombok.NonNull;
@@ -74,22 +73,16 @@ class MCPToolBoxTest {
     @Test
     @SneakyThrows
     void test(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(2, "tc", getClass());
+        TestStubs.setupMocks(2, "tc", getClass());
         final var httpClient = new OkHttpClient.Builder().build();
         final var objectMapper = JsonUtils.createMapper();
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(objectMapper)
-                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
-                                                          .build(),
-                                                  objectMapper);
+        final var model = ChatCompletionsModel.builder()
+                .modelName("gpt-4o")
+                .baseUrl(wiremock.getHttpBaseUrl())
+                .apiKey("test-key")
+                .mapper(objectMapper)
+                .transport(OkHttpModelTransport.of(httpClient))
+                .build();
 
         final var agent = new MCPTestAgent(AgentSetup.builder()
                 .mapper(objectMapper)
@@ -125,22 +118,16 @@ class MCPToolBoxTest {
     @Test
     @SneakyThrows
     void testSampling(final WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(3, "st", getClass());
+        TestStubs.setupMocks(3, "st", getClass());
         final var httpClient = new OkHttpClient.Builder().build();
         final var objectMapper = JsonUtils.createMapper();
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(objectMapper)
-                                                          .clientAdapter(new OkHttpClientAdapter(httpClient))
-                                                          .build(),
-                                                  objectMapper);
+        final var model = ChatCompletionsModel.builder()
+                .modelName("gpt-4o")
+                .baseUrl(wiremock.getHttpBaseUrl())
+                .apiKey("test-key")
+                .mapper(objectMapper)
+                .transport(OkHttpModelTransport.of(httpClient))
+                .build();
         final var toolBox = new MCPToolBox("test_mcp",
                                            objectMapper,
                                            MCPStdioServerConfig.builder()

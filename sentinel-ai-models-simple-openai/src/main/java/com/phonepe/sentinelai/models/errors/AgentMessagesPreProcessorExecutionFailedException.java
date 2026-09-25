@@ -20,6 +20,7 @@ package com.phonepe.sentinelai.models.errors;
 /**
  * Agent Messages pre-processor failure.
  */
+@Deprecated
 public class AgentMessagesPreProcessorExecutionFailedException extends RuntimeException {
     public AgentMessagesPreProcessorExecutionFailedException(final String message,
                                                              final Throwable t) {

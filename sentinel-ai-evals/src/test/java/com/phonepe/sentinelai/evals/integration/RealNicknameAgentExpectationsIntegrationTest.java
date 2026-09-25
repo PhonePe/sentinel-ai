@@ -18,9 +18,6 @@ package com.phonepe.sentinelai.evals.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.openai.SimpleOpenAI;
-
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -44,12 +41,11 @@ import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelIdentifier;
 import com.phonepe.sentinelai.evals.tests.metrics.LLMIdentifier;
 import com.phonepe.sentinelai.evals.tests.metrics.LLMModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry;
-import com.phonepe.sentinelai.models.SimpleOpenAIModel;
-import com.phonepe.sentinelai.models.SimpleOpenAIModelOptions;
+import com.phonepe.sentinelai.models.ModelOptions;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
 
 import lombok.NonNull;
 import lombok.SneakyThrows;
-import okhttp3.OkHttpClient;
 
 import java.util.List;
 import java.util.Map;
@@ -175,19 +171,15 @@ class RealNicknameAgentExpectationsIntegrationTest {
                                "OPENAI_BASE_URL/OPENAI_ENDPOINT is required for real tests");
         Assumptions.assumeTrue(apiKey != null && !apiKey.isBlank(), "OPENAI_API_KEY is required for real tests");
 
-        final var provider = SimpleOpenAI.builder()
+        return ChatCompletionsModel.builder()
+                .modelName(modelName)
                 .baseUrl(endpoint)
                 .apiKey(apiKey)
-                .objectMapper(mapper)
-                .clientAdapter(new OkHttpClientAdapter(new OkHttpClient.Builder().build()))
+                .mapper(mapper)
+                .modelOptions(ModelOptions.builder()
+                        .toolChoice(ModelOptions.ToolChoice.AUTO)
+                        .build())
                 .build();
-
-        return new SimpleOpenAIModel<>(modelName,
-                                       provider,
-                                       mapper,
-                                       SimpleOpenAIModelOptions.builder()
-                                               .toolChoice(SimpleOpenAIModelOptions.ToolChoice.AUTO)
-                                               .build());
     }
 
     private static AgentSetup setup(Model model,

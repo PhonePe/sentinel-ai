@@ -6,7 +6,7 @@
 
     <groupId>com.phonepe.sentinel-ai</groupId>
     <artifactId>sentinel-ai</artifactId>
-    <version>1.2.1-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
     <name>Sentinel AI</name>
     <url>https://github.com/PhonePe/sentinel-ai</url>
     <description>Sentinel AI Agent Framework</description>
@@ -73,9 +73,9 @@
 
     <modules>
         <module>sentinel-ai-core</module>
-
         <!-- models -->
         <module>sentinel-ai-models-simple-openai</module>
+        <module>sentinel-ai-models</module>
         <module>sentinel-ai-embedding</module>
 
         <!-- toolboxes -->

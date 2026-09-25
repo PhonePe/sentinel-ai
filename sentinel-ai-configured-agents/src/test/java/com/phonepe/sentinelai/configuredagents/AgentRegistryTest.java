@@ -23,8 +23,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
-import io.github.sashirestela.cleverclient.client.OkHttpClientAdapter;
-import io.github.sashirestela.openai.SimpleOpenAIAzure;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
@@ -45,14 +43,16 @@ import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.errors.SentinelError;
+import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
-import com.phonepe.sentinelai.models.DefaultChatCompletionServiceFactory;
-import com.phonepe.sentinelai.models.SimpleOpenAIModel;
-import com.phonepe.sentinelai.models.SimpleOpenAIModelOptions;
+import com.phonepe.sentinelai.models.ModelOptions;
+import com.phonepe.sentinelai.models.TestStubs;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
+import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
@@ -260,32 +260,20 @@ class AgentRegistryTest {
                 .toURI())));
     }
 
-    private static DefaultChatCompletionServiceFactory multiModelProviderFactory(OkHttpClient okHttpClient,
-                                                                                 WireMockRuntimeInfo wiremock) {
-        return new DefaultChatCompletionServiceFactory()
-                .registerDefaultProvider(SimpleOpenAIAzure.builder()
-                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT",
-                                                           wiremock.getHttpBaseUrl()))
-                        .apiKey(TestUtils.getTestProperty("AZURE_API_KEY",
-                                                          "BLAH"))
-                        .apiVersion("2024-10-21")
-                        .objectMapper(MAPPER)
-                        .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                        .build())
-                .registerProvider("gpt-5",
-                                  SimpleOpenAIAzure.builder()
-                                          .baseUrl(TestUtils.getTestProperty(
-                                                                             "AZURE_GPT5_ENDPOINT",
-                                                                             wiremock.getHttpBaseUrl()))
-                                          .apiKey(TestUtils.getTestProperty(
-                                                                            "AZURE_API_KEY",
-                                                                            "BLAH"))
-                                          .apiVersion("2024-10-21")
-                                          .objectMapper(MAPPER)
-                                          .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                                          .build());
+    private static Model model(OkHttpClient okHttpClient, WireMockRuntimeInfo wiremock) {
+        return model(okHttpClient, wiremock, null);
     }
 
+    private static Model model(OkHttpClient okHttpClient, WireMockRuntimeInfo wiremock, ModelOptions modelOptions) {
+        return ChatCompletionsModel.builder()
+                .modelName("gpt-4o")
+                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
+                .mapper(MAPPER)
+                .transport(OkHttpModelTransport.of(okHttpClient))
+                .modelOptions(modelOptions)
+                .build();
+    }
 
     private static void printAgentResponse(AgentOutput<String> response) throws JsonProcessingException {
         log.info("Agent response: {}",
@@ -363,7 +351,7 @@ class AgentRegistryTest {
     @MethodSource("generateAgentConfig")
     void testCustomToolBox(AgentConfiguration weatherAgentConfiguration,
                            WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(5, "art.ctb", getClass());
+        TestStubs.setupMocks(5, "art.ctb", getClass());
 
         stubFor(get(urlEqualTo("/api/v1/weather/Bangalore")).willReturn(
                                                                         jsonResponse("""
@@ -400,19 +388,7 @@ class AgentRegistryTest {
                          .map(AgentMetadata::getId)
                          .orElseThrow());
 
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(MAPPER)
-                                                          .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                                                          .build(),
-                                                  MAPPER);
+        final var model = model(okHttpClient, wiremock);
 
         final var setup = AgentSetup.builder()
                 .mapper(MAPPER)
@@ -423,6 +399,7 @@ class AgentRegistryTest {
                         .parallelToolCalls(false)
                         .build())
                 .build();
+
 
         final var topAgent = PlannerAgent.builder()
                 .setup(setup)
@@ -440,7 +417,7 @@ class AgentRegistryTest {
     @Test
     @SneakyThrows
     void testHttp(WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(5, "art.http", getClass());
+        TestStubs.setupMocks(5, "art.http", getClass());
 
         stubFor(get(urlEqualTo("/api/v1/weather/Bangalore")).willReturn(
                                                                         jsonResponse("""
@@ -518,19 +495,7 @@ class AgentRegistryTest {
                          .map(AgentMetadata::getId)
                          .orElseThrow());
 
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(MAPPER)
-                                                          .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                                                          .build(),
-                                                  MAPPER);
+        final var model = model(okHttpClient, wiremock);
 
         final var setup = AgentSetup.builder()
                 .mapper(MAPPER)
@@ -558,7 +523,7 @@ class AgentRegistryTest {
     @Test
     @SneakyThrows
     void testInheritance(WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(4, "arti.http", getClass());
+        TestStubs.setupMocks(4, "arti.http", getClass());
 
         stubFor(get(urlEqualTo("/api/v1/weather/Bangalore")).willReturn(
                                                                         jsonResponse("""
@@ -634,19 +599,7 @@ class AgentRegistryTest {
         registry.configureAgent(weatherAgentConfiguration)
                 .map(AgentMetadata::getId)
                 .orElseThrow();
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(MAPPER)
-                                                          .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                                                          .build(),
-                                                  MAPPER);
+        final var model = model(okHttpClient, wiremock);
 
         final var setup = AgentSetup.builder()
                 .mapper(MAPPER)
@@ -686,7 +639,7 @@ class AgentRegistryTest {
                  int numMockFiles,
                  final MCPToolBoxFactory toolBoxFactory,
                  WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(numMockFiles, mockFilePrefix, getClass());
+        TestStubs.setupMocks(numMockFiles, mockFilePrefix, getClass());
 
         final var agentSource = new InMemoryAgentConfigurationSource();
         final var okHttpClient = new OkHttpClient.Builder().callTimeout(Duration
@@ -720,19 +673,7 @@ class AgentRegistryTest {
                          .map(AgentMetadata::getId)
                          .orElseThrow());
 
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(MAPPER)
-                                                          .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                                                          .build(),
-                                                  MAPPER);
+        final var model = model(okHttpClient, wiremock);
 
         final var setup = AgentSetup.builder()
                 .mapper(MAPPER)
@@ -760,7 +701,7 @@ class AgentRegistryTest {
     @Test
     @SneakyThrows
     void testRealAgentRegistration(WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(4, "art.reg", getClass());
+        TestStubs.setupMocks(4, "art.reg", getClass());
 
         final var agentSource = new InMemoryAgentConfigurationSource();
         final var okHttpClient = new OkHttpClient.Builder().callTimeout(Duration
@@ -775,19 +716,7 @@ class AgentRegistryTest {
                 .agentSource(agentSource)
                 .agentFactory(agentFactory::createAgent)
                 .build();
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(MAPPER)
-                                                          .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                                                          .build(),
-                                                  MAPPER);
+        final var model = model(okHttpClient, wiremock);
 
         final var setup = AgentSetup.builder()
                 .mapper(MAPPER)
@@ -844,7 +773,7 @@ class AgentRegistryTest {
                          int numMocks,
                          String mockPrefix,
                          WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(numMocks, mockPrefix, getClass());
+        TestStubs.setupMocks(numMocks, mockPrefix, getClass());
         final var agentSource = new InMemoryAgentConfigurationSource();
         final var okHttpClient = new OkHttpClient.Builder().callTimeout(Duration
                 .ofSeconds(180))
@@ -861,14 +790,11 @@ class AgentRegistryTest {
                 .agentMetadataAccessMode(metadataAccessMode)
                 .build();
         registerSummmarizingAgent(registry);
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  multiModelProviderFactory(okHttpClient,
-                                                                            wiremock),
-                                                  MAPPER,
-                                                  SimpleOpenAIModelOptions
-                                                          .builder()
-                                                          .toolChoice(SimpleOpenAIModelOptions.ToolChoice.REQUIRED)
-                                                          .build());
+        final var model = model(okHttpClient,
+                                wiremock,
+                                ModelOptions.builder()
+                                        .toolChoice(ModelOptions.ToolChoice.REQUIRED)
+                                        .build());
 
         final var setup = AgentSetup.builder()
                 .mapper(MAPPER)
@@ -897,7 +823,7 @@ class AgentRegistryTest {
                                 int numMocks,
                                 ConfiguredAgent badAgent,
                                 WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(numMocks, prefix, getClass());
+        TestStubs.setupMocks(numMocks, prefix, getClass());
         final var agentSource = new InMemoryAgentConfigurationSource();
         final var okHttpClient = new OkHttpClient.Builder().callTimeout(Duration
                 .ofSeconds(180))
@@ -925,19 +851,7 @@ class AgentRegistryTest {
                          .map(AgentMetadata::getId)
                          .orElseThrow());
 
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  SimpleOpenAIAzure.builder()
-                                                          .baseUrl(TestUtils
-                                                                  .getTestProperty("AZURE_ENDPOINT",
-                                                                                   wiremock.getHttpBaseUrl()))
-                                                          .apiKey(TestUtils
-                                                                  .getTestProperty("AZURE_API_KEY",
-                                                                                   "BLAH"))
-                                                          .apiVersion("2024-10-21")
-                                                          .objectMapper(MAPPER)
-                                                          .clientAdapter(new OkHttpClientAdapter(okHttpClient))
-                                                          .build(),
-                                                  MAPPER);
+        final var model = model(okHttpClient, wiremock);
 
         final var setup = AgentSetup.builder()
                 .mapper(MAPPER)
@@ -966,7 +880,7 @@ class AgentRegistryTest {
                                      int numMocks,
                                      String prompt,
                                      WireMockRuntimeInfo wiremock) {
-        TestUtils.setupMocks(numMocks, filePrefix, getClass());
+        TestStubs.setupMocks(numMocks, filePrefix, getClass());
         final var agentSource = new InMemoryAgentConfigurationSource();
         final var okHttpClient = new OkHttpClient.Builder().callTimeout(Duration
                 .ofSeconds(180))
@@ -983,14 +897,11 @@ class AgentRegistryTest {
                 .agentMetadataAccessMode(AgentMetadataAccessMode.METADATA_TOOL_LOOKUP)
                 .build();
         registerSummmarizingAgent(registry);
-        final var model = new SimpleOpenAIModel<>("gpt-4o",
-                                                  multiModelProviderFactory(okHttpClient,
-                                                                            wiremock),
-                                                  MAPPER,
-                                                  SimpleOpenAIModelOptions
-                                                          .builder()
-                                                          .toolChoice(SimpleOpenAIModelOptions.ToolChoice.REQUIRED)
-                                                          .build());
+        final var model = model(okHttpClient,
+                                wiremock,
+                                ModelOptions.builder()
+                                        .toolChoice(ModelOptions.ToolChoice.REQUIRED)
+                                        .build());
 
         final var setup = AgentSetup.builder()
                 .mapper(MAPPER)

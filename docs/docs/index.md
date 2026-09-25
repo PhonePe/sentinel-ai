@@ -26,7 +26,8 @@ tasks.
 Sentinel AI libraries are published on maven central. Sentinel-ai is arranged as modules:
 
 - `sentinel-ai-core`: The core library that contains the main classes and interfaces for building agents.
-- `sentinel-ai-models-simple-openai`: Using OpenAI api compliant models for agents.
+- `sentinel-ai-models`: Using OpenAI API compliant models for agents. Adds a Chat Completions implementation over OkHttp.
+- `sentinel-ai-models-simple-openai` (DEPRECATED): Legacy OpenAI model implementation. Use `sentinel-ai-models` instead.
 - `sentinel-ai-embedding`: Provides embedding models to be used for indexing information in vector databases.
 - `sentinel-ai-agent-memory`: Extension that implements memory extraction and storage from conversations. See [Agent Memory](agent-memory.md).
 - `sentinel-ai-session`: Extension that can be used to store and update information about a conversation session. See [Messages and Sessions](messages-session.md).
@@ -87,21 +88,22 @@ dependencies:
 </dependency>
 ```
 
-In order for the agent to work, it needs to use a model. Currently, Sentinel AI supports only OpenAI compliant models.
-Use the following dependency to add the OpenAI model implementation to your project:
+In order for the agent to work, it needs to use a model. Currently, Sentinel AI supports OpenAI API compliant models.
+Use the following dependency to add the model implementation to your project:
 
 ```xml
 
 <dependency>
     <groupId>com.phonepe.sentinel-ai</groupId>
-    <artifactId>sentinel-ai-models-simple-openai</artifactId>
+    <artifactId>sentinel-ai-models</artifactId>
 </dependency>
 ```
 
-!!!note "OpenAI Client Library"
-    We use the [Simple OpenAI Client](https://github.com/sashirestela/simple-openai){:target="_blank"} instead of the official OpenAI client
-    as this library provides much more flexibility to configure options on the HTTP client, something, typically needed in
-    production environments to allow for tightened security and performance.
+!!!note "HTTP transport"
+    The `sentinel-ai-models` module is vendor-neutral. It uses [OkHttp](https://square.github.io/okhttp/){:target="_blank"}
+    as the HTTP transport and Jackson for JSON. No third-party LLM client SDK is used. You can pass your own
+    pre-configured `OkHttpClient` (for example with auth interceptors, proxies or timeouts) via
+    `OkHttpModelTransport.of(httpClient)`.
 
 ### Create Your Agent
 
@@ -167,16 +169,13 @@ final var objectMapper = JsonUtils.createMapper(); //(1)!
 
 final var httpClient = new OkHttpClient.Builder().build(); //(2)!
 
-final var model = new SimpleOpenAIModel<>(
-        "gpt-4o", //(3)!
-        SimpleOpenAI.builder() //(4)!
-                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
-                .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
-                .objectMapper(objectMapper)
-                .clientAdapter(new OkHttpClientAdapter(httpClient))
-                .build(),
-        objectMapper //(5)!
-);
+final var model = ChatCompletionsModel.builder() //(3)!
+        .modelName("gpt-4o")
+        .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+        .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
+        .mapper(objectMapper) //(4)!
+        .transport(OkHttpModelTransport.of(httpClient))
+        .build();
 
 final var agentSetup = AgentSetup.builder()
         .model(model) //(6)!
@@ -190,12 +189,11 @@ final var agentSetup = AgentSetup.builder()
 
 1. Creates a preconfigured Object mapper with all the required modules and settings.
 2. Creates a OkHttp based HTTP client with default settings.
-3. The model name to use.
-4. Simple-OpenAI client builder.
-5. ObjectMapper to be used by the model.
-6. The configured model.
-7. The mapper used internally by the agent for setup.
-8. Settings for the model. This will depend on the model.
+3. `ChatCompletionsModel` builder for any OpenAI Chat Completions compatible endpoint.
+4. ObjectMapper to be used by the model.
+5. The configured model.
+6. The mapper used internally by the agent for setup.
+7. Settings for the model. This will depend on the model.
 
 ### Bringing it all together
 
@@ -225,16 +223,13 @@ public class SimpleTextAgentExample {
 
         final var httpClient = new OkHttpClient.Builder().build();
 
-        final var model = new SimpleOpenAIModel<>(
-                "gpt-4o",
-                SimpleOpenAI.builder()
-                        .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
-                        .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
-                        .objectMapper(objectMapper)
-                        .clientAdapter(new OkHttpClientAdapter(httpClient))
-                        .build(),
-                objectMapper
-        );
+        final var model = ChatCompletionsModel.builder()
+                .modelName("gpt-4o")
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
+                .mapper(objectMapper)
+                .transport(OkHttpModelTransport.of(httpClient))
+                .build();
 
         final var agentSetup = AgentSetup.builder()
                 .model(model)
