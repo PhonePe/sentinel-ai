@@ -463,6 +463,7 @@ across calls. If provided, the agent will merge the usage from current execution
 | `sessionId`    | `String`              | Session ID for the current conversation. This is passed to LLM as a separate system context message.                                       |
 | `userId`       | `String`              | A User ID for the user the agent is having the current conversation with. This is passed to LLM as a separate system context message.      |
 | `customParams` | `Map<String, Object>` | Any other custom parameters that need to be passed to the agent or the tools being invoked by the agent. This is passed to LLM as a separate system context message. |
+| `internalParams` | `Map<String, Object>` | Request-scoped parameters available to context-aware tools through `AgentRequestMetadata`; these are not sent to the LLM. |
 
 !!!note
     Request metadata is optional and passing `null` for this param is acceptable.
@@ -481,6 +482,9 @@ Request metadata (session ID, user ID, custom params) and dynamic facts/knowledg
 messages positioned after the system prompt but before the user prompt. This separation improves LLM provider
 prompt cache hit rates, since the system prompt remains stable across requests while per-session data (which
 changes between conversations) is isolated into its own messages.
+
+`internalParams` is kept in `AgentRequestMetadata` and is intentionally excluded from all LLM messages. A
+context-aware tool can access it through `AgentRunContext#getRequestMetadata().getInternalParams()`.
 
 !!!danger "Serializability requirements"
     The system prompt needs to be serializable to XML. If not, an error will be thrown.
