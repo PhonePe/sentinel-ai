@@ -68,8 +68,8 @@ class AbstractModelTextIOTest {
         TestStubs.setupMocks(2, "textio", getClass());
         final var objectMapper = JsonUtils.createMapper();
 
-        final var model = TestModel.of("gpt-4o",
-                                       wiremock.getHttpBaseUrl(),
+        final var model = TestModel.of(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"),
+                                       TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
                                        objectMapper,
                                        OkHttpModelTransport.of(new OkHttpClient.Builder().build()),
                                        ModelOptions.DEFAULT);

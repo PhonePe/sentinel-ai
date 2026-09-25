@@ -69,6 +69,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Tests streaming with {@link AbstractModel} via {@link TestModel}. Port of the old
@@ -167,8 +168,8 @@ class AbstractModelStreamingTest {
                                         final com.fasterxml.jackson.databind.ObjectMapper objectMapper,
                                         final OkHttpClient httpClient,
                                         final ExecutorService executor) {
-        final var model = TestModel.of("gpt-4o",
-                                       wiremock.getHttpBaseUrl(),
+        final var model = TestModel.of(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"),
+                                       TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
                                        objectMapper,
                                        OkHttpModelTransport.of(httpClient),
                                        ModelOptions.builder()
@@ -190,6 +191,7 @@ class AbstractModelStreamingTest {
     @Test
     @SneakyThrows
     void duplicateFinishChunk(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         TestStubs.setupMocks(2, "duplicate-finish", getClass());
         final var objectMapper = JsonUtils.createMapper();
 
@@ -210,6 +212,7 @@ class AbstractModelStreamingTest {
     @Test
     @SneakyThrows
     void duplicateStopChunk(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         TestStubs.setupMocks(1, "duplicate-stop", getClass());
         final var objectMapper = JsonUtils.createMapper();
 
@@ -276,6 +279,7 @@ class AbstractModelStreamingTest {
     @Test
     @SneakyThrows
     void testImageUploadStreaming(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         // Setup stub for SSE with image response
         stubFor(post(TestStubs.ENDPOINT).willReturn(okForContentType("text/event-stream",
                                                                      TestStubs.readStubFile(1,
@@ -352,6 +356,7 @@ class AbstractModelStreamingTest {
     @Test
     @SneakyThrows
     void testTimeouts(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         TestStubs.setupMocksWithTimeout(Duration.ofSeconds(1));
 
         final var httpClient = new OkHttpClient.Builder().readTimeout(Duration.ofMillis(100)).build();

@@ -65,6 +65,7 @@ import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * WireMock parity tests for {@link ChatCompletionsModel}: the tool loop, structured output and
@@ -156,8 +157,9 @@ class ChatCompletionsModelTest {
         return AgentSetup.builder()
                 .mapper(JsonUtils.createMapper())
                 .model(ChatCompletionsModel.builder()
-                        .modelName("gpt-4o")
-                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                        .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestStubs.getTestProperty("AZURE_API_KEY", null))
                         .mapper(JsonUtils.createMapper())
                         .build())
                 .modelSettings(ModelSettings.builder()
@@ -182,6 +184,7 @@ class ChatCompletionsModelTest {
     @Test
     @SneakyThrows
     void apiKeySetsBearerHeader(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         TestStubs.setupMocks(1, "no-tools", ChatCompletionsModelTest.class);
         final var mapper = JsonUtils.createMapper();
         stubFor(post(TestStubs.ENDPOINT).willReturn(okForContentType("application/json",
@@ -191,9 +194,9 @@ class ChatCompletionsModelTest {
         final var agent = new OutputObjectAgent(AgentSetup.builder()
                 .mapper(mapper)
                 .model(ChatCompletionsModel.builder()
-                        .modelName("gpt-4o")
+                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
                         .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("test-key")
+                        .apiKey(TestStubs.getTestProperty("AZURE_API_KEY", "test-key"))
                         .mapper(mapper)
                         .build())
                 .modelSettings(ModelSettings.builder().disableTools(true).build())
@@ -213,6 +216,7 @@ class ChatCompletionsModelTest {
     @Test
     @SneakyThrows
     void blockingRequestOmitsStreamFlagAndUsesJsonAcceptHeader(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         TestStubs.setupMocks(1, "no-tools", ChatCompletionsModelTest.class);
         final var agent = new OutputObjectAgent(setupBase(wiremock)
                 .modelSettings(ModelSettings.builder()
@@ -233,6 +237,7 @@ class ChatCompletionsModelTest {
     @Test
     @SneakyThrows
     void streamingDuplicateFinishChunk(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         TestStubs.setupMocks(2, "duplicate-finish", ChatCompletionsModelTest.class);
         final var agent = new TestAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
@@ -251,6 +256,7 @@ class ChatCompletionsModelTest {
     @Test
     @SneakyThrows
     void streamingImageUpload(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         stubFor(post(TestStubs.ENDPOINT).willReturn(okForContentType("text/event-stream",
                                                                      TestStubs.readStubFile(1,
                                                                                             "image-stream",
@@ -272,6 +278,7 @@ class ChatCompletionsModelTest {
     @Test
     @SneakyThrows
     void streamingRequestCarriesStreamFlagAndSseAcceptHeader(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         setupSseStubs();
         final var agent = new TestAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
@@ -362,8 +369,9 @@ class ChatCompletionsModelTest {
         final var agent = new OutputObjectAgent(AgentSetup.builder()
                 .mapper(mapper)
                 .model(ChatCompletionsModel.builder()
-                        .modelName("gpt-4o")
-                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                        .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestStubs.getTestProperty("AZURE_API_KEY", null))
                         .mapper(mapper)
                         .transport(OkHttpModelTransport.of(httpClient))
                         .build())

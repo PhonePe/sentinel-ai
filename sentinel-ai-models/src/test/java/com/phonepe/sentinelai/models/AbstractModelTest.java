@@ -75,6 +75,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Tests {@link AbstractModel} orchestration through {@link TestModel}. Port of the old
@@ -135,7 +136,9 @@ class AbstractModelTest {
 
     private static AgentOutput<OutputObject> executeAgent(final WireMockRuntimeInfo wiremock) {
         final var mapper = JsonUtils.createMapper();
-        final var model = setupModel("gpt-4o-mini-2024-07-18", wiremock, mapper);
+        final var model = setupModel(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o-mini-2024-07-18"),
+                                     wiremock,
+                                     mapper);
         return executeAgentWithModel(model);
     }
 
@@ -167,7 +170,7 @@ class AbstractModelTest {
                                         final ObjectMapper mapper,
                                         final OkHttpClient okHttpClient) {
         return TestModel.of(modelName,
-                            wiremock.getHttpBaseUrl(),
+                            TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
                             mapper,
                             OkHttpModelTransport.of(okHttpClient),
                             ModelOptions.DEFAULT);
@@ -227,6 +230,7 @@ class AbstractModelTest {
                                  final String payload,
                                  final ErrorType expectedErrorType,
                                  final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         stubFor(post("/chat/completions").willReturn(aResponse().withStatus(status).withBody(payload)));
 
         final var response = executeAgent(wiremock);
@@ -338,7 +342,7 @@ class AbstractModelTest {
         TestStubs.setupMocks(numStubs, stubFilePrefix, getClass());
         final var objectMapper = JsonUtils.createMapper();
 
-        final var model = setupModel("gpt-4o", wiremock, objectMapper);
+        final var model = setupModel(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"), wiremock, objectMapper);
 
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
@@ -370,7 +374,7 @@ class AbstractModelTest {
         TestStubs.setupMocks(numStubs, stubFilePrefix, getClass());
         final var objectMapper = JsonUtils.createMapper();
 
-        final var model = setupModel("gpt-4o", wiremock, objectMapper);
+        final var model = setupModel(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"), wiremock, objectMapper);
         final var eventBus = new EventBus();
 
         final var agent = SimpleAgent.builder()
@@ -412,7 +416,7 @@ class AbstractModelTest {
         TestStubs.setupMocks(numStubs, stubFilePrefix, getClass());
         final var objectMapper = JsonUtils.createMapper();
 
-        final var model = setupModel("gpt-4o", wiremock, objectMapper);
+        final var model = setupModel(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"), wiremock, objectMapper);
         final var eventBus = new EventBus();
 
         final var agent = SimpleAgent.builder()
@@ -506,14 +510,19 @@ class AbstractModelTest {
         // system prompt + user message + 4 tool calls req/resp + structured output.
         // One extra message vs the old count: the tool-output fixtures end in a
         // __output_generator__ tool call, and its response message is included too.
-        assertEquals(2 + 4 + 1, response.getAllMessages().size() - 1);
-        assertFalse(response.getNewMessages().isEmpty());
+        if (TestStubs.useRealEndpoints()) {
+            assertFalse(response.getNewMessages().isEmpty());
+        }
+        else {
+            assertEquals(2 + 4 + 1, response.getAllMessages().size() - 1);
+        }
     }
 
     @ParameterizedTest
     @SneakyThrows
     @MethodSource("generateFaults")
     void testRetriesForGenericFailure(final Fault fault, final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         TestStubs.setupMocksWithFault(fault);
         final var response = executeAgent(wiremock);
         assertSame(ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
@@ -524,6 +533,7 @@ class AbstractModelTest {
     @Test
     @SneakyThrows
     void testRetriesOnTimeouts(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         TestStubs.setupMocksWithTimeout(Duration.ofSeconds(2));
 
         final var httpClient = new OkHttpClient.Builder().readTimeout(Duration.ofMillis(100))
@@ -532,7 +542,7 @@ class AbstractModelTest {
                 .writeTimeout(Duration.ofMillis(100))
                 .build();
 
-        final var model = setupModel("gpt-4o",
+        final var model = setupModel(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"),
                                      wiremock,
                                      JsonUtils.createMapper(),
                                      httpClient);
@@ -572,7 +582,7 @@ class AbstractModelTest {
         TestStubs.setupMocks(1, "no-tools", getClass());
         final var objectMapper = JsonUtils.createMapper();
 
-        final var model = setupModel("gpt-4o", wiremock, objectMapper);
+        final var model = setupModel(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"), wiremock, objectMapper);
         final var agent = SimpleAgent.builder()
                 .setup(AgentSetup.builder()
                         .mapper(objectMapper)

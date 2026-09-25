@@ -19,8 +19,11 @@ package com.phonepe.sentinelai.models;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 
+import com.phonepe.sentinelai.core.utils.EnvLoader;
+
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,15 +38,37 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 
 /**
  * WireMock stub helpers for the neutral {@code /chat/completions} endpoint. Mirrors
- * {@code TestUtils} in sentinel-ai-core, which stubs the old Azure dialect URL.
+ * {@code TestUtils} in sentinel-ai-core, which stubs the old Azure dialect URL. Also
+ * carries the real-endpoint switch: run the tests against a live provider with
+ * {@code mvn -Preal-tests} and a {@code .env} file at the repository root.
  */
 @UtilityClass
+@Slf4j
 public class TestStubs {
 
     /**
      * The neutral Chat Completions endpoint used by the test wire protocol.
      */
     public static final String ENDPOINT = "/chat/completions";
+
+    /**
+     * Reads a test property. In mock mode returns {@code mockValue}; in real mode (system
+     * property {@code sentinelai.useRealEndpoints=true}, set by the {@code real-tests} Maven
+     * profile) reads the value from the environment or the {@code .env} file.
+     *
+     * @param variable  the environment variable to read in real mode.
+     * @param mockValue the value to return in mock mode.
+     * @return the effective value.
+     */
+    public static String getTestProperty(final String variable, final String mockValue) {
+        if (useRealEndpoints()) {
+            final var value = EnvLoader.readEnv(variable, mockValue);
+            log.info("Using real endpoint for {}: {}", variable, value);
+            return value;
+        }
+        log.info("Using mock endpoint for {}: {}", variable, mockValue);
+        return mockValue;
+    }
 
     @SneakyThrows
     public static String readStubFile(final int i, final String prefix, final Class<?> clazz) {
@@ -65,5 +90,12 @@ public class TestStubs {
     public static void setupMocksWithTimeout(final Duration duration) {
         stubFor(post(ENDPOINT).willReturn(aResponse().withStatus(200)
                 .withFixedDelay((int) duration.toMillis())));
+    }
+
+    /**
+     * @return true when the tests must run against real endpoints.
+     */
+    public static boolean useRealEndpoints() {
+        return "true".equalsIgnoreCase(System.getProperty("sentinelai.useRealEndpoints"));
     }
 }

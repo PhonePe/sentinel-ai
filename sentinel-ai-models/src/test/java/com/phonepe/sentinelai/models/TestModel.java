@@ -18,13 +18,16 @@ package com.phonepe.sentinelai.models;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
 import com.phonepe.sentinelai.models.transport.ModelTransport;
 import com.phonepe.sentinelai.models.wire.TestWireProtocol;
 import com.phonepe.sentinelai.models.wire.WireProtocol;
 
 /**
- * Concrete {@link AbstractModel} for tests. Uses the test wire protocol; the real protocol
- * implementations land in later phases.
+ * Concrete {@link AbstractModel} for tests. Uses the test wire protocol by default. When real
+ * endpoints are enabled (system property {@code sentinelai.useRealEndpoints}), the production
+ * {@link ChatCompletionsProtocol} is used so the same tests run against a real Chat Completions
+ * endpoint.
  */
 public class TestModel extends AbstractModel {
 
@@ -46,7 +49,11 @@ public class TestModel extends AbstractModel {
                                final ModelTransport transport,
                                final ModelOptions modelOptions) {
         return new TestModel(modelName,
-                             new TestWireProtocol(mapper, modelOptions),
+                             TestStubs.useRealEndpoints()
+                                     ? new ChatCompletionsProtocol(mapper,
+                                                                   ModelOptions.DEFAULT,
+                                                                   TestStubs.getTestProperty("AZURE_API_KEY", null))
+                                     : new TestWireProtocol(mapper, modelOptions),
                              transport,
                              mapper,
                              modelOptions,

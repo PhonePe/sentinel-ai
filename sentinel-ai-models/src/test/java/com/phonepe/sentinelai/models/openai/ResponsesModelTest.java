@@ -64,6 +64,7 @@ import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * WireMock parity tests for {@link ResponsesModel} over the OpenAI Responses wire format. The
@@ -160,8 +161,9 @@ class ResponsesModelTest {
         return AgentSetup.builder()
                 .mapper(JsonUtils.createMapper())
                 .model(ResponsesModel.builder()
-                        .modelName("gpt-4o")
-                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                        .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestStubs.getTestProperty("AZURE_API_KEY", null))
                         .mapper(JsonUtils.createMapper())
                         .build())
                 .modelSettings(ModelSettings.builder()
@@ -193,14 +195,15 @@ class ResponsesModelTest {
     @Test
     @SneakyThrows
     void apiKeySetsBearerHeader(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         setupBlockingMocks(1, "resp-notools");
         final var mapper = JsonUtils.createMapper();
         final var agent = new OutputObjectAgent(AgentSetup.builder()
                 .mapper(mapper)
                 .model(ResponsesModel.builder()
-                        .modelName("gpt-4o")
+                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
                         .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey("test-key")
+                        .apiKey(TestStubs.getTestProperty("AZURE_API_KEY", "test-key"))
                         .mapper(mapper)
                         .build())
                 .modelSettings(ModelSettings.builder().disableTools(true).build())
@@ -220,6 +223,7 @@ class ResponsesModelTest {
     @Test
     @SneakyThrows
     void blockingRequestLiftsInstructionsAndSendsFlatTools(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         setupBlockingMocks(3, "resp-structured-output");
         final var agent = new OutputObjectAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
@@ -240,6 +244,7 @@ class ResponsesModelTest {
     @Test
     @SneakyThrows
     void blockingRequestOmitsStreamFlagAndUsesJsonAcceptHeader(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         setupBlockingMocks(1, "resp-notools");
         final var agent = new OutputObjectAgent(setupBase(wiremock)
                 .modelSettings(ModelSettings.builder()
@@ -260,6 +265,7 @@ class ResponsesModelTest {
     @Test
     @SneakyThrows
     void streamingDuplicateFinishChunk(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         setupSseMocks(2, "resp-duplicate-finish");
         final var agent = new TestAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
@@ -278,6 +284,7 @@ class ResponsesModelTest {
     @Test
     @SneakyThrows
     void streamingImageUpload(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         stubFor(post(ENDPOINT).willReturn(okForContentType("text/event-stream",
                                                            TestStubs.readStubFile(1,
                                                                                   "resp-image-stream",
@@ -300,6 +307,7 @@ class ResponsesModelTest {
     @Test
     @SneakyThrows
     void streamingRequestCarriesStreamFlagAndSseAcceptHeader(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         setupSseMocks(5, "resp-events");
         final var agent = new TestAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
@@ -336,6 +344,7 @@ class ResponsesModelTest {
     @Test
     @SneakyThrows
     void structuredOutputSendsTextFormatSchema(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         setupBlockingMocks(1, "resp-notools");
         final var agent = new OutputObjectAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
@@ -386,6 +395,7 @@ class ResponsesModelTest {
     @Test
     @SneakyThrows
     void toolsDisabledRun(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         setupBlockingMocks(1, "resp-notools");
         final var agent = new OutputObjectAgent(setupBase(wiremock)
                 .modelSettings(ModelSettings.builder()
@@ -414,8 +424,9 @@ class ResponsesModelTest {
         final var agent = new OutputObjectAgent(AgentSetup.builder()
                 .mapper(mapper)
                 .model(ResponsesModel.builder()
-                        .modelName("gpt-4o")
-                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                        .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .apiKey(TestStubs.getTestProperty("AZURE_API_KEY", null))
                         .mapper(mapper)
                         .transport(OkHttpModelTransport.of(httpClient))
                         .build())
