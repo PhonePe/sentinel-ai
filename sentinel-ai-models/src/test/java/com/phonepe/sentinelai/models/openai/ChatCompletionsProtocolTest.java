@@ -44,7 +44,7 @@ class ChatCompletionsProtocolTest {
 
     @Test
     void blockingRequestOmitsStreamFlag() {
-        final var protocol = new ChatCompletionsProtocol(mapper, null, null);
+        final var protocol = new ChatCompletionsProtocol();
 
         final var body = protocol.buildRequestBody(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
                                                    List.of());
@@ -54,7 +54,7 @@ class ChatCompletionsProtocolTest {
 
     @Test
     void classifyErrorMapsRateLimitAndOthers() {
-        final var protocol = new ChatCompletionsProtocol(mapper, null, null);
+        final var protocol = new ChatCompletionsProtocol();
 
         assertEquals(com.phonepe.sentinelai.core.errors.ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED,
                      protocol.classifyError(429, mapper.nullNode()));
@@ -64,7 +64,7 @@ class ChatCompletionsProtocolTest {
 
     @Test
     void emptyUserIdIsOmitted() {
-        final var protocol = new ChatCompletionsProtocol(mapper, null, null);
+        final var protocol = new ChatCompletionsProtocol();
         final var ctx = WireContext.builder()
                 .modelName("test-model")
                 .baseUrl("http://localhost")
@@ -72,6 +72,7 @@ class ChatCompletionsProtocolTest {
                 .tools(Map.of())
                 .outputDefinitions(List.of())
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .mapper(mapper)
                 .build();
 
         final var body = protocol.buildRequestBody(ctx, List.of());
@@ -81,7 +82,7 @@ class ChatCompletionsProtocolTest {
 
     @Test
     void endpointAppendsChatCompletionsPath() {
-        final var protocol = new ChatCompletionsProtocol(mapper, null, null);
+        final var protocol = new ChatCompletionsProtocol();
 
         assertEquals("http://localhost/chat/completions",
                      protocol.endpoint(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null)));
@@ -89,7 +90,7 @@ class ChatCompletionsProtocolTest {
 
     @Test
     void extrasDeepMergeIntoNestedObjects() {
-        final var protocol = new ChatCompletionsProtocol(mapper, null, null);
+        final var protocol = new ChatCompletionsProtocol();
         final var options = optionsWithExtras("""
                 {"nested": {"a": 1, "b": {"c": 2}}}
                 """);
@@ -104,7 +105,7 @@ class ChatCompletionsProtocolTest {
 
     @Test
     void extrasOverrideProtocolBuiltFields() {
-        final var protocol = new ChatCompletionsProtocol(mapper, null, null);
+        final var protocol = new ChatCompletionsProtocol();
         final var settings = ModelSettings.builder().temperature(0.1f).topP(0.8f).build();
         final var options = optionsWithExtras("""
                 {"temperature": 0.9, "top_p": 0.5}
@@ -119,7 +120,7 @@ class ChatCompletionsProtocolTest {
 
     @Test
     void extrasReachTheWireUnchanged() {
-        final var protocol = new ChatCompletionsProtocol(mapper, null, null);
+        final var protocol = new ChatCompletionsProtocol();
         final var options = optionsWithExtras("""
                 {"top_k": 5, "chat_template_kwargs": {"enable_thinking": false}}
                 """);
@@ -133,7 +134,7 @@ class ChatCompletionsProtocolTest {
 
     @Test
     void noExtrasLeavesBodyUntouched() {
-        final var protocol = new ChatCompletionsProtocol(mapper, null, null);
+        final var protocol = new ChatCompletionsProtocol();
         final var settings = ModelSettings.builder().temperature(0.1f).build();
 
         final var body = protocol.buildRequestBody(context(OutputGenerationMode.STRUCTURED_OUTPUT, settings, null),
@@ -145,7 +146,7 @@ class ChatCompletionsProtocolTest {
 
     @Test
     void requestBodyCarriesCoreFields() {
-        final var protocol = new ChatCompletionsProtocol(mapper, null, null);
+        final var protocol = new ChatCompletionsProtocol();
 
         final var body = protocol.buildRequestBody(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
                                                    List.of());
@@ -159,7 +160,7 @@ class ChatCompletionsProtocolTest {
 
     @Test
     void streamingRequestCarriesStreamFlag() {
-        final var protocol = new ChatCompletionsProtocol(mapper, null, null);
+        final var protocol = new ChatCompletionsProtocol();
         final var ctx = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null).toBuilder()
                 .streaming(true)
                 .build();
@@ -180,6 +181,7 @@ class ChatCompletionsProtocolTest {
                 .tools(Map.of())
                 .outputDefinitions(List.of())
                 .outputGenerationMode(mode)
+                .mapper(mapper)
                 .extras(options == null ? null : options.getExtras())
                 .build();
     }

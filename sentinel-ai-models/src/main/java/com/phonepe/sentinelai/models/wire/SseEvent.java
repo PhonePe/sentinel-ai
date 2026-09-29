@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.models.transport;
+package com.phonepe.sentinelai.models.wire;
 
 /**
  * One parsed Server-Sent-Events frame from a streaming model response.

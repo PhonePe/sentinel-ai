@@ -28,7 +28,6 @@ import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
 
 import lombok.NonNull;
 import okhttp3.OkHttpClient;
@@ -40,11 +39,11 @@ import static com.phonepe.sentinelai.core.utils.TestUtils.ensureOutputGenerated;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests simple text based io with {@link AbstractModel} via {@link TestModel}. Port of the old
+ * Tests simple text based io with {@link ConfiguredModel}. Port of the old
  * {@code SimpleOpenAIModelTextIOTest}.
  */
 @WireMockTest
-class AbstractModelTextIOTest {
+class ConfiguredModelTextIOTest {
 
     private static final class TestAgent extends Agent<String, String, TestAgent> {
 
@@ -68,11 +67,9 @@ class AbstractModelTextIOTest {
         TestStubs.setupMocks(2, "textio", getClass());
         final var objectMapper = JsonUtils.createMapper();
 
-        final var model = TestModel.of(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"),
-                                       TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
-                                       objectMapper,
-                                       OkHttpModelTransport.of(new OkHttpClient.Builder().build()),
-                                       ModelOptions.DEFAULT);
+        final var model = TestModels.testModel(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"),
+                                               TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
+                                               new OkHttpClient.Builder().build());
         final var agent = new TestAgent(AgentSetup.builder()
                 .model(model)
                 .mapper(objectMapper)

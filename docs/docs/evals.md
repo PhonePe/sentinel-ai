@@ -185,11 +185,13 @@ Custom judge prompts must contain `{request}` and `{answer}` placeholders, which
 ObjectMapper mapper = ...;
 
 // Wire the judge model via factory + identifier (preferred API)
-LLMModelFactory llmFactory = id -> ChatCompletionsModel.builder()
+LLMModelFactory llmFactory = id -> ConfiguredModel.builder()
         .modelName(id.modelId())
-        .baseUrl(baseUrl)
-        .apiKey(apiKey)
-        .mapper(mapper)
+        .provider(Provider.builder()
+                .baseUrl(baseUrl)
+                .protocol(new ChatCompletionsProtocol())
+                .auth(HeaderAuth.bearer(apiKey))
+                .build())
         .modelOptions(options)
         .build();
 

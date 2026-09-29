@@ -25,10 +25,10 @@ import lombok.extern.jackson.Jacksonized;
 import java.util.Objects;
 
 /**
- * Options for models built on the {@code sentinel-ai-models} module. Generalizes the previous
- * {@code SimpleOpenAIModelOptions}: tool choice resolution and token counting configuration plus
- * a free-form {@code extras} JSON node that protocols merge into the request body last (extras
- * win over protocol-built fields) to support open-weight servers.
+ * Options for models built on the {@code sentinel-ai-models} module: tool choice resolution and
+ * token counting configuration plus a free-form {@code extras} JSON node that protocols merge
+ * into the request body last (extras win over protocol-built fields) to support open-weight
+ * servers.
  */
 @Value
 public class ModelOptions {

@@ -19,10 +19,7 @@ package com.phonepe.sentinelai.models.wire;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import com.phonepe.sentinelai.models.transport.SseEvent;
-
 import java.util.List;
-import java.util.Map;
 
 /**
  * Base for protocol decorators. Implements every {@link WireProtocol} method by delegation to
@@ -50,24 +47,15 @@ public abstract class WireProtocolDecoratorSupport implements WireProtocol {
     }
 
     @Override
-    public WireResponse decodeResponse(final JsonNode body) {
-        return delegate().decodeResponse(transformResponse(body));
+    public WireResponse decodeResponse(final WireContext ctx, final JsonNode body) {
+        return delegate().decodeResponse(ctx, transformResponse(body));
     }
 
     @Override
-    public WireStreamEvent decodeStreamEvent(final SseEvent event) {
-        return delegate().decodeStreamEvent(transformStreamEvent(event));
+    public WireStreamEvent decodeStreamEvent(final WireContext ctx, final SseEvent event) {
+        return delegate().decodeStreamEvent(ctx, transformStreamEvent(event));
     }
 
-    @Override
-    public String endpoint(final WireContext ctx) {
-        return delegate().endpoint(ctx);
-    }
-
-    @Override
-    public Map<String, String> headers(final WireContext ctx) {
-        return delegate().headers(ctx);
-    }
 
     @Override
     public com.phonepe.sentinelai.models.wire.MessageCodec messageCodec() {

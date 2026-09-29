@@ -14,25 +14,20 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.models.transport;
+package com.phonepe.sentinelai.models.provider;
 
-import java.util.Map;
 
 /**
- * Value object holding the raw HTTP response of a blocking model call. The body is the raw
- * response bytes. Error classification (status code, error JSON) is done by the caller using
- * the wire protocol.
+ * Authentication applied to every model call. Implementations set auth headers on the OkHttp
+ * request builder; the model calls {@link #apply} right before the call. Header based auth is
+ * covered by {@code HeaderAuth} in this module.
  */
-public record TransportResponse(
-        int status,
-        Map<String, String> headers,
-        byte[] body
-) {
+public interface Auth {
 
     /**
-     * @return True if the HTTP status indicates success (2xx).
+     * Applies authentication to one request builder.
+     *
+     * @param requestBuilder OkHttp request builder of the model call.
      */
-    public boolean isSuccessful() {
-        return status >= 200 && status < 300;
-    }
+    void apply(okhttp3.Request.Builder requestBuilder);
 }

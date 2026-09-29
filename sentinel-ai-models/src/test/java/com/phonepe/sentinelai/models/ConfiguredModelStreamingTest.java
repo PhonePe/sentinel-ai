@@ -42,7 +42,6 @@ import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
 
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -72,13 +71,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Tests streaming with {@link AbstractModel} via {@link TestModel}. Port of the old
+ * Tests streaming with {@link ConfiguredModel}. Port of the old
  * {@code SimpleOpenAIModelStreamingTest}; SSE fixtures are identical, the endpoint is plain
  * {@code /chat/completions}.
  */
 @Slf4j
 @WireMockTest
-class AbstractModelStreamingTest {
+class ConfiguredModelStreamingTest {
 
     private static final class TestAgent extends Agent<String, String, TestAgent> {
 
@@ -168,13 +167,12 @@ class AbstractModelStreamingTest {
                                         final com.fasterxml.jackson.databind.ObjectMapper objectMapper,
                                         final OkHttpClient httpClient,
                                         final ExecutorService executor) {
-        final var model = TestModel.of(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"),
-                                       TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
-                                       objectMapper,
-                                       OkHttpModelTransport.of(httpClient),
-                                       ModelOptions.builder()
-                                               .toolChoice(ModelOptions.ToolChoice.AUTO)
-                                               .build());
+        final var model = TestModels.testModel(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"),
+                                               TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
+                                               httpClient,
+                                               ModelOptions.builder()
+                                                       .toolChoice(ModelOptions.ToolChoice.AUTO)
+                                                       .build());
         return new TestAgent(AgentSetup.builder()
                 .model(model)
                 .mapper(objectMapper)

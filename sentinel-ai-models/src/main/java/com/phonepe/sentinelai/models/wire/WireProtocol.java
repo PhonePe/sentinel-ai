@@ -17,21 +17,24 @@
 package com.phonepe.sentinelai.models.wire;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.models.transport.SseEvent;
+import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.tools.ParameterMapper;
 
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
 /**
  * One implementation per wire format (OpenAI Chat Completions, OpenAI Responses, Anthropic
  * Messages, ...). Owns the message codec, request assembly and response/stream decoding. All wire
  * data is Jackson JSON; the model loop never sees a provider DTO.
  * <p>
- * Implementations must be stateless with respect to a single run; the model loop calls them from
- * possibly concurrent runs.
+ * Implementations must be stateless: they take the run {@link com.fasterxml.jackson.databind.ObjectMapper}
+ * through the {@link WireContext} and hold no per-run state, so one instance serves every run and
+ * every mapper. The model loop calls them from possibly concurrent runs.
  */
 public interface WireProtocol {
 
@@ -68,11 +71,60 @@ public interface WireProtocol {
     }
 
     /**
+     * Applies the model settings to the request body. Shared helper for OpenAI style protocols
+     * that share the field names; Chat Completions and Responses keep their own variants for the
+     * fields that differ.
+     *
+     * @param ctx      Neutral call context; carries the run mapper.
+     * @param settings Model settings; may be null.
+     * @param body     Request body under construction.
+     */
+    default void applyModelSettings(final WireContext ctx, final ModelSettings settings, final ObjectNode body) {
+        if (settings == null) {
+            return;
+        }
+        if (settings.getTemperature() != null) {
+            body.put("temperature", settings.getTemperature().doubleValue());
+        }
+        if (settings.getTopP() != null) {
+            body.put("top_p", settings.getTopP().doubleValue());
+        }
+    }
+
+    /**
+     * Builds the flat tool list of the wire format. Shared helper for protocols whose tools are a
+     * flat array (Responses); nested shapes build their own.
+     *
+     * @param ctx Neutral call context.
+     * @return Tool array node; empty when the context has no tools.
+     */
+    default ArrayNode buildFlatTools(WireContext ctx) {
+        final var mapper = ctx.getMapper();
+        final var parameterMapper = new ParameterMapper(mapper);
+        final var toolArray = mapper.createArrayNode();
+        ctx.getTools()
+                .values()
+                .stream()
+                .sorted(Comparator.comparing(tool -> tool.getToolDefinition().getId()))
+                .forEach(tool -> {
+                    final var definition = tool.getToolDefinition();
+                    final var toolNode = mapper.createObjectNode();
+                    toolNode.put("type", "function");
+                    toolNode.put("name", definition.getId());
+                    toolNode.put("description", definition.getDescription());
+                    toolNode.set("parameters", tool.accept(parameterMapper));
+                    toolNode.put("strict", definition.isStrictSchema());
+                    toolArray.add(toolNode);
+                });
+        return toolArray;
+    }
+
+    /**
      * Builds the full request body for one turn: settings, tools, output definitions and the
      * already translated messages. Implementations must not mutate the given message nodes; they
      * are shared across turns.
      *
-     * @param ctx      Neutral call context.
+     * @param ctx      Neutral call context; carries the run mapper and the tool choice.
      * @param messages Messages already translated by {@link #messageCodec()}.
      * @return Complete request body JSON.
      */
@@ -90,35 +142,51 @@ public interface WireProtocol {
     /**
      * Decodes a single-turn blocking response body.
      *
+     * @param ctx  Neutral call context; carries the run mapper.
      * @param body Response JSON.
      * @return Neutral response; never null (throw on undecodable responses).
      */
-    WireResponse decodeResponse(JsonNode body);
+    WireResponse decodeResponse(WireContext ctx, JsonNode body);
 
     /**
      * Decodes one SSE frame into a neutral stream event. Return null for frames the protocol
      * ignores (comments, keep-alives, unrelated named events).
      *
+     * @param ctx   Neutral call context; carries the run mapper.
      * @param event Parsed SSE frame.
      * @return Neutral event, or null when the frame carries nothing relevant.
      */
-    WireStreamEvent decodeStreamEvent(SseEvent event);
+    WireStreamEvent decodeStreamEvent(WireContext ctx, SseEvent event);
 
     /**
      * @param ctx Neutral call context.
-     * @return Full endpoint URL for this call.
+     * @return Full endpoint URL for this call: base URL plus the protocol path.
      */
     String endpoint(WireContext ctx);
 
     /**
-     * @param ctx Neutral call context.
-     * @return Auth and protocol headers for this call (Bearer token, api key, version headers).
-     */
-    Map<String, String> headers(WireContext ctx);
-
-    /**
      * @return The codec translating {@link com.phonepe.sentinelai.core.agentmessages.AgentMessage}
-     *         to this wire format.
+     *         to this wire format. Stateless: translation takes the run mapper.
      */
     MessageCodec messageCodec();
+
+    /**
+     * Resolves the tool choice string for the run from the context tool choice and the output
+     * generation mode. Shared helper for protocols whose tool choice is a string field.
+     *
+     * @param ctx Neutral call context.
+     * @return Tool choice string for the wire.
+     */
+    default String resolveToolChoice(WireContext ctx) {
+        return switch (ctx.getOutputGenerationMode()) {
+            case TOOL_BASED -> switch (ctx.getToolChoice()) {
+                case REQUIRED, DEFAULT -> "required";
+                case AUTO -> "auto";
+            };
+            case STRUCTURED_OUTPUT -> switch (ctx.getToolChoice()) {
+                case REQUIRED -> "required";
+                case AUTO, DEFAULT -> "auto";
+            };
+        };
+    }
 }

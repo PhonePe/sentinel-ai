@@ -43,10 +43,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Generic token counter working directly on neutral {@link AgentMessage}s. Same estimation
- * heuristic as the previous OpenAI DTO based counter, but without the provider DTO detour: the
- * roles are the neutral roles and the token costs are the same. Token counts remain estimates
- * by design.
+ * Generic token counter working directly on neutral {@link AgentMessage}s. Uses role based
+ * token costs per message as the estimation heuristic. Token counts remain estimates by design.
  */
 public class GenericTokenCounter implements TokenCounter {
 

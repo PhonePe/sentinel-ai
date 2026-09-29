@@ -41,33 +41,20 @@ import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ParameterMapper;
-import com.phonepe.sentinelai.models.ModelOptions;
-import com.phonepe.sentinelai.models.transport.SseEvent;
 
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /**
  * Test stub of a {@link WireProtocol} speaking the OpenAI Chat Completions wire format over plain
- * Jackson nodes. This is a faithful port of the wire behavior of the previous
- * {@code SimpleOpenAIModel} so the ported model tests exercise the same request shapes, response
- * bodies and SSE chunks that the old module used. The real protocol lands in Phase 2; do not use
+ * Jackson nodes. Stateless: the run mapper arrives through the {@link WireContext}. Do not use
  * this class outside tests.
  */
 public class TestWireProtocol implements WireProtocol {
-
-    private final ObjectMapper mapper;
-    private final ModelOptions modelOptions;
-
-    public TestWireProtocol(final ObjectMapper mapper, final ModelOptions modelOptions) {
-        this.mapper = mapper;
-        this.modelOptions = Objects.requireNonNullElse(modelOptions, ModelOptions.DEFAULT);
-    }
 
     private static String imageDetailOf(final MediaTypes.ImageDetail detail) {
         return switch (detail) {
@@ -117,17 +104,51 @@ public class TestWireProtocol implements WireProtocol {
     }
 
     @Override
+    public void applyModelSettings(final WireContext ctx, final ModelSettings settings, final ObjectNode body) {
+        if (settings == null) {
+            return;
+        }
+        if (settings.getMaxTokens() != null) {
+            body.put("max_completion_tokens", settings.getMaxTokens());
+        }
+        if (settings.getTemperature() != null) {
+            body.put("temperature", settings.getTemperature().doubleValue());
+        }
+        if (settings.getTopP() != null) {
+            body.put("top_p", settings.getTopP().doubleValue());
+        }
+        if (settings.getSeed() != null) {
+            body.put("seed", settings.getSeed());
+        }
+        if (settings.getFrequencyPenalty() != null) {
+            body.put("frequency_penalty", settings.getFrequencyPenalty().doubleValue());
+        }
+        if (settings.getPresencePenalty() != null) {
+            body.put("presence_penalty", settings.getPresencePenalty().doubleValue());
+        }
+        if (settings.getLogitBias() != null && !settings.getLogitBias().isEmpty()) {
+            final var logitBias = ctx.getMapper().createObjectNode();
+            settings.getLogitBias().forEach(logitBias::put);
+            body.set("logit_bias", logitBias);
+        }
+        if (settings.getReasoning() != null) {
+            body.put("reasoning_effort", settings.getReasoning().name().toLowerCase());
+        }
+    }
+
+    @Override
     public ObjectNode buildRequestBody(final WireContext ctx, final List<JsonNode> messages) {
+        final var mapper = ctx.getMapper();
         final var body = mapper.createObjectNode();
         final var messageArray = mapper.createArrayNode();
         messages.forEach(messageArray::add);
         body.set("messages", messageArray);
-        body.put("model", ctx.getModelName());
+        body.put("model", ctx.effectiveModelId());
         body.put("n", 1);
         if (ctx.getUserId() != null && !ctx.getUserId().isEmpty()) {
             body.put("user", ctx.getUserId());
         }
-        applyModelSettings(ctx.getModelSettings(), body);
+        applyModelSettings(ctx, ctx.getModelSettings(), body);
         final var toolsDisabled = ctx.getModelSettings() != null && Boolean.TRUE
                 .equals(ctx.getModelSettings().getDisableTools());
         if (!toolsDisabled) {
@@ -157,7 +178,7 @@ public class TestWireProtocol implements WireProtocol {
     }
 
     @Override
-    public WireResponse decodeResponse(final JsonNode body) {
+    public WireResponse decodeResponse(final WireContext ctx, final JsonNode body) {
         final var choices = body.get("choices");
         if (choices == null || choices.isEmpty()) {
             throw new IllegalStateException("Empty choices in completion response");
@@ -182,10 +203,10 @@ public class TestWireProtocol implements WireProtocol {
     }
 
     @Override
-    public WireStreamEvent decodeStreamEvent(final SseEvent event) {
+    public WireStreamEvent decodeStreamEvent(final WireContext ctx, final SseEvent event) {
         final JsonNode body;
         try {
-            body = mapper.readTree(event.data());
+            body = ctx.getMapper().readTree(event.data());
         }
         catch (final Exception e) {
             return null;
@@ -244,16 +265,12 @@ public class TestWireProtocol implements WireProtocol {
     }
 
     @Override
-    public Map<String, String> headers(final WireContext ctx) {
-        return Map.of("api-key", "BLAH");
-    }
-
-    @Override
     public MessageCodec messageCodec() {
         return this::translateMessage;
     }
 
     private void addTools(final WireContext ctx, final ObjectNode body) {
+        final var mapper = ctx.getMapper();
         final var tools = ctx.getTools();
         if (tools.isEmpty()) {
             return;
@@ -276,50 +293,19 @@ public class TestWireProtocol implements WireProtocol {
                     toolArray.add(toolNode);
                 });
         body.set("tools", toolArray);
-        body.put("tool_choice", resolveToolChoice(ctx.getOutputGenerationMode()));
+        body.put("tool_choice", resolveToolChoice(ctx));
         final var parallelToolCalls = ctx.getModelSettings() == null
                 || Objects.requireNonNullElse(ctx.getModelSettings().getParallelToolCalls(), true);
         body.put("parallel_tool_calls", parallelToolCalls);
     }
 
-    private void applyModelSettings(final ModelSettings settings, final ObjectNode body) {
-        if (settings == null) {
-            return;
-        }
-        if (settings.getMaxTokens() != null) {
-            body.put("max_completion_tokens", settings.getMaxTokens());
-        }
-        if (settings.getTemperature() != null) {
-            body.put("temperature", settings.getTemperature().doubleValue());
-        }
-        if (settings.getTopP() != null) {
-            body.put("top_p", settings.getTopP().doubleValue());
-        }
-        if (settings.getSeed() != null) {
-            body.put("seed", settings.getSeed());
-        }
-        if (settings.getFrequencyPenalty() != null) {
-            body.put("frequency_penalty", settings.getFrequencyPenalty().doubleValue());
-        }
-        if (settings.getPresencePenalty() != null) {
-            body.put("presence_penalty", settings.getPresencePenalty().doubleValue());
-        }
-        if (settings.getLogitBias() != null && !settings.getLogitBias().isEmpty()) {
-            final var logitBias = mapper.createObjectNode();
-            settings.getLogitBias().forEach(logitBias::put);
-            body.set("logit_bias", logitBias);
-        }
-        if (settings.getReasoning() != null) {
-            body.put("reasoning_effort", settings.getReasoning().name().toLowerCase());
-        }
-    }
-
-    private ObjectNode contentPartMessage(final String partType,
+    private ObjectNode contentPartMessage(final ObjectMapper mapper,
+                                          final String partType,
                                           final String payloadField,
                                           final String payload,
                                           final String metaField,
                                           final String metaValue) {
-        final var node = roleMessage("user", null);
+        final var node = roleMessage(mapper, "user", null);
         final var parts = mapper.createArrayNode();
         final var part = mapper.createObjectNode();
         part.put("type", partType);
@@ -347,20 +333,7 @@ public class TestWireProtocol implements WireProtocol {
                              completionDetails == null ? null : intOrNull(completionDetails.get("reasoning_tokens")));
     }
 
-    private String resolveToolChoice(final OutputGenerationMode mode) {
-        return switch (mode) {
-            case TOOL_BASED -> switch (modelOptions.getToolChoice()) {
-                case REQUIRED, DEFAULT -> "required";
-                case AUTO -> "auto";
-            };
-            case STRUCTURED_OUTPUT -> switch (modelOptions.getToolChoice()) {
-                case REQUIRED -> "required";
-                case AUTO, DEFAULT -> "auto";
-            };
-        };
-    }
-
-    private ObjectNode roleMessage(final String role, final String content) {
+    private ObjectNode roleMessage(final ObjectMapper mapper, final String role, final String content) {
         final var node = mapper.createObjectNode();
         node.put("role", role);
         if (content != null) {
@@ -373,20 +346,21 @@ public class TestWireProtocol implements WireProtocol {
      * Translates one message into a Chat Completions message node, mirroring the old
      * {@code OpenAIMessageUtils#convertIndividualMessageToOpenAIFormat}.
      */
-    private ObjectNode translateMessage(final AgentMessage message) {
+    private ObjectNode translateMessage(final AgentMessage message, final ObjectMapper mapper) {
         return message.accept(new AgentMessageVisitor<>() {
             @Override
             public ObjectNode visit(final AgentGenericMessage genericMessage) {
                 return genericMessage.accept(new AgentGenericMessageVisitor<>() {
                     @Override
                     public ObjectNode visit(final GenericResource genericResource) {
-                        return roleMessage(roleOf(genericResource.getRole()),
+                        return roleMessage(mapper,
+                                           roleOf(genericResource.getRole()),
                                            genericResource.getSerializedJson());
                     }
 
                     @Override
                     public ObjectNode visit(final GenericText genericText) {
-                        return roleMessage(roleOf(genericText.getRole()), genericText.getText());
+                        return roleMessage(mapper, roleOf(genericText.getRole()), genericText.getText());
                     }
                 });
             }
@@ -396,7 +370,7 @@ public class TestWireProtocol implements WireProtocol {
                 return request.accept(new AgentRequestVisitor<>() {
                     @Override
                     public ObjectNode visit(final SystemPrompt systemPrompt) {
-                        return roleMessage("system", systemPrompt.getContent());
+                        return roleMessage(mapper, "system", systemPrompt.getContent());
                     }
 
                     @Override
@@ -411,13 +385,15 @@ public class TestWireProtocol implements WireProtocol {
                     @Override
                     public ObjectNode visit(final UserPrompt userPrompt) {
                         return switch (userPrompt.getContentType()) {
-                            case TEXT -> roleMessage("user", withSentAt(userPrompt));
-                            case AUDIO -> contentPartMessage("input_audio",
+                            case TEXT -> roleMessage(mapper, "user", withSentAt(userPrompt));
+                            case AUDIO -> contentPartMessage(mapper,
+                                                             "input_audio",
                                                              "data",
                                                              userPrompt.getContent(),
                                                              "format",
                                                              userPrompt.getAudioFormat().name().toLowerCase());
-                            case IMAGE_URL, IMAGE_DATA -> contentPartMessage("image_url",
+                            case IMAGE_URL, IMAGE_DATA -> contentPartMessage(mapper,
+                                                                             "image_url",
                                                                              "url",
                                                                              userPrompt.getContent(),
                                                                              "detail",
@@ -435,17 +411,17 @@ public class TestWireProtocol implements WireProtocol {
                 return response.accept(new AgentResponseVisitor<>() {
                     @Override
                     public ObjectNode visit(final StructuredOutput structuredOutput) {
-                        return roleMessage("assistant", structuredOutput.getContent());
+                        return roleMessage(mapper, "assistant", structuredOutput.getContent());
                     }
 
                     @Override
                     public ObjectNode visit(final Text text) {
-                        return roleMessage("assistant", text.getContent());
+                        return roleMessage(mapper, "assistant", text.getContent());
                     }
 
                     @Override
                     public ObjectNode visit(final ToolCall toolCall) {
-                        final var node = roleMessage("assistant", null);
+                        final var node = roleMessage(mapper, "assistant", null);
                         final var calls = mapper.createArrayNode();
                         final var call = mapper.createObjectNode();
                         call.put("id", toolCall.getToolCallId());

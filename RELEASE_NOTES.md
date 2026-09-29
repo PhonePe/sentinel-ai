@@ -1,15 +1,14 @@
 # Release Notes
 
-## 1.2.x
+## 2.0.0
 
-- Added the `sentinel-ai-models` module. It provides a vendor-neutral model implementation for OpenAI API
-  compatible endpoints (`ChatCompletionsModel`) over OkHttp and Jackson. No third-party LLM client SDK is used.
-- Deprecated the `sentinel-ai-models-simple-openai` module. It is replaced by `sentinel-ai-models`. The old module
-  stays available for backward compatibility and will be removed in a later release.
+- Replaced the `sentinel-ai-models-simple-openai` module with `sentinel-ai-models`. The new module provides
+  `ConfiguredModel`, a vendor-neutral model implementation for OpenAI API compatible endpoints (Chat Completions and
+  Responses protocols) over OkHttp and Jackson. No third-party LLM client SDK is used.
+- A model pairs a model name with a `Provider`. The `Provider` owns the base URL, the wire protocol and the
+  authentication (`HeaderAuth.bearer`, `HeaderAuth.of`, or a user supplied `OkHttpClient` with interceptors).
 - Added `ModelOptions` with tool choice control (`REQUIRED`, `AUTO`, `DEFAULT`), token counting configuration and a
   free-form `extras` JSON node merged into the request body last (extras win) for open-weight server specific fields.
-- The new module supports authentication via `apiKey` (sent as a Bearer token) or via a user supplied `OkHttpClient`
-  with custom interceptors.
 
 ## 1.2.0
 

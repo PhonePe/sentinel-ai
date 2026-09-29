@@ -523,7 +523,7 @@ public Integer call() {
 
 1. **`initializeDatabase`** — Creates + seeds the SQLite file if absent
 2. **`buildTrustedHttpClient`** — Builds an `OkHttpClient` with an auth-injection interceptor for the configured provider
-3. **`buildModel`** — Creates a `ChatCompletionsModel` wired to the configured endpoint
+3. **`buildModel`** — Creates a `ConfiguredModel` wired to the configured endpoint
 4. **`buildAgentSetup`** — Sets temperature, max tokens, and `TOOL_BASED` output mode
 5. **`buildSkillsExtension`** — Extracts bundled `SKILL.md` to a temp dir (or uses `--skills-dir`) and builds `AgentSkillsExtension`
 6. **`buildAgent`** — Constructs `TextToSqlAgent` with the skills extension, OpenTelemetry extension, and a pass-through output validator

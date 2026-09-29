@@ -59,8 +59,8 @@ public record BookSummary(
 The `Model` class is a generic abstraction for an LLM model used by an agent. A concrete subclass of the Model needs to
 be instantiated for usage in the agent.
 
-Currently, we support _only_ OpenAI API compliant model endpoints. The corresponding implementation of `Model` for this
-is the `ChatCompletionsModel` class. The class is available in the `sentinel-ai-models` module.
+Sentinel AI supports OpenAI API compliant model endpoints. The corresponding implementation of `Model` is the
+`ConfiguredModel` class. The class is available in the `sentinel-ai-models` module.
 
 The module needs to be added to the project dependencies as follows:
 
@@ -73,25 +73,28 @@ The module needs to be added to the project dependencies as follows:
 ```
 
 The module is vendor-neutral. It uses OkHttp for HTTP transport and Jackson for JSON. No third-party LLM client SDK is
-required. The model can be instantiated as follows:
+required. A model pairs a model name with a `Provider`. The `Provider` owns the endpoint, the wire protocol and the
+authentication:
 
 ```java
-final var model = ChatCompletionsModel.builder()
+final var model = ConfiguredModel.builder()
         .modelName("gpt-4o")
-        .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
-        .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
-        .mapper(objectMapper)
-        .transport(OkHttpModelTransport.of(httpClient))
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ChatCompletionsProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .build())
+        .httpClient(httpClient)
         .build();
 ```
 
-!!!tip "Authentication"
-    Set `apiKey` to send it as a `Bearer` token. Leave it null when your `OkHttpClient` handles authentication with its
-    own interceptors (for example, in production environments with tightened security).
+The final endpoint is the base URL plus the protocol path, for example
+`https://api.openai.com/v1` + `/chat/completions`.
 
-!!!warning "Deprecated module"
-    The older `sentinel-ai-models-simple-openai` module is deprecated. Migrate to `ChatCompletionsModel` in the
-    `sentinel-ai-models` module.
+!!!tip "Authentication"
+    `HeaderAuth.bearer(apiKey)` sends the key as a `Bearer` token, and `HeaderAuth.of(header, value)` sets any other
+    header pair. Set `auth` to null when your `OkHttpClient` handles authentication with its own interceptors (for
+    example, in production environments with tightened security).
 
 !!!note "Endpoint and api key"
     The `OPENAI_ENDPOINT` and `OPENAI_API_KEY` are environment variables that need to be set in the system. The
@@ -224,20 +227,21 @@ final var modelOptions = ModelOptions.builder()
         .toolChoice(ModelOptions.ToolChoice.AUTO)
         .build();
 
-final var model = ChatCompletionsModel.builder()
+final var model = ConfiguredModel.builder()
         .modelName("gpt-4o")
-        .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
-        .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
-        .mapper(objectMapper)
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ChatCompletionsProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .build())
         .modelOptions(modelOptions) // Pass options here
         .build();
 ```
 
 The `toolChoice` field on `ModelOptions` controls the `tool_choice` parameter sent to the model. Sentinel AI
 automatically resolves the effective OpenAI `tool_choice` value by combining `toolChoice` with the active
-`outputGenerationMode`. This is needed because `TOOL_BASED` mode previously forced `tool_choice` to `required`,
-and some models (e.g. Qwen, Kimi on vLLM) do not call tools reliably in this configuration. The `toolChoice` option
-now allows you to override this behavior and set it to `auto` for such models.
+`outputGenerationMode`. The default in `TOOL_BASED` mode is `required`, but some models (e.g. Qwen, Kimi on vLLM)
+do not call tools reliably in this configuration. Set `toolChoice` to `AUTO` for such models.
 
 The resolution rules are:
 
@@ -261,10 +265,13 @@ final var modelOptions = ModelOptions.builder()
         .toolChoice(ModelOptions.ToolChoice.AUTO)
         .build();
 
-final var model = ChatCompletionsModel.builder()
+final var model = ConfiguredModel.builder()
         .modelName("qwen-plus")
-        .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
-        .apiKey(EnvLoader.readEnv("OPENAI_API_KEY"))
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ChatCompletionsProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .build())
         .modelOptions(modelOptions)
         .build();
 ```
@@ -461,7 +468,7 @@ Output from the above would be something like:
 
 The `AgentInput.media` property accepts a list of `MediaInput` objects. Each entry is sent to the LLM as a separate
 user message content part after the serialized request. Supported media types depend on the model implementation. The
-`ChatCompletionsModel` supports images (base64 data or URL) and audio.
+`ChatCompletionsProtocol` and `ResponsesProtocol` support images (base64 data or URL) and audio.
 
 | **Factory method**                                          | **Description**                                                                                                     |
 |-------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|

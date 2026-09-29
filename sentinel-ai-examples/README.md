@@ -848,7 +848,7 @@ public class TextToSqlCLI implements Callable<Integer> {
         OkHttpClient httpClient = buildTrustedHttpClient(config);
 
         // 4. Build OpenAI Chat Completions model
-        ChatCompletionsModel model = buildModel(config, httpClient, mapper);
+        ConfiguredModel model = buildModel(config, httpClient, mapper);
 
         // 5. Build AgentSetup (temperature, maxTokens, output mode)
         AgentSetup agentSetup = AgentSetup.builder()

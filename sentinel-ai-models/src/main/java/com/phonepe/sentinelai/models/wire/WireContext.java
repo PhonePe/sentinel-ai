@@ -16,10 +16,15 @@
 
 package com.phonepe.sentinelai.models.wire;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
+import com.phonepe.sentinelai.models.ModelOptions;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -30,8 +35,8 @@ import java.util.Map;
 
 /**
  * Neutral inputs a wire protocol needs to build one request. The model loop constructs this once
- * per turn. Everything here is provider-agnostic; protocol specifics (endpoint shapes, headers,
- * field names) live in the {@link WireProtocol}.
+ * per turn. Everything here is provider-agnostic; protocol specifics (endpoint shapes, field
+ * names) live in the {@link WireProtocol}.
  */
 @Value
 @Builder(toBuilder = true)
@@ -76,7 +81,7 @@ public class WireContext {
      * structured output request fields (for example response_format) when the run mode is
      * STRUCTURED_OUTPUT.
      */
-    com.fasterxml.jackson.databind.node.ObjectNode outputSchema;
+    ObjectNode outputSchema;
 
     /**
      * Output generation mode of the run.
@@ -88,7 +93,7 @@ public class WireContext {
      * Free-form extras JSON node (see ModelOptions). Merged into the request body last by
      * {@link WireProtocol#applyExtras}; may be null.
      */
-    com.fasterxml.jackson.databind.JsonNode extras;
+    JsonNode extras;
 
     /**
      * True when the model call streams the response over server-sent events. Protocols use it
@@ -97,4 +102,32 @@ public class WireContext {
      */
     @Builder.Default
     boolean streaming = false;
+
+    /**
+     * Model id sent in the request body. When null, {@link #modelName} is sent.
+     */
+    String modelId;
+
+    /**
+     * Tool choice policy of the model options; drives the request tool choice field.
+     */
+    @Builder.Default
+    ModelOptions.ToolChoice toolChoice = ModelOptions.DEFAULT_TOOL_CHOICE;
+
+    /**
+     * Jackson mapper of the run. Comes from the agent setup; protocols use it for all JSON
+     * work so they stay stateless.
+     */
+    @NonNull
+    ObjectMapper mapper;
+
+    /**
+     * Returns the id to send in the request body: {@link #modelId} when set, else
+     * {@link #modelName}.
+     *
+     * @return Effective model id for the wire.
+     */
+    public String effectiveModelId() {
+        return modelId == null || modelId.isBlank() ? modelName : modelId;
+    }
 }

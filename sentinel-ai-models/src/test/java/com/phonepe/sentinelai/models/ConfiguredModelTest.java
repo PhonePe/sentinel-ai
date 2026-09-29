@@ -51,7 +51,6 @@ import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
 
 import lombok.Builder;
 import lombok.SneakyThrows;
@@ -78,13 +77,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Tests {@link AbstractModel} orchestration through {@link TestModel}. Port of the old
+ * Tests {@link ConfiguredModel} orchestration. Port of the old
  * {@code SimpleOpenAIModelTest}; wire fixtures are identical, the endpoint is plain
  * {@code /chat/completions} instead of the Azure dialect.
  */
 @Slf4j
 @WireMockTest
-class AbstractModelTest {
+class ConfiguredModelTest {
 
     public static class SimpleAgent extends Agent<UserInput, OutputObject, SimpleAgent> {
         @Builder
@@ -159,21 +158,19 @@ class AbstractModelTest {
                 .build());
     }
 
-    private static TestModel setupModel(final String modelName,
-                                        final WireMockRuntimeInfo wiremock,
-                                        final ObjectMapper mapper) {
+    private static ConfiguredModel setupModel(final String modelName,
+                                              final WireMockRuntimeInfo wiremock,
+                                              final ObjectMapper mapper) {
         return setupModel(modelName, wiremock, mapper, new OkHttpClient.Builder().build());
     }
 
-    private static TestModel setupModel(final String modelName,
-                                        final WireMockRuntimeInfo wiremock,
-                                        final ObjectMapper mapper,
-                                        final OkHttpClient okHttpClient) {
-        return TestModel.of(modelName,
-                            TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
-                            mapper,
-                            OkHttpModelTransport.of(okHttpClient),
-                            ModelOptions.DEFAULT);
+    private static ConfiguredModel setupModel(final String modelName,
+                                              final WireMockRuntimeInfo wiremock,
+                                              final ObjectMapper mapper,
+                                              final OkHttpClient okHttpClient) {
+        return TestModels.testModel(modelName,
+                                    TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
+                                    okHttpClient);
     }
 
     public record OutputObject(

@@ -55,7 +55,7 @@ class ChatCompletionsMessageCodecTest {
     private static final LocalDateTime SENT_AT = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
 
     private final ObjectMapper mapper = JsonUtils.createMapper();
-    private final ChatCompletionsMessageCodec codec = new ChatCompletionsMessageCodec(mapper);
+    private final ChatCompletionsMessageCodec codec = new ChatCompletionsMessageCodec();
 
     static Stream<Arguments> imageDetails() {
         return Stream.of(Arguments.of(ImageDetail.AUTO, "auto"),
@@ -126,7 +126,7 @@ class ChatCompletionsMessageCodecTest {
     @ParameterizedTest(name = "{0} => role {1}")
     @MethodSource("messages")
     void convert(AgentMessage message, String expectedRole, String expectedContent) {
-        final var converted = codec.translate(message);
+        final var converted = codec.translate(message, mapper);
 
         assertEquals(expectedRole, converted.get(ChatCompletionsFields.ROLE).asText());
         final var content = converted.get(ChatCompletionsFields.CONTENT);
@@ -143,7 +143,7 @@ class ChatCompletionsMessageCodecTest {
                                                 com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.MP3,
                                                 SENT_AT);
 
-        final var converted = codec.translate(userPrompt);
+        final var converted = codec.translate(userPrompt, mapper);
 
         assertEquals(ChatCompletionsFields.ROLE_USER, converted.get(ChatCompletionsFields.ROLE).asText());
         final var contentParts = converted.get(ChatCompletionsFields.CONTENT);
@@ -165,7 +165,7 @@ class ChatCompletionsMessageCodecTest {
                                                "report.txt",
                                                SENT_AT);
 
-        assertThrows(UnsupportedOperationException.class, () -> codec.translate(userPrompt));
+        assertThrows(UnsupportedOperationException.class, () -> codec.translate(userPrompt, mapper));
     }
 
     @Test
@@ -177,7 +177,7 @@ class ChatCompletionsMessageCodecTest {
                                                     ImageDetail.AUTO,
                                                     SENT_AT);
 
-        final var converted = codec.translate(userPrompt);
+        final var converted = codec.translate(userPrompt, mapper);
 
         assertEquals(ChatCompletionsFields.ROLE_USER, converted.get(ChatCompletionsFields.ROLE).asText());
         final var contentParts = converted.get(ChatCompletionsFields.CONTENT);
@@ -200,7 +200,7 @@ class ChatCompletionsMessageCodecTest {
                                                     detail,
                                                     SENT_AT);
 
-        final var converted = codec.translate(userPrompt);
+        final var converted = codec.translate(userPrompt, mapper);
 
         final var part = converted.get(ChatCompletionsFields.CONTENT).get(0);
         assertEquals(expectedWireDetail,
@@ -215,7 +215,7 @@ class ChatCompletionsMessageCodecTest {
                                                    ImageDetail.HIGH,
                                                    SENT_AT);
 
-        final var converted = codec.translate(userPrompt);
+        final var converted = codec.translate(userPrompt, mapper);
 
         final var part = converted.get(ChatCompletionsFields.CONTENT).get(0);
         assertEquals("https://example.com/image.png",
@@ -227,7 +227,7 @@ class ChatCompletionsMessageCodecTest {
     void convertTextWithNullSentAtDefaultsToNow() {
         final var userPrompt = UserPrompt.text(SESSION_ID, RUN_ID, "hi", null);
 
-        final var converted = codec.translate(userPrompt);
+        final var converted = codec.translate(userPrompt, mapper);
 
         assertEquals(ChatCompletionsFields.ROLE_USER, converted.get(ChatCompletionsFields.ROLE).asText());
         final var content = converted.get(ChatCompletionsFields.CONTENT).asText();
@@ -244,7 +244,7 @@ class ChatCompletionsMessageCodecTest {
                 .arguments("{\"city\":\"Bangalore\"}")
                 .build();
 
-        final var converted = codec.translate(toolCall);
+        final var converted = codec.translate(toolCall, mapper);
 
         assertEquals(ChatCompletionsFields.ROLE_ASSISTANT, converted.get(ChatCompletionsFields.ROLE).asText());
         final var calls = converted.get(ChatCompletionsFields.TOOL_CALLS);
@@ -267,7 +267,7 @@ class ChatCompletionsMessageCodecTest {
                 .response("{\"temp\":31}")
                 .build();
 
-        final var converted = codec.translate(toolCallResponse);
+        final var converted = codec.translate(toolCallResponse, mapper);
 
         assertEquals(ChatCompletionsFields.ROLE_TOOL, converted.get(ChatCompletionsFields.ROLE).asText());
         assertEquals("call-1", converted.get(ChatCompletionsFields.TOOL_CALL_ID).asText());
@@ -279,7 +279,7 @@ class ChatCompletionsMessageCodecTest {
         final var text = genericText(AgentGenericMessage.Role.TOOL_CALL);
         final var resource = genericResource(AgentGenericMessage.Role.TOOL_CALL);
 
-        assertThrows(UnsupportedOperationException.class, () -> codec.translate(text));
-        assertThrows(UnsupportedOperationException.class, () -> codec.translate(resource));
+        assertThrows(UnsupportedOperationException.class, () -> codec.translate(text, mapper));
+        assertThrows(UnsupportedOperationException.class, () -> codec.translate(resource, mapper));
     }
 }

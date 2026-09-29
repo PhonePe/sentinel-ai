@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.errors.ErrorType;
-import com.phonepe.sentinelai.models.transport.SseEvent;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,6 +55,11 @@ class WireProtocolDecoratorSupportTest {
         RecordingDecorator(final WireProtocol delegate, final List<String> log) {
             this.log = log;
             this.delegate = delegate;
+        }
+
+        @Override
+        public String endpoint(final WireContext ctx) {
+            return delegate().endpoint(ctx);
         }
 
         @Override
@@ -97,6 +101,7 @@ class WireProtocolDecoratorSupportTest {
                 .outputDefinitions(List.of())
                 .outputGenerationMode(com.phonepe.sentinelai.core.model.OutputGenerationMode.TOOL_BASED)
                 .extras(extras)
+                .mapper(MAPPER)
                 .build();
     }
 
@@ -141,21 +146,21 @@ class WireProtocolDecoratorSupportTest {
 
     @Test
     void testPureDelegationForNonHookedMethods() {
-        final var inner = new TestWireProtocol(MAPPER, null);
+        final var inner = new TestWireProtocol();
         final var protocol = new RecordingDecorator(inner, new java.util.ArrayList<String>());
 
         final var ctx = context(null);
         assertEquals(inner.endpoint(ctx), protocol.endpoint(ctx));
-        assertEquals(inner.headers(ctx), protocol.headers(ctx));
         final var message = text("hello");
-        assertEquals(inner.messageCodec().translate(message), protocol.messageCodec().translate(message));
+        assertEquals(inner.messageCodec().translate(message, MAPPER),
+                     protocol.messageCodec().translate(message, MAPPER));
         assertEquals(ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED, protocol.classifyError(429, null));
     }
 
     @Test
     void testTransformExtrasRunsBeforeDelegateMergesExtras() {
         final var log = new java.util.ArrayList<String>();
-        final var protocol = new RecordingDecorator(new TestWireProtocol(MAPPER, null), log);
+        final var protocol = new RecordingDecorator(new TestWireProtocol(), log);
 
         final var body = MAPPER.createObjectNode();
         protocol.applyExtras(body, MAPPER.createObjectNode().put("top_k", 7));
@@ -167,7 +172,7 @@ class WireProtocolDecoratorSupportTest {
     @Test
     void testTransformRequestRunsAfterDelegateBuildsBody() {
         final var log = new java.util.ArrayList<String>();
-        final var protocol = new RecordingDecorator(new TestWireProtocol(MAPPER, null), log);
+        final var protocol = new RecordingDecorator(new TestWireProtocol(), log);
 
         final var body = protocol.buildRequestBody(context(null), List.of());
 
@@ -180,14 +185,14 @@ class WireProtocolDecoratorSupportTest {
     @Test
     void testTransformResponseRunsBeforeDelegateDecodes() {
         final var log = new java.util.ArrayList<String>();
-        final var protocol = new RecordingDecorator(new TestWireProtocol(MAPPER, null), log);
+        final var protocol = new RecordingDecorator(new TestWireProtocol(), log);
 
         final var body = MAPPER.createObjectNode();
         body.putArray("choices").addObject().put("finish_reason", "stop");
         final var choice = (ObjectNode) body.get("choices").get(0);
         choice.putObject("message").put("content", "hi");
 
-        final var response = protocol.decodeResponse(body);
+        final var response = protocol.decodeResponse(context(null), body);
 
         assertEquals("hi", response.content());
         assertEquals(WireResponse.FinishReasons.STOP, response.finishReason());
@@ -197,12 +202,12 @@ class WireProtocolDecoratorSupportTest {
     @Test
     void testTransformStreamEventRunsBeforeDelegateDecodes() {
         final var log = new java.util.ArrayList<String>();
-        final var protocol = new RecordingDecorator(new TestWireProtocol(MAPPER, null), log);
+        final var protocol = new RecordingDecorator(new TestWireProtocol(), log);
 
         final var chunk = MAPPER.createObjectNode();
         final var choice = chunk.putArray("choices").addObject();
         choice.putObject("delta").put("content", "hi");
-        final var decoded = protocol.decodeStreamEvent(new SseEvent(null, chunk.toString()));
+        final var decoded = protocol.decodeStreamEvent(context(null), new SseEvent(null, chunk.toString()));
 
         assertEquals(WireStreamEvent.ContentDelta.class, decoded.getClass());
         assertEquals("hi", ((WireStreamEvent.ContentDelta) decoded).content());

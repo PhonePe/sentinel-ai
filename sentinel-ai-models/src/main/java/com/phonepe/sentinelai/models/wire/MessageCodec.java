@@ -16,6 +16,9 @@
 
 package com.phonepe.sentinelai.models.wire;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 
 /**
@@ -32,7 +35,8 @@ public interface MessageCodec {
      * Translates one message to its wire JSON representation.
      *
      * @param message Immutable message to translate.
+     * @param mapper  Jackson mapper of the run; used for all JSON node creation.
      * @return Wire JSON node for the message.
      */
-    com.fasterxml.jackson.databind.JsonNode translate(AgentMessage message);
+    JsonNode translate(AgentMessage message, ObjectMapper mapper);
 }

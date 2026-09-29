@@ -69,15 +69,9 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.TYPE;
  * items with content-part arrays ({@code input_text}, {@code input_image}, {@code input_file}).
  * Assistant tool calls and tool responses become flat {@code function_call} and
  * {@code function_call_output} items. The system prompt becomes a message item the protocol lifts
- * into the top-level {@code instructions} field.
+ * into the top-level {@code instructions} field. Stateless: every call takes the run mapper.
  */
 public class ResponsesMessageCodec implements MessageCodec {
-
-    private final ObjectMapper mapper;
-
-    public ResponsesMessageCodec(final ObjectMapper mapper) {
-        this.mapper = mapper;
-    }
 
     private static String imageDetailOf(final MediaTypes.ImageDetail detail) {
         return switch (detail) {
@@ -113,20 +107,21 @@ public class ResponsesMessageCodec implements MessageCodec {
     }
 
     @Override
-    public JsonNode translate(final AgentMessage message) {
+    public JsonNode translate(final AgentMessage message, final ObjectMapper mapper) {
         return message.accept(new AgentMessageVisitor<>() {
             @Override
             public ObjectNode visit(final AgentGenericMessage genericMessage) {
                 return genericMessage.accept(new AgentGenericMessageVisitor<>() {
                     @Override
                     public ObjectNode visit(final GenericResource genericResource) {
-                        return messageItem(roleOf(genericResource.getRole()),
+                        return messageItem(mapper,
+                                           roleOf(genericResource.getRole()),
                                            genericResource.getSerializedJson());
                     }
 
                     @Override
                     public ObjectNode visit(final GenericText genericText) {
-                        return messageItem(roleOf(genericText.getRole()), genericText.getText());
+                        return messageItem(mapper, roleOf(genericText.getRole()), genericText.getText());
                     }
                 });
             }
@@ -136,7 +131,7 @@ public class ResponsesMessageCodec implements MessageCodec {
                 return request.accept(new AgentRequestVisitor<>() {
                     @Override
                     public ObjectNode visit(final SystemPrompt systemPrompt) {
-                        return messageItem(ROLE_SYSTEM, systemPrompt.getContent());
+                        return messageItem(mapper, ROLE_SYSTEM, systemPrompt.getContent());
                     }
 
                     @Override
@@ -151,10 +146,10 @@ public class ResponsesMessageCodec implements MessageCodec {
                     @Override
                     public ObjectNode visit(final UserPrompt userPrompt) {
                         return switch (userPrompt.getContentType()) {
-                            case TEXT -> messageItem(ROLE_USER, withSentAt(userPrompt));
+                            case TEXT -> messageItem(mapper, ROLE_USER, withSentAt(userPrompt));
                             case AUDIO -> throw unsupported("Audio content");
-                            case IMAGE_URL, IMAGE_DATA -> imageItem(userPrompt);
-                            case FILE -> fileItem(userPrompt);
+                            case IMAGE_URL, IMAGE_DATA -> imageItem(mapper, userPrompt);
+                            case FILE -> fileItem(mapper, userPrompt);
                             default -> throw new IllegalArgumentException(
                                                                           "Unexpected value: " + userPrompt
                                                                                   .getContentType());
@@ -168,12 +163,12 @@ public class ResponsesMessageCodec implements MessageCodec {
                 return response.accept(new AgentResponseVisitor<>() {
                     @Override
                     public ObjectNode visit(final StructuredOutput structuredOutput) {
-                        return messageItem(ROLE_ASSISTANT, structuredOutput.getContent());
+                        return messageItem(mapper, ROLE_ASSISTANT, structuredOutput.getContent());
                     }
 
                     @Override
                     public ObjectNode visit(final Text text) {
-                        return messageItem(ROLE_ASSISTANT, text.getContent());
+                        return messageItem(mapper, ROLE_ASSISTANT, text.getContent());
                     }
 
                     @Override
@@ -190,7 +185,7 @@ public class ResponsesMessageCodec implements MessageCodec {
         });
     }
 
-    private ObjectNode fileItem(final UserPrompt userPrompt) {
+    private ObjectNode fileItem(final ObjectMapper mapper, final UserPrompt userPrompt) {
         final var part = mapper.createObjectNode();
         part.put(TYPE, INPUT_FILE);
         final var file = mapper.createObjectNode();
@@ -199,20 +194,20 @@ public class ResponsesMessageCodec implements MessageCodec {
             file.put(FILENAME, userPrompt.getFileName());
         }
         part.set(INPUT_FILE, file);
-        return mediaMessageItem(part);
+        return mediaMessageItem(mapper, part);
     }
 
-    private ObjectNode imageItem(final UserPrompt userPrompt) {
+    private ObjectNode imageItem(final ObjectMapper mapper, final UserPrompt userPrompt) {
         final var part = mapper.createObjectNode();
         part.put(TYPE, INPUT_IMAGE);
         final var image = mapper.createObjectNode();
         image.put(IMAGE_URL, userPrompt.getContent());
         image.put(DETAIL, imageDetailOf(userPrompt.getImageDetail()));
         part.set(INPUT_IMAGE, image);
-        return mediaMessageItem(part);
+        return mediaMessageItem(mapper, part);
     }
 
-    private ObjectNode mediaMessageItem(final ObjectNode part) {
+    private ObjectNode mediaMessageItem(final ObjectMapper mapper, final ObjectNode part) {
         final var node = mapper.createObjectNode();
         node.put(TYPE, ITEM_MESSAGE);
         node.put(ROLE, ROLE_USER);
@@ -222,7 +217,7 @@ public class ResponsesMessageCodec implements MessageCodec {
         return node;
     }
 
-    private ObjectNode messageItem(final String role, final String content) {
+    private ObjectNode messageItem(final ObjectMapper mapper, final String role, final String content) {
         final var node = mapper.createObjectNode();
         node.put(TYPE, ITEM_MESSAGE);
         node.put(ROLE, role);

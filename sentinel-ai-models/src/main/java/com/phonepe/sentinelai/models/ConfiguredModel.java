@@ -56,14 +56,15 @@ import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.ExternalTool;
-import com.phonepe.sentinelai.core.tools.ParameterMapper;
 import com.phonepe.sentinelai.core.tools.ToolDefinition;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.Pair;
 import com.phonepe.sentinelai.models.errors.AgentMessagesPreProcessorExecutionFailedException;
 import com.phonepe.sentinelai.models.errors.InvalidAgentMessagesException;
-import com.phonepe.sentinelai.models.transport.ModelTransport;
-import com.phonepe.sentinelai.models.transport.TransportRequest;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
+import com.phonepe.sentinelai.models.wire.SseEvent;
+import com.phonepe.sentinelai.models.wire.SseReader;
 import com.phonepe.sentinelai.models.wire.WireContext;
 import com.phonepe.sentinelai.models.wire.WireProtocol;
 import com.phonepe.sentinelai.models.wire.WireResponse;
@@ -72,10 +73,19 @@ import com.phonepe.sentinelai.models.wire.WireToolCall;
 import com.phonepe.sentinelai.models.wire.WireUsage;
 
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.ToString;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -99,18 +109,22 @@ import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageReceivedE
 import static com.phonepe.sentinelai.core.utils.EventUtils.raiseMessageSentEvent;
 
 /**
- * Provider-neutral model orchestration on top of the {@link WireProtocol} and
- * {@link ModelTransport} SPIs. Owns the tool-run loop, the output generation modes, the
- * pre-processor pipeline, stream reassembly, usage merging and error mapping. All wire specifics
- * live in the protocol.
+ * The model of this library: provider-neutral orchestration on top of one {@link WireProtocol}.
+ * Owns the tool-run loop, the output generation modes, the pre-processor pipeline, stream
+ * reassembly, usage merging and error mapping. All wire specifics live in the protocol; the
+ * {@link Provider} owns the endpoint and the authentication. Calls travel through the caller's
+ * {@link OkHttpClient}, so client interceptors (retries, metrics, circuit breaking) apply to every
+ * model call.
  */
 @Slf4j
 @Getter
-public abstract class AbstractModel implements Model {
+public class ConfiguredModel implements Model {
+
+    private static final MediaType JSON_MEDIA_TYPE = MediaType.parse("application/json");
 
     /**
      * Exception carrying the HTTP status and body of a failed model call so the protocol can
-     * classify the error. Replaces the vendor client exception of the previous implementation.
+     * classify the error.
      */
     private static final class HttpModelCallException extends RuntimeException {
 
@@ -119,6 +133,25 @@ public abstract class AbstractModel implements Model {
 
         HttpModelCallException(final int status, final String body) {
             super("Received HTTP error: [%d] %s".formatted(status, body));
+            this.status = status;
+            this.body = body;
+        }
+    }
+
+    /**
+     * Exception carrying the HTTP error details of a failed stream request so the engine can
+     * classify the error the same way it classifies blocking call failures.
+     */
+    @Value
+    @EqualsAndHashCode(callSuper = true)
+    @ToString(callSuper = true)
+    static final class HttpStreamException extends RuntimeException {
+
+        int status;
+        String body;
+
+        HttpStreamException(final int status, final String body) {
+            super("Received HTTP error on model stream: [%d] %s".formatted(status, body));
             this.status = status;
             this.body = body;
         }
@@ -189,26 +222,56 @@ public abstract class AbstractModel implements Model {
 
 
     private final String modelName;
-    private final WireProtocol protocol;
-    private final ModelTransport transport;
-    private final ObjectMapper mapper;
-    private final ParameterMapper parameterMapper;
+    private final String modelId;
+    private final Provider provider;
+    private final OkHttpClient httpClient;
     private final ModelOptions modelOptions;
     private final TokenCounter tokenCounter;
 
-    protected AbstractModel(final String modelName,
-                            @NonNull final WireProtocol protocol,
-                            @NonNull final ModelTransport transport,
-                            final ObjectMapper mapper,
-                            final ModelOptions modelOptions,
-                            final TokenCounter tokenCounter) {
-        this.modelName = modelName;
-        this.protocol = protocol;
-        this.transport = transport;
-        this.mapper = Objects.requireNonNullElseGet(mapper, ObjectMapper::new);
-        this.parameterMapper = new ParameterMapper(this.mapper);
+    /**
+     * @param modelName    Display name of the model; also the wire id when {@code modelId} is null.
+     * @param modelId      Id sent in the request body; null falls back to {@code modelName}.
+     * @param provider     Endpoint, endpoint prefix, authentication and wire protocol of the model.
+     * @param httpClient   OkHttp client used for every model call; never closed by the model.
+     * @param modelOptions Model options; null means {@link ModelOptions#DEFAULT}.
+     * @param tokenCounter Token counter; null means {@link GenericTokenCounter}.
+     */
+    @Builder
+    protected ConfiguredModel(final String modelName,
+                              final String modelId,
+                              @NonNull final Provider provider,
+                              final OkHttpClient httpClient,
+                              final ModelOptions modelOptions,
+                              final TokenCounter tokenCounter) {
+        this.modelName = Objects.requireNonNullElse(modelName, "default-model");
+        this.modelId = modelId;
+        this.provider = provider;
+        this.httpClient = Objects.requireNonNullElseGet(httpClient, OkHttpClient::new);
         this.modelOptions = Objects.requireNonNullElse(modelOptions, ModelOptions.DEFAULT);
         this.tokenCounter = Objects.requireNonNullElseGet(tokenCounter, GenericTokenCounter::new);
+    }
+
+    /**
+     * Convenience factory: Bearer token auth, no endpoint prefix.
+     *
+     * @param modelName Model name.
+     * @param baseUrl   Base URL of the provider.
+     * @param apiKey    API key sent as the Bearer token.
+     * @param protocol  Wire protocol of the provider.
+     * @return ConfiguredModel wired for Bearer auth.
+     */
+    public static ConfiguredModel bearer(final String modelName,
+                                         final String baseUrl,
+                                         final String apiKey,
+                                         final WireProtocol protocol) {
+        return ConfiguredModel.builder()
+                .modelName(modelName)
+                .provider(Provider.builder()
+                        .baseUrl(baseUrl)
+                        .protocol(protocol)
+                        .auth(HeaderAuth.bearer(apiKey))
+                        .build())
+                .build();
     }
 
     @SuppressWarnings({
@@ -224,9 +287,11 @@ public abstract class AbstractModel implements Model {
                                                   final List<AgentMessagesPreProcessor> messagesPreProcessors) {
         final var agentSetup = context.getAgentSetup();
         final var modelSettings = agentSetup.getModelSettings();
+        final var mapper = agentSetup.getMapper();
         //This keeps getting
         // augmented with tool calls and reused across all iterations
-        final var wireMessages = new ArrayList<>(translateAll(AgentUtils.messagesAfterLastCompaction(oldMessages)));
+        final var wireMessages = new ArrayList<>(translateAll(mapper,
+                                                              AgentUtils.messagesAfterLastCompaction(oldMessages)));
 
         //There are for final model response
         final var allMessages = new ArrayList<>(oldMessages);
@@ -240,7 +305,7 @@ public abstract class AbstractModel implements Model {
         final var toolsForExecution = new HashMap<>(Objects
                 .requireNonNullElseGet(tools, Map::of));
         final var generatedOutput = new AtomicReference<String>(null);
-        final var schema = compliantSchema(outputDefinitions);
+        final var schema = compliantSchema(mapper, outputDefinitions);
         if (outputGenerationMode.equals(OutputGenerationMode.TOOL_BASED)) {
             addOutputExtractionTool(toolsForExecution,
                                     schema,
@@ -258,6 +323,7 @@ public abstract class AbstractModel implements Model {
             var prevMessages = findPreviousRunMessages(context.getRunId(), oldMessages);
             do {
                 final var error = preProcessMessages(context,
+                                                     mapper,
                                                      oldMessages,
                                                      messagesPreProcessors,
                                                      stats,
@@ -272,7 +338,8 @@ public abstract class AbstractModel implements Model {
                 }
 
                 generatedOutput.set(null);
-                final var ctx = buildWireContext(modelSettings,
+                final var ctx = buildWireContext(mapper,
+                                                 modelSettings,
                                                  toolsForExecution,
                                                  outputDefinitions,
                                                  outputGenerationMode,
@@ -283,7 +350,7 @@ public abstract class AbstractModel implements Model {
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
 
-                final var requestBody = protocol.buildRequestBody(ctx, wireMessages);
+                final var requestBody = provider.getProtocol().buildRequestBody(ctx, wireMessages);
                 logDataDebug("Request to model: {}", requestBody);
 
                 final var response = callModel(ctx, requestBody);
@@ -323,8 +390,7 @@ public abstract class AbstractModel implements Model {
                                                                              newMessages,
                                                                              stopwatch));
                     }
-                    case WireResponse.FinishReasons.TOOL_CALLS -> runTools(
-                                                                           response.toolCalls(),
+                    case WireResponse.FinishReasons.TOOL_CALLS -> runTools(response.toolCalls(),
                                                                            context,
                                                                            toolsForExecution,
                                                                            toolRunner,
@@ -340,15 +406,13 @@ public abstract class AbstractModel implements Model {
                                                                                 stats,
                                                                                 SentinelError
                                                                                         .error(ErrorType.LENGTH_EXCEEDED));
-                    case WireResponse.FinishReasons.CONTENT_FILTER -> ModelOutput.error(
-                                                                                        oldMessages,
+                    case WireResponse.FinishReasons.CONTENT_FILTER -> ModelOutput.error(oldMessages,
                                                                                         stats,
                                                                                         SentinelError
                                                                                                 .error(ErrorType.FILTERED));
                     default -> ModelOutput.error(oldMessages,
                                                  stats,
-                                                 SentinelError.error(
-                                                                     ErrorType.UNKNOWN_FINISH_REASON,
+                                                 SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON,
                                                                      response.finishReason()));
                 };
 
@@ -444,9 +508,11 @@ public abstract class AbstractModel implements Model {
                                                       final List<AgentMessagesPreProcessor> messagesPreProcessors) {
         final var agentSetup = context.getAgentSetup();
         final var modelSettings = agentSetup.getModelSettings();
+        final var mapper = agentSetup.getMapper();
         //This keeps getting
         // augmented with tool calls and reused across all iterations
-        final var wireMessages = new ArrayList<>(translateAll(AgentUtils.messagesAfterLastCompaction(oldMessages)));
+        final var wireMessages = new ArrayList<>(translateAll(mapper,
+                                                              AgentUtils.messagesAfterLastCompaction(oldMessages)));
 
         //There are for final model response
         final var allMessages = new ArrayList<>(oldMessages);
@@ -460,7 +526,7 @@ public abstract class AbstractModel implements Model {
         final var outputGenerator = Objects.requireNonNullElseGet(agentSetup
                 .getOutputGenerationTool(), IdentityOutputGenerator::new);
         final var generatedOutput = new AtomicReference<String>(null);
-        final var schema = compliantSchema(outputDefinitions);
+        final var schema = compliantSchema(mapper, outputDefinitions);
         if (streamProcessingMode.equals(
                                         Agent.StreamProcessingMode.TYPED) && outputGenerationMode
                                                 .equals(OutputGenerationMode.TOOL_BASED)) {
@@ -474,6 +540,7 @@ public abstract class AbstractModel implements Model {
             var prevMessages = findPreviousRunMessages(context.getRunId(), oldMessages);
             do {
                 final var error = preProcessMessages(context,
+                                                     mapper,
                                                      oldMessages,
                                                      messagesPreProcessors,
                                                      stats,
@@ -484,7 +551,8 @@ public abstract class AbstractModel implements Model {
                     output = error;
                     break;
                 }
-                final var ctx = buildWireContext(modelSettings,
+                final var ctx = buildWireContext(mapper,
+                                                 modelSettings,
                                                  toolsForExecution,
                                                  outputDefinitions,
                                                  outputGenerationMode,
@@ -494,16 +562,14 @@ public abstract class AbstractModel implements Model {
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
 
-                final var requestBody = protocol.buildRequestBody(ctx, wireMessages);
+                final var requestBody = provider.getProtocol().buildRequestBody(ctx, wireMessages);
                 logDataDebug("Request to model: {}", requestBody);
                 raiseMessageSentEvent(context, prevMessages, allMessages);
                 Stream<WireStreamEvent> eventStream;
                 try {
-                    eventStream = transport
-                            .stream(toTransportRequest(ctx, requestBody))
-                            .join()
+                    eventStream = openSseStream(ctx, requestBody)
                             .filter(event -> !event.isDoneSentinel())
-                            .map(protocol::decodeStreamEvent)
+                            .map(event -> provider.getProtocol().decodeStreamEvent(ctx, event))
                             .filter(Objects::nonNull);
                 }
                 catch (Exception e) {
@@ -720,21 +786,34 @@ public abstract class AbstractModel implements Model {
      */
     private WireResponse callModel(final WireContext ctx, final ObjectNode requestBody) {
         try {
-            final var httpResponse = transport
-                    .execute(toTransportRequest(ctx, requestBody))
-                    .join();
-            if (!httpResponse.isSuccessful()) {
-                captured = new HttpModelCallException(httpResponse.status(),
-                                                      new String(httpResponse.body(), StandardCharsets.UTF_8));
-                return null;
+            final var response = httpClient.newCall(buildOkRequest(ctx, requestBody)).execute();
+            try (response; final var body = response.body()) {
+                if (!response.isSuccessful()) {
+                    final var bytes = body == null ? new byte[0] : body.bytes();
+                    captured = new HttpModelCallException(response.code(),
+                                                          new String(bytes, StandardCharsets.UTF_8));
+                    return null;
+                }
+                final var json = ctx.getMapper().readTree(body == null ? new byte[0] : body.bytes());
+                return provider.getProtocol().decodeResponse(ctx, json);
             }
-            final var body = mapper.readTree(httpResponse.body());
-            return protocol.decodeResponse(body);
         }
         catch (final Exception e) {
             captured = e;
             return null;
         }
+    }
+
+    private Request buildOkRequest(final WireContext ctx, final ObjectNode requestBody) {
+        final var builder = new Request.Builder()
+                .url(provider.getProtocol().endpoint(ctx))
+                .header("Accept", ctx.isStreaming() ? "text/event-stream" : "application/json")
+                .header("Content-Type", "application/json")
+                .post(RequestBody.create(toBytes(ctx, requestBody), JSON_MEDIA_TYPE));
+        if (provider.getAuth() != null) {
+            provider.getAuth().apply(builder);
+        }
+        return builder.build();
     }
 
     /**
@@ -749,7 +828,9 @@ public abstract class AbstractModel implements Model {
         return error == null ? new IllegalStateException("Model call failed without a captured error") : error;
     }
 
-    private WireContext buildWireContext(final ModelSettings modelSettings,
+    @SuppressWarnings("java:S107")
+    private WireContext buildWireContext(final ObjectMapper mapper,
+                                         final ModelSettings modelSettings,
                                          final Map<String, ExecutableTool> toolsForExecution,
                                          final Collection<ModelOutputDefinition> outputDefinitions,
                                          final OutputGenerationMode outputGenerationMode,
@@ -758,7 +839,8 @@ public abstract class AbstractModel implements Model {
                                          final boolean streaming) {
         return WireContext.builder()
                 .modelName(modelName)
-                .baseUrl(baseUrl())
+                .modelId(modelId)
+                .baseUrl(provider.getBaseUrl())
                 .userId(userId)
                 .modelSettings(modelSettings)
                 .tools(toolsForExecution)
@@ -766,43 +848,67 @@ public abstract class AbstractModel implements Model {
                 .outputSchema(schema)
                 .outputGenerationMode(outputGenerationMode)
                 .extras(modelOptions.getExtras())
+                .toolChoice(modelOptions.getToolChoice())
                 .streaming(streaming)
+                .mapper(mapper)
                 .build();
     }
 
-    private TransportRequest toTransportRequest(final WireContext ctx, final ObjectNode requestBody) {
-        final var headers = new HashMap<String, String>(protocol.headers(ctx));
-        headers.put("Accept", ctx.isStreaming() ? "text/event-stream" : "application/json");
-        headers.put("Content-Type", "application/json");
-        return new TransportRequest(protocol.endpoint(ctx),
-                                    "POST",
-                                    headers,
-                                    toBytes(requestBody));
+    /**
+     * Opens the SSE stream of one model call on the executor thread of the run and waits for the
+     * first response line. A non-2xx response becomes an {@link HttpStreamException} so the error
+     * path can classify it.
+     */
+    private Stream<SseEvent> openSseStream(final WireContext ctx, final ObjectNode requestBody) {
+        final var future = new CompletableFuture<Stream<SseEvent>>();
+        httpClient.newCall(buildOkRequest(ctx, requestBody)).enqueue(new Callback() {
+            @Override
+            public void onFailure(final Call call, final IOException e) {
+                future.completeExceptionally(e);
+            }
+
+            @Override
+            public void onResponse(final Call call, final Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    // Read the body so the caller can classify the error, then fail the stream.
+                    try (response) {
+                        final var body = response.body();
+                        final var bytes = body == null ? new byte[0] : body.bytes();
+                        future.completeExceptionally(new HttpStreamException(response.code(),
+                                                                             new String(bytes,
+                                                                                        StandardCharsets.UTF_8)));
+                    }
+                    return;
+                }
+                final var body = response.body();
+                if (body == null) {
+                    future.completeExceptionally(new IOException("No response body for model stream"));
+                    return;
+                }
+                future.complete(SseReader.stream(response, body));
+            }
+        });
+        return future.join();
     }
 
-    private byte[] toBytes(final ObjectNode requestBody) {
+    private byte[] toBytes(final WireContext ctx, final ObjectNode requestBody) {
         try {
-            return mapper.writeValueAsBytes(requestBody);
+            return ctx.getMapper().writeValueAsBytes(requestBody);
         }
         catch (final JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize request body", e);
         }
     }
 
-    private List<JsonNode> translateAll(final List<AgentMessage> messages) {
+    private List<JsonNode> translateAll(final ObjectMapper mapper, final List<AgentMessage> messages) {
         return messages.stream()
-                .map(this::translate)
+                .map(message -> translate(mapper, message))
                 .toList();
     }
 
-    private JsonNode translate(final AgentMessage message) {
-        return protocol.messageCodec().translate(message);
+    private JsonNode translate(final ObjectMapper mapper, final AgentMessage message) {
+        return provider.getProtocol().messageCodec().translate(message, mapper);
     }
-
-    /**
-     * @return Base URL of the provider endpoint root.
-     */
-    protected abstract String baseUrl();
 
     private ModelOutput errorToModelOutput(final ModelRunContext context,
                                            final Throwable error,
@@ -821,8 +927,10 @@ public abstract class AbstractModel implements Model {
         }
         // Now that we have all network errors covered, we check the HTTP status codes
         if (rootCause instanceof HttpModelCallException httpModelCallException) {
-            final var errorType = protocol.classifyError(httpModelCallException.status,
-                                                         parseErrorBody(httpModelCallException.body));
+            final var errorType = provider.getProtocol().classifyError(httpModelCallException.status,
+                                                                       parseErrorBody(context.getAgentSetup()
+                                                                               .getMapper(),
+                                                                                      httpModelCallException.body));
             return createErrorResponse(context,
                                        newMessages,
                                        allMessages,
@@ -836,7 +944,7 @@ public abstract class AbstractModel implements Model {
                                    rootCause.getMessage());
     }
 
-    private JsonNode parseErrorBody(final String body) {
+    private JsonNode parseErrorBody(final ObjectMapper mapper, final String body) {
         if (Strings.isNullOrEmpty(body)) {
             return null;
         }
@@ -1011,7 +1119,7 @@ public abstract class AbstractModel implements Model {
         final var messagesBeforeFeedback = List.copyOf(agentMessages.getAllMessages());
         agentMessages.getAllMessages().add(feedbackMessage);
         agentMessages.getNewMessages().add(feedbackMessage);
-        agentMessages.getWireMessages().add(translate(feedbackMessage));
+        agentMessages.getWireMessages().add(translate(context.getAgentSetup().getMapper(), feedbackMessage));
         final var stopwatch = Stopwatch.createStarted();
         raiseMessageReceivedEvent(context,
                                   List.of(feedbackMessage),
@@ -1040,7 +1148,9 @@ public abstract class AbstractModel implements Model {
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, List.of(newMessage), allMessages, stopwatch);
             try {
-                return ModelOutput.success(mapper.readTree(content), newMessages, allMessages, stats);
+                return ModelOutput.success(context.getAgentSetup()
+                        .getMapper()
+                        .readTree(content), newMessages, allMessages, stats);
             }
             catch (JsonProcessingException e) {
                 return ModelOutput.error(oldMessages,
@@ -1078,7 +1188,9 @@ public abstract class AbstractModel implements Model {
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, List.of(newMessage), allMessages, stopwatch);
-            return ModelOutput.success(mapper.createObjectNode()
+            return ModelOutput.success(context.getAgentSetup()
+                    .getMapper()
+                    .createObjectNode()
                     .textNode(content), newMessages, allMessages, stats);
         }
 
@@ -1106,7 +1218,7 @@ public abstract class AbstractModel implements Model {
         if (log.isDebugEnabled()) {
             try {
                 log.debug(fmtStr,
-                          mapper.writerWithDefaultPrettyPrinter()
+                          new ObjectMapper().writerWithDefaultPrettyPrinter()
                                   .writeValueAsString(nodes.length == 1 ? nodes[0] : List.of(nodes)));
             }
             catch (JsonProcessingException e) {
@@ -1167,6 +1279,7 @@ public abstract class AbstractModel implements Model {
                                  final ModelUsageStats stats,
                                  final Stopwatch stopwatch) {
         final var seenToolCallIds = new HashSet<String>();
+        final var mapper = agentSetup.getMapper();
         final var toolCallMessages = toolCalls.stream()
                 .filter(toolCall -> !Strings.isNullOrEmpty(toolCall.id()))
                 .filter(toolCall -> seenToolCallIds.add(toolCall.id()))
@@ -1222,9 +1335,9 @@ public abstract class AbstractModel implements Model {
                                   toolCallResponse.getResponse());
                     }
                     agentMessages.getWireMessages()
-                            .add(translate(toolCallMessage));
+                            .add(translate(mapper, toolCallMessage));
                     agentMessages.getWireMessages()
-                            .add(translate(toolCallResponse));
+                            .add(translate(mapper, toolCallResponse));
                     agentMessages.getAllMessages().add(toolCallMessage);
                     agentMessages.getNewMessages().add(toolCallMessage);
                     agentMessages.getAllMessages().add(toolCallResponse);
@@ -1260,7 +1373,8 @@ public abstract class AbstractModel implements Model {
      * @param outputDefinitions List of output definitions from the agent and it's extensions
      * @return Compliant schema
      */
-    private ObjectNode compliantSchema(final Collection<ModelOutputDefinition> outputDefinitions) {
+    private static ObjectNode compliantSchema(final ObjectMapper mapper,
+                                              final Collection<ModelOutputDefinition> outputDefinitions) {
         final var schema = mapper.createObjectNode();
         schema.put("type", "object");
         schema.put("additionalProperties", false);
@@ -1289,7 +1403,9 @@ public abstract class AbstractModel implements Model {
      * @param wireMessages          Wire format messages converted from allMessages
      * @return Error if something has failed during pre-processor runs or empty if all good
      */
+    @SuppressWarnings("java:S107")
     private Optional<ModelOutput> preProcessMessages(final ModelRunContext context,
+                                                     final ObjectMapper mapper,
                                                      final List<AgentMessage> oldMessages,
                                                      final List<AgentMessagesPreProcessor> messagesPreProcessors,
                                                      final ModelUsageStats stats,
@@ -1326,7 +1442,7 @@ public abstract class AbstractModel implements Model {
                         .noneMatch(msg -> msg.getMessageType() == AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)) {
                     newMessages.add(0, systemPrompt);
                 }
-                wireMessages.addAll(translateAll(AgentUtils.messagesAfterLastCompaction(allMessages)));
+                wireMessages.addAll(translateAll(mapper, AgentUtils.messagesAfterLastCompaction(allMessages)));
             });
         }
         catch (InvalidAgentMessagesException ie) {

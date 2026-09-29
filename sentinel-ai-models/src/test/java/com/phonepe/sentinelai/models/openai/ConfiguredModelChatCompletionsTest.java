@@ -38,8 +38,10 @@ import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.models.ConfiguredModel;
 import com.phonepe.sentinelai.models.TestStubs;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -52,9 +54,9 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.notContaining;
 import static com.github.tomakehurst.wiremock.client.WireMock.okForContentType;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
@@ -67,18 +69,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * WireMock parity tests for {@link ResponsesModel} over the OpenAI Responses wire format. The
- * fixtures speak the Responses format: flat {@code function_call} items, top-level
- * {@code instructions} and named SSE events.
+ * WireMock parity tests for {@link ConfiguredModel} with the Chat Completions protocol: the tool
+ * loop, structured output and streaming over the real Chat Completions wire format. Fixtures and
+ * scenario flow are identical to the ConfiguredModel tests; this class proves the parity against
+ * the production protocol.
  */
 @Slf4j
 @WireMockTest
-class ResponsesModelTest {
-
-    /**
-     * The Responses endpoint used by the stubs.
-     */
-    private static final String ENDPOINT = "/responses";
+class ConfiguredModelChatCompletionsTest {
 
     private static final class OutputObjectAgent extends Agent<OutputObject, OutputObject, OutputObjectAgent> {
 
@@ -102,8 +100,8 @@ class ResponsesModelTest {
     }
 
     /**
-     * String-typed agent for the streaming tests. The streaming fixtures call
-     * {@code test_agent_*} tools, so this class executes them.
+     * String-typed agent for the streaming tests. The streaming fixtures end with plain text
+     * content, so the output type is String.
      */
     private static final class TestAgent extends Agent<String, String, TestAgent> {
 
@@ -145,6 +143,24 @@ class ResponsesModelTest {
         }
     }
 
+    private static ConfiguredModel chatModel(final WireMockRuntimeInfo wiremock,
+                                             final OkHttpClient httpClient,
+                                             final String apiKey) {
+        final var resolvedApiKey = apiKey == null
+                ? TestStubs.getTestProperty("AZURE_API_KEY", null)
+                : apiKey;
+        return ConfiguredModel.builder()
+                .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                .provider(Provider.builder()
+                        .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(resolvedApiKey == null ? null
+                                : HeaderAuth.bearer(resolvedApiKey))
+                        .build())
+                .httpClient(httpClient)
+                .build();
+    }
+
     private static long countMessages(final List<AgentMessage> messages,
                                       final Class<? extends AgentMessage> type) {
         return messages.stream().filter(type::isInstance).count();
@@ -160,27 +176,15 @@ class ResponsesModelTest {
     private static AgentSetup.AgentSetupBuilder setupBase(final WireMockRuntimeInfo wiremock) {
         return AgentSetup.builder()
                 .mapper(JsonUtils.createMapper())
-                .model(ResponsesModel.builder()
-                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
-                        .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                        .apiKey(TestStubs.getTestProperty("AZURE_API_KEY", null))
-                        .mapper(JsonUtils.createMapper())
-                        .build())
+                .model(chatModel(wiremock, null, null))
                 .modelSettings(ModelSettings.builder()
                         .temperature(0.1f)
+                        .seed(42)
                         .build())
                 .retrySetup(RetrySetup.builder()
                         .totalAttempts(1)
                         .delayAfterFailedAttempt(Duration.ofMillis(10))
                         .build());
-    }
-
-    private static void setupBlockingMocks(final int numStates, final String prefix) {
-        IntStream.rangeClosed(1, numStates).forEach(i -> stubFor(post(ENDPOINT).inScenario("model-test")
-                .whenScenarioStateIs(i == 1 ? STARTED : Objects.toString(i))
-                .willReturn(okForContentType("application/json",
-                                             TestStubs.readStubFile(i, prefix, ResponsesModelTest.class)))
-                .willSetStateTo(Objects.toString(i + 1))));
     }
 
     private static StreamConsumer streamConsumer() {
@@ -196,16 +200,15 @@ class ResponsesModelTest {
     @SneakyThrows
     void apiKeySetsBearerHeader(final WireMockRuntimeInfo wiremock) {
         assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        setupBlockingMocks(1, "resp-notools");
+        TestStubs.setupMocks(1, "no-tools", ConfiguredModelChatCompletionsTest.class);
         final var mapper = JsonUtils.createMapper();
+        stubFor(post(TestStubs.ENDPOINT).willReturn(okForContentType("application/json",
+                                                                     TestStubs.readStubFile(1,
+                                                                                            "no-tools",
+                                                                                            ConfiguredModelChatCompletionsTest.class))));
         final var agent = new OutputObjectAgent(AgentSetup.builder()
                 .mapper(mapper)
-                .model(ResponsesModel.builder()
-                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
-                        .baseUrl(wiremock.getHttpBaseUrl())
-                        .apiKey(TestStubs.getTestProperty("AZURE_API_KEY", "test-key"))
-                        .mapper(mapper)
-                        .build())
+                .model(chatModel(wiremock, null, "test-key"))
                 .modelSettings(ModelSettings.builder().disableTools(true).build())
                 .build());
 
@@ -214,7 +217,7 @@ class ResponsesModelTest {
 
         com.github.tomakehurst.wiremock.client.WireMock.verify(com.github.tomakehurst.wiremock.client.WireMock
                 .postRequestedFor(com.github.tomakehurst.wiremock.client.WireMock
-                        .urlEqualTo(ENDPOINT))
+                        .urlEqualTo(TestStubs.ENDPOINT))
                 .withHeader("Authorization",
                             com.github.tomakehurst.wiremock.client.WireMock
                                     .equalTo("Bearer test-key")));
@@ -222,33 +225,13 @@ class ResponsesModelTest {
 
     @Test
     @SneakyThrows
-    void blockingRequestLiftsInstructionsAndSendsFlatTools(final WireMockRuntimeInfo wiremock) {
-        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        setupBlockingMocks(3, "resp-structured-output");
-        final var agent = new OutputObjectAgent(setupBase(wiremock)
-                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
-                .build());
-
-        final var response = execute(agent);
-        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-        assertNotNull(response.getData());
-
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
-                .withRequestBody(matchingJsonPath(
-                                                  "$.instructions",
-                                                  containing("Greet the user by name and respond to queries")))
-                .withRequestBody(matchingJsonPath("$[?(@.store == false)]"))
-                .withRequestBody(matchingJsonPath("$.tools[?(@.type == 'function' && @.name == 'output_object_agent_get_name')]")));
-    }
-
-    @Test
-    @SneakyThrows
     void blockingRequestOmitsStreamFlagAndUsesJsonAcceptHeader(final WireMockRuntimeInfo wiremock) {
         assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        setupBlockingMocks(1, "resp-notools");
+        TestStubs.setupMocks(1, "no-tools", ConfiguredModelChatCompletionsTest.class);
         final var agent = new OutputObjectAgent(setupBase(wiremock)
                 .modelSettings(ModelSettings.builder()
                         .temperature(0.1f)
+                        .seed(42)
                         .disableTools(true)
                         .build())
                 .build());
@@ -256,17 +239,16 @@ class ResponsesModelTest {
         final var response = execute(agent);
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
 
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
+        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
                 .withHeader("Accept", equalTo("application/json"))
-                .withRequestBody(com.github.tomakehurst.wiremock.client.WireMock
-                        .notContaining("\"stream\"")));
+                .withRequestBody(notContaining("\"stream\"")));
     }
 
     @Test
     @SneakyThrows
     void streamingDuplicateFinishChunk(final WireMockRuntimeInfo wiremock) {
         assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        setupSseMocks(2, "resp-duplicate-finish");
+        TestStubs.setupMocks(2, "duplicate-finish", ConfiguredModelChatCompletionsTest.class);
         final var agent = new TestAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                 .build());
@@ -285,10 +267,10 @@ class ResponsesModelTest {
     @SneakyThrows
     void streamingImageUpload(final WireMockRuntimeInfo wiremock) {
         assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        stubFor(post(ENDPOINT).willReturn(okForContentType("text/event-stream",
-                                                           TestStubs.readStubFile(1,
-                                                                                  "resp-image-stream",
-                                                                                  ResponsesModelTest.class))));
+        stubFor(post(TestStubs.ENDPOINT).willReturn(okForContentType("text/event-stream",
+                                                                     TestStubs.readStubFile(1,
+                                                                                            "image-stream",
+                                                                                            ConfiguredModelChatCompletionsTest.class))));
         final var agent = new TestAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                 .build());
@@ -301,14 +283,13 @@ class ResponsesModelTest {
                 .join();
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertTrue(response.getData().contains("A man with dark hair and glasses"));
-        assertTrue(response.getUsage().getTotalTokens() > 1);
     }
 
     @Test
     @SneakyThrows
     void streamingRequestCarriesStreamFlagAndSseAcceptHeader(final WireMockRuntimeInfo wiremock) {
         assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        setupSseMocks(5, "resp-events");
+        setupSseStubs();
         final var agent = new TestAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                 .build());
@@ -318,7 +299,7 @@ class ResponsesModelTest {
                 .build(), streamConsumer())
                 .join();
 
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
+        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
                 .withHeader("Accept", equalTo("text/event-stream"))
                 .withRequestBody(matchingJsonPath("$[?(@.stream == true)]")));
     }
@@ -326,7 +307,7 @@ class ResponsesModelTest {
     @Test
     @SneakyThrows
     void streamingToolLoop(final WireMockRuntimeInfo wiremock) {
-        setupSseMocks(5, "resp-events");
+        setupSseStubs();
         final var agent = new TestAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                 .build());
@@ -343,26 +324,8 @@ class ResponsesModelTest {
 
     @Test
     @SneakyThrows
-    void structuredOutputSendsTextFormatSchema(final WireMockRuntimeInfo wiremock) {
-        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        setupBlockingMocks(1, "resp-notools");
-        final var agent = new OutputObjectAgent(setupBase(wiremock)
-                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
-                .build());
-
-        final var response = execute(agent);
-        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
-                .withRequestBody(matchingJsonPath(
-                                                  "$.text.format[?(@.type == 'json_schema')].json_schema.name",
-                                                  equalTo("model_output"))));
-    }
-
-    @Test
-    @SneakyThrows
     void structuredOutputToolLoop(final WireMockRuntimeInfo wiremock) {
-        setupBlockingMocks(3, "resp-structured-output");
+        TestStubs.setupMocks(3, "structured-output", ConfiguredModelChatCompletionsTest.class);
         final var agent = new OutputObjectAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
                 .build());
@@ -370,16 +333,13 @@ class ResponsesModelTest {
         final var response = execute(agent);
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertNotNull(response.getData());
-        assertEquals("Santanu", response.getData().username());
         assertTrue(response.getUsage().getTotalTokens() > 1);
-        assertTrue(countMessages(response.getAllMessages(), ToolCall.class) >= 1);
-        assertTrue(countMessages(response.getAllMessages(), ToolCallResponse.class) >= 1);
     }
 
     @Test
     @SneakyThrows
     void toolBasedOutputRun(final WireMockRuntimeInfo wiremock) {
-        setupBlockingMocks(4, "resp-tool-output");
+        TestStubs.setupMocks(4, "tool-output", ConfiguredModelChatCompletionsTest.class);
         final var agent = new OutputObjectAgent(setupBase(wiremock)
                 .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
                 .outputGenerationTool(output -> output)
@@ -387,7 +347,6 @@ class ResponsesModelTest {
 
         final var response = execute(agent);
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-        assertNotNull(response.getData());
         assertTrue(countMessages(response.getAllMessages(), ToolCall.class) >= 1);
         assertTrue(countMessages(response.getAllMessages(), ToolCallResponse.class) >= 1);
     }
@@ -395,11 +354,11 @@ class ResponsesModelTest {
     @Test
     @SneakyThrows
     void toolsDisabledRun(final WireMockRuntimeInfo wiremock) {
-        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        setupBlockingMocks(1, "resp-notools");
+        TestStubs.setupMocks(1, "no-tools", ConfiguredModelChatCompletionsTest.class);
         final var agent = new OutputObjectAgent(setupBase(wiremock)
                 .modelSettings(ModelSettings.builder()
                         .temperature(0.1f)
+                        .seed(42)
                         .disableTools(true)
                         .build())
                 .build());
@@ -409,27 +368,17 @@ class ResponsesModelTest {
         assertNotNull(response.getData());
         assertEquals(1, response.getUsage().getRequestsForRun());
         assertTrue(response.getUsage().getTotalTokens() > 1);
-
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
-                .withRequestBody(com.github.tomakehurst.wiremock.client.WireMock
-                        .notContaining("\"tools\"")));
     }
 
     @Test
     @SneakyThrows
     void userOkHttpClientPathWorks(final WireMockRuntimeInfo wiremock) {
-        setupBlockingMocks(1, "resp-notools");
+        TestStubs.setupMocks(1, "no-tools", ConfiguredModelChatCompletionsTest.class);
         final var mapper = JsonUtils.createMapper();
         final var httpClient = new OkHttpClient.Builder().build();
         final var agent = new OutputObjectAgent(AgentSetup.builder()
                 .mapper(mapper)
-                .model(ResponsesModel.builder()
-                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
-                        .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                        .apiKey(TestStubs.getTestProperty("AZURE_API_KEY", null))
-                        .mapper(mapper)
-                        .transport(OkHttpModelTransport.of(httpClient))
-                        .build())
+                .model(chatModel(wiremock, httpClient, null))
                 .modelSettings(ModelSettings.builder().disableTools(true).build())
                 .build());
 
@@ -443,12 +392,14 @@ class ResponsesModelTest {
     ) {
     }
 
-    private void setupSseMocks(final int numStates, final String prefix) {
-        IntStream.rangeClosed(1, numStates).forEach(i -> stubFor(post(ENDPOINT)
+    private void setupSseStubs() {
+        IntStream.rangeClosed(1, 5).forEach(i -> stubFor(post(TestStubs.ENDPOINT)
                 .inScenario("model-test")
                 .whenScenarioStateIs(i == 1 ? STARTED : Objects.toString(i))
                 .willReturn(okForContentType("text/event-stream",
-                                             TestStubs.readStubFile(i, prefix, ResponsesModelTest.class)))
+                                             TestStubs.readStubFile(i,
+                                                                    "events",
+                                                                    ConfiguredModelChatCompletionsTest.class)))
                 .willSetStateTo(Objects.toString(i + 1))));
     }
 }

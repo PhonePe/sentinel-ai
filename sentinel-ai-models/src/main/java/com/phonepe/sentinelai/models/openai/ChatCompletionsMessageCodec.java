@@ -63,18 +63,9 @@ import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TYPE_FU
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.URL;
 
 /**
- * Translates {@link AgentMessage}s into OpenAI Chat Completions message JSON. Ports the conversion
- * of the previous {@code OpenAIMessageUtils}: role messages, tool messages, content parts for
- * audio and image user prompts, the {@code <sentAt>} prefix on text user prompts and assistant
- * tool call messages.
+ * Translates {@link AgentMessage}s into OpenAI Chat Completions message JSON.
  */
 public class ChatCompletionsMessageCodec implements MessageCodec {
-
-    private final ObjectMapper mapper;
-
-    public ChatCompletionsMessageCodec(final ObjectMapper mapper) {
-        this.mapper = mapper;
-    }
 
     private static String imageDetailOf(final MediaTypes.ImageDetail detail) {
         return switch (detail) {
@@ -110,20 +101,21 @@ public class ChatCompletionsMessageCodec implements MessageCodec {
     }
 
     @Override
-    public JsonNode translate(final AgentMessage message) {
+    public JsonNode translate(final AgentMessage message, final ObjectMapper mapper) {
         return message.accept(new AgentMessageVisitor<>() {
             @Override
             public ObjectNode visit(final AgentGenericMessage genericMessage) {
                 return genericMessage.accept(new AgentGenericMessageVisitor<>() {
                     @Override
                     public ObjectNode visit(final GenericResource genericResource) {
-                        return roleMessage(roleOf(genericResource.getRole()),
+                        return roleMessage(mapper,
+                                           roleOf(genericResource.getRole()),
                                            genericResource.getSerializedJson());
                     }
 
                     @Override
                     public ObjectNode visit(final GenericText genericText) {
-                        return roleMessage(roleOf(genericText.getRole()), genericText.getText());
+                        return roleMessage(mapper, roleOf(genericText.getRole()), genericText.getText());
                     }
                 });
             }
@@ -133,7 +125,7 @@ public class ChatCompletionsMessageCodec implements MessageCodec {
                 return request.accept(new AgentRequestVisitor<>() {
                     @Override
                     public ObjectNode visit(final SystemPrompt systemPrompt) {
-                        return roleMessage(ROLE_SYSTEM, systemPrompt.getContent());
+                        return roleMessage(mapper, ROLE_SYSTEM, systemPrompt.getContent());
                     }
 
                     @Override
@@ -148,15 +140,17 @@ public class ChatCompletionsMessageCodec implements MessageCodec {
                     @Override
                     public ObjectNode visit(final UserPrompt userPrompt) {
                         return switch (userPrompt.getContentType()) {
-                            case TEXT -> roleMessage(ROLE_USER, withSentAt(userPrompt));
-                            case AUDIO -> contentPartMessage(INPUT_AUDIO,
+                            case TEXT -> roleMessage(mapper, ROLE_USER, withSentAt(userPrompt));
+                            case AUDIO -> contentPartMessage(mapper,
+                                                             INPUT_AUDIO,
                                                              DATA,
                                                              userPrompt.getContent(),
                                                              FORMAT,
                                                              userPrompt.getAudioFormat()
                                                                      .name()
                                                                      .toLowerCase());
-                            case IMAGE_URL, IMAGE_DATA -> contentPartMessage(IMAGE_URL,
+                            case IMAGE_URL, IMAGE_DATA -> contentPartMessage(mapper,
+                                                                             IMAGE_URL,
                                                                              URL,
                                                                              userPrompt.getContent(),
                                                                              DETAIL,
@@ -178,17 +172,17 @@ public class ChatCompletionsMessageCodec implements MessageCodec {
                 return response.accept(new AgentResponseVisitor<>() {
                     @Override
                     public ObjectNode visit(final StructuredOutput structuredOutput) {
-                        return roleMessage(ROLE_ASSISTANT, structuredOutput.getContent());
+                        return roleMessage(mapper, ROLE_ASSISTANT, structuredOutput.getContent());
                     }
 
                     @Override
                     public ObjectNode visit(final Text text) {
-                        return roleMessage(ROLE_ASSISTANT, text.getContent());
+                        return roleMessage(mapper, ROLE_ASSISTANT, text.getContent());
                     }
 
                     @Override
                     public ObjectNode visit(final ToolCall toolCall) {
-                        final var node = roleMessage(ROLE_ASSISTANT, null);
+                        final var node = roleMessage(mapper, ROLE_ASSISTANT, null);
                         final var calls = mapper.createArrayNode();
                         final var call = mapper.createObjectNode();
                         call.put("id", toolCall.getToolCallId());
@@ -206,12 +200,13 @@ public class ChatCompletionsMessageCodec implements MessageCodec {
         });
     }
 
-    private ObjectNode contentPartMessage(final String partType,
+    private ObjectNode contentPartMessage(final ObjectMapper mapper,
+                                          final String partType,
                                           final String payloadField,
                                           final String payload,
                                           final String metaField,
                                           final String metaValue) {
-        final var node = roleMessage(ROLE_USER, null);
+        final var node = roleMessage(mapper, ROLE_USER, null);
         final var parts = mapper.createArrayNode();
         final var part = mapper.createObjectNode();
         part.put(TYPE, partType);
@@ -224,7 +219,7 @@ public class ChatCompletionsMessageCodec implements MessageCodec {
         return node;
     }
 
-    private ObjectNode roleMessage(final String role, final String content) {
+    private ObjectNode roleMessage(final ObjectMapper mapper, final String role, final String content) {
         final var node = mapper.createObjectNode();
         node.put(ROLE, role);
         if (content != null) {

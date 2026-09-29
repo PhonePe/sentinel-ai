@@ -17,16 +17,14 @@
 package com.phonepe.sentinelai.models.openai;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ParameterMapper;
-import com.phonepe.sentinelai.models.ModelOptions;
-import com.phonepe.sentinelai.models.transport.SseEvent;
 import com.phonepe.sentinelai.models.wire.MessageCodec;
+import com.phonepe.sentinelai.models.wire.SseEvent;
 import com.phonepe.sentinelai.models.wire.WireContext;
 import com.phonepe.sentinelai.models.wire.WireProtocol;
 import com.phonepe.sentinelai.models.wire.WireResponse;
@@ -39,7 +37,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ARGUMENTS;
@@ -104,39 +101,22 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.USER;
 /**
  * {@link WireProtocol} for the OpenAI Responses wire format. Assembles the request (flat function
  * tools, top-level instructions, structured output through {@code text.format.json_schema}) and
- * decodes blocking responses and named SSE events into the neutral wire types.
+ * decodes blocking responses and named SSE events into the neutral wire types. Stateless: every
+ * call takes the run mapper from the context.
  */
 @Slf4j
 public class ResponsesProtocol implements WireProtocol {
 
-    /**
-     * Bearer header sent for authentication when an API key is set.
-     */
-    /**
-     * Bearer header sent for authentication when an API key is set.
-     */
-    public static final String AUTHORIZATION_HEADER = "Authorization";
-
     private static final String ENDPOINT_PATH = "/responses";
 
-    private final ObjectMapper mapper;
-    private final ModelOptions modelOptions;
-    private final String apiKey;
     private final MessageCodec messageCodec;
 
     /**
-     * @param mapper       Jackson mapper used for all JSON work.
-     * @param modelOptions Model options; null means {@link ModelOptions#DEFAULT}.
-     * @param apiKey       API key sent as a Bearer token; null means no auth header (leave auth
-     *                     to the transport or its interceptors).
+     * Creates a stateless protocol. The run mapper comes through the {@link WireContext} on every
+     * call; authentication is owned by the provider of the model, not the protocol.
      */
-    public ResponsesProtocol(final ObjectMapper mapper,
-                             final ModelOptions modelOptions,
-                             final String apiKey) {
-        this.mapper = Objects.requireNonNull(mapper, "mapper");
-        this.modelOptions = Objects.requireNonNullElse(modelOptions, ModelOptions.DEFAULT);
-        this.apiKey = apiKey;
-        this.messageCodec = new ResponsesMessageCodec(mapper);
+    public ResponsesProtocol() {
+        this.messageCodec = new ResponsesMessageCodec();
     }
 
     private static Integer intOrNull(final JsonNode node) {
@@ -149,11 +129,12 @@ public class ResponsesProtocol implements WireProtocol {
 
     @Override
     public ObjectNode buildRequestBody(final WireContext ctx, final List<JsonNode> messages) {
+        final var mapper = ctx.getMapper();
         final var body = mapper.createObjectNode();
         final var inputArray = mapper.createArrayNode();
         messages.forEach(inputArray::add);
         body.set(INPUT, inputArray);
-        body.put(MODEL, ctx.getModelName());
+        body.put(MODEL, ctx.effectiveModelId());
         final var instructions = liftInstructions(inputArray);
         if (instructions != null) {
             body.put(INSTRUCTIONS, instructions);
@@ -162,7 +143,7 @@ public class ResponsesProtocol implements WireProtocol {
         if (ctx.getUserId() != null && !ctx.getUserId().isEmpty()) {
             body.put(USER, ctx.getUserId());
         }
-        applyModelSettings(ctx.getModelSettings(), body);
+        applyModelSettings(ctx, ctx.getModelSettings(), body);
         final var toolsDisabled = ctx.getModelSettings() != null && Boolean.TRUE
                 .equals(ctx.getModelSettings().getDisableTools());
         if (!toolsDisabled) {
@@ -197,7 +178,7 @@ public class ResponsesProtocol implements WireProtocol {
     }
 
     @Override
-    public WireResponse decodeResponse(final JsonNode body) {
+    public WireResponse decodeResponse(final WireContext ctx, final JsonNode body) {
         final var toolCalls = new ArrayList<WireToolCall>();
         final var content = new StringBuilder();
         var refusal = (String) null;
@@ -241,10 +222,10 @@ public class ResponsesProtocol implements WireProtocol {
     }
 
     @Override
-    public WireStreamEvent decodeStreamEvent(final SseEvent event) {
+    public WireStreamEvent decodeStreamEvent(final WireContext ctx, final SseEvent event) {
         final JsonNode body;
         try {
-            body = mapper.readTree(event.data());
+            body = ctx.getMapper().readTree(event.data());
         }
         catch (final Exception e) {
             return null;
@@ -263,7 +244,7 @@ public class ResponsesProtocol implements WireProtocol {
                                                                                           null,
                                                                                           null,
                                                                                           textOrEmpty(body.get(DELTA)));
-            case EVENT_RESPONSE_COMPLETED -> finalResponseEvent(body.get(RESPONSE));
+            case EVENT_RESPONSE_COMPLETED -> finalResponseEvent(ctx, body.get(RESPONSE));
             case EVENT_RESPONSE_FAILED, EVENT_RESPONSE_INCOMPLETE -> {
                 final var response = body.get(RESPONSE);
                 yield new WireStreamEvent.StreamFinishEvent(
@@ -280,13 +261,6 @@ public class ResponsesProtocol implements WireProtocol {
     @Override
     public String endpoint(final WireContext ctx) {
         return ctx.getBaseUrl() + ENDPOINT_PATH;
-    }
-
-    @Override
-    public Map<String, String> headers(final WireContext ctx) {
-        return apiKey == null
-                ? Map.of()
-                : Map.of(AUTHORIZATION_HEADER, "Bearer " + apiKey);
     }
 
     @Override
@@ -316,11 +290,11 @@ public class ResponsesProtocol implements WireProtocol {
         return null;
     }
 
-    private WireStreamEvent finalResponseEvent(final JsonNode response) {
+    private WireStreamEvent finalResponseEvent(final WireContext ctx, final JsonNode response) {
         if (response == null) {
             return null;
         }
-        final var decoded = decodeResponse(response);
+        final var decoded = decodeResponse(ctx, response);
         if (decoded.finishReason() != null) {
             return new WireStreamEvent.StreamFinishEvent(decoded.finishReason(),
                                                          decoded.refusal(),
@@ -370,6 +344,7 @@ public class ResponsesProtocol implements WireProtocol {
         if (tools.isEmpty()) {
             return;
         }
+        final var mapper = ctx.getMapper();
         final var parameterMapper = new ParameterMapper(mapper);
         final var toolArray = mapper.createArrayNode();
         tools.values()
@@ -386,13 +361,14 @@ public class ResponsesProtocol implements WireProtocol {
                     toolArray.add(toolNode);
                 });
         body.set(TOOLS, toolArray);
-        body.put(TOOL_CHOICE, resolveToolChoice(ctx.getOutputGenerationMode()));
+        body.put(TOOL_CHOICE, resolveToolChoice(ctx));
         final var parallelToolCalls = ctx.getModelSettings() == null
                 || Objects.requireNonNullElse(ctx.getModelSettings().getParallelToolCalls(), true);
         body.put(ResponsesFields.PARALLEL_TOOL_CALLS, parallelToolCalls);
     }
 
-    private void applyModelSettings(final ModelSettings settings, final ObjectNode body) {
+    @Override
+    public void applyModelSettings(final WireContext ctx, final ModelSettings settings, final ObjectNode body) {
         if (settings == null) {
             return;
         }
@@ -406,7 +382,7 @@ public class ResponsesProtocol implements WireProtocol {
             body.put(TOP_P, settings.getTopP().doubleValue());
         }
         if (settings.getReasoning() != null) {
-            final var reasoning = mapper.createObjectNode();
+            final var reasoning = ctx.getMapper().createObjectNode();
             reasoning.put(EFFORT, settings.getReasoning().name().toLowerCase());
             body.set(REASONING, reasoning);
         }
@@ -427,13 +403,14 @@ public class ResponsesProtocol implements WireProtocol {
                              outputDetails == null ? null : intOrNull(outputDetails.get(REASONING_TOKENS)));
     }
 
-    private String resolveToolChoice(final OutputGenerationMode mode) {
-        return switch (mode) {
-            case TOOL_BASED -> switch (modelOptions.getToolChoice()) {
+    @Override
+    public String resolveToolChoice(final WireContext ctx) {
+        return switch (ctx.getOutputGenerationMode()) {
+            case TOOL_BASED -> switch (ctx.getToolChoice()) {
                 case REQUIRED, DEFAULT -> ResponsesFields.TOOL_CHOICE_REQUIRED;
                 case AUTO -> ResponsesFields.TOOL_CHOICE_AUTO;
             };
-            case STRUCTURED_OUTPUT -> switch (modelOptions.getToolChoice()) {
+            case STRUCTURED_OUTPUT -> switch (ctx.getToolChoice()) {
                 case REQUIRED -> {
                     log.warn("Model is configured for STRUCTURED_OUTPUT generation mode, "
                             + "but tool choice is set to REQUIRED. This might lead to infinite tool-call loops");
