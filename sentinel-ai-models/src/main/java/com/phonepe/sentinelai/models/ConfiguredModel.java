@@ -246,7 +246,9 @@ public class ConfiguredModel implements Model {
         this.modelName = Objects.requireNonNullElse(modelName, "default-model");
         this.modelId = modelId;
         this.provider = provider;
-        this.httpClient = Objects.requireNonNullElseGet(httpClient, OkHttpClient::new);
+        this.httpClient = httpClient == null
+            ? new OkHttpClient()
+            : httpClient.newBuilder().build();
         this.modelOptions = Objects.requireNonNullElse(modelOptions, ModelOptions.DEFAULT);
         this.tokenCounter = Objects.requireNonNullElseGet(tokenCounter, GenericTokenCounter::new);
     }
