@@ -38,6 +38,18 @@ import java.util.List;
  */
 public interface WireProtocol {
 
+    // Field names shared by OpenAI style protocols
+    String TEMPERATURE_FIELD = "temperature";
+    String TOP_P_FIELD = "top_p";
+    String TYPE_FIELD = "type";
+    String NAME_FIELD = "name";
+    String DESCRIPTION_FIELD = "description";
+    String PARAMETERS_FIELD = "parameters";
+    String STRICT_FIELD = "strict";
+    String TYPE_FUNCTION_VALUE = "function";
+    String TOOL_CHOICE_REQUIRED_VALUE = "required";
+    String TOOL_CHOICE_AUTO_VALUE = "auto";
+
     /**
      * Deep merges {@code override} into {@code target}. Values in {@code override} win; nested
      * objects merge recursively.
@@ -84,10 +96,10 @@ public interface WireProtocol {
             return;
         }
         if (settings.getTemperature() != null) {
-            body.put("temperature", settings.getTemperature().doubleValue());
+            body.put(TEMPERATURE_FIELD, settings.getTemperature().doubleValue());
         }
         if (settings.getTopP() != null) {
-            body.put("top_p", settings.getTopP().doubleValue());
+            body.put(TOP_P_FIELD, settings.getTopP().doubleValue());
         }
     }
 
@@ -109,11 +121,11 @@ public interface WireProtocol {
                 .forEach(tool -> {
                     final var definition = tool.getToolDefinition();
                     final var toolNode = mapper.createObjectNode();
-                    toolNode.put("type", "function");
-                    toolNode.put("name", definition.getId());
-                    toolNode.put("description", definition.getDescription());
-                    toolNode.set("parameters", tool.accept(parameterMapper));
-                    toolNode.put("strict", definition.isStrictSchema());
+                    toolNode.put(TYPE_FIELD, TYPE_FUNCTION_VALUE);
+                    toolNode.put(NAME_FIELD, definition.getId());
+                    toolNode.put(DESCRIPTION_FIELD, definition.getDescription());
+                    toolNode.set(PARAMETERS_FIELD, tool.accept(parameterMapper));
+                    toolNode.put(STRICT_FIELD, definition.isStrictSchema());
                     toolArray.add(toolNode);
                 });
         return toolArray;
@@ -180,12 +192,12 @@ public interface WireProtocol {
     default String resolveToolChoice(WireContext ctx) {
         return switch (ctx.getOutputGenerationMode()) {
             case TOOL_BASED -> switch (ctx.getToolChoice()) {
-                case REQUIRED, DEFAULT -> "required";
-                case AUTO -> "auto";
+                case REQUIRED, DEFAULT -> TOOL_CHOICE_REQUIRED_VALUE;
+                case AUTO -> TOOL_CHOICE_AUTO_VALUE;
             };
             case STRUCTURED_OUTPUT -> switch (ctx.getToolChoice()) {
-                case REQUIRED -> "required";
-                case AUTO, DEFAULT -> "auto";
+                case REQUIRED -> TOOL_CHOICE_REQUIRED_VALUE;
+                case AUTO, DEFAULT -> TOOL_CHOICE_AUTO_VALUE;
             };
         };
     }

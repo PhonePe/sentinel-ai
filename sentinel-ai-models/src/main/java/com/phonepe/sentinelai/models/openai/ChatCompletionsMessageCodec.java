@@ -48,6 +48,7 @@ import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.DATA;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.DETAIL;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.FORMAT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.FUNCTION;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.ID;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.IMAGE_URL;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.INPUT_AUDIO;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.NAME;
@@ -185,7 +186,7 @@ public class ChatCompletionsMessageCodec implements MessageCodec {
                         final var node = roleMessage(mapper, ROLE_ASSISTANT, null);
                         final var calls = mapper.createArrayNode();
                         final var call = mapper.createObjectNode();
-                        call.put("id", toolCall.getToolCallId());
+                        call.put(ID, toolCall.getToolCallId());
                         call.put(TYPE, TYPE_FUNCTION);
                         final var function = mapper.createObjectNode();
                         function.put(NAME, toolCall.getToolName());

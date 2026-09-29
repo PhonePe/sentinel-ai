@@ -77,6 +77,16 @@ public class ChatCompletionsFields {
     public static final String SCHEMA = "schema";
     public static final String JSON_SCHEMA = "json_schema";
 
+    // Usage fields
+    public static final String PROMPT_TOKENS = "prompt_tokens";
+    public static final String COMPLETION_TOKENS = "completion_tokens";
+    public static final String TOTAL_TOKENS = "total_tokens";
+    public static final String PROMPT_TOKENS_DETAILS = "prompt_tokens_details";
+    public static final String COMPLETION_TOKENS_DETAILS = "completion_tokens_details";
+    public static final String AUDIO_TOKENS = "audio_tokens";
+    public static final String CACHED_TOKENS = "cached_tokens";
+    public static final String REASONING_TOKENS = "reasoning_tokens";
+
     // Role values
     public static final String ROLE_SYSTEM = "system";
     public static final String ROLE_USER = "user";
@@ -89,4 +99,7 @@ public class ChatCompletionsFields {
     // Tool choice values
     public static final String TOOL_CHOICE_AUTO = "auto";
     public static final String TOOL_CHOICE_REQUIRED = "required";
+
+    // Finish reason values
+    public static final String FUNCTION_CALL = "function_call";
 }

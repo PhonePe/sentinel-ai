@@ -40,14 +40,22 @@ import java.util.List;
 import java.util.Objects;
 
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.ARGUMENTS;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.AUDIO_TOKENS;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.CACHED_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.CHOICES;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.COMPLETION_TOKENS;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.COMPLETION_TOKENS_DETAILS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.CONTENT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.DELTA;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.DESCRIPTION;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.FINISH_REASON;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.FREQUENCY_PENALTY;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.FUNCTION;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.FUNCTION_CALL;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.ID;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.INDEX;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.JSON_SCHEMA;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.LOGIT_BIAS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MAX_COMPLETION_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MESSAGE;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MESSAGES;
@@ -56,19 +64,27 @@ import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.N;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.NAME;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.PARALLEL_TOOL_CALLS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.PARAMETERS;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.PRESENCE_PENALTY;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.PROMPT_TOKENS;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.PROMPT_TOKENS_DETAILS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.REASONING_CONTENT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.REASONING_EFFORT;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.REASONING_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.REFUSAL;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.RESPONSE_FORMAT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.SCHEMA;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.SEED;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.STREAM;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.STRICT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TEMPERATURE;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TOOLS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TOOL_CALLS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TOOL_CHOICE;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TOP_P;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TOTAL_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TYPE;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TYPE_FUNCTION;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.USAGE;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.USER;
 
 /**
@@ -98,10 +114,10 @@ public class ChatCompletionsProtocol implements WireProtocol {
             return null;
         }
         return switch (finishReason) {
-            case "stop" -> WireResponse.FinishReasons.STOP;
-            case "tool_calls", "function_call" -> WireResponse.FinishReasons.TOOL_CALLS;
-            case "length" -> WireResponse.FinishReasons.LENGTH;
-            case "content_filter" -> WireResponse.FinishReasons.CONTENT_FILTER;
+            case WireResponse.FinishReasons.STOP -> WireResponse.FinishReasons.STOP;
+            case WireResponse.FinishReasons.TOOL_CALLS, FUNCTION_CALL -> WireResponse.FinishReasons.TOOL_CALLS;
+            case WireResponse.FinishReasons.LENGTH -> WireResponse.FinishReasons.LENGTH;
+            case WireResponse.FinishReasons.CONTENT_FILTER -> WireResponse.FinishReasons.CONTENT_FILTER;
             default -> finishReason;
         };
     }
@@ -178,7 +194,7 @@ public class ChatCompletionsProtocol implements WireProtocol {
                                 message == null ? null : textOrNull(message.get(REASONING_CONTENT)),
                                 message == null ? null : textOrNull(message.get(REFUSAL)),
                                 toolCalls,
-                                decodeUsage(body.get("usage")));
+                                decodeUsage(body.get(USAGE)));
     }
 
     @Override
@@ -209,7 +225,7 @@ public class ChatCompletionsProtocol implements WireProtocol {
                     toolCalls.forEach(call -> {
                         final var function = call.get(FUNCTION);
                         events.add(new WireStreamEvent.ToolCallDelta(
-                                                                     call.path("index").asInt(0),
+                                                                     call.path(INDEX).asInt(0),
                                                                      textOrNull(call.get(ID)),
                                                                      function == null ? null : textOrNull(function.get(
                                                                                                                        NAME)),
@@ -226,7 +242,7 @@ public class ChatCompletionsProtocol implements WireProtocol {
                                                                          : textOrNull(delta.get(REFUSAL))));
             }
         }
-        final var usage = decodeUsage(body.get("usage"));
+        final var usage = decodeUsage(body.get(USAGE));
         if (usage != null) {
             events.add(new WireStreamEvent.StreamUsageEvent(usage));
         }
@@ -289,21 +305,21 @@ public class ChatCompletionsProtocol implements WireProtocol {
             body.put(TEMPERATURE, settings.getTemperature().doubleValue());
         }
         if (settings.getTopP() != null) {
-            body.put("top_p", settings.getTopP().doubleValue());
+            body.put(TOP_P, settings.getTopP().doubleValue());
         }
         if (settings.getSeed() != null) {
-            body.put("seed", settings.getSeed());
+            body.put(SEED, settings.getSeed());
         }
         if (settings.getFrequencyPenalty() != null) {
-            body.put("frequency_penalty", settings.getFrequencyPenalty().doubleValue());
+            body.put(FREQUENCY_PENALTY, settings.getFrequencyPenalty().doubleValue());
         }
         if (settings.getPresencePenalty() != null) {
-            body.put("presence_penalty", settings.getPresencePenalty().doubleValue());
+            body.put(PRESENCE_PENALTY, settings.getPresencePenalty().doubleValue());
         }
         if (settings.getLogitBias() != null && !settings.getLogitBias().isEmpty()) {
             final var logitBias = ctx.getMapper().createObjectNode();
             settings.getLogitBias().forEach(logitBias::put);
-            body.set("logit_bias", logitBias);
+            body.set(LOGIT_BIAS, logitBias);
         }
         if (settings.getReasoning() != null) {
             body.put(REASONING_EFFORT, settings.getReasoning().name().toLowerCase());
@@ -314,15 +330,15 @@ public class ChatCompletionsProtocol implements WireProtocol {
         if (usage == null || usage.isNull()) {
             return null;
         }
-        final var promptDetails = usage.get("prompt_tokens_details");
-        final var completionDetails = usage.get("completion_tokens_details");
-        return new WireUsage(intOrNull(usage.get("prompt_tokens")),
-                             intOrNull(usage.get("completion_tokens")),
-                             intOrNull(usage.get("total_tokens")),
-                             promptDetails == null ? null : intOrNull(promptDetails.get("audio_tokens")),
-                             promptDetails == null ? null : intOrNull(promptDetails.get("cached_tokens")),
-                             completionDetails == null ? null : intOrNull(completionDetails.get("audio_tokens")),
-                             completionDetails == null ? null : intOrNull(completionDetails.get("reasoning_tokens")));
+        final var promptDetails = usage.get(PROMPT_TOKENS_DETAILS);
+        final var completionDetails = usage.get(COMPLETION_TOKENS_DETAILS);
+        return new WireUsage(intOrNull(usage.get(PROMPT_TOKENS)),
+                             intOrNull(usage.get(COMPLETION_TOKENS)),
+                             intOrNull(usage.get(TOTAL_TOKENS)),
+                             promptDetails == null ? null : intOrNull(promptDetails.get(AUDIO_TOKENS)),
+                             promptDetails == null ? null : intOrNull(promptDetails.get(CACHED_TOKENS)),
+                             completionDetails == null ? null : intOrNull(completionDetails.get(AUDIO_TOKENS)),
+                             completionDetails == null ? null : intOrNull(completionDetails.get(REASONING_TOKENS)));
     }
 
     @Override
