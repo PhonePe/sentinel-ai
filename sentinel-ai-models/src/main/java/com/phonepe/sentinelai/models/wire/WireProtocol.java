@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ParameterMapper;
@@ -177,7 +178,7 @@ public interface WireProtocol {
     String endpoint(WireContext ctx);
 
     /**
-     * @return The codec translating {@link com.phonepe.sentinelai.core.agentmessages.AgentMessage}
+     * @return The codec translating {@link AgentMessage}
      *         to this wire format. Stateless: translation takes the run mapper.
      */
     MessageCodec messageCodec();

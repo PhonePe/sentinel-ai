@@ -64,6 +64,7 @@ import com.phonepe.sentinelai.models.errors.InvalidAgentMessagesException;
 import com.phonepe.sentinelai.models.provider.HeaderAuth;
 import com.phonepe.sentinelai.models.provider.Provider;
 import com.phonepe.sentinelai.models.provider.RequestTransformer;
+import com.phonepe.sentinelai.models.provider.RequestTransformerContext;
 import com.phonepe.sentinelai.models.wire.SseEvent;
 import com.phonepe.sentinelai.models.wire.SseReader;
 import com.phonepe.sentinelai.models.wire.WireContext;
@@ -365,11 +366,12 @@ public class ConfiguredModel implements Model {
                 raiseMessageSentEvent(context, prevMessages, allMessages);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
-
                 final var requestBody = provider.getProtocol().buildRequestBody(ctx, wireMessages);
                 logDataDebug("Request to model: {}", requestBody);
 
-                final var response = callModel(ctx, requestBody);
+                final var response = callModel(ctx,
+                                               requestBody,
+                                               buildTransformerContext(ctx, context, allMessages, wireMessages));
                 if (response == null) {
                     return errorToModelOutput(context,
                                               capturedError(),
@@ -578,13 +580,14 @@ public class ConfiguredModel implements Model {
                                                  true);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
-
                 final var requestBody = provider.getProtocol().buildRequestBody(ctx, wireMessages);
                 logDataDebug("Request to model: {}", requestBody);
                 raiseMessageSentEvent(context, prevMessages, allMessages);
                 Stream<WireStreamEvent> eventStream;
                 try {
-                    eventStream = openSseStream(ctx, requestBody)
+                    eventStream = openSseStream(ctx,
+                                                requestBody,
+                                                buildTransformerContext(ctx, context, allMessages, wireMessages))
                             .filter(event -> !event.isDoneSentinel())
                             .map(event -> provider.getProtocol().decodeStreamEvent(ctx, event))
                             .filter(Objects::nonNull);
@@ -802,9 +805,11 @@ public class ConfiguredModel implements Model {
      * failed; the failure details are available through {@link #capturedError()}. Applies the
      * {@link RequestRetryPolicy} when it is enabled.
      */
-    private WireResponse callModel(final WireContext ctx, final ObjectNode requestBody) {
+    private WireResponse callModel(final WireContext ctx,
+                                   final ObjectNode requestBody,
+                                   final RequestTransformerContext transformerContext) {
         try {
-            final var response = retryExecutor.get(() -> execute(ctx, requestBody));
+            final var response = retryExecutor.get(() -> execute(ctx, requestBody, transformerContext));
             try (response; final var body = response.body()) {
                 final var json = ctx.getMapper().readTree(body == null ? new byte[0] : body.bytes());
                 return provider.getProtocol().decodeResponse(ctx, json);
@@ -824,8 +829,10 @@ public class ConfiguredModel implements Model {
      * Executes one blocking HTTP call and fails with {@link HttpModelCallException} on a non-2xx
      * response.
      */
-    private Response execute(final WireContext ctx, final ObjectNode requestBody) throws IOException {
-        final var executed = httpClient.newCall(buildOkRequest(ctx, requestBody)).execute();
+    private Response execute(final WireContext ctx,
+                             final ObjectNode requestBody,
+                             final RequestTransformerContext transformerContext) throws IOException {
+        final var executed = httpClient.newCall(buildOkRequest(ctx, requestBody, transformerContext)).execute();
         if (!executed.isSuccessful()) {
             throw httpError(executed, HttpModelCallException::new);
         }
@@ -857,7 +864,9 @@ public class ConfiguredModel implements Model {
         E create(int status, String body, Duration retryAfter);
     }
 
-    private Request buildOkRequest(final WireContext ctx, final ObjectNode requestBody) {
+    private Request buildOkRequest(final WireContext ctx,
+                                   final ObjectNode requestBody,
+                                   final RequestTransformerContext transformerContext) {
         final var builder = new Request.Builder()
                 .url(provider.getProtocol().endpoint(ctx))
                 .header("Accept", ctx.isStreaming() ? "text/event-stream" : "application/json")
@@ -865,9 +874,26 @@ public class ConfiguredModel implements Model {
         if (provider.getAuth() != null) {
             provider.getAuth().apply(builder);
         }
-        applyRequestTransformers(ctx, builder, requestBody);
+        applyRequestTransformers(ctx, transformerContext, builder, requestBody);
         builder.post(RequestBody.create(toBytes(ctx, requestBody), JSON_MEDIA_TYPE));
         return builder.build();
+    }
+
+    /**
+     * Builds the transformer context of one model call from the wire context and the messages of
+     * the current turn.
+     */
+    private static RequestTransformerContext buildTransformerContext(final WireContext ctx,
+                                                                     final ModelRunContext runContext,
+                                                                     final List<AgentMessage> messages,
+                                                                     final List<JsonNode> wireMessages) {
+        return RequestTransformerContext.builder()
+                .wireContext(ctx)
+                .sessionId(runContext.getSessionId())
+                .agentName(runContext.getAgentName())
+                .messages(List.copyOf(messages))
+                .wireMessages(List.copyOf(wireMessages))
+                .build();
     }
 
     /**
@@ -875,6 +901,7 @@ public class ConfiguredModel implements Model {
      * order. The first failure aborts the call with {@link RequestTransformFailedException}.
      */
     private void applyRequestTransformers(final WireContext ctx,
+                                          final RequestTransformerContext transformerContext,
                                           final Request.Builder builder,
                                           final ObjectNode body) {
         // Extension level first: core contract on run id, body and headers.
@@ -886,7 +913,7 @@ public class ConfiguredModel implements Model {
             catch (final Exception e) {
                 throw new RequestTransformFailedException(
                                                           "Request transformer failed: %s".formatted(transformer
-                                                                  .getClass().getName()),
+                                                                  .getClass().getSimpleName()),
                                                           e);
             }
             headers.forEach(builder::header);
@@ -894,12 +921,12 @@ public class ConfiguredModel implements Model {
         // Provider level, then model level: wire contract on the request builder.
         for (final var transformer : flattenedRequestTransformers()) {
             try {
-                transformer.transform(builder, body, ctx);
+                transformer.transform(builder, body, transformerContext);
             }
             catch (final Exception e) {
                 throw new RequestTransformFailedException(
                                                           "Request transformer failed: %s".formatted(transformer
-                                                                  .getClass().getName()),
+                                                                  .getClass().getSimpleName()),
                                                           e);
             }
         }
@@ -963,10 +990,12 @@ public class ConfiguredModel implements Model {
      * path can classify it. The retry policy applies until the first event of the stream; a
      * stream that already delivered events is never retried.
      */
-    private Stream<SseEvent> openSseStream(final WireContext ctx, final ObjectNode requestBody) {
+    private Stream<SseEvent> openSseStream(final WireContext ctx,
+                                           final ObjectNode requestBody,
+                                           final RequestTransformerContext transformerContext) {
         return retryExecutor.get(() -> {
             final var future = new CompletableFuture<Stream<SseEvent>>();
-            httpClient.newCall(buildOkRequest(ctx, requestBody)).enqueue(new Callback() {
+            httpClient.newCall(buildOkRequest(ctx, requestBody, transformerContext)).enqueue(new Callback() {
                 @Override
                 public void onFailure(final Call call, final IOException e) {
                     future.completeExceptionally(e);

@@ -29,11 +29,14 @@ import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
 import com.phonepe.sentinelai.models.provider.JoltRequestTransformer;
 import com.phonepe.sentinelai.models.provider.JoltTransform;
 import com.phonepe.sentinelai.models.provider.Provider;
+import com.phonepe.sentinelai.models.provider.RequestTransformer;
+import com.phonepe.sentinelai.models.provider.RequestTransformerContext;
 import com.phonepe.sentinelai.models.wire.WireContext;
 
 import java.util.List;
@@ -78,14 +81,19 @@ class JoltRequestTransformerTest {
         return (ObjectNode) MAPPER.valueToTree(Map.of("greeting", "hello"));
     }
 
-    private static WireContext context() {
-        return WireContext.builder()
+    private static RequestTransformerContext context() {
+        final var wireContext = WireContext.builder()
                 .modelName("gpt-4o")
                 .baseUrl("http://localhost")
                 .tools(Map.of())
                 .outputDefinitions(List.of())
-                .outputGenerationMode(com.phonepe.sentinelai.core.model.OutputGenerationMode.TOOL_BASED)
+                .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
                 .mapper(MAPPER)
+                .build();
+        return RequestTransformerContext.builder()
+                .wireContext(wireContext)
+                .messages(List.of())
+                .wireMessages(List.of())
                 .build();
     }
 
@@ -233,11 +241,11 @@ class JoltRequestTransformerTest {
         final var chain = JoltRequestTransformer.builder()
                 .transform("default", Map.of("chat_template_kwargs", Map.of("thinking", false)))
                 .build();
-        final var failing = new com.phonepe.sentinelai.models.provider.RequestTransformer() {
+        final var failing = new RequestTransformer() {
             @Override
             public void transform(final okhttp3.Request.Builder requestBuilder,
                                   final ObjectNode body,
-                                  final com.phonepe.sentinelai.models.wire.WireContext ctx) {
+                                  final RequestTransformerContext ctx) {
                 throw new IllegalArgumentException("Jolt transform failed: broken spec");
             }
         };

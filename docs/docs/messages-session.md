@@ -8,7 +8,7 @@ description: Managing conversation history and session persistence in Sentinel A
 The `AgentSessionExtension` provides automated conversation history persistence and retrieval for Sentinel AI agents. It ensures that agents maintain context across multiple turns by storing messages to a configured backend and injecting relevant history into subsequent interactions.
 
 !!!tip "Automatic Compaction"
-    For automatic message history compaction to prevent context window overflow, see the [Auto Compaction Setup](agents.md#auto-compaction-setup) section in the Agents documentation. Auto compaction is configured at the agent level, not through the session extension.
+    For automatic message history compaction to prevent context window overflow, see the [Auto Compaction Setup](agent-configuration.md#auto-compaction-setup) section in the Agents documentation. Auto compaction is configured at the agent level, not through the session extension.
 
 ## Features
 
@@ -180,7 +180,7 @@ The `forceCompaction()` method:
 - Returns the generated summary
 
 !!!tip "Automatic Compaction"
-    For most use cases, configure [Auto Compaction](agents.md#auto-compaction-setup) at the agent level instead of manually calling `forceCompaction()`. Auto compaction runs proactively as a pre-processor before messages are sent to the LLM.
+    For most use cases, configure [Auto Compaction](agent-configuration.md#auto-compaction-setup) at the agent level instead of manually calling `forceCompaction()`. Auto compaction runs proactively as a pre-processor before messages are sent to the LLM.
 
 ## Conversation Summarization
 
@@ -270,7 +270,7 @@ By default, the compactor generates a structured output based on the following J
 
 ### Compaction Prompts Customization
 
-You can customize how summarization is performed by providing a `CompactionPrompts` object through the [Auto Compaction Setup](agents.md#auto-compaction-setup) at the agent level.
+You can customize how summarization is performed by providing a `CompactionPrompts` object through the [Auto Compaction Setup](agent-configuration.md#auto-compaction-setup) at the agent level.
 
 ```java
 final var customPrompts = CompactionPrompts.builder()
@@ -316,7 +316,7 @@ If the model returns a `LENGTH_EXCEEDED` error, the session extension automatica
 
 ## Notes
 
-- The session extension handles message persistence and retrieval. For automatic threshold-based compaction to prevent context overflow, configure [Auto Compaction](agents.md#auto-compaction-setup) at the agent level.
+- The session extension handles message persistence and retrieval. For automatic threshold-based compaction to prevent context overflow, configure [Auto Compaction](agent-configuration.md#auto-compaction-setup) at the agent level.
 - Manual compaction via `forceCompaction()` happens synchronously. For production use cases with long conversations, consider running it in a background task.
 - Emergency compaction triggers automatically on `LENGTH_EXCEEDED` errors.
 
@@ -331,4 +331,4 @@ If the model returns a `LENGTH_EXCEEDED` error, the session extension automatica
     Avoid passing `oldMessages` in `AgentInput` while using the `AgentSessionExtension`. The extension automatically retrieves history from the store. Providing `oldMessages` manually can result in duplicate messages or incorrect message ordering in the model prompt, as `oldMessages` are injected *before* the system prompt and extension-managed history.
 
 !!! failure "Changing Model Context Windows"
-    If you change the model used by an agent to one with a significantly smaller context window, existing sessions might fail with `LENGTH_EXCEEDED` before emergency compaction can trigger. Configure [Auto Compaction](agents.md#auto-compaction-setup) with an appropriate threshold to prevent this issue.
+    If you change the model used by an agent to one with a significantly smaller context window, existing sessions might fail with `LENGTH_EXCEEDED` before emergency compaction can trigger. Configure [Auto Compaction](agent-configuration.md#auto-compaction-setup) with an appropriate threshold to prevent this issue.

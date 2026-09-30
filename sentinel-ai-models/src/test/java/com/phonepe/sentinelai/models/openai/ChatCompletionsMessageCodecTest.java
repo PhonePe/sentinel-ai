@@ -25,6 +25,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat;
 import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
@@ -140,7 +141,7 @@ class ChatCompletionsMessageCodecTest {
         final var userPrompt = UserPrompt.audio(SESSION_ID,
                                                 RUN_ID,
                                                 audioData,
-                                                com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.MP3,
+                                                AudioFormat.MP3,
                                                 SENT_AT);
 
         final var converted = codec.translate(userPrompt, mapper);

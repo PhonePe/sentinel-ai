@@ -19,6 +19,8 @@ package com.phonepe.sentinelai.models.wire;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import com.phonepe.sentinelai.core.errors.ErrorType;
+
 import java.util.List;
 
 /**
@@ -42,7 +44,7 @@ public abstract class WireProtocolDecoratorSupport implements WireProtocol {
     }
 
     @Override
-    public com.phonepe.sentinelai.core.errors.ErrorType classifyError(final int status, final JsonNode errorBody) {
+    public ErrorType classifyError(final int status, final JsonNode errorBody) {
         return delegate().classifyError(status, errorBody);
     }
 
@@ -58,7 +60,7 @@ public abstract class WireProtocolDecoratorSupport implements WireProtocol {
 
 
     @Override
-    public com.phonepe.sentinelai.models.wire.MessageCodec messageCodec() {
+    public MessageCodec messageCodec() {
         return delegate().messageCodec();
     }
 

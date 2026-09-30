@@ -22,6 +22,7 @@ import com.github.tomakehurst.wiremock.stubbing.Scenario;
 
 import org.junit.jupiter.api.Test;
 
+import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
@@ -61,7 +62,7 @@ class RequestRetryTest {
 
     private static final class TestAgent
             extends
-            com.phonepe.sentinelai.core.agent.Agent<OutputObject, OutputObject, TestAgent> {
+            Agent<OutputObject, OutputObject, TestAgent> {
 
         private TestAgent(final AgentSetup setup) {
             super(OutputObject.class,

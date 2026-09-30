@@ -1,0 +1,180 @@
+---
+title: Models & Providers
+description: Configuring LLM models and providers in Sentinel AI
+---
+
+# Models & Providers
+
+## Instantiating a model
+
+The `Model` class is a generic abstraction for an LLM model used by an agent. A concrete subclass of the Model needs to
+be instantiated for usage in the agent.
+
+Sentinel AI supports OpenAI API compliant model endpoints. The corresponding implementation of `Model` is the
+`ConfiguredModel` class. The class is available in the `sentinel-ai-models` module.
+
+The module needs to be added to the project dependencies as follows:
+
+```xml
+
+<dependency>
+    <groupId>com.phonepe.sentinel-ai</groupId>
+    <artifactId>sentinel-ai-models</artifactId>
+</dependency>
+```
+
+The module is vendor-neutral. It uses OkHttp for HTTP transport and Jackson for JSON. No third-party LLM client SDK is
+required. A model pairs a model name with a `Provider`. The `Provider` owns the endpoint, the wire protocol and the
+authentication:
+
+```java
+final var model = ConfiguredModel.builder()
+        .modelName("gpt-4o")
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ChatCompletionsProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .build())
+        .httpClient(httpClient)
+        .build();
+```
+
+The final endpoint is the base URL plus the protocol path, for example
+`https://api.openai.com/v1` + `/chat/completions`.
+
+!!!tip "Authentication"
+    `HeaderAuth.bearer(apiKey)` sends the key as a `Bearer` token, and `HeaderAuth.of(header, value)` sets any other
+    header pair. Set `auth` to null when your `OkHttpClient` handles authentication with its own interceptors (for
+    example, in production environments with tightened security).
+
+!!!note "Endpoint and api key"
+    The `OPENAI_ENDPOINT` and `OPENAI_API_KEY` are environment variables that need to be set in the system. The
+    `EnvLoader` class is a utility class that loads the environment variables. You can use any other method to load
+    the environment variables as well.
+
+## Model Settings
+
+A variety of settings can be set for the model. The `ModelSettings` class is a configuration class that is used to
+configure the model. The class is available in the core library itself and provides a builder.
+
+| **Setting**         | **Type**               | **Description**                                                                                |
+|---------------------|------------------------|------------------------------------------------------------------------------------------------|
+| `maxTokens`         | `Integer`              | Maximum number of tokens to generate.                                                          |
+| `temperature`       | `Float`                | Amount of randomness to inject in output. Lower values make the output more predictable.       |
+| `topP`              | `Float`                | Probabilistic sum of tokens to consider for each subsequent token. Range: 0-1.                 |
+| `timeout`           | `Duration`             | Timeout for model calls.                                                                       |
+| `parallelToolCalls` | `Boolean`              | Whether to call tools in parallel or not.                                                      |
+| `seed`              | `Integer`              | Seed for random number generator to make output more predictable.                              |
+| `presencePenalty`   | `Float`                | Penalty for adding new tokens based on their presence in the output so far.                    |
+| `frequencyPenalty`  | `Float`                | Penalty for adding new tokens based on how many times they have appeared in the output so far. |
+| `logitBias`         | `Map<String, Integer>` | Controls the likelihood of specific tokens being generated.                                    |
+| `disableTools`      | `Boolean`              | Disables tool calls for this agent. When `true`, tools are not sent to the model and `STRUCTURED_OUTPUT` mode is used. Useful for models that do not support tool calling. |
+
+## Model Specific Options
+
+Some models support additional configuration options that are not part of the standard `ModelSettings`. For example, models in the `sentinel-ai-models` module support `ModelOptions`.
+
+### Token Counting Configuration
+
+You can tune how Sentinel AI estimates token usage for OpenAI models by providing a `TokenCountingConfig`. This is useful for adjusting for specific prompt formats or model-specific overheads.
+
+| **Setting**                 | **Type** | **Default** | **Description**                                                                                                       |
+|-----------------------------|----------|-------------|----------------------------------------------------------------------------------------------------------------------|
+| `messageOverHead`           | `int`    | 3           | Overhead tokens per message.                                                                                           |
+| `nameOverhead`             | `int`    | 1           | Overhead tokens if `name` is provided in message.                                                                     |
+| `assistantPrimingOverhead` | `int`    | 3           | Tokens added at the end of the prompt to prime assistant.                                                              |
+| `formattingOverhead`       | `int`    | 10          | Overhead for structured tool arguments.                                                                               |
+| `imageTokenCost`            | `int`    | 765         | Fixed token cost per image content part. Vision models do not tokenize the base64 payload as text, so each image part contributes this fixed cost instead. |
+
+```java
+final var tokenConfig = TokenCountingConfig.builder()
+        .messageOverHead(3) // Overhead tokens per message
+        .nameOverhead(1)    // Overhead tokens if 'name' is provided in message
+        .assistantPrimingOverhead(3) // Tokens added at the end of the prompt to prime assistant
+        .formattingOverhead(10) // Overhead for structured tool arguments
+        .imageTokenCost(765) // Fixed token cost per image content part
+        .build();
+
+final var modelOptions = ModelOptions.builder()
+        .tokenCountingConfig(tokenConfig)
+        .toolChoice(ModelOptions.ToolChoice.AUTO)
+        .build();
+
+final var model = ConfiguredModel.builder()
+        .modelName("gpt-4o")
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ChatCompletionsProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .build())
+        .modelOptions(modelOptions) // Pass options here
+        .build();
+```
+
+The `toolChoice` field on `ModelOptions` controls the `tool_choice` parameter sent to the model. Sentinel AI
+automatically resolves the effective OpenAI `tool_choice` value by combining `toolChoice` with the active
+`outputGenerationMode`. The default in `TOOL_BASED` mode is `required`, but some models (e.g. Qwen, Kimi on vLLM)
+do not call tools reliably in this configuration. Set `toolChoice` to `AUTO` for such models.
+
+The resolution rules are:
+
+| `outputGenerationMode` | `toolChoice`        | Effective OpenAI `tool_choice` | Notes                                                                                           |
+|------------------------|---------------------|--------------------------------|-------------------------------------------------------------------------------------------------|
+| `TOOL_BASED`           | `REQUIRED`          | `required`                     |                                                                                                 |
+| `TOOL_BASED`           | `AUTO`              | `auto`                         |                                                                                                 |
+| `TOOL_BASED`           | `DEFAULT`           | `required`                     | Default for tool-based mode — model must call a tool to produce output.                         |
+| `STRUCTURED_OUTPUT`    | `REQUIRED`          | `required`                     | ⚠️ Warning logged: may cause infinite tool-call loops in structured-output mode.               |
+| `STRUCTURED_OUTPUT`    | `AUTO`              | `auto`                         |                                                                                                 |
+| `STRUCTURED_OUTPUT`    | `DEFAULT`           | `auto`                         | Default for structured-output mode — model chooses whether to call a tool.                      |
+
+!!!warning "REQUIRED + STRUCTURED_OUTPUT"
+    Setting `toolChoice` to `REQUIRED` while `outputGenerationMode` is `STRUCTURED_OUTPUT` is allowed but will emit a
+    warning at runtime. This combination can cause the model to enter an infinite tool-call loop. Prefer `AUTO` or
+    `DEFAULT` when using `STRUCTURED_OUTPUT`.
+
+```java
+// Use AUTO tool choice for models that ignore REQUIRED (e.g. Qwen, Kimi on vLLM)
+final var modelOptions = ModelOptions.builder()
+        .toolChoice(ModelOptions.ToolChoice.AUTO)
+        .build();
+
+final var model = ConfiguredModel.builder()
+        .modelName("qwen-plus")
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ChatCompletionsProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .build())
+        .modelOptions(modelOptions)
+        .build();
+```
+
+### Request Transformers
+
+A `RequestTransformer` mutates the request body, the headers or the request after authentication and before
+serialization. Declare transformers on the `Provider`, on the model, or per run through agent extensions. The model
+applies them in that order; each transformer sees the output of the previous one. Each transformer receives a
+`RequestTransformerContext` with the wire context, the session id, the agent name, the agent messages and the translated
+wire messages of the current turn.
+
+`JoltRequestTransformer` applies a chain of [Jolt](https://github.com/bazaarvoice/jolt) operations to the request body.
+Use it for vendor-specific payload fields that no protocol setting covers. Load the transform list from a typed list,
+a JSON string or a JSON node:
+
+```java
+final var model = ConfiguredModel.builder()
+        .modelName("qwen3")
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ChatCompletionsProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .requestTransformer(JoltRequestTransformer.fromJson("""
+                        [
+                          {"operation": "default", "spec": {"chat_template_kwargs": {"thinking": false}}}
+                        ]"""))
+                .build())
+        .build();
+```
+
+A transformer that throws aborts the model call. The failure is reported as a `REQUEST_TRANSFORM_FAILED` error.
+For declarative body fields that do not need Jolt logic, `ModelOptions.extras` stays the simpler option.

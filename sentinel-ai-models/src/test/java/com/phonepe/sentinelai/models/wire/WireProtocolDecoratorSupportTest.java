@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -99,7 +100,7 @@ class WireProtocolDecoratorSupportTest {
                 .baseUrl("http://localhost")
                 .tools(Map.of())
                 .outputDefinitions(List.of())
-                .outputGenerationMode(com.phonepe.sentinelai.core.model.OutputGenerationMode.TOOL_BASED)
+                .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
                 .extras(extras)
                 .mapper(MAPPER)
                 .build();

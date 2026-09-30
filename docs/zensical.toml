@@ -12,7 +12,11 @@ extra_css        = ["stylesheets/extra.css"]
 
 nav = [
   {"Home" = "index.md"},
-  {"Agents" = "agents.md"},
+  {"Agents" = [
+      {"Basics" = "agents.md"},
+      {"Models & Providers" = "models.md"},
+      {"Configuration" = "agent-configuration.md"}
+  ]},
   {"Tools" = [
       {"Overview" = "tools.md"},
       {"Using MCP Servers" = "using-mcp-servers.md"},

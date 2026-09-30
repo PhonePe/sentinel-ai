@@ -297,6 +297,6 @@ with always-changing arguments.
 
 The protection is enabled by default and is configured with the `toolLoopProtectionSetup` field in `AgentSetup`. Tools
 that are expected to be called repeatedly with the same arguments (e.g. polling tools) can be excluded from repeat and
-cycle detection with `loopExemptTools`. See [Tool Loop Protection Setup](agents.md#tool-loop-protection-setup) for the
+cycle detection with `loopExemptTools`. See [Tool Loop Protection Setup](agent-configuration.md#tool-loop-protection-setup) for the
 full configuration reference.
 

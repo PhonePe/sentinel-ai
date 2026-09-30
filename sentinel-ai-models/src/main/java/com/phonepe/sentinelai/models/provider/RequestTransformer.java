@@ -18,8 +18,6 @@ package com.phonepe.sentinelai.models.provider;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import com.phonepe.sentinelai.models.wire.WireContext;
-
 import okhttp3.Request;
 
 /**
@@ -44,9 +42,9 @@ public interface RequestTransformer {
      *
      * @param requestBuilder the OkHttp request builder of the outgoing request
      * @param body           the protocol-built request body; may be mutated in place
-     * @param ctx            the wire context of the call
+     * @param ctx            the transformer context of the call
      * @throws Exception when the transform fails; the model call aborts with
      *                   {@code REQUEST_TRANSFORM_FAILED}
      */
-    void transform(Request.Builder requestBuilder, ObjectNode body, WireContext ctx) throws Exception;
+    void transform(Request.Builder requestBuilder, ObjectNode body, RequestTransformerContext ctx) throws Exception;
 }

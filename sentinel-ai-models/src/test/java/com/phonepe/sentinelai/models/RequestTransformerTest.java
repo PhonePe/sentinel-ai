@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.models;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
@@ -39,10 +40,11 @@ import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
 import com.phonepe.sentinelai.models.provider.HeaderAuth;
 import com.phonepe.sentinelai.models.provider.Provider;
-import com.phonepe.sentinelai.models.wire.WireContext;
+import com.phonepe.sentinelai.models.provider.RequestTransformerContext;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Request;
 
 import java.util.List;
 import java.util.Map;
@@ -54,6 +56,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
@@ -64,6 +68,23 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @Slf4j
 @WireMockTest
 class RequestTransformerTest {
+
+    /**
+     * Transformer that records the context fields it observes.
+     */
+    private static final class ContextRecordingTransformer
+            implements
+            com.phonepe.sentinelai.models.provider.RequestTransformer {
+
+        private RequestTransformerContext recorded;
+
+        @Override
+        public void transform(final Request.Builder requestBuilder,
+                              final ObjectNode body,
+                              final RequestTransformerContext ctx) {
+            recorded = ctx;
+        }
+    }
 
     /**
      * Transformer that appends a marker to the body field {@code markers} through the
@@ -102,9 +123,9 @@ class RequestTransformerTest {
         }
 
         @Override
-        public void transform(final okhttp3.Request.Builder requestBuilder,
+        public void transform(final Request.Builder requestBuilder,
                               final ObjectNode body,
-                              final WireContext ctx) {
+                              final RequestTransformerContext ctx) {
             calls.incrementAndGet();
             body.put("markers", body.path("markers").asText("") + marker);
             requestBuilder.header("X-Transformer", marker);
@@ -231,7 +252,7 @@ class RequestTransformerTest {
 
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertEquals(1, seenAuth.get(), "Auth must be applied before the transformers");
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
+        WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
                 .withHeader("Authorization", equalTo("Bearer test-key")));
     }
 
@@ -252,7 +273,7 @@ class RequestTransformerTest {
         final var response = execute(agent);
 
         assertEquals(ErrorType.REQUEST_TRANSFORM_FAILED, response.getError().getErrorType());
-        com.github.tomakehurst.wiremock.client.WireMock.verify(0, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
+        WireMock.verify(0, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
     }
 
     @Test
@@ -276,7 +297,7 @@ class RequestTransformerTest {
         final var response = execute(agent);
 
         assertEquals(ErrorType.REQUEST_TRANSFORM_FAILED, response.getError().getErrorType());
-        com.github.tomakehurst.wiremock.client.WireMock.verify(0, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
+        WireMock.verify(0, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
     }
 
     @Test
@@ -310,10 +331,30 @@ class RequestTransformerTest {
         assertEquals(1, extensionTransformer.calls.get());
         assertEquals(1, providerTransformer.calls.get());
         assertEquals(1, modelTransformer.calls.get());
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
+        WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
                 .withRequestBody(matchingJsonPath("$[?(@.markers == 'extension|provider|model')]"))
                 .withHeader("X-Extension-Transformer", equalTo("extension|"))
                 .withHeader("X-Transformer", equalTo("model")));
+    }
+
+    @Test
+    @SneakyThrows
+    void transformersSeeRunContextFields(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        setupMocks();
+        final var recorder = new ContextRecordingTransformer();
+        final var setup = agentSetup(baseModel(wiremock, recorder, null));
+        final var agent = new TestAgent(setup, List.of());
+
+        final var response = execute(agent);
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        final var ctx = recorder.recorded;
+        assertEquals(Optional.of("test-agent"), ctx.agentName());
+        assertFalse(ctx.getMessages().isEmpty());
+        assertFalse(ctx.getWireMessages().isEmpty());
+        assertSame(setup.getMapper(), ctx.mapper());
+        assertEquals("gpt-4o", ctx.getWireContext().getModelName());
     }
 
     private record OutputObject(

@@ -25,6 +25,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
@@ -81,7 +83,7 @@ class GenericTokenCounterTest {
         final var audioPrompt = UserPrompt.audio("s1",
                                                  "r1",
                                                  audioData,
-                                                 com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat.WAV,
+                                                 AudioFormat.WAV,
                                                  sentAt);
 
         // Audio content is counted as text (the base64 data), not a fixed image cost.
@@ -130,7 +132,7 @@ class GenericTokenCounterTest {
         final var imagePrompt = UserPrompt.imageData("s1",
                                                      "r1",
                                                      "data:image/png;base64," + base64Data,
-                                                     com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
+                                                     ImageDetail.AUTO,
                                                      sentAt);
 
         final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
@@ -153,7 +155,7 @@ class GenericTokenCounterTest {
         final var imagePrompt = UserPrompt.imageData("s1",
                                                      "r1",
                                                      "data:image/png;base64," + base64Data,
-                                                     com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
+                                                     ImageDetail.AUTO,
                                                      sentAt);
         final var config = TokenCountingConfig.DEFAULT.withImageTokenCost(1575);
 
@@ -173,7 +175,7 @@ class GenericTokenCounterTest {
         final var imagePrompt = UserPrompt.imageURL("s1",
                                                     "r1",
                                                     java.net.URI.create(imageUrl).toURL(),
-                                                    com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail.AUTO,
+                                                    ImageDetail.AUTO,
                                                     sentAt);
 
         final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()

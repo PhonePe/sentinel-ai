@@ -16,6 +16,8 @@
 
 package com.phonepe.sentinelai.core.tools.loopdetection;
 
+import com.phonepe.sentinelai.core.errors.ErrorType;
+
 import lombok.Builder;
 import lombok.Value;
 
@@ -85,7 +87,7 @@ public class ToolLoopProtectionSetup {
 
     /**
      * Number of repeats of an identical round that terminates the run with
-     * {@link com.phonepe.sentinelai.core.errors.ErrorType#TOOL_LOOP_DETECTED}.
+     * {@link ErrorType#TOOL_LOOP_DETECTED}.
      */
     @Builder.Default
     int terminationThreshold = DEFAULT_TERMINATION_THRESHOLD;
@@ -93,7 +95,7 @@ public class ToolLoopProtectionSetup {
     /**
      * Maximum number of model rounds with tool calls in a run. A value {@code <= 0}
      * disables this cap. The cap terminates the run with
-     * {@link com.phonepe.sentinelai.core.errors.ErrorType#TOOL_CALL_BUDGET_EXCEEDED}.
+     * {@link ErrorType#TOOL_CALL_BUDGET_EXCEEDED}.
      */
     @Builder.Default
     int maxToolRounds = DEFAULT_MAX_TOOL_ROUNDS;
@@ -101,7 +103,7 @@ public class ToolLoopProtectionSetup {
     /**
      * Maximum number of tool calls in a run. A value {@code <= 0} disables this cap. The
      * cap terminates the run with
-     * {@link com.phonepe.sentinelai.core.errors.ErrorType#TOOL_CALL_BUDGET_EXCEEDED}.
+     * {@link ErrorType#TOOL_CALL_BUDGET_EXCEEDED}.
      */
     @Builder.Default
     int maxToolCalls = DEFAULT_MAX_TOOL_CALLS;

@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 
+import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
@@ -56,9 +57,9 @@ class ChatCompletionsProtocolTest {
     void classifyErrorMapsRateLimitAndOthers() {
         final var protocol = new ChatCompletionsProtocol();
 
-        assertEquals(com.phonepe.sentinelai.core.errors.ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED,
+        assertEquals(ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED,
                      protocol.classifyError(429, mapper.nullNode()));
-        assertEquals(com.phonepe.sentinelai.core.errors.ErrorType.MODEL_CALL_HTTP_FAILURE,
+        assertEquals(ErrorType.MODEL_CALL_HTTP_FAILURE,
                      protocol.classifyError(500, mapper.nullNode()));
     }
 

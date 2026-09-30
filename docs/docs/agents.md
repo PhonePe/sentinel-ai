@@ -54,53 +54,6 @@ public record BookSummary(
 }
 ```
 
-## Instantiating a model
-
-The `Model` class is a generic abstraction for an LLM model used by an agent. A concrete subclass of the Model needs to
-be instantiated for usage in the agent.
-
-Sentinel AI supports OpenAI API compliant model endpoints. The corresponding implementation of `Model` is the
-`ConfiguredModel` class. The class is available in the `sentinel-ai-models` module.
-
-The module needs to be added to the project dependencies as follows:
-
-```xml
-
-<dependency>
-    <groupId>com.phonepe.sentinel-ai</groupId>
-    <artifactId>sentinel-ai-models</artifactId>
-</dependency>
-```
-
-The module is vendor-neutral. It uses OkHttp for HTTP transport and Jackson for JSON. No third-party LLM client SDK is
-required. A model pairs a model name with a `Provider`. The `Provider` owns the endpoint, the wire protocol and the
-authentication:
-
-```java
-final var model = ConfiguredModel.builder()
-        .modelName("gpt-4o")
-        .provider(Provider.builder()
-                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
-                .protocol(new ChatCompletionsProtocol())
-                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
-                .build())
-        .httpClient(httpClient)
-        .build();
-```
-
-The final endpoint is the base URL plus the protocol path, for example
-`https://api.openai.com/v1` + `/chat/completions`.
-
-!!!tip "Authentication"
-    `HeaderAuth.bearer(apiKey)` sends the key as a `Bearer` token, and `HeaderAuth.of(header, value)` sets any other
-    header pair. Set `auth` to null when your `OkHttpClient` handles authentication with its own interceptors (for
-    example, in production environments with tightened security).
-
-!!!note "Endpoint and api key"
-    The `OPENAI_ENDPOINT` and `OPENAI_API_KEY` are environment variables that need to be set in the system. The
-    `EnvLoader` class is a utility class that loads the environment variables. You can use any other method to load
-    the environment variables as well.
-
 ## Agent Setup
 
 The `AgentSetup` class is a configuration class that is used to configure the agent. The class is available in the
@@ -119,15 +72,15 @@ Here are all available settings for the `AgentSetup` class:
 |------------------------|------------------- -----|-------------------------------------------------------------------------------------------------------------------|
 | `mapper`               | `ObjectMapper`          | The object mapper to use for serialization/deserialization. If not provided, a default one will be created.       |
 | `model`                | `Model`                 | The LLM to be used for the agent. This can be provided at runtime. If not provided, an error will be thrown.      |
-| `modelSettings`        | [`ModelSettings`](#model-settings)  | The settings for the model. This can be provided at runtime. If not provided, an error will be thrown.            |
+| `modelSettings`        | [`ModelSettings`](models.md#model-settings)  | The settings for the model. This can be provided at runtime. If not provided, an error will be thrown.            |
 | `executorService`      | `ExecutorService`       | The executor service to use for running the agent. If not provided, a default cached thread pool will be created. |
 | `eventBus`             | `EventBus`              | The event bus to be used for the agent. If not provided, a default event bus will be created.                     |
 | `outputGenerationMode` | `OutputGenerationMode`  | Output generation mode to use for this model. Can be `TOOL_BASED` (default) or `STRUCTURED_OUTPUT`. Typically, other than OpenAI models, it is safer to leave it at the default `TOOL_BASED` mode. |
 | `outputGenerationTool` | `UnaryOperator<String>` | A function that the model can use to generate the JSON string output. If not provided (recommended), Sentinel AI will use it's built in tool if the `outputGenerationMode` is set to `TOOL_BASED`  |
-| `retrySetup`           | [`RetrySetup`](#retry-setup)            | Retry setup to use for model calls. If not provided, default setup will be added.                                |
-| `autoCompactionSetup`  | [`AutoCompactionSetup`](#auto-compaction-setup) | Configuration for automatic message history compaction. If not provided, default setup will be used. |
+| `retrySetup`           | [`RetrySetup`](agent-configuration.md#retry-setup)            | Retry setup to use for model calls. If not provided, default setup will be added.                                |
+| `autoCompactionSetup`  | [`AutoCompactionSetup`](agent-configuration.md#auto-compaction-setup) | Configuration for automatic message history compaction. If not provided, default setup will be used. |
 | `maxToolResponsePercentage` | `int`                          | Maximum tool response size as a percentage of the model's context window. Responses exceeding this limit are blocked and replaced with an error. Defaults to `10` (10 %). Set to `0` or negative to use the default. Values above `100` are used as-is (no clamping). See [Large Response Blocking](tools.md#large-response-blocking). |
-| `toolLoopProtectionSetup` | [`ToolLoopProtectionSetup`](#tool-loop-protection-setup) | Configuration for protection against tool call loops. If not provided, the default setup will be used. |
+| `toolLoopProtectionSetup` | [`ToolLoopProtectionSetup`](agent-configuration.md#tool-loop-protection-setup) | Configuration for protection against tool call loops. If not provided, the default setup will be used. |
 | `loopExemptTools` | `Set<String>`             | Names of tools exempt from loop repeat and cycle detection. Defaults to an empty set. |
 
 !!!danger "Required parameters"
@@ -136,233 +89,15 @@ Here are all available settings for the `AgentSetup` class:
       the `execute*` methods. If neither is available, exception will be provided at runtime.
     - All the other parameters are optional. If not provided, a default one will be created/provided.
 
-### Model Settings
+## Model and provider configuration
 
-A variety of settings can be set for the model. The `ModelSettings` class is a configuration class that is used to
-configure the model. The class is available in the core library itself and provides a builder.
+The `model` and `modelSettings` settings carry the model and its per-agent settings. The `retrySetup`,
+`autoCompactionSetup`, `maxToolResponsePercentage`, `toolLoopProtectionSetup` and `loopExemptTools` settings tune run
+behaviour. See:
 
-| **Setting**         | **Type**               | **Description**                                                                                |
-|---------------------|------------------------|------------------------------------------------------------------------------------------------|
-| `maxTokens`         | `Integer`              | Maximum number of tokens to generate.                                                          |
-| `temperature`       | `Float`                | Amount of randomness to inject in output. Lower values make the output more predictable.       |
-| `topP`              | `Float`                | Probabilistic sum of tokens to consider for each subsequent token. Range: 0-1.                 |
-| `timeout`           | `Duration`             | Timeout for model calls.                                                                       |
-| `parallelToolCalls` | `Boolean`              | Whether to call tools in parallel or not.                                                      |
-| `seed`              | `Integer`              | Seed for random number generator to make output more predictable.                              |
-| `presencePenalty`   | `Float`                | Penalty for adding new tokens based on their presence in the output so far.                    |
-| `frequencyPenalty`  | `Float`                | Penalty for adding new tokens based on how many times they have appeared in the output so far. |
-| `logitBias`         | `Map<String, Integer>` | Controls the likelihood of specific tokens being generated.                                    |
-| `disableTools`      | `Boolean`              | Disables tool calls for this agent. When `true`, tools are not sent to the model and `STRUCTURED_OUTPUT` mode is used. Useful for models that do not support tool calling. |
-
-### Auto Compaction Setup
-
-The `AutoCompactionSetup` class configures automatic message history compaction during agent execution. When enabled, Sentinel AI automatically compresses conversation history that exceeds a configured token threshold, allowing agents to maintain longer conversations without hitting context window limits.
-
-| **Setting**                              | **Type**             | **Default** | **Description**                                                                                                                  |
-|------------------------------------------|----------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------|
-| `prompts`                                | `CompactionPrompts`  | DEFAULT     | Custom prompts used for the compaction/summarization process.                                                                    |
-| `tokenBudget`                            | `int`                | 1500        | Target token count for the compacted message history.                                                                            |
-| `compactionTriggerThresholdPercentage`   | `int`                | 60          | Percentage of context window usage that triggers automatic compaction. Set to 0 to compact every run.                            |
-| `model`                                  | `Model`              | null        | Optional separate model to use for compaction. If not provided, uses the agent's main model.                                     |
-
-#### How Auto Compaction Works
-
-Auto compaction runs as a pre-processor before sending messages to the LLM:
-
-1. **Token Estimation**: Estimates token count of messages generated after the last compaction point.
-2. **Threshold Check**: Compares estimated tokens against the model's context window size.
-3. **Trigger**: If `(estimatedTokens / contextWindowSize) * 100 > compactionTriggerThresholdPercentage`, triggers compaction.
-4. **Compaction**: Invokes the `MessageCompactor` to summarize the history into a compact form.
-5. **Continuation**: Appends a continuation prompt with the compacted summary, allowing the agent to proceed with context preserved.
-
-#### Example Configuration
-
-```java
-final var autoCompactionSetup = AutoCompactionSetup.builder()
-        .tokenBudget(2000)
-        .compactionTriggerThresholdPercentage(70)
-        .prompts(CompactionPrompts.DEFAULT)
-        .build();
-
-final var agentSetup = AgentSetup.builder()
-        .model(model)
-        .modelSettings(modelSettings)
-        .autoCompactionSetup(autoCompactionSetup)
-        .build();
-```
-
-!!!tip "Token Budget Tuning"
-    The `tokenBudget` determines how much of the conversation history is preserved in the compacted form. A larger budget preserves more detail but consumes more tokens. A smaller budget is more aggressive but may lose nuance. Start with the default (1500) and adjust based on your use case.
-
-!!!note "Model Selection"
-    You can optionally specify a different (typically smaller and faster) model for compaction tasks by setting the `model` field. This can reduce costs and latency for the compaction operation. If not set, the agent's main model is used.
-
-### Model Specific Options
-
-Some models support additional configuration options that are not part of the standard `ModelSettings`. For example, models in the `sentinel-ai-models` module support `ModelOptions`.
-
-#### Token Counting Configuration
-
-You can tune how Sentinel AI estimates token usage for OpenAI models by providing a `TokenCountingConfig`. This is useful for adjusting for specific prompt formats or model-specific overheads.
-
-| **Setting**                 | **Type** | **Default** | **Description**                                                                                                       |
-|-----------------------------|----------|-------------|----------------------------------------------------------------------------------------------------------------------|
-| `messageOverHead`           | `int`    | 3           | Overhead tokens per message.                                                                                           |
-| `nameOverhead`             | `int`    | 1           | Overhead tokens if `name` is provided in message.                                                                     |
-| `assistantPrimingOverhead` | `int`    | 3           | Tokens added at the end of the prompt to prime assistant.                                                              |
-| `formattingOverhead`       | `int`    | 10          | Overhead for structured tool arguments.                                                                               |
-| `imageTokenCost`            | `int`    | 765         | Fixed token cost per image content part. Vision models do not tokenize the base64 payload as text, so each image part contributes this fixed cost instead. |
-
-```java
-final var tokenConfig = TokenCountingConfig.builder()
-        .messageOverHead(3) // Overhead tokens per message
-        .nameOverhead(1)    // Overhead tokens if 'name' is provided in message
-        .assistantPrimingOverhead(3) // Tokens added at the end of the prompt to prime assistant
-        .formattingOverhead(10) // Overhead for structured tool arguments
-        .imageTokenCost(765) // Fixed token cost per image content part
-        .build();
-
-final var modelOptions = ModelOptions.builder()
-        .tokenCountingConfig(tokenConfig)
-        .toolChoice(ModelOptions.ToolChoice.AUTO)
-        .build();
-
-final var model = ConfiguredModel.builder()
-        .modelName("gpt-4o")
-        .provider(Provider.builder()
-                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
-                .protocol(new ChatCompletionsProtocol())
-                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
-                .build())
-        .modelOptions(modelOptions) // Pass options here
-        .build();
-```
-
-The `toolChoice` field on `ModelOptions` controls the `tool_choice` parameter sent to the model. Sentinel AI
-automatically resolves the effective OpenAI `tool_choice` value by combining `toolChoice` with the active
-`outputGenerationMode`. The default in `TOOL_BASED` mode is `required`, but some models (e.g. Qwen, Kimi on vLLM)
-do not call tools reliably in this configuration. Set `toolChoice` to `AUTO` for such models.
-
-The resolution rules are:
-
-| `outputGenerationMode` | `toolChoice`        | Effective OpenAI `tool_choice` | Notes                                                                                           |
-|------------------------|---------------------|--------------------------------|-------------------------------------------------------------------------------------------------|
-| `TOOL_BASED`           | `REQUIRED`          | `required`                     |                                                                                                 |
-| `TOOL_BASED`           | `AUTO`              | `auto`                         |                                                                                                 |
-| `TOOL_BASED`           | `DEFAULT`           | `required`                     | Default for tool-based mode — model must call a tool to produce output.                         |
-| `STRUCTURED_OUTPUT`    | `REQUIRED`          | `required`                     | ⚠️ Warning logged: may cause infinite tool-call loops in structured-output mode.               |
-| `STRUCTURED_OUTPUT`    | `AUTO`              | `auto`                         |                                                                                                 |
-| `STRUCTURED_OUTPUT`    | `DEFAULT`           | `auto`                         | Default for structured-output mode — model chooses whether to call a tool.                      |
-
-!!!warning "REQUIRED + STRUCTURED_OUTPUT"
-    Setting `toolChoice` to `REQUIRED` while `outputGenerationMode` is `STRUCTURED_OUTPUT` is allowed but will emit a
-    warning at runtime. This combination can cause the model to enter an infinite tool-call loop. Prefer `AUTO` or
-    `DEFAULT` when using `STRUCTURED_OUTPUT`.
-
-```java
-// Use AUTO tool choice for models that ignore REQUIRED (e.g. Qwen, Kimi on vLLM)
-final var modelOptions = ModelOptions.builder()
-        .toolChoice(ModelOptions.ToolChoice.AUTO)
-        .build();
-
-final var model = ConfiguredModel.builder()
-        .modelName("qwen-plus")
-        .provider(Provider.builder()
-                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
-                .protocol(new ChatCompletionsProtocol())
-                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
-                .build())
-        .modelOptions(modelOptions)
-        .build();
-```
-
-#### Request Transformers
-
-A `RequestTransformer` mutates the request body, the headers or the request after authentication and before
-serialization. Declare transformers on the `Provider`, on the model, or per run through agent extensions. The model
-applies them in that order; each transformer sees the output of the previous one.
-
-`JoltRequestTransformer` applies a chain of [Jolt](https://github.com/bazaarvoice/jolt) operations to the request body.
-Use it for vendor-specific payload fields that no protocol setting covers. Load the transform list from a typed list,
-a JSON string or a JSON node:
-
-```java
-final var model = ConfiguredModel.builder()
-        .modelName("qwen3")
-        .provider(Provider.builder()
-                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
-                .protocol(new ChatCompletionsProtocol())
-                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
-                .requestTransformer(JoltRequestTransformer.fromJson("""
-                        [
-                          {"operation": "default", "spec": {"chat_template_kwargs": {"thinking": false}}}
-                        ]"""))
-                .build())
-        .build();
-```
-
-A transformer that throws aborts the model call. The failure is reported as a `REQUEST_TRANSFORM_FAILED` error.
-For declarative body fields that do not need Jolt logic, `ModelOptions.extras` stays the simpler option.
-
-### Retry Setup
-The `RetrySetup` class is a configuration class that is used to configure the retry mechanism for model calls.
-
-| **Setting**         | **Type**               | **Description**                                                                                 |
-|---------------------|------------------------|-------------------------------------------------------------------------------------------------|
-| `totalAttempts`   | `int`                  | Total number of attempts to make. This includes the successful attempts.                        |
-| `delayAfterFailedAttempt` | `Duration`             | Delay after a failed attempt before retrying.                                                   |
-| `retriableErrorTypes` | `Set<ErrorTypes>` | Specific error types to retry on. If not provided, a pre-defined set of error types are retried. See [Error Handling](errors.md) for details. |
-
-### Tool Loop Protection Setup
-
-The `ToolLoopProtectionSetup` class configures the protection against model runs that repeat
-the same tool calls in a loop without progress. The protection works on model rounds. A
-round is one model call and the tool calls the model requested in it. Tool calls inside one
-round run in parallel, so a round is compared as a set: the order of the calls inside the
-round does not matter.
-
-| **Setting**            | **Type** | **Description**                                                                                                   |
-|------------------------|----------|-------------------------------------------------------------------------------------------------------------------|
-| `enabled`              | `boolean` | Master switch for the complete protection. Defaults to `true`.                                                    |
-| `windowSize`           | `int`    | Number of rounds kept in the sliding window for repeat and cycle detection. Defaults to `20`.                     |
-| `instructionThreshold` | `int`    | Number of repeats of an identical round that triggers an instruction to the model. Defaults to `3`.               |
-| `terminationThreshold` | `int`   | Number of repeats of an identical round that terminates the run with `TOOL_LOOP_DETECTED`. Defaults to `5`.       |
-| `maxToolRounds`        | `int`    | Maximum number of model rounds with tool calls in a run. Defaults to `25`. A value `<= 0` disables this cap.       |
-| `maxToolCalls`         | `int`    | Maximum number of tool calls in a run. Defaults to `50`. A value `<= 0` disables this cap.                        |
-
-The protection uses three layers:
-
-1. **Round repeat detection:** if the same round (same set of tool calls with canonical
-   arguments) repeats often enough inside the sliding window, the protection first sends an
-   instruction to the model, then terminates the run if the repeat continues.
-2. **Cycle detection:** if the sequence of rounds ends with a cycle of length 2 to 5 that
-   repeats at least twice, for example A, B, A, B, the protection first sends an
-   instruction to the model, then terminates the run if the cycle continues.
-3. **Budgets:** the run is terminated when it exceeds the maximum number of tool rounds or
-   tool calls. This backstop also catches loops with always-changing arguments.
-
-The arguments are canonicalized before comparison: JSON objects are serialized with
-recursively sorted keys, so two argument strings that differ only in key order or whitespace
-produce the same key. Tools listed in `loopExemptTools` are exempt from repeat and cycle
-detection. The run is terminated with `TOOL_CALL_BUDGET_EXCEEDED` when a budget is exceeded,
-and with `TOOL_LOOP_DETECTED` when a loop is detected after the instruction was ignored. See
-[Error Handling](errors.md) for details.
-
-### Sample setup
-
-Sample code for creating settings for an agent:
-
-```java
-final var agentSetup = AgentSetup.builder()
-        .model(model)
-        .mapper(objectMapper)
-        .modelSettings(ModelSettings.builder()
-                               .temperature(0.1f)
-                               .timeout(Duration.ofSeconds(10))
-                               .seed(1)
-                               .build())
-        .build();
-```
+- [Models & Providers](models.md) for instantiating a model, the `Provider`, `ModelSettings`, model-specific options and
+  request transformers.
+- [Agent Configuration](agent-configuration.md) for auto compaction, retry and tool loop protection.
 
 ## Creating an agent
 

@@ -23,8 +23,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import com.phonepe.sentinelai.models.wire.WireContext;
-
 import lombok.SneakyThrows;
 import lombok.Value;
 import okhttp3.Request;
@@ -186,17 +184,18 @@ public class JoltRequestTransformer implements RequestTransformer {
     }
 
     @Override
-    public void transform(final Request.Builder requestBuilder, final ObjectNode body, final WireContext ctx) {
+    public void transform(final Request.Builder requestBuilder,
+                          final ObjectNode body,
+                          final RequestTransformerContext ctx) {
         if (transforms.isEmpty()) {
             return;
         }
-        final var mapper = ctx.getMapper();
+        final var mapper = ctx.mapper();
         final Object input = mapper.convertValue(body, Object.class);
         final Object output = chainr.transform(input);
         if (!(output instanceof Map)) {
-            throw new IllegalArgumentException(
-                                               "Jolt transform must produce a JSON object but produced: "
-                                                       + output.getClass().getSimpleName());
+            throw new IllegalArgumentException("Jolt transform must produce a JSON object but produced: "
+                    + output.getClass().getSimpleName());
         }
         final var result = mapper.convertValue(output, ObjectNode.class);
         body.removeAll();
