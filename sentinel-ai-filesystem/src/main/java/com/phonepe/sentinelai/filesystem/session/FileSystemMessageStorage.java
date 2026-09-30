@@ -102,9 +102,21 @@ public class FileSystemMessageStorage {
             final var newMessages = new HashMap<MessageMeta, AgentMessage>();
             messages.forEach(message -> {
                 final var meta = new MessageMeta(message.getMessageId(), message.getTimestamp());
+                if (messageCache.containsKey(meta)) {
+                    //Message is already saved. This happens when a model call is retried and an
+                    //already-saved message is raised again. Do not write it to the file again.
+                    log.warn("Skipping duplicate message with id: {} and timestamp: {} for session: {}",
+                             message.getMessageId(),
+                             message.getTimestamp(),
+                             sessionDir);
+                    return;
+                }
                 populate(message, messageData);
                 newMessages.put(meta, message);
             });
+            if (newMessages.isEmpty()) {
+                return;
+            }
             messageData.flush();
             final var data = messageData.toByteArray();
             if (FileUtils.write(filePath, data, true)) {

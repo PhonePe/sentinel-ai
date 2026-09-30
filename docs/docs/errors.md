@@ -35,6 +35,8 @@ The `ErrorType` enum defines the categories of errors that can occur during agen
 | `PREPROCESSOR_RUN_FAILURE` | An error occurred while running a message pre-processor. | Yes |
 | `PREPROCESSOR_MESSAGES_OUTPUT_INVALID` | A pre-processor returned invalid or null messages. | No |
 | `MODEL_RUN_TERMINATED` | The model run was terminated by an early termination strategy. | No |
+| `TOOL_LOOP_DETECTED` | The model repeated the same tool calls in a loop and ignored the instruction to stop. | No |
+| `TOOL_CALL_BUDGET_EXCEEDED` | The run exceeded the maximum number of tool rounds or tool calls. | No |
 | `UNKNOWN` | An unexpected error occurred. | Yes |
 
 ## Handling Errors in Code

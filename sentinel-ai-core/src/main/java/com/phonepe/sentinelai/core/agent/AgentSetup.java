@@ -22,6 +22,7 @@ import com.phonepe.sentinelai.core.events.EventBus;
 import com.phonepe.sentinelai.core.model.Model;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
+import com.phonepe.sentinelai.core.tools.loopdetection.ToolLoopProtectionSetup;
 
 import lombok.Builder;
 import lombok.Value;
@@ -44,6 +45,7 @@ public class AgentSetup {
     public static final int DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE = 10;
 
     /**
+     * /**
      * The object mapper to use for serialization/deserialization. If not provided, a default one will be created.
      */
     ObjectMapper mapper;
@@ -101,4 +103,20 @@ public class AgentSetup {
      */
     @Builder.Default
     int maxToolResponsePercentage = DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE;
+
+    /**
+     * Tool loop protection setup for agent runs. Protects against model runs that repeat
+     * the same tool calls in a loop without making progress. See
+     * {@link ToolLoopProtectionSetup} for the available layers and their defaults.
+     */
+    @Builder.Default
+    ToolLoopProtectionSetup toolLoopProtectionSetup = ToolLoopProtectionSetup.DEFAULT;
+
+    /**
+     * Tool names that are exempt from the repeat detection of the tool loop protection.
+     * Tools in this list can repeat their calls legitimately, for example status polling
+     * tools. Budget caps still apply to them.
+     */
+    @Builder.Default
+    java.util.Set<String> loopExemptTools = java.util.Set.of();
 }

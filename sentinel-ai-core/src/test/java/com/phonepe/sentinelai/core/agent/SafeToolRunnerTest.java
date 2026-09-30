@@ -55,12 +55,16 @@ class SafeToolRunnerTest {
     }
 
     private static ToolCall toolCall(String toolCallId, String toolName) {
+        return toolCall(toolCallId, toolName, "{}");
+    }
+
+    private static ToolCall toolCall(String toolCallId, String toolName, String arguments) {
         return ToolCall.builder()
                 .sessionId(SESSION_ID)
                 .runId(RUN_ID)
                 .toolCallId(toolCallId)
                 .toolName(toolName)
-                .arguments("{}")
+                .arguments(arguments)
                 .build();
     }
 

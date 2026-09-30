@@ -141,6 +141,52 @@ class FileSystemMessageStorageTest {
 
     @Test
     @SneakyThrows
+    void testDuplicateMessagesAreSkipped() {
+        final var sessionId = "test-session";
+        final var runId = UUID.randomUUID().toString();
+        final var message = Text.builder().sessionId(sessionId).runId(runId).content("msg1")
+                .timestamp(1000L).stats(new ModelUsageStats()).build();
+
+        // Simulate a model call retry that raises the same message again
+        messageStorage.addMessages(List.of(message));
+        messageStorage.addMessages(List.of(message));
+
+        // The message must be stored exactly once
+        final var response = messageStorage.readMessages(10, false, null, QueryDirection.NEWER);
+        assertEquals(1, response.getItems().size());
+        assertEquals("msg1", ((Text) response.getItems().get(0)).getContent());
+
+        // The file must also contain exactly one line for the message
+        final var lines = Files.readAllLines(Path.of(sessionDir, "messages.jsonl"), StandardCharsets.UTF_8)
+                .stream()
+                .filter(line -> !line.isBlank())
+                .toList();
+        assertEquals(1, lines.size());
+    }
+
+    @Test
+    @SneakyThrows
+    void testDuplicateMessagesWithNewMessagesInBatch() {
+        final var sessionId = "test-session";
+        final var runId = UUID.randomUUID().toString();
+        final var duplicateMessage = Text.builder().sessionId(sessionId).runId(runId).content("dup")
+                .timestamp(1000L).stats(new ModelUsageStats()).build();
+        final var newMessage = Text.builder().sessionId(sessionId).runId(runId).content("new")
+                .timestamp(2000L).stats(new ModelUsageStats()).build();
+
+        messageStorage.addMessages(List.of(duplicateMessage));
+        // A retry batch contains the old message again plus a new message
+        messageStorage.addMessages(List.of(duplicateMessage, newMessage));
+
+        // Only the new message must be stored again
+        final var response = messageStorage.readMessages(10, false, null, QueryDirection.NEWER);
+        assertEquals(2, response.getItems().size());
+        assertEquals("dup", ((Text) response.getItems().get(0)).getContent());
+        assertEquals("new", ((Text) response.getItems().get(1)).getContent());
+    }
+
+    @Test
+    @SneakyThrows
     void testEmptyLinesInJsonl() {
         final var sessionId = "test-session";
         final var runId = UUID.randomUUID().toString();
