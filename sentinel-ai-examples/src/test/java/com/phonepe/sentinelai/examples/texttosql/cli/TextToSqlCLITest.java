@@ -40,7 +40,7 @@ import com.phonepe.sentinelai.examples.texttosql.tools.DatabaseInitializer;
 import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.filesystem.skills.AgentSkillsExtension;
 import com.phonepe.sentinelai.instrumentation.otel.OpenTelemetryAgentExtension;
-import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
+import com.phonepe.sentinelai.models.ConfiguredModel;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -120,7 +120,7 @@ class TextToSqlCLITest {
             final var m = TextToSqlCLI.class.getDeclaredMethod(
                                                                "buildAgentSetup",
                                                                CliConfig.class,
-                                                               ChatCompletionsModel.class,
+                                                               ConfiguredModel.class,
                                                                ObjectMapper.class);
             m.setAccessible(true);
             final var agentSetup = m.invoke(null, config, model, mapper);
@@ -162,12 +162,12 @@ class TextToSqlCLITest {
                                                                         OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
+            final var model = (ConfiguredModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        ChatCompletionsModel.class,
+                                                                        ConfiguredModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -225,12 +225,12 @@ class TextToSqlCLITest {
                                                                         OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
+            final var model = (ConfiguredModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        ChatCompletionsModel.class,
+                                                                        ConfiguredModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -290,7 +290,7 @@ class TextToSqlCLITest {
             final var model = m.invoke(null, config, okHttpClient, mapper);
 
             assertNotNull(model);
-            assertInstanceOf(ChatCompletionsModel.class, model);
+            assertInstanceOf(ConfiguredModel.class, model);
         }
     }
 
@@ -602,12 +602,12 @@ class TextToSqlCLITest {
                                                                         OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
+            final var model = (ConfiguredModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        ChatCompletionsModel.class,
+                                                                        ConfiguredModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -658,12 +658,12 @@ class TextToSqlCLITest {
                                                                         OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
+            final var model = (ConfiguredModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        ChatCompletionsModel.class,
+                                                                        ConfiguredModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -756,12 +756,12 @@ class TextToSqlCLITest {
                                                                         OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
+            final var model = (ConfiguredModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        ChatCompletionsModel.class,
+                                                                        ConfiguredModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -814,12 +814,12 @@ class TextToSqlCLITest {
                                                                         OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
+            final var model = (ConfiguredModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        ChatCompletionsModel.class,
+                                                                        ConfiguredModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -895,12 +895,12 @@ class TextToSqlCLITest {
                                                                         OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
+            final var model = (ConfiguredModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        ChatCompletionsModel.class,
+                                                                        ConfiguredModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);
@@ -1088,12 +1088,12 @@ class TextToSqlCLITest {
                                                                         OkHttpClient.class,
                                                                         ObjectMapper.class);
             buildModel.setAccessible(true);
-            final var model = (ChatCompletionsModel) buildModel.invoke(null, config, httpClient, mapper);
+            final var model = (ConfiguredModel) buildModel.invoke(null, config, httpClient, mapper);
 
             final var buildSetup = TextToSqlCLI.class.getDeclaredMethod(
                                                                         "buildAgentSetup",
                                                                         CliConfig.class,
-                                                                        ChatCompletionsModel.class,
+                                                                        ConfiguredModel.class,
                                                                         ObjectMapper.class);
             buildSetup.setAccessible(true);
             final var agentSetup = (AgentSetup) buildSetup.invoke(null, config, model, mapper);

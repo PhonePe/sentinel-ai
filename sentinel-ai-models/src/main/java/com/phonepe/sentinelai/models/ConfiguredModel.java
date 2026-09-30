@@ -63,6 +63,7 @@ import com.phonepe.sentinelai.models.errors.AgentMessagesPreProcessorExecutionFa
 import com.phonepe.sentinelai.models.errors.InvalidAgentMessagesException;
 import com.phonepe.sentinelai.models.provider.HeaderAuth;
 import com.phonepe.sentinelai.models.provider.Provider;
+import com.phonepe.sentinelai.models.provider.RequestTransformer;
 import com.phonepe.sentinelai.models.wire.SseEvent;
 import com.phonepe.sentinelai.models.wire.SseReader;
 import com.phonepe.sentinelai.models.wire.WireContext;
@@ -72,11 +73,10 @@ import com.phonepe.sentinelai.models.wire.WireStreamEvent;
 import com.phonepe.sentinelai.models.wire.WireToolCall;
 import com.phonepe.sentinelai.models.wire.WireUsage;
 
+import dev.failsafe.FailsafeExecutor;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.ToString;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
@@ -89,6 +89,7 @@ import okhttp3.Response;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -124,16 +125,17 @@ public class ConfiguredModel implements Model {
 
     /**
      * Exception carrying the HTTP status and body of a failed model call so the protocol can
-     * classify the error.
+     * classify the error and the retry layer can test the status.
      */
-    private static final class HttpModelCallException extends RuntimeException {
+    @Getter
+    private static final class HttpModelCallException extends ModelHttpException {
 
-        private final int status;
         private final String body;
 
-        HttpModelCallException(final int status, final String body) {
-            super("Received HTTP error: [%d] %s".formatted(status, body));
-            this.status = status;
+        HttpModelCallException(final int status, final String body, final Duration retryAfter) {
+            super(status,
+                  "Received HTTP error: [%d] %s".formatted(status, body),
+                  retryAfter);
             this.body = body;
         }
     }
@@ -142,17 +144,15 @@ public class ConfiguredModel implements Model {
      * Exception carrying the HTTP error details of a failed stream request so the engine can
      * classify the error the same way it classifies blocking call failures.
      */
-    @Value
-    @EqualsAndHashCode(callSuper = true)
-    @ToString(callSuper = true)
-    static final class HttpStreamException extends RuntimeException {
+    @Getter
+    static final class HttpStreamException extends ModelHttpException {
 
-        int status;
-        String body;
+        private final String body;
 
-        HttpStreamException(final int status, final String body) {
-            super("Received HTTP error on model stream: [%d] %s".formatted(status, body));
-            this.status = status;
+        HttpStreamException(final int status, final String body, final Duration retryAfter) {
+            super(status,
+                  "Received HTTP error on model stream: [%d] %s".formatted(status, body),
+                  retryAfter);
             this.body = body;
         }
     }
@@ -220,21 +220,29 @@ public class ConfiguredModel implements Model {
         List<AgentMessage> newMessages;
     }
 
-
     private final String modelName;
     private final String modelId;
     private final Provider provider;
     private final OkHttpClient httpClient;
     private final ModelOptions modelOptions;
     private final TokenCounter tokenCounter;
+    private final List<RequestTransformer> requestTransformers;
+    private final RequestRetryPolicy requestRetryPolicy;
+    private final FailsafeExecutor<Object> retryExecutor;
 
     /**
-     * @param modelName    Display name of the model; also the wire id when {@code modelId} is null.
-     * @param modelId      Id sent in the request body; null falls back to {@code modelName}.
-     * @param provider     Endpoint, endpoint prefix, authentication and wire protocol of the model.
-     * @param httpClient   OkHttp client used for every model call; never closed by the model.
-     * @param modelOptions Model options; null means {@link ModelOptions#DEFAULT}.
-     * @param tokenCounter Token counter; null means {@link GenericTokenCounter}.
+     * @param modelName           Display name of the model; also the wire id when {@code modelId} is
+     *                            null.
+     * @param modelId             Id sent in the request body; null falls back to {@code modelName}.
+     * @param provider            Endpoint, endpoint prefix, authentication and wire protocol of the
+     *                            model.
+     * @param httpClient          OkHttp client used for every model call; never closed by the model.
+     * @param modelOptions        Model options; null means {@link ModelOptions#DEFAULT}.
+     * @param tokenCounter        Token counter; null means {@link GenericTokenCounter}.
+     * @param requestTransformers Model-level request transformers applied after the provider-level
+     *                            ones; may be null.
+     * @param requestRetryPolicy  Retry policy of the model calls; null means
+     *                            {@link RequestRetryPolicy#DEFAULT} (no retry).
      */
     @Builder
     protected ConfiguredModel(final String modelName,
@@ -242,7 +250,9 @@ public class ConfiguredModel implements Model {
                               @NonNull final Provider provider,
                               final OkHttpClient httpClient,
                               final ModelOptions modelOptions,
-                              final TokenCounter tokenCounter) {
+                              final TokenCounter tokenCounter,
+                              final List<RequestTransformer> requestTransformers,
+                              final RequestRetryPolicy requestRetryPolicy) {
         this.modelName = Objects.requireNonNullElse(modelName, "default-model");
         this.modelId = modelId;
         this.provider = provider;
@@ -251,15 +261,18 @@ public class ConfiguredModel implements Model {
                 : httpClient.newBuilder().build();
         this.modelOptions = Objects.requireNonNullElse(modelOptions, ModelOptions.DEFAULT);
         this.tokenCounter = Objects.requireNonNullElseGet(tokenCounter, GenericTokenCounter::new);
+        this.requestTransformers = List.copyOf(Objects.requireNonNullElse(requestTransformers,
+                                                                          List.of()));
+        this.requestRetryPolicy = Objects.requireNonNullElse(requestRetryPolicy, RequestRetryPolicy.DEFAULT);
+        this.retryExecutor = RequestRetryExecutors.executorFor(this.requestRetryPolicy);
     }
 
     /**
      * Convenience factory: Bearer token auth, no endpoint prefix.
      *
-     * @param modelName Model name.
-     * @param baseUrl   Base URL of the provider.
-     * @param apiKey    API key sent as the Bearer token.
-     * @param protocol  Wire protocol of the provider.
+     * @param baseUrl  Base URL of the provider.
+     * @param apiKey   API key sent as the Bearer token.
+     * @param protocol Wire protocol of the provider.
      * @return ConfiguredModel wired for Bearer auth.
      */
     public static ConfiguredModel bearer(final String modelName,
@@ -340,7 +353,8 @@ public class ConfiguredModel implements Model {
                 }
 
                 generatedOutput.set(null);
-                final var ctx = buildWireContext(mapper,
+                final var ctx = buildWireContext(context,
+                                                 mapper,
                                                  modelSettings,
                                                  toolsForExecution,
                                                  outputDefinitions,
@@ -553,7 +567,8 @@ public class ConfiguredModel implements Model {
                     output = error;
                     break;
                 }
-                final var ctx = buildWireContext(mapper,
+                final var ctx = buildWireContext(context,
+                                                 mapper,
                                                  modelSettings,
                                                  toolsForExecution,
                                                  outputDefinitions,
@@ -784,21 +799,20 @@ public class ConfiguredModel implements Model {
 
     /**
      * Executes one blocking model call. Returns the decoded response, or null when the call
-     * failed; the failure details are available through {@link #capturedError()}.
+     * failed; the failure details are available through {@link #capturedError()}. Applies the
+     * {@link RequestRetryPolicy} when it is enabled.
      */
     private WireResponse callModel(final WireContext ctx, final ObjectNode requestBody) {
         try {
-            final var response = httpClient.newCall(buildOkRequest(ctx, requestBody)).execute();
+            final var response = retryExecutor.get(() -> execute(ctx, requestBody));
             try (response; final var body = response.body()) {
-                if (!response.isSuccessful()) {
-                    final var bytes = body == null ? new byte[0] : body.bytes();
-                    captured = new HttpModelCallException(response.code(),
-                                                          new String(bytes, StandardCharsets.UTF_8));
-                    return null;
-                }
                 final var json = ctx.getMapper().readTree(body == null ? new byte[0] : body.bytes());
                 return provider.getProtocol().decodeResponse(ctx, json);
             }
+        }
+        catch (final HttpModelCallException e) {
+            captured = e;
+            return null;
         }
         catch (final Exception e) {
             captured = e;
@@ -806,16 +820,89 @@ public class ConfiguredModel implements Model {
         }
     }
 
+    /**
+     * Executes one blocking HTTP call and fails with {@link HttpModelCallException} on a non-2xx
+     * response.
+     */
+    private Response execute(final WireContext ctx, final ObjectNode requestBody) throws IOException {
+        final var executed = httpClient.newCall(buildOkRequest(ctx, requestBody)).execute();
+        if (!executed.isSuccessful()) {
+            throw httpError(executed, HttpModelCallException::new);
+        }
+        return executed;
+    }
+
+    /**
+     * Builds the HTTP error of a non-2xx response. Reads the body and the {@code Retry-After}
+     * header so the retry layer can honor both.
+     */
+    private static <E extends ModelHttpException> E httpError(
+                                                              final Response response,
+                                                              final HttpErrorFactory<E> errorFactory)
+            throws IOException {
+        final var retryAfter = ModelHttpException.parseRetryAfter(response.header("Retry-After"));
+        final var body = response.body();
+        final var bytes = body == null ? new byte[0] : body.bytes();
+        final var text = new String(bytes, StandardCharsets.UTF_8);
+        response.close();
+        return errorFactory.create(response.code(), text, retryAfter);
+    }
+
+    /**
+     * Factory of one HTTP error type from the status, the body and the parsed Retry-After value.
+     */
+    @FunctionalInterface
+    private interface HttpErrorFactory<E extends ModelHttpException> {
+
+        E create(int status, String body, Duration retryAfter);
+    }
+
     private Request buildOkRequest(final WireContext ctx, final ObjectNode requestBody) {
         final var builder = new Request.Builder()
                 .url(provider.getProtocol().endpoint(ctx))
                 .header("Accept", ctx.isStreaming() ? "text/event-stream" : "application/json")
-                .header("Content-Type", "application/json")
-                .post(RequestBody.create(toBytes(ctx, requestBody), JSON_MEDIA_TYPE));
+                .header("Content-Type", "application/json");
         if (provider.getAuth() != null) {
             provider.getAuth().apply(builder);
         }
+        applyRequestTransformers(ctx, builder, requestBody);
+        builder.post(RequestBody.create(toBytes(ctx, requestBody), JSON_MEDIA_TYPE));
         return builder.build();
+    }
+
+    /**
+     * Applies the run-level (extension), provider-level and model-level request transformers in
+     * order. The first failure aborts the call with {@link RequestTransformFailedException}.
+     */
+    private void applyRequestTransformers(final WireContext ctx,
+                                          final Request.Builder builder,
+                                          final ObjectNode body) {
+        // Extension level first: core contract on run id, body and headers.
+        for (final var transformer : ctx.getExtensionRequestTransformers()) {
+            final var headers = new HashMap<String, String>();
+            try {
+                transformer.transform(ctx.getRunId(), body, headers);
+            }
+            catch (final Exception e) {
+                throw new RequestTransformFailedException(
+                                                          "Request transformer failed: %s".formatted(transformer
+                                                                  .getClass().getName()),
+                                                          e);
+            }
+            headers.forEach(builder::header);
+        }
+        // Provider level, then model level: wire contract on the request builder.
+        for (final var transformer : flattenedRequestTransformers()) {
+            try {
+                transformer.transform(builder, body, ctx);
+            }
+            catch (final Exception e) {
+                throw new RequestTransformFailedException(
+                                                          "Request transformer failed: %s".formatted(transformer
+                                                                  .getClass().getName()),
+                                                          e);
+            }
+        }
     }
 
     /**
@@ -831,7 +918,8 @@ public class ConfiguredModel implements Model {
     }
 
     @SuppressWarnings("java:S107")
-    private WireContext buildWireContext(final ObjectMapper mapper,
+    private WireContext buildWireContext(final ModelRunContext runContext,
+                                         final ObjectMapper mapper,
                                          final ModelSettings modelSettings,
                                          final Map<String, ExecutableTool> toolsForExecution,
                                          final Collection<ModelOutputDefinition> outputDefinitions,
@@ -844,6 +932,7 @@ public class ConfiguredModel implements Model {
                 .modelId(modelId)
                 .baseUrl(provider.getBaseUrl())
                 .userId(userId)
+                .runId(runContext.getRunId())
                 .modelSettings(modelSettings)
                 .tools(toolsForExecution)
                 .outputDefinitions(List.copyOf(outputDefinitions))
@@ -853,44 +942,54 @@ public class ConfiguredModel implements Model {
                 .toolChoice(modelOptions.getToolChoice())
                 .streaming(streaming)
                 .mapper(mapper)
+                .extensionRequestTransformers(List.copyOf(runContext.getRequestTransformers()))
                 .build();
+    }
+
+    /**
+     * Flattens the provider level and model level request transformers in application order.
+     */
+    private List<RequestTransformer> flattenedRequestTransformers() {
+        final var flattened = new ArrayList<RequestTransformer>(provider.getRequestTransformers().size()
+                + requestTransformers.size());
+        flattened.addAll(provider.getRequestTransformers());
+        flattened.addAll(requestTransformers);
+        return flattened;
     }
 
     /**
      * Opens the SSE stream of one model call on the executor thread of the run and waits for the
      * first response line. A non-2xx response becomes an {@link HttpStreamException} so the error
-     * path can classify it.
+     * path can classify it. The retry policy applies until the first event of the stream; a
+     * stream that already delivered events is never retried.
      */
     private Stream<SseEvent> openSseStream(final WireContext ctx, final ObjectNode requestBody) {
-        final var future = new CompletableFuture<Stream<SseEvent>>();
-        httpClient.newCall(buildOkRequest(ctx, requestBody)).enqueue(new Callback() {
-            @Override
-            public void onFailure(final Call call, final IOException e) {
-                future.completeExceptionally(e);
-            }
+        return retryExecutor.get(() -> {
+            final var future = new CompletableFuture<Stream<SseEvent>>();
+            httpClient.newCall(buildOkRequest(ctx, requestBody)).enqueue(new Callback() {
+                @Override
+                public void onFailure(final Call call, final IOException e) {
+                    future.completeExceptionally(e);
+                }
 
-            @Override
-            public void onResponse(final Call call, final Response response) throws IOException {
-                if (!response.isSuccessful()) {
-                    // Read the body so the caller can classify the error, then fail the stream.
-                    try (response) {
-                        final var body = response.body();
-                        final var bytes = body == null ? new byte[0] : body.bytes();
-                        future.completeExceptionally(new HttpStreamException(response.code(),
-                                                                             new String(bytes,
-                                                                                        StandardCharsets.UTF_8)));
+                @Override
+                public void onResponse(final Call call, final Response response) throws IOException {
+                    if (!response.isSuccessful()) {
+                        // Read the body so the caller can classify the error, then fail the stream.
+                        future.completeExceptionally(httpError(response, HttpStreamException::new));
+                        return;
                     }
-                    return;
+                    final var body = response.body();
+                    if (body == null) {
+                        response.close();
+                        future.completeExceptionally(new IOException("No response body for model stream"));
+                        return;
+                    }
+                    future.complete(SseReader.stream(response, body));
                 }
-                final var body = response.body();
-                if (body == null) {
-                    future.completeExceptionally(new IOException("No response body for model stream"));
-                    return;
-                }
-                future.complete(SseReader.stream(response, body));
-            }
+            });
+            return future.join();
         });
-        return future.join();
     }
 
     private byte[] toBytes(final WireContext ctx, final ObjectNode requestBody) {
@@ -916,6 +1015,15 @@ public class ConfiguredModel implements Model {
                                            final Throwable error,
                                            final List<AgentMessage> newMessages,
                                            final List<AgentMessage> allMessages) {
+        // A transformer failure wraps its cause; the walk to the root cause would skip it and
+        // lose the transformer-specific error type, so it is classified first.
+        if (error instanceof RequestTransformFailedException transformFailed) {
+            return createErrorResponse(context,
+                                       newMessages,
+                                       allMessages,
+                                       ErrorType.REQUEST_TRANSFORM_FAILED,
+                                       transformFailed.getMessage());
+        }
         final var rootCause = AgentUtils.rootCause(error);
         log.error("Error calling model: %s -> %s".formatted(rootCause.getClass()
                 .getSimpleName(), rootCause.getMessage()), error);
@@ -927,9 +1035,8 @@ public class ConfiguredModel implements Model {
                                        ErrorType.MODEL_CALL_COMMUNICATION_ERROR,
                                        rootCause.getMessage());
         }
-        // Now that we have all network errors covered, we check the HTTP status codes
         if (rootCause instanceof HttpModelCallException httpModelCallException) {
-            final var errorType = provider.getProtocol().classifyError(httpModelCallException.status,
+            final var errorType = provider.getProtocol().classifyError(httpModelCallException.getStatus(),
                                                                        parseErrorBody(context.getAgentSetup()
                                                                                .getMapper(),
                                                                                       httpModelCallException.body));

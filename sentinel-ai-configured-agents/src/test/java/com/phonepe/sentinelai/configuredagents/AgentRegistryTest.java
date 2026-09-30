@@ -49,10 +49,12 @@ import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
+import com.phonepe.sentinelai.models.ConfiguredModel;
 import com.phonepe.sentinelai.models.ModelOptions;
 import com.phonepe.sentinelai.models.TestStubs;
-import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpCallSpec;
 import com.phonepe.sentinelai.toolbox.remotehttp.HttpToolBox;
@@ -254,9 +256,9 @@ class AgentRegistryTest {
     @SneakyThrows
     private static JsonNode loadSchema(String schemaFilename) {
         return MAPPER.readTree(Files.readString(Path.of(Objects.requireNonNull(
-                                                                               AgentRegistryTest.class
-                                                                                       .getResource("/schema/%s"
-                                                                                               .formatted(schemaFilename)))
+                                                                               AgentRegistryTest.class.getResource(
+                                                                                                                   "/schema/%s"
+                                                                                                                           .formatted(schemaFilename)))
                 .toURI())));
     }
 
@@ -264,13 +266,17 @@ class AgentRegistryTest {
         return model(okHttpClient, wiremock, null);
     }
 
-    private static Model model(OkHttpClient okHttpClient, WireMockRuntimeInfo wiremock, ModelOptions modelOptions) {
-        return ChatCompletionsModel.builder()
+    private static Model model(OkHttpClient okHttpClient,
+                               WireMockRuntimeInfo wiremock,
+                               ModelOptions modelOptions) {
+        return ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
-                .apiKey(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH"))
-                .mapper(MAPPER)
-                .transport(OkHttpModelTransport.of(okHttpClient))
+                .provider(Provider.builder()
+                        .baseUrl(TestUtils.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer(TestUtils.getTestProperty("AZURE_API_KEY", "BLAH")))
+                        .build())
+                .httpClient(okHttpClient)
                 .modelOptions(modelOptions)
                 .build();
     }

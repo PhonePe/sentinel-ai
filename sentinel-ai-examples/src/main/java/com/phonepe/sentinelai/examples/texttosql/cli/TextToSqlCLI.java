@@ -45,8 +45,10 @@ import com.phonepe.sentinelai.examples.texttosql.tools.model.SqlQueryResult;
 import com.phonepe.sentinelai.filesystem.skills.AgentSkillsExtension;
 import com.phonepe.sentinelai.instrumentation.otel.OpenTelemetryAgentExtension;
 import com.phonepe.sentinelai.instrumentation.otel.OpenTelemetryAgentExtensionSetup;
-import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
+import com.phonepe.sentinelai.models.ConfiguredModel;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 import com.phonepe.sentinelai.toolbox.mcp.MCPToolBox;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPSSEServerConfig;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
@@ -224,7 +226,7 @@ public class TextToSqlCLI implements Callable<Integer> {
      */
     static AgentSetup buildAgentSetup(
                                       CliConfig config,
-                                      ChatCompletionsModel model,
+                                      ConfiguredModel model,
                                       ObjectMapper mapper) {
         log.info(
                  "Configuring agent setup [temperature={}, maxTokens={}, streaming={}]",
@@ -248,20 +250,22 @@ public class TextToSqlCLI implements Callable<Integer> {
     // Initialisation steps
     // -------------------------------------------------------------------------
 
-    static ChatCompletionsModel buildModel(
-                                           CliConfig config,
-                                           OkHttpClient httpClient,
-                                           ObjectMapper mapper) {
+    static ConfiguredModel buildModel(
+                                      CliConfig config,
+                                      OkHttpClient httpClient,
+                                      ObjectMapper mapper) {
         log.info(
                  "Building OpenAI Chat Completions model [name={}, baseUrl={}]",
                  config.getOpenai().getModel(),
                  config.getOpenai().getBaseUrl());
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName(config.getOpenai().getModel())
-                .baseUrl(config.getOpenai().getBaseUrl())
-                .apiKey(config.getOpenai().getApiKey())
-                .mapper(mapper)
-                .transport(OkHttpModelTransport.of(httpClient))
+                .provider(Provider.builder()
+                        .baseUrl(config.getOpenai().getBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer(config.getOpenai().getApiKey()))
+                        .build())
+                .httpClient(httpClient)
                 .build();
         log.info("Model built successfully");
         return model;

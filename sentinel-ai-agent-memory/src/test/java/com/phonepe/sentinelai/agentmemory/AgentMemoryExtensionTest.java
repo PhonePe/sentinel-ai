@@ -36,9 +36,11 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.models.ConfiguredModel;
 import com.phonepe.sentinelai.models.TestStubs;
-import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -185,12 +187,14 @@ class AgentMemoryExtensionTest {
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var httpClient = new OkHttpClient.Builder().build();
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("global:LLM_GLOBAL_GPT_4O_PRD")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(httpClient))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(httpClient)
                 .build();
 
         final var requestMetadata = AgentRequestMetadata.builder()
@@ -254,12 +258,14 @@ class AgentMemoryExtensionTest {
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
         final var httpClient = new OkHttpClient.Builder().build();
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("global:LLM_GLOBAL_GPT_4O_PRD")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(httpClient))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(httpClient)
                 .build();
 
         final var requestMetadata = AgentRequestMetadata.builder()

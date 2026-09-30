@@ -30,9 +30,11 @@ import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.core.utils.TestUtils;
+import com.phonepe.sentinelai.models.ConfiguredModel;
 import com.phonepe.sentinelai.models.TestStubs;
-import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.HttpToolReaders;
 import com.phonepe.sentinelai.toolbox.remotehttp.templating.InMemoryHttpToolSource;
 
@@ -116,12 +118,14 @@ class HttpToolBoxIntegrationTest {
                 .readTimeout(Duration.ofSeconds(180))
                 .writeTimeout(Duration.ofSeconds(120))
                 .build();
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(okHttpClient))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(okHttpClient)
                 .build();
 
         final var toolSource = InMemoryHttpToolSource.builder()

@@ -17,18 +17,19 @@
 package com.phonepe.sentinelai.configuredagents;
 
 import com.phonepe.sentinelai.core.model.Model;
-import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
+import com.phonepe.sentinelai.models.ConfiguredModel;
 
 import lombok.AllArgsConstructor;
 
 /**
- * A simple model factory that creates {@link ChatCompletionsModel} instances based on the provided
- * agent configuration. The model name from the model configuration replaces the default model name;
- * every other setting (base URL, auth, transport, protocol) is inherited from the default model.
- * Only {@link ChatCompletionsModel} is supported as the default model.
+ * A model factory that creates {@link ConfiguredModel} instances based on the provided agent
+ * configuration. The model name from the model configuration replaces the default model name;
+ * every other setting (base URL, auth, protocol, client, options, transformers, retry policy) is
+ * inherited from the default model. Only {@link ConfiguredModel} is supported as the default
+ * model.
  */
 @AllArgsConstructor
-public class ChatCompletionsModelFactory implements ModelFactory {
+public class ConfiguredModelFactory implements ModelFactory {
 
     @Override
     public Model build(AgentConfiguration agentConfig,
@@ -37,16 +38,16 @@ public class ChatCompletionsModelFactory implements ModelFactory {
         if (providedSetting == null) {
             return defaultModel;
         }
-        if (defaultModel instanceof ChatCompletionsModel chatCompletionsModel) {
+        if (defaultModel instanceof ConfiguredModel configuredModel) {
             final var modelName = providedSetting.getName();
-            return ChatCompletionsModel.builder()
+            return ConfiguredModel.builder()
                     .modelName(modelName)
-                    .baseUrl(chatCompletionsModel.getBaseUrl())
-                    .protocol(chatCompletionsModel.getProtocol())
-                    .transport(chatCompletionsModel.getTransport())
-                    .mapper(chatCompletionsModel.getMapper())
-                    .modelOptions(chatCompletionsModel.getModelOptions())
-                    .tokenCounter(chatCompletionsModel.getTokenCounter())
+                    .provider(configuredModel.getProvider())
+                    .httpClient(configuredModel.getHttpClient())
+                    .modelOptions(configuredModel.getModelOptions())
+                    .tokenCounter(configuredModel.getTokenCounter())
+                    .requestTransformers(configuredModel.getRequestTransformers())
+                    .requestRetryPolicy(configuredModel.getRequestRetryPolicy())
                     .build();
         }
         throw new IllegalArgumentException("Unsupported model type: " + defaultModel

@@ -22,6 +22,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 
+import java.util.List;
+
 /**
  * Everything about the remote model endpoint: base URL, endpoint prefix, authentication and
  * the wire protocol. Models pair one provider with a model name; the provider owns where and
@@ -51,4 +53,10 @@ public class Provider {
      */
     private final Auth auth;
 
+    /**
+     * Request transformers applied to every request after authentication and before
+     * serialization; may be empty. See {@link RequestTransformer} for the contract.
+     */
+    @Builder.Default
+    private final List<RequestTransformer> requestTransformers = List.of();
 }

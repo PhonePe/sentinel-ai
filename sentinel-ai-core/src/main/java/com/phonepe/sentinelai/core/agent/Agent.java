@@ -49,6 +49,7 @@ import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
+import com.phonepe.sentinelai.core.model.transformer.RequestTransformer;
 import com.phonepe.sentinelai.core.outputvalidation.DefaultOutputValidator;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidationResults;
 import com.phonepe.sentinelai.core.outputvalidation.OutputValidator;
@@ -369,7 +370,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                         AgentUtils.userId(context),
                                                         mergedAgentSetup,
                                                         modelUsageStats,
-                                                        processingMode);
+                                                        processingMode,
+                                                        extensionRequestTransformers(context,
+                                                                                     input.getRequest()));
         final var outputDefinitions = populateOutputDefinitions(processingMode);
         final var retryPolicy = Agent.<T>buildRetryPolicy(mergedAgentSetup);
         return Failsafe.with(List.of(retryPolicy))
@@ -525,7 +528,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                                                                           context),
                                                         mergedAgentSetup,
                                                         modelUsageStats,
-                                                        processingMode);
+                                                        processingMode,
+                                                        extensionRequestTransformers(context,
+                                                                                     input.getRequest()));
         final var outputDefinitions = isTextStreaming
                 ? List.<ModelOutputDefinition>of()
                 : populateOutputDefinitions(processingMode);
@@ -743,6 +748,15 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
      * @param mergedAgentSetup The merged agent setup of the run.
      * @return The strategy to use for the run.
      */
+    /**
+     * Collects the request transformers of all extensions of this agent in extension order.
+     */
+    private List<RequestTransformer> extensionRequestTransformers(AgentRunContext<R> context, R request) {
+        return extensions.stream()
+                .flatMap(extension -> extension.requestTransformers(request, context, self).stream())
+                .toList();
+    }
+
     private EarlyTerminationStrategy toolLoopProtectedStrategy(AgentSetup mergedAgentSetup) {
         final var protectionSetup = Objects.requireNonNullElse(mergedAgentSetup.getToolLoopProtectionSetup(),
                                                                ToolLoopProtectionSetup.DEFAULT);

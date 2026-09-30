@@ -45,9 +45,11 @@ import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.embedding.HuggingfaceEmbeddingModel;
 import com.phonepe.sentinelai.filesystem.memory.FileSystemAgentMemoryStorage;
 import com.phonepe.sentinelai.filesystem.session.FileSystemSessionStore;
+import com.phonepe.sentinelai.models.ConfiguredModel;
 import com.phonepe.sentinelai.models.TestStubs;
-import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 import com.phonepe.sentinelai.session.AgentSessionExtension;
 import com.phonepe.sentinelai.session.AgentSessionExtensionSetup;
 import com.phonepe.sentinelai.session.SessionSummary;
@@ -158,15 +160,17 @@ class AgentIntegrationTest {
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
 
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(new OkHttpClient.Builder().callTimeout(Duration.ofSeconds(180))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(new OkHttpClient.Builder().callTimeout(Duration.ofSeconds(180))
                         .connectTimeout(Duration.ofSeconds(120)).readTimeout(Duration.ofSeconds(180)).writeTimeout(
                                                                                                                    Duration.ofSeconds(120))
-                        .build()))
+                        .build())
                 .build();
         final var requestMetadata = AgentRequestMetadata.builder()
                 .sessionId("s1")

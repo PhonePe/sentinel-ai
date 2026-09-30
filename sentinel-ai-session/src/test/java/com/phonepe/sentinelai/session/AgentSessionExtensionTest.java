@@ -39,9 +39,11 @@ import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 import com.phonepe.sentinelai.core.utils.AgentUtils;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.models.ConfiguredModel;
 import com.phonepe.sentinelai.models.TestStubs;
-import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -210,12 +212,14 @@ class AgentSessionExtensionTest {
         TestStubs.setupMocks(7, "se", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(new OkHttpClient.Builder().build()))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(new OkHttpClient.Builder().build())
                 .build();
 
 
@@ -594,12 +598,14 @@ class AgentSessionExtensionTest {
         TestStubs.setupMocks(8, "summarize", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(new OkHttpClient.Builder().build()))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(new OkHttpClient.Builder().build())
                 .build();
 
         final var sessionStore = new InMemorySessionStore();
@@ -697,12 +703,14 @@ class AgentSessionExtensionTest {
         TestStubs.setupMocks(8, "summarize", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(new OkHttpClient.Builder().build()))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(new OkHttpClient.Builder().build())
                 .build();
 
 
@@ -902,12 +910,14 @@ class AgentSessionExtensionTest {
         TestStubs.setupMocks(3, "sessionless", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(new OkHttpClient.Builder().build()))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(new OkHttpClient.Builder().build())
                 .build();
 
 
@@ -968,12 +978,14 @@ class AgentSessionExtensionTest {
         TestStubs.setupMocks(7, "se", getClass());
         final var objectMapper = JsonUtils.createMapper();
         final var toolbox = new TestToolBox("Santanu");
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(new OkHttpClient.Builder().build()))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(new OkHttpClient.Builder().build())
                 .build();
 
         final var sessionStore = new InMemorySessionStore();
@@ -1075,12 +1087,14 @@ class AgentSessionExtensionTest {
     void testSaveMessagesEmptyAfterModifiers(final WireMockRuntimeInfo wiremock) {
         TestStubs.setupMocks(7, "se", getClass());
         final var objectMapper = JsonUtils.createMapper();
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(new OkHttpClient.Builder().build()))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(new OkHttpClient.Builder().build())
                 .build();
 
         final var sessionStore = new InMemorySessionStore();

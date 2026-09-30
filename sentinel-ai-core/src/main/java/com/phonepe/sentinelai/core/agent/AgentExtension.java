@@ -21,6 +21,7 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.model.transformer.RequestTransformer;
 import com.phonepe.sentinelai.core.tools.ToolBox;
 
 import lombok.Value;
@@ -135,5 +136,20 @@ public interface AgentExtension<R, T, A extends Agent<R, T, A>> extends ToolBox 
     }
 
     Optional<ModelOutputDefinition> outputSchema(ProcessingMode processingMode);
+
+    /**
+     * Request transformers contributed by this extension for a run. The model applies them to
+     * every request of the run, before the provider level and model level transformers.
+     *
+     * @param request Request as received by the agent
+     * @param context Context for the agent run
+     * @param agent   Reference to the agent
+     * @return List of request transformers; empty by default
+     */
+    default List<RequestTransformer> requestTransformers(R request,
+                                                         AgentRunContext<R> context,
+                                                         A agent) {
+        return List.of();
+    }
 
 }

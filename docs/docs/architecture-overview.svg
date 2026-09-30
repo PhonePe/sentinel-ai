@@ -45,7 +45,7 @@
   <text x="350" y="98"  font-size="12" fill="#222">CliConfig from YAML</text>
   <text x="350" y="120" font-size="12" fill="#222">SQLite file + seed data</text>
   <text x="350" y="142" font-size="12" fill="#222">OkHttp + auth interceptor</text>
-  <text x="350" y="164" font-size="12" fill="#222">ChatCompletionsModel</text>
+  <text x="350" y="164" font-size="12" fill="#222">ConfiguredModel + Provider</text>
   <text x="350" y="186" font-size="12" fill="#222">ModelSettings + output mode</text>
   <text x="350" y="208" font-size="12" fill="#222">AgentSkillsExtension / SKILL.md</text>
   <text x="350" y="230" font-size="12" fill="#222">TextToSqlAgent</text>

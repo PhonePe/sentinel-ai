@@ -21,14 +21,17 @@ import com.phonepe.sentinelai.core.model.Model;
 /**
  * Factory that creates a {@link Model} from an {@link LLMIdentifier}.
  *
- * <p>Implement this interface to wire a concrete LLM backend (e.g. {@code ChatCompletionsModel})
+ * <p>Implement this interface to wire a concrete LLM backend (e.g. {@code ConfiguredModel})
  * into the {@link MetricExecutorRegistry}:
  *
  * <pre>{@code
- * LLMModelFactory factory = identifier -> ChatCompletionsModel.builder()
+ * LLMModelFactory factory = identifier -> ConfiguredModel.builder()
  *         .modelName(identifier.modelId())
- *         .baseUrl(baseUrl)
- *         .apiKey(apiKey)
+ *         .provider(Provider.builder()
+ *                 .baseUrl(baseUrl)
+ *                 .protocol(new ChatCompletionsProtocol())
+ *                 .auth(HeaderAuth.bearer(apiKey))
+ *                 .build())
  *         .build();
  *
  * MetricExecutorRegistry registry = MetricExecutorRegistry.withDefaults(

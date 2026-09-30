@@ -32,9 +32,11 @@ import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.models.ConfiguredModel;
 import com.phonepe.sentinelai.models.TestStubs;
-import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
-import com.phonepe.sentinelai.models.transport.OkHttpModelTransport;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
 
 import lombok.NonNull;
@@ -76,12 +78,14 @@ class MCPToolBoxTest {
         TestStubs.setupMocks(2, "tc", getClass());
         final var httpClient = new OkHttpClient.Builder().build();
         final var objectMapper = JsonUtils.createMapper();
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(httpClient))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(httpClient)
                 .build();
 
         final var agent = new MCPTestAgent(AgentSetup.builder()
@@ -121,12 +125,14 @@ class MCPToolBoxTest {
         TestStubs.setupMocks(3, "st", getClass());
         final var httpClient = new OkHttpClient.Builder().build();
         final var objectMapper = JsonUtils.createMapper();
-        final var model = ChatCompletionsModel.builder()
+        final var model = ConfiguredModel.builder()
                 .modelName("gpt-4o")
-                .baseUrl(wiremock.getHttpBaseUrl())
-                .apiKey("test-key")
-                .mapper(objectMapper)
-                .transport(OkHttpModelTransport.of(httpClient))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer("test-key"))
+                        .build())
+                .httpClient(httpClient)
                 .build();
         final var toolBox = new MCPToolBox("test_mcp",
                                            objectMapper,

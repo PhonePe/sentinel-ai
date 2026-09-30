@@ -42,7 +42,14 @@ import java.util.concurrent.ExecutorService;
  *         new EmbeddingModelIdentifier("text-embedding-3-small"),
  *         id -> new HuggingfaceEmbeddingModel(id.modelId(), ...),
  *         new LLMIdentifier("gpt-4o"),
- *         id -> ChatCompletionsModel.builder().modelName(id.modelId()).baseUrl(baseUrl).apiKey(apiKey).build())
+ *         id -> ConfiguredModel.builder()
+ *                 .modelName(id.modelId())
+ *                 .provider(Provider.builder()
+ *                         .baseUrl(baseUrl)
+ *                         .protocol(new ChatCompletionsProtocol())
+ *                         .auth(HeaderAuth.bearer(apiKey))
+ *                         .build())
+ *                 .build())
  *     .register(MyMetric.class, new MetricExecutorFactory() {
  *         public <R, T> MetricExecutor<R, T> create(Metric<R, T> metric,
  *                                                   ObjectMapper objectMapper,

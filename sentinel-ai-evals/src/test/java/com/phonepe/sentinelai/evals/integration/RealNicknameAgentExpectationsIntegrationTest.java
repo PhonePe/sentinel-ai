@@ -41,8 +41,11 @@ import com.phonepe.sentinelai.evals.tests.metrics.EmbeddingModelIdentifier;
 import com.phonepe.sentinelai.evals.tests.metrics.LLMIdentifier;
 import com.phonepe.sentinelai.evals.tests.metrics.LLMModelFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorRegistry;
+import com.phonepe.sentinelai.models.ConfiguredModel;
 import com.phonepe.sentinelai.models.ModelOptions;
-import com.phonepe.sentinelai.models.openai.ChatCompletionsModel;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -171,11 +174,13 @@ class RealNicknameAgentExpectationsIntegrationTest {
                                "OPENAI_BASE_URL/OPENAI_ENDPOINT is required for real tests");
         Assumptions.assumeTrue(apiKey != null && !apiKey.isBlank(), "OPENAI_API_KEY is required for real tests");
 
-        return ChatCompletionsModel.builder()
+        return ConfiguredModel.builder()
                 .modelName(modelName)
-                .baseUrl(endpoint)
-                .apiKey(apiKey)
-                .mapper(mapper)
+                .provider(Provider.builder()
+                        .baseUrl(endpoint)
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(HeaderAuth.bearer(apiKey))
+                        .build())
                 .modelOptions(ModelOptions.builder()
                         .toolChoice(ModelOptions.ToolChoice.AUTO)
                         .build())

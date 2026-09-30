@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.phonepe.sentinelai.core.agent.ModelOutputDefinition;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
+import com.phonepe.sentinelai.core.model.transformer.RequestTransformer;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.models.ModelOptions;
 
@@ -58,6 +59,11 @@ public class WireContext {
      * User id for this run; null when not provided.
      */
     String userId;
+
+    /**
+     * Id of the run that produces this request; null when not provided.
+     */
+    String runId;
 
     /**
      * Model settings (temperature, max tokens, penalties, reasoning, ...); may be null.
@@ -120,6 +126,15 @@ public class WireContext {
      */
     @NonNull
     ObjectMapper mapper;
+
+    /**
+     * Extension request transformers of this run. The engine applies them first, before the
+     * provider level and model level transformers. Empty when no extension declares any.
+     */
+    @Builder.Default
+    @NonNull
+    List<RequestTransformer> extensionRequestTransformers = List.of();
+
 
     /**
      * Returns the id to send in the request body: {@link #modelId} when set, else

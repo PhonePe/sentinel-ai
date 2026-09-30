@@ -44,6 +44,7 @@ public enum ErrorType {
     MODEL_CALL_COMMUNICATION_ERROR("Network error", true),
     MODEL_CALL_RATE_LIMIT_EXCEEDED("Rate limit exceeded: %s", true),
     MODEL_CALL_HTTP_FAILURE("Error making HTTP Call: %s", true),
+    REQUEST_TRANSFORM_FAILED("Request transform failed: %s", true),
     MALFORMED_MODEL_CALL_RESPONSE_ERROR("Model call response is malformed: %s", false),
     UNKNOWN("Unknown response", true),
     MODEL_RUN_TERMINATED("Model run was terminated", false),

@@ -30,6 +30,11 @@
             <version>${okhttp.version}</version>
         </dependency>
         <dependency>
+            <groupId>dev.failsafe</groupId>
+            <artifactId>failsafe</artifactId>
+            <version>${failsafe.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.phonepe.sentinel-ai</groupId>
             <artifactId>sentinel-ai-core</artifactId>
             <version>${project.version}</version>
