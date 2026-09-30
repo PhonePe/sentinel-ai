@@ -131,6 +131,7 @@
         <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
         <commons-text.version>1.13.1</commons-text.version>
         <jackson.version>2.18.3</jackson.version>
+        <jolt.version>0.1.8</jolt.version>
         <mockito.version>5.20.0</mockito.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <spotless.version>3.2.1</spotless.version>

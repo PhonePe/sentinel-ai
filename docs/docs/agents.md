@@ -276,6 +276,34 @@ final var model = ConfiguredModel.builder()
         .build();
 ```
 
+#### Request Transformers
+
+A `RequestTransformer` mutates the request body, the headers or the request after authentication and before
+serialization. Declare transformers on the `Provider`, on the model, or per run through agent extensions. The model
+applies them in that order; each transformer sees the output of the previous one.
+
+`JoltRequestTransformer` applies a chain of [Jolt](https://github.com/bazaarvoice/jolt) operations to the request body.
+Use it for vendor-specific payload fields that no protocol setting covers. Load the transform list from a typed list,
+a JSON string or a JSON node:
+
+```java
+final var model = ConfiguredModel.builder()
+        .modelName("qwen3")
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ChatCompletionsProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .requestTransformer(JoltRequestTransformer.fromJson("""
+                        [
+                          {"operation": "default", "spec": {"chat_template_kwargs": {"thinking": false}}}
+                        ]"""))
+                .build())
+        .build();
+```
+
+A transformer that throws aborts the model call. The failure is reported as a `REQUEST_TRANSFORM_FAILED` error.
+For declarative body fields that do not need Jolt logic, `ModelOptions.extras` stays the simpler option.
+
 ### Retry Setup
 The `RetrySetup` class is a configuration class that is used to configure the retry mechanism for model calls.
 

@@ -9,6 +9,12 @@
   authentication (`HeaderAuth.bearer`, `HeaderAuth.of`, or a user supplied `OkHttpClient` with interceptors).
 - Added `ModelOptions` with tool choice control (`REQUIRED`, `AUTO`, `DEFAULT`), token counting configuration and a
   free-form `extras` JSON node merged into the request body last (extras win) for open-weight server specific fields.
+- Added the `RequestTransformer` SPI. Transformers mutate the request body, headers or request after authentication
+  and before serialization. Declare them on the `Provider`, on the model, or per run through agent extensions.
+- Added `JoltRequestTransformer`, a `RequestTransformer` that applies a chain of Jolt operations to the request body.
+  Load the transform list from a typed list, a JSON string or a JSON node.
+- Added `RequestRetryPolicy` with Failsafe based retry for model calls: retry on IOException and HTTP 429/500/502/
+  503/504, with `Retry-After` support. The default policy does not retry.
 
 ## 1.2.0
 
