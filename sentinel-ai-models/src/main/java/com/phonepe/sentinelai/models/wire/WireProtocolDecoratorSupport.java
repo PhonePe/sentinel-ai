@@ -54,10 +54,9 @@ public abstract class WireProtocolDecoratorSupport implements WireProtocol {
     }
 
     @Override
-    public WireStreamEvent decodeStreamEvent(final WireContext ctx, final SseEvent event) {
+    public List<WireStreamEvent> decodeStreamEvent(final WireContext ctx, final SseEvent event) {
         return delegate().decodeStreamEvent(ctx, transformStreamEvent(event));
     }
-
 
     @Override
     public MessageCodec messageCodec() {

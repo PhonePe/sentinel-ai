@@ -49,6 +49,7 @@ public class ResponsesFields {
     public static final String NAME = "name";
     public static final String SCHEMA = "schema";
     public static final String STRICT = "strict";
+    public static final String PROPERTIES = "properties";
 
     // Tools (flat: {type: function, name, description, parameters, strict})
     public static final String DESCRIPTION = "description";

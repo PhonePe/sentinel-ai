@@ -18,6 +18,7 @@ package com.phonepe.sentinelai.models;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
@@ -267,7 +268,7 @@ class JoltRequestTransformerTest {
                                                    .build());
 
         assertEquals(ErrorType.REQUEST_TRANSFORM_FAILED, response.getError().getErrorType());
-        com.github.tomakehurst.wiremock.client.WireMock.verify(0, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
+        WireMock.verify(0, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
     }
 
     @Test
@@ -295,10 +296,10 @@ class JoltRequestTransformerTest {
                                                    .build());
 
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-        com.github.tomakehurst.wiremock.client.WireMock.verify(
-                                                               postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
-                                                                       .withRequestBody(matchingJsonPath(
-                                                                                                         "$.chat_template_kwargs[?(@.thinking == false)]")));
+        WireMock.verify(
+                        postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
+                                .withRequestBody(matchingJsonPath(
+                                                                  "$.chat_template_kwargs[?(@.thinking == false)]")));
     }
 
     private record OutputObject(

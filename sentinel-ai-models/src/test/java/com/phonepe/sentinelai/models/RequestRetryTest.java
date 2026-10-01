@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.models;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
@@ -118,7 +119,7 @@ class RequestRetryTest {
         final var response = execute(agent);
 
         assertEquals(ErrorType.MODEL_CALL_HTTP_FAILURE, response.getError().getErrorType());
-        com.github.tomakehurst.wiremock.client.WireMock.verify(1, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
+        WireMock.verify(1, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
     }
 
     @Test
@@ -136,7 +137,7 @@ class RequestRetryTest {
         final var response = execute(agent);
 
         assertEquals(ErrorType.MODEL_CALL_HTTP_FAILURE, response.getError().getErrorType());
-        com.github.tomakehurst.wiremock.client.WireMock.verify(1, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
+        WireMock.verify(1, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
     }
 
     @Test
@@ -165,7 +166,7 @@ class RequestRetryTest {
         final var response = execute(agent);
 
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-        com.github.tomakehurst.wiremock.client.WireMock.verify(3, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
+        WireMock.verify(3, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
     }
 
     @Test
@@ -194,7 +195,7 @@ class RequestRetryTest {
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertTrue(elapsed.compareTo(Duration.ofSeconds(1)) >= 0,
                    "Retry-After: 1 must delay the retry by at least one second, took " + elapsed);
-        com.github.tomakehurst.wiremock.client.WireMock.verify(2, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
+        WireMock.verify(2, postRequestedFor(urlEqualTo(TestStubs.ENDPOINT)));
     }
 
     private record OutputObject(

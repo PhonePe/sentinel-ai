@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.models.openai;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
@@ -222,11 +223,11 @@ class ConfiguredModelResponsesTest {
         final var response = execute(agent);
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
 
-        com.github.tomakehurst.wiremock.client.WireMock.verify(com.github.tomakehurst.wiremock.client.WireMock
-                .postRequestedFor(com.github.tomakehurst.wiremock.client.WireMock
+        WireMock.verify(WireMock
+                .postRequestedFor(WireMock
                         .urlEqualTo(ENDPOINT))
                 .withHeader("Authorization",
-                            com.github.tomakehurst.wiremock.client.WireMock
+                            WireMock
                                     .equalTo("Bearer test-key")));
     }
 
@@ -243,7 +244,7 @@ class ConfiguredModelResponsesTest {
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertNotNull(response.getData());
 
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
+        WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
                 .withRequestBody(matchingJsonPath(
                                                   "$.instructions",
                                                   containing("Greet the user by name and respond to queries")))
@@ -266,9 +267,9 @@ class ConfiguredModelResponsesTest {
         final var response = execute(agent);
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
 
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
+        WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
                 .withHeader("Accept", equalTo("application/json"))
-                .withRequestBody(com.github.tomakehurst.wiremock.client.WireMock
+                .withRequestBody(WireMock
                         .notContaining("\"stream\"")));
     }
 
@@ -328,7 +329,7 @@ class ConfiguredModelResponsesTest {
                 .build(), streamConsumer())
                 .join();
 
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
+        WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
                 .withHeader("Accept", equalTo("text/event-stream"))
                 .withRequestBody(matchingJsonPath("$[?(@.stream == true)]")));
     }
@@ -363,7 +364,7 @@ class ConfiguredModelResponsesTest {
         final var response = execute(agent);
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
 
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
+        WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
                 .withRequestBody(matchingJsonPath(
                                                   "$.text.format[?(@.type == 'json_schema')].json_schema.name",
                                                   equalTo("model_output"))));
@@ -420,8 +421,8 @@ class ConfiguredModelResponsesTest {
         assertEquals(1, response.getUsage().getRequestsForRun());
         assertTrue(response.getUsage().getTotalTokens() > 1);
 
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
-                .withRequestBody(com.github.tomakehurst.wiremock.client.WireMock
+        WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
+                .withRequestBody(WireMock
                         .notContaining("\"tools\"")));
     }
 

@@ -25,7 +25,10 @@ import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.models.ModelOptions;
+import com.phonepe.sentinelai.models.wire.SseEvent;
 import com.phonepe.sentinelai.models.wire.WireContext;
+import com.phonepe.sentinelai.models.wire.WireResponse;
+import com.phonepe.sentinelai.models.wire.WireStreamEvent;
 
 import java.util.List;
 import java.util.Map;
@@ -54,6 +57,16 @@ class ChatCompletionsProtocolTest {
     }
 
     @Test
+    void blockingRequestOmitsStreamOptions() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var body = protocol.buildRequestBody(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                   List.of());
+
+        assertFalse(body.has(ChatCompletionsFields.STREAM_OPTIONS));
+    }
+
+    @Test
     void classifyErrorMapsRateLimitAndOthers() {
         final var protocol = new ChatCompletionsProtocol();
 
@@ -61,6 +74,22 @@ class ChatCompletionsProtocolTest {
                      protocol.classifyError(429, mapper.nullNode()));
         assertEquals(ErrorType.MODEL_CALL_HTTP_FAILURE,
                      protocol.classifyError(500, mapper.nullNode()));
+    }
+
+    @Test
+    void emptyOutputDefinitionsOmitResponseFormat() {
+        final var protocol = new ChatCompletionsProtocol();
+        final var schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        schema.set("properties", mapper.createObjectNode());
+        schema.set("required", mapper.createArrayNode());
+        final var ctx = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null).toBuilder()
+                .outputSchema(schema)
+                .build();
+
+        final var body = protocol.buildRequestBody(ctx, List.of());
+
+        assertFalse(body.has(ChatCompletionsFields.RESPONSE_FORMAT));
     }
 
     @Test
@@ -134,6 +163,59 @@ class ChatCompletionsProtocolTest {
     }
 
     @Test
+    void finishAndUsageSameFrameKeepsBoth() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var events = protocol.decodeStreamEvent(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                      sseEvent("""
+                                                              {"choices": [{"finish_reason": "stop"}],
+                                                               "usage": {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7}}
+                                                              """));
+
+        assertEquals(1, events.size());
+        final var finish = (WireStreamEvent.StreamFinishEvent) events.get(0);
+        assertEquals(WireResponse.FinishReasons.STOP, finish.finishReason());
+        assertEquals(3, finish.usage().inputTokens());
+        assertEquals(4, finish.usage().outputTokens());
+        assertEquals(7, finish.usage().totalTokens());
+    }
+
+    @Test
+    void frameWithContentToolCallAndFinishKeepsAllEvents() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var events = protocol.decodeStreamEvent(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                      sseEvent("""
+                                                              {"choices": [{"index": 0, "delta": {"content": "partial", "tool_calls": [{"index": 0, "id": "call-1", "function": {"name": "read_file"}}]}, "finish_reason": "tool_calls"}]}"""));
+
+        assertEquals(3, events.size());
+        assertEquals(WireStreamEvent.ContentDelta.class, events.get(0).getClass());
+        assertEquals("partial", ((WireStreamEvent.ContentDelta) events.get(0)).content());
+        assertEquals(WireStreamEvent.ToolCallDelta.class, events.get(1).getClass());
+        assertEquals("call-1", ((WireStreamEvent.ToolCallDelta) events.get(1)).id());
+        assertEquals("read_file", ((WireStreamEvent.ToolCallDelta) events.get(1)).name());
+        assertEquals(WireStreamEvent.StreamFinishEvent.class, events.get(2).getClass());
+    }
+
+    @Test
+    void frameWithToolCallAndFinishReasonKeepsBothEvents() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var events = protocol.decodeStreamEvent(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                      sseEvent("""
+                                                              {"choices": [{"index": 0, "delta": {"tool_calls": [{"index": 0, "function": {"arguments": "{\\"path\\": \\"README.md\\"}"}}]}, "finish_reason": "tool_calls"}]}"""));
+
+        assertEquals(2, events.size());
+        assertEquals(WireStreamEvent.ToolCallDelta.class, events.get(0).getClass());
+        final var delta = (WireStreamEvent.ToolCallDelta) events.get(0);
+        assertEquals(0, delta.index());
+        assertEquals("{\"path\": \"README.md\"}", delta.argumentsFragment());
+        assertEquals(WireStreamEvent.StreamFinishEvent.class, events.get(1).getClass());
+        assertEquals(WireResponse.FinishReasons.TOOL_CALLS,
+                     ((WireStreamEvent.StreamFinishEvent) events.get(1)).finishReason());
+    }
+
+    @Test
     void noExtrasLeavesBodyUntouched() {
         final var protocol = new ChatCompletionsProtocol();
         final var settings = ModelSettings.builder().temperature(0.1f).build();
@@ -143,6 +225,16 @@ class ChatCompletionsProtocolTest {
 
         assertEquals(0.1, body.get("temperature").asDouble(), 0.000001);
         assertNull(body.get("top_k"));
+    }
+
+    @Test
+    void nullSchemaOmitsResponseFormat() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var body = protocol.buildRequestBody(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                   List.of());
+
+        assertFalse(body.has(ChatCompletionsFields.RESPONSE_FORMAT));
     }
 
     @Test
@@ -160,6 +252,22 @@ class ChatCompletionsProtocolTest {
     }
 
     @Test
+    void schemaOnWireBuildsResponseFormat() {
+        final var protocol = new ChatCompletionsProtocol();
+        final var schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        schema.set("properties",
+                   mapper.createObjectNode().set("answer", mapper.createObjectNode().put("type", "string")));
+        final var ctx = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null).toBuilder()
+                .outputSchema(schema)
+                .build();
+
+        final var body = protocol.buildRequestBody(ctx, List.of());
+
+        assertTrue(body.has(ChatCompletionsFields.RESPONSE_FORMAT));
+    }
+
+    @Test
     void streamingRequestCarriesStreamFlag() {
         final var protocol = new ChatCompletionsProtocol();
         final var ctx = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null).toBuilder()
@@ -169,6 +277,47 @@ class ChatCompletionsProtocolTest {
         final var body = protocol.buildRequestBody(ctx, List.of());
 
         assertTrue(body.get(ChatCompletionsFields.STREAM).asBoolean());
+    }
+
+    @Test
+    void streamingRequestCarriesStreamOptionsIncludeUsage() {
+        final var protocol = new ChatCompletionsProtocol();
+        final var ctx = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null).toBuilder()
+                .streaming(true)
+                .build();
+
+        final var body = protocol.buildRequestBody(ctx, List.of());
+
+        assertTrue(body.get(ChatCompletionsFields.STREAM_OPTIONS)
+                .get(ChatCompletionsFields.INCLUDE_USAGE)
+                .asBoolean());
+    }
+
+    @Test
+    void unrelatedFrameYieldsEmptyEventList() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var events = protocol.decodeStreamEvent(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                      sseEvent("""
+                                                              {"choices": [], "created": 0}"""));
+
+        assertTrue(events.isEmpty());
+    }
+
+    @Test
+    void usageOnlyFrameYieldsUsageEvent() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var events = protocol.decodeStreamEvent(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                      sseEvent("""
+                                                              {"usage": {"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12}}
+                                                              """));
+
+        assertEquals(1, events.size());
+        final var usage = ((WireStreamEvent.StreamUsageEvent) events.get(0)).usage();
+        assertEquals(5, usage.inputTokens());
+        assertEquals(7, usage.outputTokens());
+        assertEquals(12, usage.totalTokens());
     }
 
     private WireContext context(final OutputGenerationMode mode,
@@ -195,6 +344,10 @@ class ChatCompletionsProtocolTest {
         catch (final Exception e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private SseEvent sseEvent(final String json) {
+        return new SseEvent(null, json);
     }
 
 }

@@ -203,13 +203,13 @@ public class TestWireProtocol implements WireProtocol {
     }
 
     @Override
-    public WireStreamEvent decodeStreamEvent(final WireContext ctx, final SseEvent event) {
+    public List<WireStreamEvent> decodeStreamEvent(final WireContext ctx, final SseEvent event) {
         final JsonNode body;
         try {
             body = ctx.getMapper().readTree(event.data());
         }
         catch (final Exception e) {
-            return null;
+            return List.of();
         }
         final var events = new ArrayList<WireStreamEvent>();
         final var choices = body.get("choices");
@@ -241,22 +241,21 @@ public class TestWireProtocol implements WireProtocol {
             }
             final var finishReason = textOrNull(choice.get("finish_reason"));
             if (finishReason != null) {
+                // The finish event carries the usage when both arrive on the same frame.
+                // The usage event stays out of the list so the loop does not merge it twice.
                 events.add(new WireStreamEvent.StreamFinishEvent(normalizeFinishReason(finishReason),
                                                                  delta == null
                                                                          ? null
-                                                                         : textOrNull(delta.get("refusal"))));
+                                                                         : textOrNull(delta.get("refusal")),
+                                                                 decodeUsage(body.get("usage"))));
+                return events;
             }
         }
         final var usage = decodeUsage(body.get("usage"));
         if (usage != null) {
             events.add(new WireStreamEvent.StreamUsageEvent(usage));
         }
-        if (events.isEmpty()) {
-            return null;
-        }
-        // One neutral event per frame in this stub. Finish wins over usage; the fixtures never
-        // combine them.
-        return events.get(events.size() - 1);
+        return events;
     }
 
     @Override

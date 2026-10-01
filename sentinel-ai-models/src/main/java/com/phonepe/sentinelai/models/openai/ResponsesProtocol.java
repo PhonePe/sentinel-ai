@@ -150,7 +150,7 @@ public class ResponsesProtocol implements WireProtocol {
             addTools(ctx, body);
         }
         if (ctx.getOutputGenerationMode().equals(OutputGenerationMode.STRUCTURED_OUTPUT)
-                && ctx.getOutputSchema() != null) {
+                && hasProperties(ctx.getOutputSchema())) {
             final var text = mapper.createObjectNode();
             final var format = mapper.createObjectNode();
             format.put(TYPE, JSON_SCHEMA);
@@ -222,18 +222,17 @@ public class ResponsesProtocol implements WireProtocol {
     }
 
     @Override
-    public WireStreamEvent decodeStreamEvent(final WireContext ctx, final SseEvent event) {
+    public List<WireStreamEvent> decodeStreamEvent(final WireContext ctx, final SseEvent event) {
         final JsonNode body;
         try {
             body = ctx.getMapper().readTree(event.data());
         }
         catch (final Exception e) {
-            return null;
+            return List.of();
         }
         final var name = event.event() != null ? event.event() : textOrNull(body.get(TYPE));
-        return switch (name) {
-            case EVENT_OUTPUT_TEXT_DELTA -> contentDelta(body.get(DELTA),
-                                                         body.get(TEXT_FIELD));
+        final WireStreamEvent decoded = switch (name) {
+            case EVENT_OUTPUT_TEXT_DELTA -> contentDelta(body.get(DELTA), body.get(TEXT_FIELD));
             case EVENT_REASONING_DELTA, EVENT_REASONING_SUMMARY_TEXT_DELTA -> contentDelta(body.get(DELTA),
                                                                                            body.get(TEXT_FIELD));
             case EVENT_REFUSAL_DELTA -> contentDelta(body.get(DELTA), body.get(REFUSAL));
@@ -245,17 +244,16 @@ public class ResponsesProtocol implements WireProtocol {
                                                                                           null,
                                                                                           textOrEmpty(body.get(DELTA)));
             case EVENT_RESPONSE_COMPLETED -> finalResponseEvent(ctx, body.get(RESPONSE));
-            case EVENT_RESPONSE_FAILED, EVENT_RESPONSE_INCOMPLETE -> {
-                final var response = body.get(RESPONSE);
-                yield new WireStreamEvent.StreamFinishEvent(
-                                                            finishReasonOf(response == null
-                                                                    ? body
-                                                                    : response,
-                                                                           false),
-                                                            null);
-            }
+            case EVENT_RESPONSE_FAILED, EVENT_RESPONSE_INCOMPLETE -> new WireStreamEvent.StreamFinishEvent(
+                                                                                                           finishReasonOf(body
+                                                                                                                   .get(RESPONSE)
+                                                                                                                   == null ? body
+                                                                                                                           : body.get(RESPONSE),
+                                                                                                                          false),
+                                                                                                           null);
             default -> null;
         };
+        return decoded == null ? List.of() : List.of(decoded);
     }
 
     @Override
@@ -266,6 +264,17 @@ public class ResponsesProtocol implements WireProtocol {
     @Override
     public MessageCodec messageCodec() {
         return messageCodec;
+    }
+
+    /**
+     * Returns true when the schema carries at least one property. An output schema without
+     * properties does not constrain the model output, so the structured output request field
+     * must not be sent for it.
+     */
+    private static boolean hasProperties(final ObjectNode schema) {
+        return schema != null
+                && schema.get(ResponsesFields.PROPERTIES) instanceof final ObjectNode properties
+                && !properties.isEmpty();
     }
 
     private WireStreamEvent contentDelta(final JsonNode delta, final JsonNode text) {

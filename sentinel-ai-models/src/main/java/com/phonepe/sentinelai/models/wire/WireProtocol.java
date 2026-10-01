@@ -162,14 +162,17 @@ public interface WireProtocol {
     WireResponse decodeResponse(WireContext ctx, JsonNode body);
 
     /**
-     * Decodes one SSE frame into a neutral stream event. Return null for frames the protocol
-     * ignores (comments, keep-alives, unrelated named events).
+     * Decodes one SSE frame into the neutral stream events it carries. A frame may carry several
+     * events at once (for example a tool call fragment together with the finish reason); the
+     * returned list keeps the frame order. Return an empty list for frames the protocol ignores
+     * (comments, keep-alives, unrelated named events).
      *
      * @param ctx   Neutral call context; carries the run mapper.
      * @param event Parsed SSE frame.
-     * @return Neutral event, or null when the frame carries nothing relevant.
+     * @return Neutral events of the frame in arrival order; empty when the frame carries nothing
+     *         relevant.
      */
-    WireStreamEvent decodeStreamEvent(WireContext ctx, SseEvent event);
+    List<WireStreamEvent> decodeStreamEvent(WireContext ctx, SseEvent event);
 
     /**
      * @param ctx Neutral call context.

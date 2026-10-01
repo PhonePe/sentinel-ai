@@ -104,6 +104,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -321,7 +322,9 @@ public class ConfiguredModel implements Model {
         final var toolsForExecution = new HashMap<>(Objects
                 .requireNonNullElseGet(tools, Map::of));
         final var generatedOutput = new AtomicReference<String>(null);
-        final var schema = compliantSchema(mapper, outputDefinitions);
+        final var schema = outputDefinitions.isEmpty()
+                ? null
+                : compliantSchema(mapper, outputDefinitions);
         if (outputGenerationMode.equals(OutputGenerationMode.TOOL_BASED)) {
             addOutputExtractionTool(toolsForExecution,
                                     schema,
@@ -544,7 +547,9 @@ public class ConfiguredModel implements Model {
         final var outputGenerator = Objects.requireNonNullElseGet(agentSetup
                 .getOutputGenerationTool(), IdentityOutputGenerator::new);
         final var generatedOutput = new AtomicReference<String>(null);
-        final var schema = compliantSchema(mapper, outputDefinitions);
+        final var schema = outputDefinitions.isEmpty()
+                ? null
+                : compliantSchema(mapper, outputDefinitions);
         if (streamProcessingMode.equals(
                                         Agent.StreamProcessingMode.TYPED) && outputGenerationMode
                                                 .equals(OutputGenerationMode.TOOL_BASED)) {
@@ -589,8 +594,11 @@ public class ConfiguredModel implements Model {
                                                 requestBody,
                                                 buildTransformerContext(ctx, context, allMessages, wireMessages))
                             .filter(event -> !event.isDoneSentinel())
-                            .map(event -> provider.getProtocol().decodeStreamEvent(ctx, event))
-                            .filter(Objects::nonNull);
+                            .mapMulti((SseEvent event, Consumer<WireStreamEvent> consumer) -> provider
+                                    .getProtocol()
+                                    .decodeStreamEvent(ctx, event)
+                                    .forEach(consumer::accept));
+
                 }
                 catch (Exception e) {
                     return errorToModelOutput(context, e, newMessages, allMessages);
@@ -645,6 +653,11 @@ public class ConfiguredModel implements Model {
                                                              toolsForExecution,
                                                              toolRunner,
                                                              wireMessages);
+                        }
+                        else if (finishEvent.usage() != null) {
+                            // Providers repeat the finish reason on trailing chunks that carry usage.
+                            // The first finish is already handled, so only the usage is merged here.
+                            mergeUsage(stats, finishEvent.usage());
                         }
                     }
                     return eventOutput;

@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.models.openai;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
@@ -215,12 +216,13 @@ class ConfiguredModelChatCompletionsTest {
         final var response = execute(agent);
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
 
-        com.github.tomakehurst.wiremock.client.WireMock.verify(com.github.tomakehurst.wiremock.client.WireMock
-                .postRequestedFor(com.github.tomakehurst.wiremock.client.WireMock
+        WireMock.verify(WireMock
+                .postRequestedFor(WireMock
                         .urlEqualTo(TestStubs.ENDPOINT))
                 .withHeader("Authorization",
-                            com.github.tomakehurst.wiremock.client.WireMock
+                            WireMock
                                     .equalTo("Bearer test-key")));
+
     }
 
     @Test
@@ -238,8 +240,7 @@ class ConfiguredModelChatCompletionsTest {
 
         final var response = execute(agent);
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
+        WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
                 .withHeader("Accept", equalTo("application/json"))
                 .withRequestBody(notContaining("\"stream\"")));
     }
@@ -299,7 +300,7 @@ class ConfiguredModelChatCompletionsTest {
                 .build(), streamConsumer())
                 .join();
 
-        com.github.tomakehurst.wiremock.client.WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
+        WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
                 .withHeader("Accept", equalTo("text/event-stream"))
                 .withRequestBody(matchingJsonPath("$[?(@.stream == true)]")));
     }
@@ -334,6 +335,30 @@ class ConfiguredModelChatCompletionsTest {
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertNotNull(response.getData());
         assertTrue(response.getUsage().getTotalTokens() > 1);
+    }
+
+    @Test
+    @SneakyThrows
+    void textStreamingOmitsResponseFormatAndRequestsUsage(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(TestStubs.ENDPOINT).willReturn(okForContentType("text/event-stream",
+                                                                     TestStubs.readStubFile(1,
+                                                                                            "duplicate-stop",
+                                                                                            ConfiguredModelChatCompletionsTest.class))));
+        final var agent = new TestAgent(setupBase(wiremock)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+
+        final var response = agent.executeAsyncTextStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").build())
+                .build(), streamConsumer())
+                .join();
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+
+        WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
+                .withRequestBody(notContaining("response_format"))
+                .withRequestBody(matchingJsonPath("$.stream_options[?(@.include_usage == true)]")));
     }
 
     @Test

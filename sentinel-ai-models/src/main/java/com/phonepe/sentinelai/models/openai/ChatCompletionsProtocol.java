@@ -53,6 +53,7 @@ import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.FREQUEN
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.FUNCTION;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.FUNCTION_CALL;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.ID;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.INCLUDE_USAGE;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.INDEX;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.JSON_SCHEMA;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.LOGIT_BIAS;
@@ -75,6 +76,7 @@ import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.RESPONS
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.SCHEMA;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.SEED;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.STREAM;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.STREAM_OPTIONS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.STRICT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TEMPERATURE;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TOOLS;
@@ -145,7 +147,7 @@ public class ChatCompletionsProtocol implements WireProtocol {
             addTools(ctx, body);
         }
         if (ctx.getOutputGenerationMode().equals(OutputGenerationMode.STRUCTURED_OUTPUT)
-                && ctx.getOutputSchema() != null) {
+                && hasProperties(ctx.getOutputSchema())) {
             final var responseFormat = mapper.createObjectNode();
             responseFormat.put(TYPE, JSON_SCHEMA);
             final var jsonSchema = mapper.createObjectNode();
@@ -157,6 +159,9 @@ public class ChatCompletionsProtocol implements WireProtocol {
         }
         if (ctx.isStreaming()) {
             body.put(STREAM, true);
+            final var streamOptions = mapper.createObjectNode();
+            streamOptions.put(INCLUDE_USAGE, true);
+            body.set(STREAM_OPTIONS, streamOptions);
         }
         applyExtras(body, ctx.getExtras());
         return body;
@@ -198,13 +203,13 @@ public class ChatCompletionsProtocol implements WireProtocol {
     }
 
     @Override
-    public WireStreamEvent decodeStreamEvent(final WireContext ctx, final SseEvent event) {
+    public List<WireStreamEvent> decodeStreamEvent(final WireContext ctx, final SseEvent event) {
         final JsonNode body;
         try {
             body = ctx.getMapper().readTree(event.data());
         }
         catch (final Exception e) {
-            return null;
+            return List.of();
         }
         final var events = new ArrayList<WireStreamEvent>();
         final var choices = body.get(CHOICES);
@@ -236,21 +241,22 @@ public class ChatCompletionsProtocol implements WireProtocol {
             }
             final var finishReason = textOrNull(choice.get(FINISH_REASON));
             if (finishReason != null) {
+                // Some providers attach usage to the same frame as the finish reason.
+                // Carry the usage inside the finish event so that it is not lost. The usage
+                // event stays out of the list so the loop does not merge it twice.
                 events.add(new WireStreamEvent.StreamFinishEvent(normalizeFinishReason(finishReason),
                                                                  delta == null
                                                                          ? null
-                                                                         : textOrNull(delta.get(REFUSAL))));
+                                                                         : textOrNull(delta.get(REFUSAL)),
+                                                                 decodeUsage(body.get(USAGE))));
+                return events;
             }
         }
         final var usage = decodeUsage(body.get(USAGE));
         if (usage != null) {
             events.add(new WireStreamEvent.StreamUsageEvent(usage));
         }
-        if (events.isEmpty()) {
-            return null;
-        }
-        // One neutral event per frame. Finish wins over usage; the fixtures never combine them.
-        return events.get(events.size() - 1);
+        return events;
     }
 
     @Override
@@ -261,6 +267,17 @@ public class ChatCompletionsProtocol implements WireProtocol {
     @Override
     public MessageCodec messageCodec() {
         return messageCodec;
+    }
+
+    /**
+     * Returns true when the schema carries at least one property. An output schema without
+     * properties does not constrain the model output, so the structured output request field
+     * must not be sent for it.
+     */
+    private static boolean hasProperties(final ObjectNode schema) {
+        return schema != null
+                && schema.get(ChatCompletionsFields.PROPERTIES) instanceof final ObjectNode properties
+                && !properties.isEmpty();
     }
 
     private void addTools(final WireContext ctx, final ObjectNode body) {

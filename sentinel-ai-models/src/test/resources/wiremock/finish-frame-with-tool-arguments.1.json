@@ -1,0 +1,8 @@
+data: {"id":"chatcmpl-regression001","object":"chat.completion.chunk","created":1790839428,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-regression001","object":"chat.completion.chunk","created":1790839428,"model":"test-model","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call-regression01","type":"function","index":0,"function":{"name":"test_agent_get_name"}}]},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-regression001","object":"chat.completion.chunk","created":1790839428,"model":"test-model","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{}"}}]},"logprobs":null,"finish_reason":"tool_calls"}]}
+
+data: {"id":"chatcmpl-regression001","object":"chat.completion.chunk","created":1790839428,"model":"test-model","choices":[],"usage":{"prompt_tokens":217,"total_tokens":230,"completion_tokens":13,"prompt_tokens_details":{"cached_tokens":192},"completion_tokens_details":{"reasoning_tokens":0}}}
+

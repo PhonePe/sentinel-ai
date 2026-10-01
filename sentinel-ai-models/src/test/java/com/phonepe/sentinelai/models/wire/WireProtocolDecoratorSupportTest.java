@@ -210,8 +210,9 @@ class WireProtocolDecoratorSupportTest {
         choice.putObject("delta").put("content", "hi");
         final var decoded = protocol.decodeStreamEvent(context(null), new SseEvent(null, chunk.toString()));
 
-        assertEquals(WireStreamEvent.ContentDelta.class, decoded.getClass());
-        assertEquals("hi", ((WireStreamEvent.ContentDelta) decoded).content());
+        assertEquals(1, decoded.size());
+        assertEquals(WireStreamEvent.ContentDelta.class, decoded.get(0).getClass());
+        assertEquals("hi", ((WireStreamEvent.ContentDelta) decoded.get(0)).content());
         assertEquals(List.of("transformStreamEvent"), log);
     }
 }

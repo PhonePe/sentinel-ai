@@ -43,6 +43,7 @@ public class ChatCompletionsFields {
     public static final String LOGIT_BIAS = "logit_bias";
     public static final String REASONING_EFFORT = "reasoning_effort";
     public static final String STREAM = "stream";
+    public static final String STREAM_OPTIONS = "stream_options";
     // Message fields
     public static final String ID = "id";
     public static final String ROLE = "role";
@@ -76,8 +77,10 @@ public class ChatCompletionsFields {
     public static final String INDEX = "index";
     public static final String SCHEMA = "schema";
     public static final String JSON_SCHEMA = "json_schema";
+    public static final String PROPERTIES = "properties";
 
     // Usage fields
+    public static final String INCLUDE_USAGE = "include_usage";
     public static final String PROMPT_TOKENS = "prompt_tokens";
     public static final String COMPLETION_TOKENS = "completion_tokens";
     public static final String TOTAL_TOKENS = "total_tokens";
