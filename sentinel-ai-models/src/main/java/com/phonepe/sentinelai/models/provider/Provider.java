@@ -26,8 +26,13 @@ import java.util.List;
 
 /**
  * Everything about the remote model endpoint: base URL, endpoint prefix, authentication and
- * the wire protocol. Models pair one provider with a model name; the provider owns where and
  * how the calls travel.
+ * <p>
+ * Endpoints that speak more than one wire protocol (for example Copilot) list every protocol
+ * in {@link #supportedProtocols} and keep {@link #protocol} as the default. Models select any
+ * supported protocol through the model-level protocol override; see
+ * {@link com.phonepe.sentinelai.models.ConfiguredModel}.
+ * </p>
  */
 @Getter
 @Builder
@@ -48,6 +53,14 @@ public class Provider {
     private final WireProtocol protocol;
 
     /**
+     * Additional protocols this endpoint can speak; may be empty. The default
+     * {@link #protocol} is always supported. Models select one of these through the
+     * model-level protocol override.
+     */
+    @Builder.Default
+    private final List<WireProtocol> supportedProtocols = List.of();
+
+    /**
      * Authentication applied to every request; null means no auth is applied by the model.
      * Transport level auth (OkHttp interceptors) stays available.
      */
@@ -59,4 +72,27 @@ public class Provider {
      */
     @Builder.Default
     private final List<RequestTransformer> requestTransformers = List.of();
+
+    /**
+     * Validates the requested protocol against this endpoint.
+     *
+     * @param requested protocol the model wants to use; null means the default
+     * @return the default protocol when {@code requested} is null, else {@code requested}
+     * @throws IllegalArgumentException when {@code requested} is neither the default protocol
+     *                                  nor listed in {@link #supportedProtocols}
+     */
+    public WireProtocol protocolFor(final WireProtocol requested) {
+        if (requested == null) {
+            return protocol;
+        }
+        if (requested.equals(protocol) || supportedProtocols.contains(requested)) {
+            return requested;
+        }
+        throw new IllegalArgumentException(
+                                           "Protocol " + requested.getClass().getSimpleName()
+                                                   + " is not supported by this provider. "
+                                                   + "Supported: default " + protocol.getClass().getSimpleName()
+                                                   + (supportedProtocols.isEmpty() ? " only" : ", plus "
+                                                           + supportedProtocols.size() + " more"));
+    }
 }

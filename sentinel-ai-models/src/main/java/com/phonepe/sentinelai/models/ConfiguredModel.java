@@ -225,6 +225,7 @@ public class ConfiguredModel implements Model {
     private final String modelName;
     private final String modelId;
     private final Provider provider;
+    private final WireProtocol protocol;
     private final OkHttpClient httpClient;
     private final ModelOptions modelOptions;
     private final TokenCounter tokenCounter;
@@ -236,8 +237,11 @@ public class ConfiguredModel implements Model {
      * @param modelName           Display name of the model; also the wire id when {@code modelId} is
      *                            null.
      * @param modelId             Id sent in the request body; null falls back to {@code modelName}.
-     * @param provider            Endpoint, endpoint prefix, authentication and wire protocol of the
-     *                            model.
+     * @param provider            Endpoint, endpoint prefix, authentication and wire protocols of
+     *                            the model.
+     * @param protocol            Wire protocol override; null uses the provider default. Must be
+     *                            the provider default or one of its supported protocols, else the
+     *                            constructor fails fast.
      * @param httpClient          OkHttp client used for every model call; never closed by the model.
      * @param modelOptions        Model options; null means {@link ModelOptions#DEFAULT}.
      * @param tokenCounter        Token counter; null means {@link GenericTokenCounter}.
@@ -250,6 +254,7 @@ public class ConfiguredModel implements Model {
     protected ConfiguredModel(final String modelName,
                               final String modelId,
                               @NonNull final Provider provider,
+                              final WireProtocol protocol,
                               final OkHttpClient httpClient,
                               final ModelOptions modelOptions,
                               final TokenCounter tokenCounter,
@@ -258,6 +263,7 @@ public class ConfiguredModel implements Model {
         this.modelName = Objects.requireNonNullElse(modelName, "default-model");
         this.modelId = modelId;
         this.provider = provider;
+        this.protocol = provider.protocolFor(protocol);
         this.httpClient = httpClient == null
                 ? new OkHttpClient()
                 : httpClient.newBuilder().build();
@@ -369,7 +375,7 @@ public class ConfiguredModel implements Model {
                 raiseMessageSentEvent(context, prevMessages, allMessages);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
-                final var requestBody = provider.getProtocol().buildRequestBody(ctx, wireMessages);
+                final var requestBody = protocol.buildRequestBody(ctx, wireMessages);
                 logDataDebug("Request to model: {}", requestBody);
 
                 final var response = callModel(ctx,
@@ -585,7 +591,7 @@ public class ConfiguredModel implements Model {
                                                  true);
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
-                final var requestBody = provider.getProtocol().buildRequestBody(ctx, wireMessages);
+                final var requestBody = protocol.buildRequestBody(ctx, wireMessages);
                 logDataDebug("Request to model: {}", requestBody);
                 raiseMessageSentEvent(context, prevMessages, allMessages);
                 Stream<WireStreamEvent> eventStream;
@@ -594,8 +600,7 @@ public class ConfiguredModel implements Model {
                                                 requestBody,
                                                 buildTransformerContext(ctx, context, allMessages, wireMessages))
                             .filter(event -> !event.isDoneSentinel())
-                            .mapMulti((SseEvent event, Consumer<WireStreamEvent> consumer) -> provider
-                                    .getProtocol()
+                            .mapMulti((SseEvent event, Consumer<WireStreamEvent> consumer) -> protocol
                                     .decodeStreamEvent(ctx, event)
                                     .forEach(consumer::accept));
 
@@ -825,7 +830,7 @@ public class ConfiguredModel implements Model {
             final var response = retryExecutor.get(() -> execute(ctx, requestBody, transformerContext));
             try (response; final var body = response.body()) {
                 final var json = ctx.getMapper().readTree(body == null ? new byte[0] : body.bytes());
-                return provider.getProtocol().decodeResponse(ctx, json);
+                return protocol.decodeResponse(ctx, json);
             }
         }
         catch (final HttpModelCallException e) {
@@ -881,7 +886,7 @@ public class ConfiguredModel implements Model {
                                    final ObjectNode requestBody,
                                    final RequestTransformerContext transformerContext) {
         final var builder = new Request.Builder()
-                .url(provider.getProtocol().endpoint(ctx))
+                .url(protocol.endpoint(ctx))
                 .header("Accept", ctx.isStreaming() ? "text/event-stream" : "application/json")
                 .header("Content-Type", "application/json");
         if (provider.getAuth() != null) {
@@ -1050,7 +1055,7 @@ public class ConfiguredModel implements Model {
     }
 
     private JsonNode translate(final ObjectMapper mapper, final AgentMessage message) {
-        return provider.getProtocol().messageCodec().translate(message, mapper);
+        return protocol.messageCodec().translate(message, mapper);
     }
 
     private ModelOutput errorToModelOutput(final ModelRunContext context,
@@ -1078,10 +1083,10 @@ public class ConfiguredModel implements Model {
                                        rootCause.getMessage());
         }
         if (rootCause instanceof HttpModelCallException httpModelCallException) {
-            final var errorType = provider.getProtocol().classifyError(httpModelCallException.getStatus(),
-                                                                       parseErrorBody(context.getAgentSetup()
-                                                                               .getMapper(),
-                                                                                      httpModelCallException.body));
+            final var errorType = protocol.classifyError(httpModelCallException.getStatus(),
+                                                         parseErrorBody(context.getAgentSetup()
+                                                                 .getMapper(),
+                                                                        httpModelCallException.body));
             return createErrorResponse(context,
                                        newMessages,
                                        allMessages,
