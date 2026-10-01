@@ -13,6 +13,10 @@
   and before serialization. Declare them on the `Provider`, on the model, or per run through agent extensions.
 - Added `JoltRequestTransformer`, a `RequestTransformer` that applies a chain of Jolt operations to the request body.
   Load the transform list from a typed list, a JSON string or a JSON node.
+- Added `ExtraHeadersRequestTransformer`, a `RequestTransformer` that adds fixed headers to every request.
+  Declare it on the `Provider` for provider-wide headers or on the model for model-specific headers.
+- Added `SessionIdInjectionTransformer`, a `RequestTransformer` that sends the session id of the run to the provider
+  as a cache-affinity signal through a header, a JSON pointer to a body location, or both.
 - Added `RequestRetryPolicy` with Failsafe based retry for model calls: retry on IOException and HTTP 429/500/502/
   503/504, with `Retry-After` support. The default policy does not retry.
 

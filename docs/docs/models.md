@@ -149,32 +149,45 @@ final var model = ConfiguredModel.builder()
         .build();
 ```
 
-### Request Transformers
+### Model Call Retry
 
-A `RequestTransformer` mutates the request body, the headers or the request after authentication and before
-serialization. Declare transformers on the `Provider`, on the model, or per run through agent extensions. The model
-applies them in that order; each transformer sees the output of the previous one. Each transformer receives a
-`RequestTransformerContext` with the wire context, the session id, the agent name, the agent messages and the translated
-wire messages of the current turn.
+A model call retries on failure when a `RequestRetryPolicy` is set on the model. The default policy does not retry; one
+attempt, identical to the engine behavior without a policy.
 
-`JoltRequestTransformer` applies a chain of [Jolt](https://github.com/bazaarvoice/jolt) operations to the request body.
-Use it for vendor-specific payload fields that no protocol setting covers. Load the transform list from a typed list,
-a JSON string or a JSON node:
+Retries trigger on network `IOException`s and on the configured HTTP status codes. Retries apply to the HTTP call only
+and only before the first byte of the response body is consumed; a streaming response that already delivered events is
+not retried. When a retried response carries a `Retry-After` header, the engine honors it over the computed backoff.
+
+| Setting           | Type           | Default                  | Description                                                              |
+|-------------------|----------------|--------------------------|--------------------------------------------------------------------------|
+| `retryOnStatus`   | `Set<Integer>` | `429, 500, 502, 503, 504`| HTTP status codes that trigger a retry.                                  |
+| `maxAttempts`     | `int`          | `1`                      | Maximum attempts including the first one. `1` or less means no retry.     |
+| `initialDelay`    | `Duration`     | null                     | First backoff delay; must be set when more than one attempt is configured.|
+| `maxDelay`        | `Duration`     | null                     | Upper bound of the backoff delay; null means no upper bound.             |
+| `delayFactor`     | `double`       | `1.0`                    | Backoff multiplier after every attempt; `1.0` is a fixed delay.          |
+| `honorRetryAfter`| `boolean`      | `true`                   | Honor the `Retry-After` header over the computed backoff when present.    |
 
 ```java
 final var model = ConfiguredModel.builder()
-        .modelName("qwen3")
+        .modelName("gpt-4o")
         .provider(Provider.builder()
                 .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
                 .protocol(new ChatCompletionsProtocol())
                 .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
-                .requestTransformer(JoltRequestTransformer.fromJson("""
-                        [
-                          {"operation": "default", "spec": {"chat_template_kwargs": {"thinking": false}}}
-                        ]"""))
+                .build())
+        .requestRetryPolicy(RequestRetryPolicy.builder()
+                .maxAttempts(3)
+                .initialDelay(Duration.ofSeconds(1))
+                .maxDelay(Duration.ofSeconds(10))
+                .delayFactor(2.0)
                 .build())
         .build();
 ```
 
-A transformer that throws aborts the model call. The failure is reported as a `REQUEST_TRANSFORM_FAILED` error.
-For declarative body fields that do not need Jolt logic, `ModelOptions.extras` stays the simpler option.
+### Request Transformers
+
+A `RequestTransformer` mutates the request body, the headers or the request after authentication and before
+serialization. Declare transformers on the `Provider`, on the model, or per run through agent extensions; the model
+applies them in that order. Built-in transformers cover Jolt body transforms, fixed extra headers and session id
+injection for cache affinity. See [Request Transformers](request-transformers.md) for the full contract, the built-in
+transformers and custom transformer examples.

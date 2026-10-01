@@ -15,7 +15,8 @@ nav = [
   {"Agents" = [
       {"Basics" = "agents.md"},
       {"Models & Providers" = "models.md"},
-      {"Configuration" = "agent-configuration.md"}
+      {"Configuration" = "agent-configuration.md"},
+      {"Request Transformers" = "request-transformers.md"}
   ]},
   {"Tools" = [
       {"Overview" = "tools.md"},
