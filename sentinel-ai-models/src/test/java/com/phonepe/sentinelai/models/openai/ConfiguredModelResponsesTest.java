@@ -171,6 +171,7 @@ class ConfiguredModelResponsesTest {
                 .provider(Provider.builder()
                         .baseUrl(wiremock.getHttpBaseUrl())
                         .protocol(new ResponsesProtocol())
+                        .endpointPrefix(TestStubs.useRealEndpoints() ? null : Provider.NO_ENDPOINT_PREFIX)
                         .auth(resolvedApiKey == null ? null
                                 : HeaderAuth.bearer(resolvedApiKey))
                         .build())

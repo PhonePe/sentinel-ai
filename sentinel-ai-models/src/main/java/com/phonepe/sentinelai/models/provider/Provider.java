@@ -39,10 +39,21 @@ import java.util.List;
 public class Provider {
 
     /**
-     * Root URL including any path prefix, for example {@code https://api.openai.com/v1}.
+     * Endpoint path prefix meaning no prefix: the URL is base URL plus protocol path.
+     */
+    public static final String NO_ENDPOINT_PREFIX = "";
+
+    /**
+     * Root URL of the API host, for example {@code https://api.openai.com}.
      */
     @NonNull
     private final String baseUrl;
+
+    /**
+     * Endpoint path prefix between the base URL and the protocol path; null means the protocol
+     * default {@link WireProtocol#DEFAULT_ENDPOINT_PREFIX}.
+     */
+    private final String endpointPrefix;
 
     @NonNull
     private final WireProtocol protocol;

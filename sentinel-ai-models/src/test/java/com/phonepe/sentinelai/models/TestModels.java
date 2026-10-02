@@ -100,6 +100,7 @@ public class TestModels {
         return Provider.builder()
                 .baseUrl(baseUrl)
                 .protocol(testProtocol())
+                .endpointPrefix(TestStubs.useRealEndpoints() ? null : Provider.NO_ENDPOINT_PREFIX)
                 .auth(testAuth())
                 .build();
     }

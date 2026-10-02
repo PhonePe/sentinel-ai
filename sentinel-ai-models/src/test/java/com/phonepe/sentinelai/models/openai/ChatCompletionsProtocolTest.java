@@ -25,6 +25,7 @@ import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.models.ModelOptions;
+import com.phonepe.sentinelai.models.provider.Provider;
 import com.phonepe.sentinelai.models.wire.SseEvent;
 import com.phonepe.sentinelai.models.wire.WireContext;
 import com.phonepe.sentinelai.models.wire.WireResponse;
@@ -111,11 +112,32 @@ class ChatCompletionsProtocolTest {
     }
 
     @Test
-    void endpointAppendsChatCompletionsPath() {
+    void endpointUsesCustomPrefixWhenDeclared() {
+        final var protocol = new ChatCompletionsProtocol();
+        final var ctx = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null).toBuilder()
+                .endpointPrefix("/openai/deployments/test-model")
+                .build();
+
+        assertEquals("http://localhost/openai/deployments/test-model/chat/completions",
+                     protocol.endpoint(ctx));
+    }
+
+    @Test
+    void endpointUsesDefaultV1Prefix() {
         final var protocol = new ChatCompletionsProtocol();
 
-        assertEquals("http://localhost/chat/completions",
+        assertEquals("http://localhost/v1/chat/completions",
                      protocol.endpoint(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null)));
+    }
+
+    @Test
+    void endpointUsesEmptyPrefixWhenDeclared() {
+        final var protocol = new ChatCompletionsProtocol();
+        final var ctx = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null).toBuilder()
+                .endpointPrefix(Provider.NO_ENDPOINT_PREFIX)
+                .build();
+
+        assertEquals("http://localhost/chat/completions", protocol.endpoint(ctx));
     }
 
     @Test

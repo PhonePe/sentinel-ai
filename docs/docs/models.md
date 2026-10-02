@@ -39,8 +39,13 @@ final var model = ConfiguredModel.builder()
         .build();
 ```
 
-The final endpoint is the base URL plus the protocol path, for example
-`https://api.openai.com/v1` + `/chat/completions`.
+The final endpoint is the base URL plus the endpoint prefix plus the protocol path. The default prefix is `/v1`:
+`https://api.openai.com` + `/v1` + `/chat/completions`.
+
+Set `endpointPrefix` on the `Provider` when the endpoint does not mount the API under `/v1`. Use
+`Provider.NO_ENDPOINT_PREFIX` (an empty string) for no prefix, for example `https://api.githubcopilot.com` +
+`/responses`. Use a custom prefix for Azure style paths, for example
+`/openai/deployments/{deployment}`.
 
 !!!tip "Authentication"
     `HeaderAuth.bearer(apiKey)` sends the key as a `Bearer` token, and `HeaderAuth.of(header, value)` sets any other

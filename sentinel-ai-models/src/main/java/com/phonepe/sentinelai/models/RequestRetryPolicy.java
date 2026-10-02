@@ -57,9 +57,7 @@ public class RequestRetryPolicy {
     int maxAttempts = 1;
 
     Duration initialDelay;
-    Duration initialDelay;
 
-    Duration maxDelay;
     Duration maxDelay;
 
     /**

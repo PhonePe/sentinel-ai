@@ -39,6 +39,12 @@ import java.util.List;
  */
 public interface WireProtocol {
 
+    /**
+     * Default endpoint path prefix used when the provider declares none, for example
+     * {@code https://api.openai.com/v1/chat/completions}.
+     */
+    String DEFAULT_ENDPOINT_PREFIX = "/v1";
+
     // Field names shared by OpenAI style protocols
     String TEMPERATURE_FIELD = "temperature";
     String TOP_P_FIELD = "top_p";
@@ -139,7 +145,8 @@ public interface WireProtocol {
     List<WireStreamEvent> decodeStreamEvent(WireContext ctx, SseEvent event);
 
     /**
-     * @return Full endpoint URL for this call: base URL plus the protocol path.
+     * @return Full endpoint URL for this call: base URL plus the effective endpoint prefix
+     *         plus the protocol path.
      */
     String endpoint(WireContext ctx);
 

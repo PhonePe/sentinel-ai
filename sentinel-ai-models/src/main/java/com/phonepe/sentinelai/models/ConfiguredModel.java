@@ -1004,6 +1004,7 @@ public class ConfiguredModel implements Model {
                 .modelName(modelName)
                 .modelId(modelId)
                 .baseUrl(provider.getBaseUrl())
+                .endpointPrefix(provider.getEndpointPrefix())
                 .userId(userId)
                 .runId(runContext.getRunId())
                 .modelSettings(modelSettings)

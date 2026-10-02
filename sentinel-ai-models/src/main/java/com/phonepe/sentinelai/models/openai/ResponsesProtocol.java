@@ -257,7 +257,7 @@ public class ResponsesProtocol implements WireProtocol {
 
     @Override
     public String endpoint(final WireContext ctx) {
-        return ctx.getBaseUrl() + ENDPOINT_PATH;
+        return ctx.getBaseUrl() + ctx.effectiveEndpointPrefix() + ENDPOINT_PATH;
     }
 
     @Override

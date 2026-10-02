@@ -49,6 +49,12 @@ public class WireContext {
     @NonNull
     String baseUrl;
 
+    /**
+     * Endpoint path prefix between the base URL and the protocol path; null means the protocol
+     * default {@link WireProtocol#DEFAULT_ENDPOINT_PREFIX}.
+     */
+    String endpointPrefix;
+
     String userId;
 
     String runId;
@@ -95,6 +101,14 @@ public class WireContext {
     @NonNull
     List<RequestTransformer> extensionRequestTransformers = List.of();
 
+
+    /**
+     * @return The endpoint path prefix: {@link #endpointPrefix} when set, else the protocol
+     *         default {@link WireProtocol#DEFAULT_ENDPOINT_PREFIX}.
+     */
+    public String effectiveEndpointPrefix() {
+        return endpointPrefix == null ? WireProtocol.DEFAULT_ENDPOINT_PREFIX : endpointPrefix;
+    }
 
     /**
      * @return The id to send in the request body: {@link #modelId} when set, else {@link #modelName}.

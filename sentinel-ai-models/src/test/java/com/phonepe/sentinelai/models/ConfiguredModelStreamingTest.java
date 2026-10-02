@@ -279,10 +279,10 @@ class ConfiguredModelStreamingTest {
     void testImageUploadStreaming(final WireMockRuntimeInfo wiremock) {
         assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         // Setup stub for SSE with image response
-        stubFor(post(TestStubs.ENDPOINT).willReturn(okForContentType("text/event-stream",
-                                                                     TestStubs.readStubFile(1,
-                                                                                            "image-stream",
-                                                                                            getClass()))));
+        stubFor(post(TestStubs.NO_PREFIX_ENDPOINT).willReturn(okForContentType("text/event-stream",
+                                                                               TestStubs.readStubFile(1,
+                                                                                                      "image-stream",
+                                                                                                      getClass()))));
 
         final var objectMapper = JsonUtils.createMapper();
         final var executor = Executors.newCachedThreadPool();
@@ -367,7 +367,7 @@ class ConfiguredModelStreamingTest {
 
     private void setupSseStubs() {
         // Setup stub for SSE
-        IntStream.rangeClosed(1, 5).forEach(i -> stubFor(post(TestStubs.ENDPOINT)
+        IntStream.rangeClosed(1, 5).forEach(i -> stubFor(post(TestStubs.NO_PREFIX_ENDPOINT)
                 .inScenario("model-test")
                 .whenScenarioStateIs(i == 1 ? Scenario.STARTED : Objects.toString(i))
                 .willReturn(okForContentType("text/event-stream",

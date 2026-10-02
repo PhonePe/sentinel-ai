@@ -19,6 +19,10 @@
   as a cache-affinity signal through a header, a JSON pointer to a body location, or both.
 - Added `RequestRetryPolicy` with Failsafe based retry for model calls: retry on IOException and HTTP 429/500/502/
   503/504, with `Retry-After` support. The default policy does not retry.
+- The final endpoint is the base URL plus the endpoint prefix plus the protocol path. The default prefix is `/v1`
+  (`WireProtocol.DEFAULT_ENDPOINT_PREFIX`), so `https://api.openai.com` + `/v1` + `/chat/completions`. Set the
+  `endpointPrefix` on the `Provider` for endpoints that do not mount the API under `/v1`: `Provider.NO_ENDPOINT_PREFIX`
+  for no prefix, or a custom prefix such as the Azure `/openai/deployments/{deployment}` path.
 - Added wire payload logging. The model logs the request JSON, the final response and failed call bodies to the
   dedicated `com.phonepe.sentinelai.models.wire.WIRE` logger at `INFO` level. `WireLoggingMode` controls the level:
   `ON` (default), `FRAMES` (adds every raw stream frame) or `OFF`. The system property `sentinel.wire.logging` or the

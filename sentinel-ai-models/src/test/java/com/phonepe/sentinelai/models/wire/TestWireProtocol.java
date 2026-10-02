@@ -260,7 +260,7 @@ public class TestWireProtocol implements WireProtocol {
 
     @Override
     public String endpoint(final WireContext ctx) {
-        return ctx.getBaseUrl() + "/chat/completions";
+        return ctx.getBaseUrl() + ctx.effectiveEndpointPrefix() + "/chat/completions";
     }
 
     @Override

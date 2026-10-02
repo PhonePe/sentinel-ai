@@ -228,7 +228,7 @@ class ConfiguredModelTest {
                                  final ErrorType expectedErrorType,
                                  final WireMockRuntimeInfo wiremock) {
         assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        stubFor(post("/chat/completions").willReturn(aResponse().withStatus(status).withBody(payload)));
+        stubFor(post(TestStubs.NO_PREFIX_ENDPOINT).willReturn(aResponse().withStatus(status).withBody(payload)));
 
         final var response = executeAgent(wiremock);
         assertSame(expectedErrorType,
