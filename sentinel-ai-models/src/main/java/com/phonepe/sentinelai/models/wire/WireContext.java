@@ -43,104 +43,61 @@ import java.util.Map;
 @Builder(toBuilder = true)
 public class WireContext {
 
-    /**
-     * Name of the model to call.
-     */
     @NonNull
     String modelName;
 
-    /**
-     * Base URL of the provider endpoint.
-     */
     @NonNull
     String baseUrl;
 
-    /**
-     * User id for this run; null when not provided.
-     */
     String userId;
 
-    /**
-     * Id of the run that produces this request; null when not provided.
-     */
     String runId;
 
-    /**
-     * Model settings (temperature, max tokens, penalties, reasoning, ...); may be null.
-     */
     ModelSettings modelSettings;
 
-    /**
-     * Tools available for this call; may be empty.
-     */
     @NonNull
     Map<String, ExecutableTool> tools;
 
-    /**
-     * Output definitions when the run wants structured output; may be empty.
-     */
     @NonNull
     List<ModelOutputDefinition> outputDefinitions;
 
     /**
-     * Neutral compliant JSON schema built from the output definitions. Protocols use it for
-     * structured output request fields (for example response_format) when the run mode is
-     * STRUCTURED_OUTPUT.
+     * Compliant JSON schema of the output definitions; used for structured output fields.
      */
     ObjectNode outputSchema;
 
-    /**
-     * Output generation mode of the run.
-     */
     @NonNull
     OutputGenerationMode outputGenerationMode;
 
     /**
-     * Free-form extras JSON node (see ModelOptions). Merged into the request body last by
-     * {@link WireProtocol#applyExtras}; may be null.
+     * Free-form extras node; merged into the request body last by {@link WireProtocol#applyExtras}.
      */
     JsonNode extras;
 
     /**
-     * True when the model call streams the response over server-sent events. Protocols use it
-     * to request a stream from the provider (for example body field {@code stream}). Defaults
-     * to false.
+     * True when the call streams over SSE; protocols set the provider stream fields from it.
      */
     @Builder.Default
     boolean streaming = false;
 
     /**
-     * Model id sent in the request body. When null, {@link #modelName} is sent.
+     * Model id sent in the request body; {@link #modelName} when null.
      */
     String modelId;
 
-    /**
-     * Tool choice policy of the model options; drives the request tool choice field.
-     */
     @Builder.Default
     ModelOptions.ToolChoice toolChoice = ModelOptions.DEFAULT_TOOL_CHOICE;
 
-    /**
-     * Jackson mapper of the run. Comes from the agent setup; protocols use it for all JSON
-     * work so they stay stateless.
-     */
     @NonNull
     ObjectMapper mapper;
 
-    /**
-     * Extension request transformers of this run. The engine applies them first, before the
-     * provider level and model level transformers. Empty when no extension declares any.
-     */
     @Builder.Default
     @NonNull
     List<RequestTransformer> extensionRequestTransformers = List.of();
 
 
     /**
-     * Returns the id to send in the request body: {@link #modelId} when set, else
-     * {@link #modelName}.
-     *
-     * @return Effective model id for the wire.
+     * @return The id to send in the request body: {@link #modelId} when set, else {@link #modelName}.
      */
     public String effectiveModelId() {
         return modelId == null || modelId.isBlank() ? modelName : modelId;

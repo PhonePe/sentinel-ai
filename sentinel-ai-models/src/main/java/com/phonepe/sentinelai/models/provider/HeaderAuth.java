@@ -37,9 +37,6 @@ public class HeaderAuth implements Auth {
 
     /**
      * Builds a Bearer token auth for the given API key.
-     *
-     * @param apiKey API key sent as the Bearer token.
-     * @return HeaderAuth carrying the Authorization header.
      */
     public static HeaderAuth bearer(@NonNull final String apiKey) {
         var effectiveApiKey = apiKey;
@@ -50,11 +47,7 @@ public class HeaderAuth implements Auth {
     }
 
     /**
-     * Builds an auth for a set of headers. Later headers replace earlier ones with the same
-     * name.
-     *
-     * @param headers Headers to apply; must not be null.
-     * @return HeaderAuth carrying the given headers.
+     * Builds an auth for a set of headers.
      */
     public static HeaderAuth of(@NonNull final Map<String, String> headers) {
         return new HeaderAuth(headers);
@@ -62,10 +55,6 @@ public class HeaderAuth implements Auth {
 
     /**
      * Builds an auth for a single header.
-     *
-     * @param headerName Header name.
-     * @param value      Header value.
-     * @return HeaderAuth carrying the given header.
      */
     public static HeaderAuth of(@NonNull final String headerName, @NonNull final String value) {
         return new HeaderAuth(Map.of(headerName, value));

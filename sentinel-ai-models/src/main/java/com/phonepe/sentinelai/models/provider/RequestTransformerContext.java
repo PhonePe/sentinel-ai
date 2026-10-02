@@ -40,41 +40,24 @@ import java.util.Optional;
 @Builder
 public class RequestTransformerContext {
 
-    /**
-     * Wire context of the call.
-     */
     @NonNull
     WireContext wireContext;
 
-    /**
-     * Session id of this run; empty when the run has no session.
-     */
     @Getter(AccessLevel.NONE)
     String sessionId;
 
-    /**
-     * Name of the agent that runs the model; empty when not known.
-     */
     @Getter(AccessLevel.NONE)
     String agentName;
 
-    /**
-     * Agent messages of this turn; the same list the protocol translates into the wire messages.
-     */
     @NonNull
     @Builder.Default
     List<AgentMessage> messages = List.of();
 
-    /**
-     * Translated wire messages of this turn; the same list embedded in the request body.
-     */
     @NonNull
     @Builder.Default
     List<JsonNode> wireMessages = List.of();
 
     /**
-     * Returns the name of the agent that runs the model.
-     *
      * @return The agent name, or empty when not known.
      */
     public Optional<String> agentName() {
@@ -82,17 +65,13 @@ public class RequestTransformerContext {
     }
 
     /**
-     * Returns the mapper of the agent setup; same instance as {@link WireContext#getMapper()}.
-     *
-     * @return The object mapper.
+     * @return The mapper of the agent setup; same instance as {@link WireContext#getMapper()}.
      */
     public ObjectMapper mapper() {
         return wireContext.getMapper();
     }
 
     /**
-     * Returns the session id of this run.
-     *
      * @return The session id, or empty when the run has no session.
      */
     public Optional<String> sessionId() {

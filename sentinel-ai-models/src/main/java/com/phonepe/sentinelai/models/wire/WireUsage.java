@@ -16,27 +16,28 @@
 
 package com.phonepe.sentinelai.models.wire;
 
+import lombok.Value;
+
 /**
  * Normalized token usage of a single model call. All counts are optional; a protocol sets a
  * count only when the provider reports it.
- *
- * @param inputTokens           Tokens consumed by the input/prompt.
- * @param outputTokens          Tokens produced by the output/completion.
- * @param totalTokens           Total tokens for the call.
- * @param inputAudioTokens      Audio tokens in the input (provider detail).
- * @param inputCachedTokens     Cached tokens in the input (provider detail).
- * @param outputAudioTokens     Audio tokens in the output (provider detail).
- * @param outputReasoningTokens Reasoning tokens in the output (provider detail).
  */
-public record WireUsage(
-        Integer inputTokens,
-        Integer outputTokens,
-        Integer totalTokens,
-        Integer inputAudioTokens,
-        Integer inputCachedTokens,
-        Integer outputAudioTokens,
-        Integer outputReasoningTokens
-) {
+@Value
+public class WireUsage {
+
+    Integer inputTokens;
+
+    Integer outputTokens;
+
+    Integer totalTokens;
+
+    Integer inputAudioTokens;
+
+    Integer inputCachedTokens;
+
+    Integer outputAudioTokens;
+
+    Integer outputReasoningTokens;
 
     /**
      * @return The given value, or zero when the provider did not report it.

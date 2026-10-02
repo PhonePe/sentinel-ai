@@ -37,14 +37,8 @@ import okhttp3.Request;
 public interface RequestTransformer {
 
     /**
-     * Transforms one outgoing request. Mutations to {@code body} are visible to the engine and
-     * to the following transformers; the final body is what is serialized and sent.
-     *
-     * @param requestBuilder the OkHttp request builder of the outgoing request
-     * @param body           the protocol-built request body; may be mutated in place
-     * @param ctx            the transformer context of the call
-     * @throws Exception when the transform fails; the model call aborts with
-     *                   {@code REQUEST_TRANSFORM_FAILED}
+     * Transforms one outgoing request; the final mutated body is what is serialized and sent.
+     * A transformer that throws aborts the call with {@code REQUEST_TRANSFORM_FAILED}.
      */
     void transform(Request.Builder requestBuilder, ObjectNode body, RequestTransformerContext ctx) throws Exception;
 }

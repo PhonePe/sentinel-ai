@@ -206,7 +206,7 @@ public class TestWireProtocol implements WireProtocol {
     public List<WireStreamEvent> decodeStreamEvent(final WireContext ctx, final SseEvent event) {
         final JsonNode body;
         try {
-            body = ctx.getMapper().readTree(event.data());
+            body = ctx.getMapper().readTree(event.getData());
         }
         catch (final Exception e) {
             return List.of();

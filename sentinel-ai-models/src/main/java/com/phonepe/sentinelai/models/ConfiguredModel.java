@@ -68,6 +68,8 @@ import com.phonepe.sentinelai.models.provider.RequestTransformerContext;
 import com.phonepe.sentinelai.models.wire.SseEvent;
 import com.phonepe.sentinelai.models.wire.SseReader;
 import com.phonepe.sentinelai.models.wire.WireContext;
+import com.phonepe.sentinelai.models.wire.WireLoggingMode;
+import com.phonepe.sentinelai.models.wire.WirePayloadLogger;
 import com.phonepe.sentinelai.models.wire.WireProtocol;
 import com.phonepe.sentinelai.models.wire.WireResponse;
 import com.phonepe.sentinelai.models.wire.WireStreamEvent;
@@ -94,6 +96,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -126,8 +129,7 @@ public class ConfiguredModel implements Model {
     private static final MediaType JSON_MEDIA_TYPE = MediaType.parse("application/json");
 
     /**
-     * Exception carrying the HTTP status and body of a failed model call so the protocol can
-     * classify the error and the retry layer can test the status.
+     * Carries the HTTP status and body of a failed model call.
      */
     @Getter
     private static final class HttpModelCallException extends ModelHttpException {
@@ -143,8 +145,7 @@ public class ConfiguredModel implements Model {
     }
 
     /**
-     * Exception carrying the HTTP error details of a failed stream request so the engine can
-     * classify the error the same way it classifies blocking call failures.
+     * Carries the HTTP error details of a failed stream request.
      */
     @Getter
     static final class HttpStreamException extends ModelHttpException {
@@ -160,8 +161,7 @@ public class ConfiguredModel implements Model {
     }
 
     /**
-     * Accumulates the fragments of one tool call during a stream. Providers stream tool calls as
-     * partial objects; id, name and arguments arrive as fragments that must be merged per index.
+     * Accumulates the fragments of one tool call during a stream, merged per index.
      */
     private static final class ToolCallAccumulator {
 
@@ -174,19 +174,29 @@ public class ConfiguredModel implements Model {
             this.index = index;
         }
 
+        static ToolCallAccumulator complete(final WireStreamEvent.ToolCallComplete complete) {
+            final var accumulator = new ToolCallAccumulator(complete.getIndex());
+            accumulator.id = complete.getId();
+            accumulator.name = complete.getName();
+            if (!Strings.isNullOrEmpty(complete.getArguments())) {
+                accumulator.arguments.append(complete.getArguments());
+            }
+            return accumulator;
+        }
+
         int indexOf() {
             return index;
         }
 
         ToolCallAccumulator merge(final WireStreamEvent.ToolCallDelta delta) {
-            if (!Strings.isNullOrEmpty(delta.id())) {
-                id = delta.id();
+            if (!Strings.isNullOrEmpty(delta.getId())) {
+                id = delta.getId();
             }
-            if (!Strings.isNullOrEmpty(delta.name())) {
-                name = Strings.isNullOrEmpty(name) ? delta.name() : name + delta.name();
+            if (!Strings.isNullOrEmpty(delta.getName())) {
+                name = Strings.isNullOrEmpty(name) ? delta.getName() : name + delta.getName();
             }
-            if (!Strings.isNullOrEmpty(delta.argumentsFragment())) {
-                arguments.append(delta.argumentsFragment());
+            if (!Strings.isNullOrEmpty(delta.getArgumentsFragment())) {
+                arguments.append(delta.getArgumentsFragment());
             }
             return this;
         }
@@ -197,8 +207,7 @@ public class ConfiguredModel implements Model {
     }
 
     /**
-     * Conduit for one run's message state: the translated wire messages plus the neutral history.
-     * All fields are mandatory.
+     * One run's message state: translated wire messages plus the neutral history.
      */
     @Builder
     @Value
@@ -212,7 +221,7 @@ public class ConfiguredModel implements Model {
     }
 
     /**
-     * Final output of the pre-processor pipeline; used to replace the messages sent to the model.
+     * Final output of the pre-processor pipeline.
      */
     @Builder
     @Value
@@ -232,6 +241,7 @@ public class ConfiguredModel implements Model {
     private final List<RequestTransformer> requestTransformers;
     private final RequestRetryPolicy requestRetryPolicy;
     private final FailsafeExecutor<Object> retryExecutor;
+    private final WirePayloadLogger wirePayloadLogger;
 
     /**
      * @param modelName           Display name of the model; also the wire id when {@code modelId} is
@@ -249,6 +259,9 @@ public class ConfiguredModel implements Model {
      *                            ones; may be null.
      * @param requestRetryPolicy  Retry policy of the model calls; null means
      *                            {@link RequestRetryPolicy#DEFAULT} (no retry).
+     * @param wireLogging         Wire payload logging level; null means {@link WireLoggingMode#ON}.
+     *                            A system property or an environment variable can override it;
+     *                            see {@link WireLoggingMode#resolve(WireLoggingMode)}.
      */
     @Builder
     protected ConfiguredModel(final String modelName,
@@ -259,7 +272,8 @@ public class ConfiguredModel implements Model {
                               final ModelOptions modelOptions,
                               final TokenCounter tokenCounter,
                               final List<RequestTransformer> requestTransformers,
-                              final RequestRetryPolicy requestRetryPolicy) {
+                              final RequestRetryPolicy requestRetryPolicy,
+                              final WireLoggingMode wireLogging) {
         this.modelName = Objects.requireNonNullElse(modelName, "default-model");
         this.modelId = modelId;
         this.provider = provider;
@@ -273,6 +287,7 @@ public class ConfiguredModel implements Model {
                                                                           List.of()));
         this.requestRetryPolicy = Objects.requireNonNullElse(requestRetryPolicy, RequestRetryPolicy.DEFAULT);
         this.retryExecutor = RequestRetryExecutors.executorFor(this.requestRetryPolicy);
+        this.wirePayloadLogger = new WirePayloadLogger(WireLoggingMode.resolve(wireLogging));
     }
 
     /**
@@ -354,8 +369,8 @@ public class ConfiguredModel implements Model {
                                                      stats,
                                                      allMessages,
                                                      newMessages,
-                                                     wireMessages).orElse(
-                                                                          null);
+                                                     wireMessages)
+                        .orElse(null);
 
                 if (error != null) {
                     output = error;
@@ -388,17 +403,17 @@ public class ConfiguredModel implements Model {
                                               allMessages);
                 }
                 logDataDebug("Response from model: {}", response);
-                mergeUsage(stats, response.usage());
-                output = switch (response.finishReason()) {
+                mergeUsage(stats, response.getUsage());
+                output = switch (response.getFinishReason()) {
                     case WireResponse.FinishReasons.STOP -> {
-                        if (!Strings.isNullOrEmpty(response.refusal())) {
+                        if (!Strings.isNullOrEmpty(response.getRefusal())) {
                             yield ModelOutput.error(oldMessages,
                                                     stats,
                                                     SentinelError.error(
                                                                         ErrorType.REFUSED,
-                                                                        response.refusal()));
+                                                                        response.getRefusal()));
                         }
-                        final var runToolsResponse = runTools(response.toolCalls(),
+                        final var runToolsResponse = runTools(response.getToolCalls(),
                                                               context,
                                                               toolsForExecution,
                                                               toolRunner,
@@ -410,14 +425,14 @@ public class ConfiguredModel implements Model {
                                                               newMessages,
                                                               oldMessages);
                         yield runToolsResponse.orElseGet(() -> processOutput(context,
-                                                                             response.content(),
+                                                                             response.getContent(),
                                                                              oldMessages,
                                                                              stats,
                                                                              allMessages,
                                                                              newMessages,
                                                                              stopwatch));
                     }
-                    case WireResponse.FinishReasons.TOOL_CALLS -> runTools(response.toolCalls(),
+                    case WireResponse.FinishReasons.TOOL_CALLS -> runTools(response.getToolCalls(),
                                                                            context,
                                                                            toolsForExecution,
                                                                            toolRunner,
@@ -440,7 +455,7 @@ public class ConfiguredModel implements Model {
                     default -> ModelOutput.error(oldMessages,
                                                  stats,
                                                  SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON,
-                                                                     response.finishReason()));
+                                                                     response.getFinishReason()));
                 };
 
                 if (shouldLoop(output)) {
@@ -618,31 +633,51 @@ public class ConfiguredModel implements Model {
                 final var outputs = eventStream.map(streamEvent -> {
                     ModelOutput eventOutput = null;
                     if (streamEvent instanceof WireStreamEvent.ContentDelta contentDelta) {
-                        responseData.append(contentDelta.content());
-                        streamHandler.consumeReasoningAndContent(null, contentDelta.content());
+                        responseData.append(contentDelta.getContent());
+                        streamHandler.consumeReasoningAndContent(null, contentDelta.getContent());
                     }
                     else if (streamEvent instanceof WireStreamEvent.ReasoningDelta reasoningDelta) {
-                        streamHandler.consumeReasoningAndContent(reasoningDelta.content(), null);
+                        streamHandler.consumeReasoningAndContent(reasoningDelta.getContent(), null);
                     }
                     else if (streamEvent instanceof WireStreamEvent.ToolCallDelta toolCallDelta) {
                         // Caution: the following is not for people with weak constitution
                         // The api sends fully formed objects with partial data in the field
                         // So we try to assemble the pieces together to form a complete object
-                        final var node = toolCallData.compute(toolCallDelta.index(),
+                        final var node = toolCallData.compute(toolCallDelta.getIndex(),
                                                               (idx, existing) -> existing == null
                                                                       ? new ToolCallAccumulator(idx).merge(
                                                                                                            toolCallDelta)
                                                                       : existing.merge(toolCallDelta));
                         logDataDebug("Function till now: {} -> {}", node, node.toToolCall());
                     }
+                    else if (streamEvent instanceof WireStreamEvent.ToolCallComplete toolCallComplete) {
+                        // The provider sent the finished tool call item; replace any fragment
+                        // state for this index so the complete values win
+                        final var node = toolCallData.put(toolCallComplete.getIndex(),
+                                                          ToolCallAccumulator.complete(toolCallComplete));
+                        logDataDebug("Complete function call: {} -> {}",
+                                     node,
+                                     toolCallData.get(toolCallComplete.getIndex())
+                                             .toToolCall());
+                    }
                     else if (streamEvent instanceof WireStreamEvent.StreamUsageEvent usageEvent) {
-                        mergeUsage(stats, usageEvent.usage());
+                        mergeUsage(stats, usageEvent.getUsage());
                     }
                     else if (streamEvent instanceof WireStreamEvent.StreamFinishEvent finishEvent) {
                         if (finishHandled.compareAndSet(false, true)) {
-                            logDataDebug("Finish event from model: {}", finishEvent.finishReason());
-                            if (finishEvent.usage() != null) {
-                                mergeUsage(stats, finishEvent.usage());
+                            logDataDebug("Finish event from model: {}", finishEvent.getFinishReason());
+                            wirePayloadLogger.streamResponse(modelName,
+                                                             finishEvent,
+                                                             responseData.toString(),
+                                                             toolCallData.values()
+                                                                     .stream()
+                                                                     .sorted(Comparator.comparing(
+                                                                                                  ToolCallAccumulator::indexOf))
+                                                                     .map(ToolCallAccumulator::toToolCall)
+                                                                     .toList(),
+                                                             mapper);
+                            if (finishEvent.getUsage() != null) {
+                                mergeUsage(stats, finishEvent.getUsage());
                             }
                             eventOutput = handleStreamFinish(finishEvent,
                                                              streamProcessingMode,
@@ -659,10 +694,10 @@ public class ConfiguredModel implements Model {
                                                              toolRunner,
                                                              wireMessages);
                         }
-                        else if (finishEvent.usage() != null) {
+                        else if (finishEvent.getUsage() != null) {
                             // Providers repeat the finish reason on trailing chunks that carry usage.
                             // The first finish is already handled, so only the usage is merged here.
-                            mergeUsage(stats, finishEvent.usage());
+                            mergeUsage(stats, finishEvent.getUsage());
                         }
                     }
                     return eventOutput;
@@ -679,7 +714,7 @@ public class ConfiguredModel implements Model {
                                                                                                 allMessages,
                                                                                                 stats,
                                                                                                 null));
-                    AgentMessages agentMessages2 = AgentMessages
+                    final var receivedMessages = AgentMessages
                             .builder()
                             .newMessages(newMessages)
                             .allMessages(allMessages)
@@ -690,7 +725,7 @@ public class ConfiguredModel implements Model {
                                                             modelSettings,
                                                             modelOutput,
                                                             stats,
-                                                            agentMessages2);
+                                                            receivedMessages);
                 }
                 prevMessages = List.copyOf(allMessages); // Keep a copy. we need to find delta
             } while (shouldLoop(output));
@@ -713,13 +748,13 @@ public class ConfiguredModel implements Model {
                                            final Map<String, ExecutableTool> toolsForExecution,
                                            final ToolRunner toolRunner,
                                            final List<JsonNode> wireMessages) {
-        final var finishReason = finishEvent.finishReason();
+        final var finishReason = finishEvent.getFinishReason();
         return switch (finishReason) {
             case WireResponse.FinishReasons.STOP -> {
-                if (!Strings.isNullOrEmpty(finishEvent.refusal())) {
+                if (!Strings.isNullOrEmpty(finishEvent.getRefusal())) {
                     yield ModelOutput.error(oldMessages,
                                             stats,
-                                            SentinelError.error(ErrorType.REFUSED, finishEvent.refusal()));
+                                            SentinelError.error(ErrorType.REFUSED, finishEvent.getRefusal()));
                 }
                 // Output handling is a little different for streaming and non-streaming cases
                 // For streaming it looks like VLLM etc. are not supporting tool calls properly
@@ -736,9 +771,7 @@ public class ConfiguredModel implements Model {
                                         newMessages,
                                         stopwatch);
                 }
-                else
-
-                {
+                else {
 
                     yield processStreamingOutput(context,
                                                  responseData.toString(),
@@ -756,7 +789,7 @@ public class ConfiguredModel implements Model {
                 final var calls = toolCallData
                         .values()
                         .stream()
-                        .sorted(java.util.Comparator.comparing(ToolCallAccumulator::indexOf))
+                        .sorted(Comparator.comparing(ToolCallAccumulator::indexOf))
                         .map(ToolCallAccumulator::toToolCall)
                         .toList();
 
@@ -787,9 +820,7 @@ public class ConfiguredModel implements Model {
                                                 newMessages,
                                                 stopwatch);
                         }
-                        else
-
-                        {
+                        else {
 
                             yield processStreamingOutput(context,
                                                          generatedOutput.get(),
@@ -817,11 +848,8 @@ public class ConfiguredModel implements Model {
         };
     }
 
-
     /**
-     * Executes one blocking model call. Returns the decoded response, or null when the call
-     * failed; the failure details are available through {@link #capturedError()}. Applies the
-     * {@link RequestRetryPolicy} when it is enabled.
+     * Executes one blocking model call; returns null on failure (see {@link #capturedError()}).
      */
     private WireResponse callModel(final WireContext ctx,
                                    final ObjectNode requestBody,
@@ -829,7 +857,9 @@ public class ConfiguredModel implements Model {
         try {
             final var response = retryExecutor.get(() -> execute(ctx, requestBody, transformerContext));
             try (response; final var body = response.body()) {
-                final var json = ctx.getMapper().readTree(body == null ? new byte[0] : body.bytes());
+                final var bytes = body == null ? new byte[0] : body.bytes();
+                wirePayloadLogger.response(modelName, new String(bytes, StandardCharsets.UTF_8));
+                final var json = ctx.getMapper().readTree(bytes);
                 return protocol.decodeResponse(ctx, json);
             }
         }
@@ -844,8 +874,7 @@ public class ConfiguredModel implements Model {
     }
 
     /**
-     * Executes one blocking HTTP call and fails with {@link HttpModelCallException} on a non-2xx
-     * response.
+     * Executes one blocking HTTP call; fails with {@link HttpModelCallException} on a non-2xx response.
      */
     private Response execute(final WireContext ctx,
                              final ObjectNode requestBody,
@@ -858,23 +887,22 @@ public class ConfiguredModel implements Model {
     }
 
     /**
-     * Builds the HTTP error of a non-2xx response. Reads the body and the {@code Retry-After}
-     * header so the retry layer can honor both.
+     * Builds the HTTP error of a non-2xx response; reads body and {@code Retry-After}.
      */
-    private static <E extends ModelHttpException> E httpError(
-                                                              final Response response,
-                                                              final HttpErrorFactory<E> errorFactory)
+    private <E extends ModelHttpException> E httpError(final Response response,
+                                                       final HttpErrorFactory<E> errorFactory)
             throws IOException {
         final var retryAfter = ModelHttpException.parseRetryAfter(response.header("Retry-After"));
         final var body = response.body();
         final var bytes = body == null ? new byte[0] : body.bytes();
         final var text = new String(bytes, StandardCharsets.UTF_8);
+        wirePayloadLogger.error(modelName, response.code(), text);
         response.close();
         return errorFactory.create(response.code(), text, retryAfter);
     }
 
     /**
-     * Factory of one HTTP error type from the status, the body and the parsed Retry-After value.
+     * Factory of one HTTP error type from the status, body and Retry-After value.
      */
     @FunctionalInterface
     private interface HttpErrorFactory<E extends ModelHttpException> {
@@ -893,13 +921,14 @@ public class ConfiguredModel implements Model {
             provider.getAuth().apply(builder);
         }
         applyRequestTransformers(ctx, transformerContext, builder, requestBody);
-        builder.post(RequestBody.create(toBytes(ctx, requestBody), JSON_MEDIA_TYPE));
+        final var requestBytes = toBytes(ctx, requestBody);
+        wirePayloadLogger.request(modelName, requestBytes);
+        builder.post(RequestBody.create(requestBytes, JSON_MEDIA_TYPE));
         return builder.build();
     }
 
     /**
-     * Builds the transformer context of one model call from the wire context and the messages of
-     * the current turn.
+     * Builds the transformer context of one model call.
      */
     private static RequestTransformerContext buildTransformerContext(final WireContext ctx,
                                                                      final ModelRunContext runContext,
@@ -915,8 +944,8 @@ public class ConfiguredModel implements Model {
     }
 
     /**
-     * Applies the run-level (extension), provider-level and model-level request transformers in
-     * order. The first failure aborts the call with {@link RequestTransformFailedException}.
+     * Applies the extension, provider and model level transformers in order; first failure
+     * aborts with {@link RequestTransformFailedException}.
      */
     private void applyRequestTransformers(final WireContext ctx,
                                           final RequestTransformerContext transformerContext,
@@ -951,8 +980,7 @@ public class ConfiguredModel implements Model {
     }
 
     /**
-     * Last failure captured by {@link #callModel}. Guarded by the run loop; one run is single
-     * threaded with respect to this field.
+     * Last failure captured by {@link #callModel}; guarded by the single-threaded run loop.
      */
     private Throwable captured;
 
@@ -992,21 +1020,20 @@ public class ConfiguredModel implements Model {
     }
 
     /**
-     * Flattens the provider level and model level request transformers in application order.
+     * Flattens the provider and model level transformers in application order.
      */
     private List<RequestTransformer> flattenedRequestTransformers() {
-        final var flattened = new ArrayList<RequestTransformer>(provider.getRequestTransformers().size()
-                + requestTransformers.size());
+        final var flattened = new ArrayList<RequestTransformer>(
+                                                                provider.getRequestTransformers().size()
+                                                                        + requestTransformers.size());
         flattened.addAll(provider.getRequestTransformers());
         flattened.addAll(requestTransformers);
         return flattened;
     }
 
     /**
-     * Opens the SSE stream of one model call on the executor thread of the run and waits for the
-     * first response line. A non-2xx response becomes an {@link HttpStreamException} so the error
-     * path can classify it. The retry policy applies until the first event of the stream; a
-     * stream that already delivered events is never retried.
+     * Opens the SSE stream of one model call; retries only before the first event. A non-2xx
+     * response becomes an {@link HttpStreamException}.
      */
     private Stream<SseEvent> openSseStream(final WireContext ctx,
                                            final ObjectNode requestBody,
@@ -1032,7 +1059,8 @@ public class ConfiguredModel implements Model {
                         future.completeExceptionally(new IOException("No response body for model stream"));
                         return;
                     }
-                    future.complete(SseReader.stream(response, body));
+                    future.complete(SseReader.stream(response, body)
+                            .peek(event -> wirePayloadLogger.streamFrame(modelName, event)));
                 }
             });
             return future.join();
@@ -1217,8 +1245,8 @@ public class ConfiguredModel implements Model {
     }
 
     private static boolean shouldLoop(final ModelOutput output) {
-        return output == null || (output.getData() == null && output
-                .getError() == null);
+        return output == null
+                || (output.getData() == null && output.getError() == null);
     }
 
     private static boolean isEarlyTermination(final EarlyTerminationStrategyResponse strategyResponse) {
@@ -1385,13 +1413,13 @@ public class ConfiguredModel implements Model {
 
     private static void mergeUsage(final ModelUsageStats stats, final WireUsage usage) {
         if (null != usage) {
-            stats.incrementRequestTokens(WireUsage.orZero(usage.inputTokens()))
-                    .incrementResponseTokens(WireUsage.orZero(usage.outputTokens()))
-                    .incrementTotalTokens(WireUsage.orZero(usage.totalTokens()))
-                    .incrementRequestAudioTokens(WireUsage.orZero(usage.inputAudioTokens()))
-                    .incrementRequestCachedTokens(WireUsage.orZero(usage.inputCachedTokens()))
-                    .incrementResponseAudioTokens(WireUsage.orZero(usage.outputAudioTokens()))
-                    .incrementResponseReasoningTokens(WireUsage.orZero(usage.outputReasoningTokens()));
+            stats.incrementRequestTokens(WireUsage.orZero(usage.getInputTokens()))
+                    .incrementResponseTokens(WireUsage.orZero(usage.getOutputTokens()))
+                    .incrementTotalTokens(WireUsage.orZero(usage.getTotalTokens()))
+                    .incrementRequestAudioTokens(WireUsage.orZero(usage.getInputAudioTokens()))
+                    .incrementRequestCachedTokens(WireUsage.orZero(usage.getInputCachedTokens()))
+                    .incrementResponseAudioTokens(WireUsage.orZero(usage.getOutputAudioTokens()))
+                    .incrementResponseReasoningTokens(WireUsage.orZero(usage.getOutputReasoningTokens()));
         }
     }
 
@@ -1437,13 +1465,13 @@ public class ConfiguredModel implements Model {
         final var seenToolCallIds = new HashSet<String>();
         final var mapper = agentSetup.getMapper();
         final var toolCallMessages = toolCalls.stream()
-                .filter(toolCall -> !Strings.isNullOrEmpty(toolCall.id()))
-                .filter(toolCall -> seenToolCallIds.add(toolCall.id()))
+                .filter(toolCall -> !Strings.isNullOrEmpty(toolCall.getId()))
+                .filter(toolCall -> seenToolCallIds.add(toolCall.getId()))
                 .map(toolCall -> new ToolCall(sessionId,
                                               runId,
-                                              toolCall.id(),
-                                              toolCall.name(),
-                                              toolCall.argumentsJson()))
+                                              toolCall.getId(),
+                                              toolCall.getName(),
+                                              toolCall.getArgumentsJson()))
                 .toList();
 
         raiseMessageReceivedEvent(agentName,

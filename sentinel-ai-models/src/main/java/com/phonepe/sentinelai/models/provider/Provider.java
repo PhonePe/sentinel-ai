@@ -39,47 +39,31 @@ import java.util.List;
 public class Provider {
 
     /**
-     * Root URL of the provider endpoint including any path prefix, for example
-     * {@code https://api.openai.com/v1}. The protocol appends only its path after it.
+     * Root URL including any path prefix, for example {@code https://api.openai.com/v1}.
      */
     @NonNull
     private final String baseUrl;
 
-    /**
-     * Wire protocol of the provider: request body shape, response decoding and endpoint
-     * path.
-     */
     @NonNull
     private final WireProtocol protocol;
 
     /**
-     * Additional protocols this endpoint can speak; may be empty. The default
-     * {@link #protocol} is always supported. Models select one of these through the
-     * model-level protocol override.
+     * Additional protocols this endpoint speaks; the default {@link #protocol} is always supported.
      */
     @Builder.Default
     private final List<WireProtocol> supportedProtocols = List.of();
 
     /**
-     * Authentication applied to every request; null means no auth is applied by the model.
-     * Transport level auth (OkHttp interceptors) stays available.
+     * Auth applied to every request; null means none (OkHttp interceptors still work).
      */
     private final Auth auth;
 
-    /**
-     * Request transformers applied to every request after authentication and before
-     * serialization; may be empty. See {@link RequestTransformer} for the contract.
-     */
     @Builder.Default
     private final List<RequestTransformer> requestTransformers = List.of();
 
     /**
-     * Validates the requested protocol against this endpoint.
-     *
-     * @param requested protocol the model wants to use; null means the default
-     * @return the default protocol when {@code requested} is null, else {@code requested}
-     * @throws IllegalArgumentException when {@code requested} is neither the default protocol
-     *                                  nor listed in {@link #supportedProtocols}
+     * @return The default protocol when {@code requested} is null, else {@code requested};
+     *         throws when the requested protocol is not supported.
      */
     public WireProtocol protocolFor(final WireProtocol requested) {
         if (requested == null) {

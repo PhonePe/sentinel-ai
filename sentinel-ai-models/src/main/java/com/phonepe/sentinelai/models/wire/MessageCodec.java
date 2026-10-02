@@ -33,10 +33,6 @@ public interface MessageCodec {
 
     /**
      * Translates one message to its wire JSON representation.
-     *
-     * @param message Immutable message to translate.
-     * @param mapper  Jackson mapper of the run; used for all JSON node creation.
-     * @return Wire JSON node for the message.
      */
     JsonNode translate(AgentMessage message, ObjectMapper mapper);
 }

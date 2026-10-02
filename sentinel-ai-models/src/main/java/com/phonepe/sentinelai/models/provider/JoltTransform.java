@@ -42,15 +42,9 @@ import java.util.Map;
 @Jacksonized
 public class JoltTransform {
 
-    /**
-     * Jolt operation name, for example {@code default} or {@code shift}.
-     */
     @NonNull
     String operation;
 
-    /**
-     * Jolt spec map of the operation.
-     */
     @NonNull
     Map<String, Object> spec;
 }

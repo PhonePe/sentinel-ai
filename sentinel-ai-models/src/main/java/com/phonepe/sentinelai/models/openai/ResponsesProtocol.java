@@ -49,6 +49,7 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.EFFORT;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ERROR;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.EVENT_FUNCTION_CALL_ARGUMENTS_DELTA;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.EVENT_OUTPUT_ITEM_ADDED;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.EVENT_OUTPUT_ITEM_DONE;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.EVENT_OUTPUT_TEXT_DELTA;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.EVENT_REASONING_DELTA;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.EVENT_REASONING_SUMMARY_TEXT_DELTA;
@@ -154,11 +155,9 @@ public class ResponsesProtocol implements WireProtocol {
             final var text = mapper.createObjectNode();
             final var format = mapper.createObjectNode();
             format.put(TYPE, JSON_SCHEMA);
-            final var jsonSchema = mapper.createObjectNode();
-            jsonSchema.put(NAME, "model_output");
-            jsonSchema.set(SCHEMA, ctx.getOutputSchema());
-            jsonSchema.put(STRICT, true);
-            format.set(JSON_SCHEMA, jsonSchema);
+            format.put(NAME, "model_output");
+            format.set(SCHEMA, ctx.getOutputSchema());
+            format.put(STRICT, true);
             text.set(FORMAT, format);
             body.set(TEXT, text);
         }
@@ -225,24 +224,24 @@ public class ResponsesProtocol implements WireProtocol {
     public List<WireStreamEvent> decodeStreamEvent(final WireContext ctx, final SseEvent event) {
         final JsonNode body;
         try {
-            body = ctx.getMapper().readTree(event.data());
+            body = ctx.getMapper().readTree(event.getData());
         }
         catch (final Exception e) {
             return List.of();
         }
-        final var name = event.event() != null ? event.event() : textOrNull(body.get(TYPE));
+        final var name = event.getEvent() != null ? event.getEvent() : textOrNull(body.get(TYPE));
         final WireStreamEvent decoded = switch (name) {
             case EVENT_OUTPUT_TEXT_DELTA -> contentDelta(body.get(DELTA), body.get(TEXT_FIELD));
-            case EVENT_REASONING_DELTA, EVENT_REASONING_SUMMARY_TEXT_DELTA -> contentDelta(body.get(DELTA),
-                                                                                           body.get(TEXT_FIELD));
+            case EVENT_REASONING_DELTA, EVENT_REASONING_SUMMARY_TEXT_DELTA -> reasoningDelta(body.get(DELTA));
             case EVENT_REFUSAL_DELTA -> contentDelta(body.get(DELTA), body.get(REFUSAL));
-            case EVENT_OUTPUT_ITEM_ADDED -> outputItemEvent(body.get(ITEM));
+            case EVENT_OUTPUT_ITEM_ADDED -> outputItemEvent(body.get(ITEM), body.get(OUTPUT_INDEX));
             case EVENT_FUNCTION_CALL_ARGUMENTS_DELTA -> new WireStreamEvent.ToolCallDelta(
                                                                                           intOrZero(body.get(
                                                                                                              OUTPUT_INDEX)),
                                                                                           null,
                                                                                           null,
                                                                                           textOrEmpty(body.get(DELTA)));
+            case EVENT_OUTPUT_ITEM_DONE -> outputItemDoneEvent(body.get(ITEM), body.get(OUTPUT_INDEX));
             case EVENT_RESPONSE_COMPLETED -> finalResponseEvent(ctx, body.get(RESPONSE));
             case EVENT_RESPONSE_FAILED, EVENT_RESPONSE_INCOMPLETE -> new WireStreamEvent.StreamFinishEvent(
                                                                                                            finishReasonOf(body
@@ -285,7 +284,12 @@ public class ResponsesProtocol implements WireProtocol {
         return value == null || value.isEmpty() ? null : new WireStreamEvent.ContentDelta(value);
     }
 
-    private WireStreamEvent outputItemEvent(final JsonNode item) {
+    private WireStreamEvent reasoningDelta(final JsonNode delta) {
+        final var value = delta == null || delta.isNull() ? null : delta.asText();
+        return value == null || value.isEmpty() ? null : new WireStreamEvent.ReasoningDelta(value);
+    }
+
+    private WireStreamEvent outputItemEvent(final JsonNode item, final JsonNode outputIndex) {
         if (item == null) {
             return null;
         }
@@ -294,9 +298,29 @@ public class ResponsesProtocol implements WireProtocol {
             final var callId = textOrNull(item.get(CALL_ID));
             return name == null && callId == null
                     ? null
-                    : new WireStreamEvent.ToolCallDelta(0, callId, name, null);
+                    : new WireStreamEvent.ToolCallDelta(intOrZero(outputIndex), callId, name, null);
         }
         return null;
+    }
+
+    /**
+     * Decodes the finished function call item from a {@code response.output_item.done} frame. The
+     * frame carries the complete arguments, so the loop replaces any accumulator state for the
+     * item's index instead of appending.
+     */
+    private WireStreamEvent outputItemDoneEvent(final JsonNode item, final JsonNode outputIndex) {
+        if (item == null || !ITEM_FUNCTION_CALL.equals(textOrNull(item.get(TYPE)))) {
+            return null;
+        }
+        final var name = textOrNull(item.get(NAME));
+        final var callId = textOrNull(item.get(CALL_ID));
+        if (name == null && callId == null) {
+            return null;
+        }
+        return new WireStreamEvent.ToolCallComplete(intOrZero(outputIndex),
+                                                    callId,
+                                                    name,
+                                                    textOrNull(item.get(ARGUMENTS)));
     }
 
     private WireStreamEvent finalResponseEvent(final WireContext ctx, final JsonNode response) {
@@ -304,10 +328,10 @@ public class ResponsesProtocol implements WireProtocol {
             return null;
         }
         final var decoded = decodeResponse(ctx, response);
-        if (decoded.finishReason() != null) {
-            return new WireStreamEvent.StreamFinishEvent(decoded.finishReason(),
-                                                         decoded.refusal(),
-                                                         decoded.usage());
+        if (decoded.getFinishReason() != null) {
+            return new WireStreamEvent.StreamFinishEvent(decoded.getFinishReason(),
+                                                         decoded.getRefusal(),
+                                                         decoded.getUsage());
         }
         return null;
     }

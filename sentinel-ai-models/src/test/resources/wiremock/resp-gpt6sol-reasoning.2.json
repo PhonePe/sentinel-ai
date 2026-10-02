@@ -1,0 +1,21 @@
+event: response.output_item.added
+data: {"output_index":0,"item":{"type":"reasoning","id":"rs_2","content":[],"summary":[]}}
+
+event: response.reasoning.delta
+{"delta":"The tool returned the name. Now greet the user with the structured JSON payload.","output_index":0}
+
+event: response.output_item.done
+data: {"output_index":0,"item":{"type":"reasoning","id":"rs_2","content":[],"summary":[]}}
+
+event: response.output_item.added
+data: {"output_index":1,"item":{"type":"message","id":"msg_2","role":"assistant","status":"in_progress","content":[]}}
+
+event: response.output_text.delta
+data: {"item_id":"msg_2","output_index":1,"content_index":0,"delta":"{\"output\": \"Hello Santanu\"}"}
+
+event: response.output_item.done
+data: {"output_index":1,"item":{"type":"message","id":"msg_2","role":"assistant","status":"completed","content":[{"type":"output_text","text":"{\"output\": \"Hello Santanu\"}","annotations":[]}]}}
+
+event: response.completed
+data: {"response":{"id":"resp_2","object":"response","status":"completed","output":[{"type":"reasoning","id":"rs_2"},{"type":"message","id":"msg_2","role":"assistant","status":"completed","content":[{"type":"output_text","text":"{\"output\": \"Hello Santanu\"}","annotations":[]}]}],"usage":{"input_tokens":200,"output_tokens":15,"total_tokens":215}}}
+

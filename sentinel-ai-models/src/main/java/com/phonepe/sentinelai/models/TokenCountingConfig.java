@@ -36,34 +36,28 @@ public class TokenCountingConfig {
             .build();
 
     /**
-     * Overhead per message in tokens
+     * Overhead per message in tokens.
      */
     int messageOverHead;
 
     /**
-     * Overhead per name in tokens
+     * Overhead per name in tokens.
      */
     int nameOverhead;
 
     /**
-     * Overhead for system priming in tokens. Once every message
+     * Overhead for system priming in tokens; once every message.
      */
     int assistantPrimingOverhead;
 
     /**
-     * Overhead for formatting in tokens.
-     * Once every message. Used for structued arguments to tool calls etc.
+     * Overhead for formatting in tokens; once every message.
      */
     int formattingOverhead;
 
     /**
-     * Fixed token cost per image content part. Vision models do not tokenize the
-     * base64 payload;
-     * they count a patch grid derived from image resolution. Without this, the
-     * estimator counts
-     * every base64 character as text and massively overcounts image messages.
-     * The default is a conservative high-detail worst case (OpenAI-style ~765
-     * tokens).
+     * Fixed token cost per image content part; vision models count a patch grid, not
+     * the base64 text. Default is a conservative worst case (OpenAI-style ~765 tokens).
      */
     @Builder.Default
     int imageTokenCost = DEFAULT_IMAGE_TOKEN_COST;

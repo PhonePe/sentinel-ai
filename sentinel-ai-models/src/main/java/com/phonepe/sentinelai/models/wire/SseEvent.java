@@ -16,23 +16,28 @@
 
 package com.phonepe.sentinelai.models.wire;
 
+import lombok.Value;
+
 /**
  * One parsed Server-Sent-Events frame from a streaming model response.
- *
- * @param event Event name as sent in the {@code event:} line; null when the server sends only
- *              {@code data:} lines (OpenAI chat completions style).
- * @param data  Payload as sent in the {@code data:} line(s); multi-line data is joined with
- *              newlines per the SSE specification.
  */
-public record SseEvent(
-        String event,
-        String data
-) {
+@Value
+public class SseEvent {
 
     /**
-     * Sentinel data value some servers (OpenAI compatible) use to signal the end of a stream.
+     * Sentinel data value some servers use to signal the end of a stream.
      */
     public static final String DONE_SENTINEL = "[DONE]";
+
+    /**
+     * Event name; null when the server sends only data lines (OpenAI style).
+     */
+    String event;
+
+    /**
+     * Payload as sent in the {@code data:} line(s); multi-line data is joined with newlines.
+     */
+    String data;
 
     /**
      * @return True if this event carries the end-of-stream sentinel as its data.

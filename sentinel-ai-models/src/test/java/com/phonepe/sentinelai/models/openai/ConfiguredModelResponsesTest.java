@@ -317,6 +317,48 @@ class ConfiguredModelResponsesTest {
 
     @Test
     @SneakyThrows
+    void streamingMultipleToolCallsWithSplitArguments(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        setupSseMocks(2, "resp-gpt6sol-multi");
+        final var agent = new TestAgent(setupBase(wiremock)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .build(), streamConsumer())
+                .join();
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertEquals("Hello Santanu", response.getData());
+        assertEquals(1, agent.getNameCalls.get());
+        assertEquals(2, countMessages(response.getAllMessages(), ToolCall.class));
+        assertEquals(2, countMessages(response.getAllMessages(), ToolCallResponse.class));
+        assertTrue(response.getUsage().getTotalTokens() > 1);
+    }
+
+    @Test
+    @SneakyThrows
+    void streamingReasoningThenSingleToolCallAtNonZeroIndex(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        setupSseMocks(2, "resp-gpt6sol-reasoning");
+        final var agent = new TestAgent(setupBase(wiremock)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .build(), streamConsumer())
+                .join();
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertEquals("Hello Santanu", response.getData());
+        assertEquals(1, agent.getNameCalls.get());
+        assertEquals(1, countMessages(response.getAllMessages(), ToolCall.class));
+        assertEquals(1, countMessages(response.getAllMessages(), ToolCallResponse.class));
+        assertTrue(response.getUsage().getTotalTokens() > 1);
+    }
+
+    @Test
+    @SneakyThrows
     void streamingRequestCarriesStreamFlagAndSseAcceptHeader(final WireMockRuntimeInfo wiremock) {
         assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         setupSseMocks(5, "resp-events");
@@ -366,7 +408,7 @@ class ConfiguredModelResponsesTest {
 
         WireMock.verify(postRequestedFor(urlEqualTo(ENDPOINT))
                 .withRequestBody(matchingJsonPath(
-                                                  "$.text.format[?(@.type == 'json_schema')].json_schema.name",
+                                                  "$.text.format[?(@.type == 'json_schema')].name",
                                                   equalTo("model_output"))));
     }
 
@@ -402,6 +444,7 @@ class ConfiguredModelResponsesTest {
         assertTrue(countMessages(response.getAllMessages(), ToolCall.class) >= 1);
         assertTrue(countMessages(response.getAllMessages(), ToolCallResponse.class) >= 1);
     }
+
 
     @Test
     @SneakyThrows

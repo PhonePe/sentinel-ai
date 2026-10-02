@@ -28,17 +28,7 @@ import okhttp3.Request;
 import java.util.Map;
 
 /**
- * A {@link RequestTransformer} that adds fixed headers to every outgoing request. The body and
- * the transformer context are ignored; only the configured headers are applied.
- *
- * <p>Declare the transformer on a {@link Provider} for provider-wide headers (for example
- * gateway or proxy headers), or on the model for model-specific headers:
- * <pre>
- * ExtraHeadersRequestTransformer.builder()
- * .header("x-gateway-tenant", "acme")
- * .header("x-api-version", "2")
- * .build()
- * </pre>
+ * A {@link RequestTransformer} that adds fixed headers to every outgoing request.
  */
 @Value
 @Builder

@@ -46,10 +46,7 @@ public interface MessageTransformer {
     }
 
     /**
-     * Transforms one message.
-     *
-     * @param message Message to transform.
-     * @return Transformed message; the original instance when no change is needed.
+     * Transforms one message; return the original instance when no change is needed.
      */
     AgentMessage transform(AgentMessage message);
 }

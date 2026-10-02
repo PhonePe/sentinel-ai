@@ -195,8 +195,8 @@ class WireProtocolDecoratorSupportTest {
 
         final var response = protocol.decodeResponse(context(null), body);
 
-        assertEquals("hi", response.content());
-        assertEquals(WireResponse.FinishReasons.STOP, response.finishReason());
+        assertEquals("hi", response.getContent());
+        assertEquals(WireResponse.FinishReasons.STOP, response.getFinishReason());
         assertEquals(List.of("transformResponse"), log);
     }
 
@@ -212,7 +212,7 @@ class WireProtocolDecoratorSupportTest {
 
         assertEquals(1, decoded.size());
         assertEquals(WireStreamEvent.ContentDelta.class, decoded.get(0).getClass());
-        assertEquals("hi", ((WireStreamEvent.ContentDelta) decoded.get(0)).content());
+        assertEquals("hi", ((WireStreamEvent.ContentDelta) decoded.get(0)).getContent());
         assertEquals(List.of("transformStreamEvent"), log);
     }
 }

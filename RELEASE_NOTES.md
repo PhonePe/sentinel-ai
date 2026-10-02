@@ -19,6 +19,10 @@
   as a cache-affinity signal through a header, a JSON pointer to a body location, or both.
 - Added `RequestRetryPolicy` with Failsafe based retry for model calls: retry on IOException and HTTP 429/500/502/
   503/504, with `Retry-After` support. The default policy does not retry.
+- Added wire payload logging. The model logs the request JSON, the final response and failed call bodies to the
+  dedicated `com.phonepe.sentinelai.models.wire.WIRE` logger at `INFO` level. `WireLoggingMode` controls the level:
+  `ON` (default), `FRAMES` (adds every raw stream frame) or `OFF`. The system property `sentinel.wire.logging` or the
+  environment variable `SENTINEL_WIRE_LOGGING` overrides the configured mode.
 
 ## 1.2.0
 

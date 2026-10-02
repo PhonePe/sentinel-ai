@@ -16,13 +16,18 @@
 
 package com.phonepe.sentinelai.models.wire;
 
+import lombok.Value;
+
 /**
- * A single tool call requested by the model. {@code argumentsJson} is the raw JSON arguments
- * string exactly as the provider sent it (or as reassembled from stream fragments).
+ * A single tool call requested by the model; argumentsJson is the raw JSON string as the
+ * provider sent it or as reassembled from stream fragments.
  */
-public record WireToolCall(
-        String id,
-        String name,
-        String argumentsJson
-) {
+@Value
+public class WireToolCall {
+
+    String id;
+
+    String name;
+
+    String argumentsJson;
 }

@@ -16,65 +16,103 @@
 
 package com.phonepe.sentinelai.models.wire;
 
+import lombok.Value;
+
+/**
+ * Streaming events decoded from provider SSE frames; consumed in order by the model loop.
+ */
 public sealed interface WireStreamEvent permits WireStreamEvent.ContentDelta,
         WireStreamEvent.ReasoningDelta,
         WireStreamEvent.ToolCallDelta,
+        WireStreamEvent.ToolCallComplete,
         WireStreamEvent.StreamFinishEvent,
         WireStreamEvent.StreamUsageEvent {
 
     /**
      * A fragment of the response text content.
      */
-    record ContentDelta(String content) implements WireStreamEvent {
+    @Value
+    class ContentDelta implements WireStreamEvent {
+
+        String content;
     }
 
     /**
      * A fragment of the reasoning/thinking content.
      */
-    record ReasoningDelta(String content) implements WireStreamEvent {
+    @Value
+    class ReasoningDelta implements WireStreamEvent {
+
+        String content;
     }
 
     /**
-     * A fragment of one tool call. Providers stream tool calls as partial objects; the index
-     * orders fragments of the same call, and the id/name/arguments fields are cumulative
-     * fragments to be merged (concatenated) per index.
+     * A fragment of one tool call. The index orders fragments of the same call; the id, name
+     * and arguments fields are cumulative fragments to be merged per index.
      */
-    record ToolCallDelta(
-            int index,
-            String id,
-            String name,
-            String argumentsFragment
-    )
-            implements
-            WireStreamEvent {
+    @Value
+    class ToolCallDelta implements WireStreamEvent {
+
+        int index;
+
+        String id;
+
+        String name;
+
+        String argumentsFragment;
     }
 
     /**
-     * The provider signaled the stop reason for the turn. Delivered at most once per turn; the
-     * loop deduplicates repeated trailing stop signals. Providers that carry the usage on the
-     * same final frame pass it here; the loop merges it into the run stats.
+     * The complete form of one tool call, sent by providers that emit the finished item after
+     * the fragments. The loop replaces any accumulator state for this index with these values.
      */
-    record StreamFinishEvent(
-            String finishReason,
-            String refusal,
-            WireUsage usage
-    ) implements WireStreamEvent {
+    @Value
+    class ToolCallComplete implements WireStreamEvent {
+
+        int index;
+
+        String id;
+
+        String name;
+
+        String arguments;
+    }
+
+    /**
+     * The provider signaled the stop reason for the turn; delivered at most once per turn.
+     */
+    @Value
+    class StreamFinishEvent implements WireStreamEvent {
+
+        /**
+         * One of {@link WireResponse.FinishReasons} values.
+         */
+        String finishReason;
+
+        String refusal;
+
+        WireUsage usage;
 
         public StreamFinishEvent(final String finishReason, final String refusal) {
             this(finishReason, refusal, null);
+        }
+
+        public StreamFinishEvent(final String finishReason, final String refusal, final WireUsage usage) {
+            this.finishReason = finishReason;
+            this.refusal = refusal;
+            this.usage = usage;
         }
     }
 
     /**
      * Usage reported by the provider, typically on the final frames.
      */
-    record StreamUsageEvent(WireUsage usage) implements WireStreamEvent {
+    @Value
+    class StreamUsageEvent implements WireStreamEvent {
+
+        WireUsage usage;
     }
 
-    /**
-     * Helper for implementors of {@link WireProtocol#decodeStreamEvent(SseEvent)}: a
-     * provider-level neutral marker for frames the protocol layer ignores.
-     */
     static boolean isIgnorable(final WireStreamEvent event) {
         return event == null;
     }

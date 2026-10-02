@@ -184,6 +184,40 @@ final var model = ConfiguredModel.builder()
         .build();
 ```
 
+### Wire Payload Logging
+
+The model logs the JSON wire payload it exchanges with the provider. This eases protocol debugging. The level is a
+`WireLoggingMode` on the model:
+
+| Level    | Logs                                                                        |
+|----------|-----------------------------------------------------------------------------|
+| `ON`     | The request body, the final response and the body of every failed call.    |
+| `FRAMES` | Everything `ON` logs, plus every raw stream frame; one log line per frame. |
+| `OFF`    | Nothing.                                                                    |
+
+The default is `ON`. A streaming response logs once, at the first finish event, as the assembled final response: finish
+reason, content, tool calls and usage.
+
+```java
+final var model = ConfiguredModel.builder()
+        .modelName("gpt-4o")
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ChatCompletionsProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .build())
+        .wireLogging(WireLoggingMode.FRAMES)
+        .build();
+```
+
+The output goes to a dedicated logger, `com.phonepe.sentinelai.models.wire.WIRE`, at `INFO` level. Route or silence this
+logger to control the wire payloads without touching other loggers.
+
+!!!note "Environment overrides"
+    The system property `sentinel.wire.logging` or the environment variable `SENTINEL_WIRE_LOGGING` overrides the
+    configured mode. Valid values are `ON`, `FRAMES` and `OFF`, case-insensitive. An invalid value logs a warning and
+    keeps the configured mode.
+
 ### Request Transformers
 
 A `RequestTransformer` mutates the request body, the headers or the request after authentication and before

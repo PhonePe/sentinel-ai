@@ -39,6 +39,8 @@ import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 
+import lombok.Value;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -155,6 +157,16 @@ public class GenericTokenCounter implements TokenCounter {
         }
     }
 
+    @Value
+    private static class MessageCount {
+
+        String role;
+
+        int roleTokens;
+
+        int contentTokens;
+    }
+
     private final EncodingRegistry encodingRegistry = Encodings.newDefaultEncodingRegistry();
 
     private static int countString(final Encoding encoder, final String content) {
@@ -189,20 +201,10 @@ public class GenericTokenCounter implements TokenCounter {
         var totalTokens = 0;
         for (final var message : messages) {
             final var counted = message.accept(new Counter(encoder, tokenCountingConfig));
-            totalTokens += tokenCountingConfig.getMessageOverHead() + counted.roleTokens();
-            totalTokens += counted.contentTokens();
+            totalTokens += tokenCountingConfig.getMessageOverHead() + counted.getRoleTokens();
+            totalTokens += counted.getContentTokens();
         }
         totalTokens += tokenCountingConfig.getAssistantPrimingOverhead();
         return totalTokens;
-    }
-
-    /**
-     * Per-message counting result.
-     */
-    private record MessageCount(
-            String role,
-            int roleTokens,
-            int contentTokens
-    ) {
     }
 }

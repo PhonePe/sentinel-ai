@@ -53,27 +53,18 @@ import okhttp3.Request;
 public class SessionIdInjectionTransformer implements RequestTransformer {
 
     /**
-     * HTTP header name that carries the session id; optional. When set, the header is added to
-     * every request.
+     * HTTP header name that carries the session id; optional.
      */
     String header;
 
     /**
-     * JSON pointer (RFC 6901) to the body location that carries the session id; optional. For
-     * example {@code /session_id} for a top-level field or {@code /metadata/session_id} for a
-     * nested field. Intermediate object nodes are created when absent; a pointer that meets a
-     * non-object node mid-path fails the call.
+     * JSON pointer (RFC 6901) to the body location that carries the session id; optional.
+     * Intermediate object nodes are created when absent.
      */
     String bodyPath;
 
     /**
-     * Writes the value at the JSON pointer location, creating missing intermediate object nodes.
-     *
-     * @param body  request body to mutate
-     * @param path  JSON pointer to the target location
-     * @param value session id to write
-     * @throws IllegalArgumentException when the pointer is empty or meets a non-object node
-     *                                  mid-path
+     * Writes the value at the pointer location, creating missing intermediate object nodes.
      */
     private static void putAtPointer(final ObjectNode body, final String path, final String value) {
         if (path.isEmpty() || !path.startsWith("/")) {

@@ -39,51 +39,43 @@ import java.util.Set;
 public class RequestRetryPolicy {
 
     /**
-     * Policy that does not retry: a single attempt. This is the default.
+     * Single attempt, no retry; this is the default.
      */
     public static final RequestRetryPolicy DEFAULT = RequestRetryPolicy.builder().build();
 
     /**
-     * HTTP status codes that trigger a retry. Rate limit and server-side failures by default.
+     * HTTP status codes that trigger a retry.
      */
     @NonNull
     @Builder.Default
     Set<Integer> retryOnStatus = Set.of(429, 500, 502, 503, 504);
 
     /**
-     * Maximum number of attempts including the first one. {@code 1} or less means no retry.
+     * Maximum attempts including the first; {@code 1} or less means no retry.
      */
     @Builder.Default
     int maxAttempts = 1;
 
-    /**
-     * First backoff delay between attempts; must be positive when more than one attempt is
-     * configured.
-     */
+    Duration initialDelay;
     Duration initialDelay;
 
-    /**
-     * Upper bound of the backoff delay; null means no upper bound.
-     */
+    Duration maxDelay;
     Duration maxDelay;
 
     /**
-     * Multiplier applied to the backoff delay after every attempt; defaults to {@code 1} (fixed
-     * delay).
+     * Backoff multiplier per attempt; {@code 1} means fixed delay.
      */
     @Builder.Default
     double delayFactor = 1.0;
 
     /**
-     * Honor the {@code Retry-After} header when present, over the computed backoff.
+     * Honor the {@code Retry-After} header over the computed backoff when present.
      */
     @Builder.Default
     boolean honorRetryAfter = true;
 
     /**
-     * Returns whether the policy retries at all.
-     *
-     * @return true when more than one attempt is configured.
+     * @return True when more than one attempt is configured.
      */
     public boolean retriesEnabled() {
         return maxAttempts > 1;

@@ -90,11 +90,7 @@ public final class SseReader implements AutoCloseable {
     }
 
     /**
-     * Streams the events of the body. Closing the stream closes the reader and the response.
-     *
-     * @param response OkHttp response that owns the stream.
-     * @param body     Response body of the stream.
-     * @return Lazy stream of parsed SSE events.
+     * Streams the events of the body; closing the stream closes the reader and the response.
      */
     public static Stream<SseEvent> stream(@NonNull final Response response, @NonNull final ResponseBody body) {
         final var reader = new SseReader(response, body);
@@ -134,10 +130,7 @@ public final class SseReader implements AutoCloseable {
     }
 
     /**
-     * Reads the next event, or null at the end of the stream.
-     *
      * @return The next parsed event, or null at the end of the stream.
-     * @throws IOException When the body read fails.
      */
     public SseEvent read() throws IOException {
         String eventName = null;

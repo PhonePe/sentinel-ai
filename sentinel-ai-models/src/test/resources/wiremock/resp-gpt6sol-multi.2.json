@@ -1,0 +1,12 @@
+event: response.output_item.added
+data: {"output_index":0,"item":{"type":"message","id":"msg_1","role":"assistant","status":"in_progress","content":[]}}
+
+event: response.output_text.delta
+data: {"item_id":"msg_1","output_index":0,"content_index":0,"delta":"{\"output\": \"Hello Santanu\"}"}
+
+event: response.output_item.done
+data: {"output_index":0,"item":{"type":"message","id":"msg_1","role":"assistant","status":"completed","content":[{"type":"output_text","text":"{\"output\": \"Hello Santanu\"}","annotations":[]}]}}
+
+event: response.completed
+data: {"response":{"id":"resp_4","object":"response","status":"completed","output":[{"type":"message","id":"msg_1","role":"assistant","status":"completed","content":[{"type":"output_text","text":"{\"output\": \"Hello Santanu\"}","annotations":[]}]}],"usage":{"input_tokens":400,"output_tokens":25,"total_tokens":425}}}
+

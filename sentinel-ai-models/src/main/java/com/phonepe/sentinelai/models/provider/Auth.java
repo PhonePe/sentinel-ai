@@ -26,8 +26,6 @@ public interface Auth {
 
     /**
      * Applies authentication to one request builder.
-     *
-     * @param requestBuilder OkHttp request builder of the model call.
      */
     void apply(okhttp3.Request.Builder requestBuilder);
 }

@@ -44,7 +44,7 @@ public class ModelOptions {
      */
     public enum ToolChoice {
         /**
-         * Model will always call a tool. This is the default behavior.
+         * Model will always call a tool.
          */
         REQUIRED,
         /**
@@ -52,23 +52,17 @@ public class ModelOptions {
          */
         AUTO,
         /**
-         * Default based on the output generation mode: REQUIRED when TOOL_BASED, AUTO when
-         * STRUCTURED_OUTPUT.
+         * REQUIRED when TOOL_BASED, AUTO when STRUCTURED_OUTPUT.
          */
         DEFAULT
     }
 
     ToolChoice toolChoice;
 
-    /**
-     * Configuration for token counting.
-     */
     TokenCountingConfig tokenCountingConfig;
 
     /**
-     * Free-form extras merged into the request body last by the protocol. Extras may override
-     * protocol-built fields. Use for provider specific or open-weight server specific fields
-     * (for example vLLM {@code top_k} or {@code chat_template_kwargs}).
+     * Free-form extras merged into the request body last; extras override protocol fields.
      */
     ObjectNode extras;
 

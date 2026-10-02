@@ -52,8 +52,7 @@ public interface WireProtocol {
     String TOOL_CHOICE_AUTO_VALUE = "auto";
 
     /**
-     * Deep merges {@code override} into {@code target}. Values in {@code override} win; nested
-     * objects merge recursively.
+     * Deep merges {@code override} into {@code target}; override wins, nested objects merge.
      */
     static void deepMerge(final ObjectNode target, final JsonNode override) {
         override.fields().forEachRemaining(entry -> {
@@ -69,12 +68,8 @@ public interface WireProtocol {
     }
 
     /**
-     * Merges user extras into the request body last. Extras may fully override protocol-built
-     * fields (deep merge, extras win). Unknown keys are allowed by design; this covers
-     * open-weight servers (vLLM and similar) that add arbitrary request fields.
-     *
-     * @param body   Request body built by {@link #buildRequestBody}.
-     * @param extras Free-form extras JSON; null means no extras.
+     * Merges user extras into the request body last; deep merge, extras win. Unknown keys are
+     * allowed by design (vLLM style servers add arbitrary request fields).
      */
     default void applyExtras(ObjectNode body, JsonNode extras) {
         if (extras == null || extras.isNull() || !extras.isObject()) {
@@ -84,13 +79,7 @@ public interface WireProtocol {
     }
 
     /**
-     * Applies the model settings to the request body. Shared helper for OpenAI style protocols
-     * that share the field names; Chat Completions and Responses keep their own variants for the
-     * fields that differ.
-     *
-     * @param ctx      Neutral call context; carries the run mapper.
-     * @param settings Model settings; may be null.
-     * @param body     Request body under construction.
+     * Applies the model settings to the request body; shared helper for OpenAI style protocols.
      */
     default void applyModelSettings(final WireContext ctx, final ModelSettings settings, final ObjectNode body) {
         if (settings == null) {
@@ -105,11 +94,7 @@ public interface WireProtocol {
     }
 
     /**
-     * Builds the flat tool list of the wire format. Shared helper for protocols whose tools are a
-     * flat array (Responses); nested shapes build their own.
-     *
-     * @param ctx Neutral call context.
-     * @return Tool array node; empty when the context has no tools.
+     * Builds the flat tool array for protocols with a flat tools list.
      */
     default ArrayNode buildFlatTools(WireContext ctx) {
         final var mapper = ctx.getMapper();
@@ -133,65 +118,38 @@ public interface WireProtocol {
     }
 
     /**
-     * Builds the full request body for one turn: settings, tools, output definitions and the
-     * already translated messages. Implementations must not mutate the given message nodes; they
-     * are shared across turns.
-     *
-     * @param ctx      Neutral call context; carries the run mapper and the tool choice.
-     * @param messages Messages already translated by {@link #messageCodec()}.
-     * @return Complete request body JSON.
+     * Builds the full request body for one turn; must not mutate the given message nodes.
      */
     ObjectNode buildRequestBody(WireContext ctx, List<JsonNode> messages);
 
     /**
      * Classifies an HTTP error into a neutral {@link ErrorType}.
-     *
-     * @param status    HTTP status code.
-     * @param errorBody Error response body JSON; may be null/empty when the server sent none.
-     * @return Neutral error type.
      */
     ErrorType classifyError(int status, JsonNode errorBody);
 
     /**
-     * Decodes a single-turn blocking response body.
-     *
-     * @param ctx  Neutral call context; carries the run mapper.
-     * @param body Response JSON.
-     * @return Neutral response; never null (throw on undecodable responses).
+     * Decodes a single-turn blocking response body; never returns null.
      */
     WireResponse decodeResponse(WireContext ctx, JsonNode body);
 
     /**
-     * Decodes one SSE frame into the neutral stream events it carries. A frame may carry several
-     * events at once (for example a tool call fragment together with the finish reason); the
-     * returned list keeps the frame order. Return an empty list for frames the protocol ignores
-     * (comments, keep-alives, unrelated named events).
-     *
-     * @param ctx   Neutral call context; carries the run mapper.
-     * @param event Parsed SSE frame.
-     * @return Neutral events of the frame in arrival order; empty when the frame carries nothing
-     *         relevant.
+     * Decodes one SSE frame into its neutral stream events in frame order; a frame may carry
+     * several events. Return an empty list for frames the protocol ignores.
      */
     List<WireStreamEvent> decodeStreamEvent(WireContext ctx, SseEvent event);
 
     /**
-     * @param ctx Neutral call context.
      * @return Full endpoint URL for this call: base URL plus the protocol path.
      */
     String endpoint(WireContext ctx);
 
     /**
-     * @return The codec translating {@link AgentMessage}
-     *         to this wire format. Stateless: translation takes the run mapper.
+     * @return The stateless codec translating {@link AgentMessage} to this wire format.
      */
     MessageCodec messageCodec();
 
     /**
-     * Resolves the tool choice string for the run from the context tool choice and the output
-     * generation mode. Shared helper for protocols whose tool choice is a string field.
-     *
-     * @param ctx Neutral call context.
-     * @return Tool choice string for the wire.
+     * Resolves the tool choice string for the run; shared helper for string tool choice fields.
      */
     default String resolveToolChoice(WireContext ctx) {
         return switch (ctx.getOutputGenerationMode()) {

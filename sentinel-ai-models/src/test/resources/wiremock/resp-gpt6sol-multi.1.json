@@ -1,0 +1,47 @@
+event: response.output_item.added
+data: {"output_index":0,"item":{"type":"reasoning","id":"rs_1","content":[],"summary":[]}}
+
+
+event: response.output_item.added
+data: {"output_index":1,"item":{"type":"function_call","arguments":"","call_id":"call_A","id":"fc_A","name":"test_agent_get_name","status":"in_progress"}}
+
+
+event: response.function_call_arguments.delta
+data: {"delta":"{}","item_id":"fc_A","output_index":1}
+
+
+event: response.output_item.done
+data: {"output_index":1,"item":{"type":"function_call","arguments":"{}","call_id":"call_A","id":"fc_A","name":"test_agent_get_name","status":"completed"}}
+
+
+event: response.output_item.added
+data: {"output_index":2,"item":{"type":"function_call","arguments":"","call_id":"call_B","id":"fc_B","name":"test_agent_get_weather","status":"in_progress"}}
+
+
+event: response.function_call_arguments.delta
+data: {"delta":"{\"ci","item_id":"fc_B","output_index":2}
+
+
+event: response.function_call_arguments.delta
+data: {"delta":"ty\":","item_id":"fc_B","output_index":2}
+
+
+event: response.function_call_arguments.delta
+data: {"delta":" \"ban","item_id":"fc_B","output_index":2}
+
+
+event: response.function_call_arguments.delta
+data: {"delta":"galor","item_id":"fc_B","output_index":2}
+
+
+event: response.function_call_arguments.delta
+data: {"delta":"e\"}","item_id":"fc_B","output_index":2}
+
+
+event: response.output_item.done
+data: {"output_index":2,"item":{"type":"function_call","arguments":"{\"city\": \"bangalore\"}","call_id":"call_B","id":"fc_B","name":"test_agent_get_weather","status":"completed"}}
+
+
+event: response.completed
+data: {"response":{"id":"resp_3","object":"response","status":"completed","output":[{"type":"function_call","id":"fc_A","call_id":"call_A","name":"test_agent_get_name","arguments":"{}","status":"completed"},{"type":"function_call","id":"fc_B","call_id":"call_B","name":"test_agent_get_weather","arguments":"{\"city\": \"bangalore\"}","status":"completed"}],"usage":{"input_tokens":300,"output_tokens":20,"total_tokens":320}}}
+

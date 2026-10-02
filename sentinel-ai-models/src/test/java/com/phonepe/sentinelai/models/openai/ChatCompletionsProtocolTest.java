@@ -174,10 +174,10 @@ class ChatCompletionsProtocolTest {
 
         assertEquals(1, events.size());
         final var finish = (WireStreamEvent.StreamFinishEvent) events.get(0);
-        assertEquals(WireResponse.FinishReasons.STOP, finish.finishReason());
-        assertEquals(3, finish.usage().inputTokens());
-        assertEquals(4, finish.usage().outputTokens());
-        assertEquals(7, finish.usage().totalTokens());
+        assertEquals(WireResponse.FinishReasons.STOP, finish.getFinishReason());
+        assertEquals(3, finish.getUsage().getInputTokens());
+        assertEquals(4, finish.getUsage().getOutputTokens());
+        assertEquals(7, finish.getUsage().getTotalTokens());
     }
 
     @Test
@@ -190,10 +190,10 @@ class ChatCompletionsProtocolTest {
 
         assertEquals(3, events.size());
         assertEquals(WireStreamEvent.ContentDelta.class, events.get(0).getClass());
-        assertEquals("partial", ((WireStreamEvent.ContentDelta) events.get(0)).content());
+        assertEquals("partial", ((WireStreamEvent.ContentDelta) events.get(0)).getContent());
         assertEquals(WireStreamEvent.ToolCallDelta.class, events.get(1).getClass());
-        assertEquals("call-1", ((WireStreamEvent.ToolCallDelta) events.get(1)).id());
-        assertEquals("read_file", ((WireStreamEvent.ToolCallDelta) events.get(1)).name());
+        assertEquals("call-1", ((WireStreamEvent.ToolCallDelta) events.get(1)).getId());
+        assertEquals("read_file", ((WireStreamEvent.ToolCallDelta) events.get(1)).getName());
         assertEquals(WireStreamEvent.StreamFinishEvent.class, events.get(2).getClass());
     }
 
@@ -208,11 +208,11 @@ class ChatCompletionsProtocolTest {
         assertEquals(2, events.size());
         assertEquals(WireStreamEvent.ToolCallDelta.class, events.get(0).getClass());
         final var delta = (WireStreamEvent.ToolCallDelta) events.get(0);
-        assertEquals(0, delta.index());
-        assertEquals("{\"path\": \"README.md\"}", delta.argumentsFragment());
+        assertEquals(0, delta.getIndex());
+        assertEquals("{\"path\": \"README.md\"}", delta.getArgumentsFragment());
         assertEquals(WireStreamEvent.StreamFinishEvent.class, events.get(1).getClass());
         assertEquals(WireResponse.FinishReasons.TOOL_CALLS,
-                     ((WireStreamEvent.StreamFinishEvent) events.get(1)).finishReason());
+                     ((WireStreamEvent.StreamFinishEvent) events.get(1)).getFinishReason());
     }
 
     @Test
@@ -314,10 +314,10 @@ class ChatCompletionsProtocolTest {
                                                               """));
 
         assertEquals(1, events.size());
-        final var usage = ((WireStreamEvent.StreamUsageEvent) events.get(0)).usage();
-        assertEquals(5, usage.inputTokens());
-        assertEquals(7, usage.outputTokens());
-        assertEquals(12, usage.totalTokens());
+        final var usage = ((WireStreamEvent.StreamUsageEvent) events.get(0)).getUsage();
+        assertEquals(5, usage.getInputTokens());
+        assertEquals(7, usage.getOutputTokens());
+        assertEquals(12, usage.getTotalTokens());
     }
 
     private WireContext context(final OutputGenerationMode mode,

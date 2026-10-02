@@ -1,0 +1,35 @@
+event: response.created
+data: {"response":{"id":"resp_1","status":"in_progress","object":"response"}}
+
+
+event: response.in_progress
+data: {"response":{"id":"resp_1","status":"in_progress"}}
+
+
+event: response.output_item.added
+data: {"output_index":0,"item":{"type":"reasoning","content":[],"summary":[]}}
+
+
+event: response.reasoning.delta
+data: {"delta":"Thinking about which tool to use","output_index":0}
+
+
+event: response.output_item.done
+data: {"output_index":0,"item":{"type":"reasoning","id":"rs_1","content":[],"summary":[]}}
+
+
+event: response.output_item.added
+data: {"output_index":1,"item":{"type":"function_call","arguments":"","call_id":"call_X1","id":"fc_1","name":"test_agent_get_name","status":"in_progress"}}
+
+
+event: response.function_call_arguments.delta
+data: {"delta":"{}","item_id":"fc_1","output_index":1}
+
+
+event: response.output_item.done
+data: {"output_index":1,"item":{"type":"function_call","arguments":"{}","call_id":"call_X1","id":"fc_1","name":"test_agent_get_name","status":"completed"}}
+
+
+event: response.completed
+data: {"response":{"id":"resp_1","object":"response","status":"completed","output":[{"type":"reasoning","id":"rs_1"},{"type":"function_call","id":"fc_1","call_id":"call_X1","name":"test_agent_get_name","arguments":"{}","status":"completed"}],"usage":{"input_tokens":100,"output_tokens":10,"total_tokens":110}}}
+

@@ -57,40 +57,19 @@ public class JoltRequestTransformer implements RequestTransformer {
 
     private static final ObjectMapper FACTORY_MAPPER = new ObjectMapper();
 
-    /**
-     * Builder for the transformer; see {@link #builder()}.
-     */
     public static class JoltRequestTransformerBuilder {
 
         private final List<JoltTransform> transforms = new ArrayList<>();
 
-        /**
-         * Builds the transformer from the added transforms.
-         *
-         * @return New transformer.
-         */
         public JoltRequestTransformer build() {
             return new JoltRequestTransformer(transforms);
         }
 
-        /**
-         * Adds one Jolt transform to the chain.
-         *
-         * @param transform Jolt transform to append.
-         * @return This builder.
-         */
         public JoltRequestTransformerBuilder transform(final JoltTransform transform) {
             transforms.add(transform);
             return this;
         }
 
-        /**
-         * Adds one Jolt operation with its spec map to the chain.
-         *
-         * @param operation Jolt operation name.
-         * @param spec      Jolt spec map of the operation.
-         * @return This builder.
-         */
         public JoltRequestTransformerBuilder transform(final String operation, final Map<String, Object> spec) {
             return transform(JoltTransform.builder().operation(operation).spec(spec).build());
         }
@@ -114,34 +93,19 @@ public class JoltRequestTransformer implements RequestTransformer {
         }
     }
 
-    /**
-     * Returns a builder for the transformer.
-     *
-     * @return A new builder.
-     */
     public static JoltRequestTransformerBuilder builder() {
         return new JoltRequestTransformerBuilder();
     }
 
     /**
-     * Creates the transformer from a JSON array of transform objects. Each element carries the
-     * fields {@code operation} and {@code spec}; see {@link JoltTransform}.
-     *
-     * @param json JSON array of transforms, for example from a config file.
-     * @return New transformer.
-     * @throws IllegalArgumentException when the JSON is not a JSON array of valid transforms.
+     * Creates the transformer from a JSON array of transform objects.
      */
     public static JoltRequestTransformer fromJson(final String json) {
         return fromJsonNode(parseJson(json));
     }
 
     /**
-     * Creates the transformer from a JSON node holding an array of transform objects. Each
-     * element carries the fields {@code operation} and {@code spec}; see {@link JoltTransform}.
-     *
-     * @param node JSON array of transforms, for example a parsed config value.
-     * @return New transformer.
-     * @throws IllegalArgumentException when the node is not an array of valid transforms.
+     * Creates the transformer from a JSON node holding an array of transforms.
      */
     public static JoltRequestTransformer fromJsonNode(final JsonNode node) {
         if (node == null || !node.isArray()) {
@@ -155,10 +119,7 @@ public class JoltRequestTransformer implements RequestTransformer {
     }
 
     /**
-     * Creates the transformer from the given transforms.
-     *
-     * @param transforms Jolt transforms to apply, in order; may be empty.
-     * @return New transformer.
+     * Creates the transformer from the given transforms, applied in order.
      */
     public static JoltRequestTransformer ofTransforms(final List<JoltTransform> transforms) {
         return new JoltRequestTransformer(transforms);
