@@ -196,16 +196,16 @@ class AgentSessionExtensionTest {
         return Stream.of(Arguments.of("single persistence pre-filter",
                                       (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> extension
                                               .addMessagePersistencePreFilter(messages -> messages),
-                                      2,
-                                      3),
+                                      1,
+                                      1),
                          Arguments.of("multiple persistence pre-filters",
                                       (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> extension
                                               .addMessagePersistencePreFilters(List.of(
                                                                                        messages -> messages,
                                                                                        messages -> messages.stream()
                                                                                                .limit(5).toList())),
-                                      2,
-                                      4),
+                                      1,
+                                      1),
                          Arguments.of("single message selector",
                                       (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> extension
                                               .addMessageSelector((sessionId, messages) -> messages),
@@ -344,21 +344,28 @@ class AgentSessionExtensionTest {
     @MethodSource("addModifierScenarios")
     void testAddMessageModifier(final String name,
                                 final Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>> adder,
-                                final int defaultCount,
-                                final int expectedCount) {
+                                final int defaultSelectorCount,
+                                final int expectedSelectorCount) {
         final var extension = AgentSessionExtension
                 .<UserInput, String, SimpleAgent>builder()
                 .sessionStore(new InMemorySessionStore())
                 .mapper(JsonUtils.createMapper())
                 .build();
 
-        final var before = extension.getHistoryModifiers().size() + extension.getMessageSelectors().size();
-        assertEquals(defaultCount + 1, before, name); // 2 history modifiers + 1 selector
+        // Defaults: 2 history modifiers + defaultSelectorCount selectors.
+        assertEquals(2, extension.getHistoryModifiers().size(), name);
+        assertEquals(defaultSelectorCount, extension.getMessageSelectors().size(), name);
 
         adder.accept(extension);
 
-        final var after = extension.getHistoryModifiers().size() + extension.getMessageSelectors().size();
-        assertEquals(expectedCount, after - 1, name);
+        // Exactly one list grows; the other one is untouched.
+        final var addedSelectors = extension.getMessageSelectors().size() - defaultSelectorCount;
+        final var addedModifiers = extension.getHistoryModifiers().size() - 2;
+        assertEquals(0, addedModifiers * addedSelectors, name);
+        assertEquals(expectedSelectorCount, extension.getMessageSelectors().size(), name);
+        assertEquals(2 + defaultSelectorCount + addedModifiers + addedSelectors,
+                     extension.getHistoryModifiers().size() + extension.getMessageSelectors().size(),
+                     name);
     }
 
     /**
