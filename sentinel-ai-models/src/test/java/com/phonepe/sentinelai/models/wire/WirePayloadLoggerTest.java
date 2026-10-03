@@ -21,6 +21,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.LoggerFactory;
 
 import ch.qos.logback.classic.Level;
@@ -29,6 +32,8 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -43,6 +48,59 @@ class WirePayloadLoggerTest {
     private ListAppender<ILoggingEvent> appender;
 
     private Logger wireLogger;
+
+    static Stream<Arguments> loggingScenarios() {
+        return Stream.of(Arguments.of("error logs at ON",
+                                      WireLoggingMode.ON,
+                                      (Consumer<WirePayloadLogger>) logger -> logger.error("test-model",
+                                                                                           429,
+                                                                                           "{\"error\":\"rate\"}"),
+                                      "Error from Model [test-model]",
+                                      "status=429"),
+                         Arguments.of("request logs at ON",
+                                      WireLoggingMode.ON,
+                                      (Consumer<WirePayloadLogger>) logger -> logger.request("test-model",
+                                                                                             "{\"a\":1}".getBytes(
+                                                                                                                  UTF_8)),
+                                      "Request to Model [test-model]",
+                                      "{\"a\":1}"),
+                         Arguments.of("response logs at ON",
+                                      WireLoggingMode.ON,
+                                      (Consumer<WirePayloadLogger>) logger -> logger.response("test-model",
+                                                                                              "{\"b\":2}"),
+                                      "Response from Model [test-model]",
+                                      "{\"b\":2}"),
+                         Arguments.of("stream frame logs at FRAMES",
+                                      WireLoggingMode.FRAMES,
+                                      (Consumer<WirePayloadLogger>) logger -> logger.streamFrame("test-model",
+                                                                                                 new SseEvent("done",
+                                                                                                              "{\"c\":3}")),
+                                      "Stream Frame [test-model]",
+                                      "event=done"),
+                         Arguments.of("nothing logs at OFF: request",
+                                      WireLoggingMode.OFF,
+                                      (Consumer<WirePayloadLogger>) logger -> logger.request("test-model",
+                                                                                             "{}".getBytes(UTF_8)),
+                                      null,
+                                      null),
+                         Arguments.of("nothing logs at OFF: response",
+                                      WireLoggingMode.OFF,
+                                      (Consumer<WirePayloadLogger>) logger -> logger.response("test-model", "{}"),
+                                      null,
+                                      null),
+                         Arguments.of("nothing logs at OFF: error",
+                                      WireLoggingMode.OFF,
+                                      (Consumer<WirePayloadLogger>) logger -> logger.error("test-model", 500, "{}"),
+                                      null,
+                                      null),
+                         Arguments.of("stream frame does not log at ON",
+                                      WireLoggingMode.ON,
+                                      (Consumer<WirePayloadLogger>) logger -> logger.streamFrame("test-model",
+                                                                                                 new SseEvent(null,
+                                                                                                              "{\"c\":3}")),
+                                      null,
+                                      null));
+    }
 
     private static WirePayloadLogger loggerOf(final WireLoggingMode mode) {
         return new WirePayloadLogger(mode);
@@ -66,6 +124,7 @@ class WirePayloadLoggerTest {
         }
     }
 
+
     @Test
     void testAllLogLinesAreInfoLevel() {
         final var logger = loggerOf(WireLoggingMode.FRAMES);
@@ -77,55 +136,24 @@ class WirePayloadLoggerTest {
         assertTrue(appender.list.stream().allMatch(event -> event.getLevel() == Level.INFO));
     }
 
-    @Test
-    void testErrorLogsAtOn() {
-        loggerOf(WireLoggingMode.ON).error("test-model", 429, "{\"error\":\"rate\"}");
-        assertEquals(1, countEvents("Error from Model [test-model]"));
-        final var message = events("Error from Model [test-model]").get(0).getFormattedMessage();
-        assertTrue(message.contains("status=429"));
-        assertTrue(message.contains("{\"error\":\"rate\"}"));
-    }
-
-    @Test
-    void testNothingLogsAtOff() {
-        final var logger = loggerOf(WireLoggingMode.OFF);
-        logger.request("test-model", "{}".getBytes(UTF_8));
-        logger.response("test-model", "{}");
-        logger.streamFrame("test-model", new SseEvent(null, "{}"));
-        logger.error("test-model", 500, "{}");
-        assertEquals(0, appender.list.size());
-    }
-
-    @Test
-    void testRequestLogsAtOn() {
-        loggerOf(WireLoggingMode.ON).request("test-model", "{\"a\":1}".getBytes(UTF_8));
-        final var events = events("Request to Model [test-model]");
-        assertEquals(1, events.size());
-        assertTrue(events.get(0).getFormattedMessage().contains("{\"a\":1}"));
-    }
-
-    @Test
-    void testResponseLogsAtOn() {
-        loggerOf(WireLoggingMode.ON).response("test-model", "{\"b\":2}");
-        final var events = events("Response from Model [test-model]");
-        assertEquals(1, events.size());
-        assertTrue(events.get(0).getFormattedMessage().contains("{\"b\":2}"));
-    }
-
-    @Test
-    void testStreamFrameDoesNotLogAtOn() {
-        loggerOf(WireLoggingMode.ON).streamFrame("test-model", new SseEvent(null, "{\"c\":3}"));
-        assertEquals(0, appender.list.size());
-    }
-
-    @Test
-    void testStreamFrameLogsAtFrames() {
-        loggerOf(WireLoggingMode.FRAMES).streamFrame("test-model", new SseEvent("done", "{\"c\":3}"));
-        final var events = events("Stream Frame [test-model]");
-        assertEquals(1, events.size());
-        final var message = events.get(0).getFormattedMessage();
-        assertTrue(message.contains("event=done"));
-        assertTrue(message.contains("{\"c\":3}"));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("loggingScenarios")
+    void testLoggingGate(final String name,
+                         final WireLoggingMode mode,
+                         final Consumer<WirePayloadLogger> operation,
+                         final String expectedEventPrefix,
+                         final String expectedFragment) {
+        appender.list.clear();
+        operation.accept(loggerOf(mode));
+        if (expectedEventPrefix == null) {
+            assertEquals(0, appender.list.size(), name);
+        }
+        else {
+            final var events = events(expectedEventPrefix);
+            assertEquals(1, events.size(), name);
+            final var message = events.get(0).getFormattedMessage();
+            assertTrue(message.contains(expectedFragment), name + ": " + message);
+        }
     }
 
     @Test
@@ -144,10 +172,6 @@ class WirePayloadLoggerTest {
         assertTrue(message.contains("hello"));
         assertTrue(message.contains("tool"));
         assertTrue(message.contains("finishReason"));
-    }
-
-    private int countEvents(final String prefix) {
-        return events(prefix).size();
     }
 
     private List<ILoggingEvent> events(final String prefix) {

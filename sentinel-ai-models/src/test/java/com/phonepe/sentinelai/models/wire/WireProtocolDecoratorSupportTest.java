@@ -26,6 +26,7 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -147,7 +148,7 @@ class WireProtocolDecoratorSupportTest {
 
     @Test
     void testPureDelegationForNonHookedMethods() {
-        final var inner = new TestWireProtocol();
+        final var inner = new ChatCompletionsProtocol();
         final var protocol = new RecordingDecorator(inner, new java.util.ArrayList<String>());
 
         final var ctx = context(null);
@@ -161,7 +162,7 @@ class WireProtocolDecoratorSupportTest {
     @Test
     void testTransformExtrasRunsBeforeDelegateMergesExtras() {
         final var log = new java.util.ArrayList<String>();
-        final var protocol = new RecordingDecorator(new TestWireProtocol(), log);
+        final var protocol = new RecordingDecorator(new ChatCompletionsProtocol(), log);
 
         final var body = MAPPER.createObjectNode();
         protocol.applyExtras(body, MAPPER.createObjectNode().put("top_k", 7));
@@ -173,7 +174,7 @@ class WireProtocolDecoratorSupportTest {
     @Test
     void testTransformRequestRunsAfterDelegateBuildsBody() {
         final var log = new java.util.ArrayList<String>();
-        final var protocol = new RecordingDecorator(new TestWireProtocol(), log);
+        final var protocol = new RecordingDecorator(new ChatCompletionsProtocol(), log);
 
         final var body = protocol.buildRequestBody(context(null), List.of());
 
@@ -186,7 +187,7 @@ class WireProtocolDecoratorSupportTest {
     @Test
     void testTransformResponseRunsBeforeDelegateDecodes() {
         final var log = new java.util.ArrayList<String>();
-        final var protocol = new RecordingDecorator(new TestWireProtocol(), log);
+        final var protocol = new RecordingDecorator(new ChatCompletionsProtocol(), log);
 
         final var body = MAPPER.createObjectNode();
         body.putArray("choices").addObject().put("finish_reason", "stop");
@@ -203,7 +204,7 @@ class WireProtocolDecoratorSupportTest {
     @Test
     void testTransformStreamEventRunsBeforeDelegateDecodes() {
         final var log = new java.util.ArrayList<String>();
-        final var protocol = new RecordingDecorator(new TestWireProtocol(), log);
+        final var protocol = new RecordingDecorator(new ChatCompletionsProtocol(), log);
 
         final var chunk = MAPPER.createObjectNode();
         final var choice = chunk.putArray("choices").addObject();

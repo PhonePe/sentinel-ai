@@ -19,7 +19,6 @@ package com.phonepe.sentinelai.models;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
@@ -653,7 +652,9 @@ public class ConfiguredModel implements Model {
                                                                                                                toolCallDelta)
                                                                           : existing.merge(toolCallDelta));
                             logDataDebug(mapper,
-                                    "Function till now: {} -> {}", node, node.toToolCall());
+                                         "Function till now: {} -> {}",
+                                         node,
+                                         node.toToolCall());
                         }
                         else if (streamEvent instanceof WireStreamEvent.ToolCallComplete toolCallComplete) {
                             // The provider sent the finished tool call item; replace any fragment
@@ -1398,7 +1399,7 @@ public class ConfiguredModel implements Model {
             try {
                 log.debug(fmtStr,
                           mapper.writerWithDefaultPrettyPrinter()
-                              .writeValueAsString(nodes.length == 1 ? nodes[0] : List.of(nodes)));
+                                  .writeValueAsString(nodes.length == 1 ? nodes[0] : List.of(nodes)));
             }
             catch (JsonProcessingException e) {
                 //Do nothing

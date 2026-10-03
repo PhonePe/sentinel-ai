@@ -28,6 +28,9 @@ import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 
 import lombok.NonNull;
 import okhttp3.OkHttpClient;
@@ -67,9 +70,18 @@ class ConfiguredModelTextIOTest {
         TestStubs.setupMocks(2, "textio", getClass());
         final var objectMapper = JsonUtils.createMapper();
 
-        final var model = TestModels.testModel(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"),
-                                               TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
-                                               new OkHttpClient.Builder().build());
+        final var apiKey = TestStubs.useRealEndpoints()
+                ? TestStubs.getTestProperty("AZURE_API_KEY", null)
+                : null;
+        final var model = ConfiguredModel.builder()
+                .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                .provider(Provider.builder()
+                        .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(apiKey == null ? null : HeaderAuth.bearer(apiKey))
+                        .build())
+                .httpClient(new OkHttpClient.Builder().build())
+                .build();
         final var agent = new TestAgent(AgentSetup.builder()
                 .model(model)
                 .mapper(objectMapper)

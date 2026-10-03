@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.models;
-
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
@@ -24,14 +21,12 @@ import com.github.tomakehurst.wiremock.stubbing.Scenario;
 
 import org.junit.jupiter.api.Test;
 
-import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentInput;
 import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.MediaInput;
 import com.phonepe.sentinelai.core.agent.StreamConsumer;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
@@ -41,10 +36,15 @@ import com.phonepe.sentinelai.core.hooks.AgentMessagesPreProcessResult;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
-import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.models.ConfiguredModel;
+import com.phonepe.sentinelai.models.ModelOptions;
+import com.phonepe.sentinelai.models.TestAgents.TestAgent;
+import com.phonepe.sentinelai.models.TestStubs;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 
-import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
@@ -59,17 +59,16 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.okForContentType;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.phonepe.sentinelai.models.TestAgents.countMessages;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -84,51 +83,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @Slf4j
 @WireMockTest
 class ConfiguredModelStreamingTest {
-
-    private static final class TestAgent extends Agent<String, String, TestAgent> {
-
-        private final AtomicInteger getNameCalls = new AtomicInteger();
-
-        public TestAgent(@NonNull AgentSetup setup) {
-            super(String.class,
-                  "Greet the user by name and respond to queries",
-                  setup,
-                  List.of(),
-                  Map.of());
-        }
-
-        @Tool("Get location of the user")
-        public String getLocation(@JsonPropertyDescription("User name") String name) {
-            if (name.equalsIgnoreCase("santanu")) {
-                return "Bangalore";
-            }
-            throw new IllegalArgumentException("Invalid parameter");
-        }
-
-        @Tool("Get name of the user")
-        public String getName() {
-            getNameCalls.incrementAndGet();
-            return "Santanu";
-        }
-
-        @Tool("Get weather for city")
-        public String getWeather(@JsonPropertyDescription("City name") String city) {
-            if (city.equalsIgnoreCase("bangalore")) {
-                return "Sunny";
-            }
-            throw new IllegalArgumentException("Invalid parameter");
-        }
-
-        @Override
-        public String name() {
-            return "test-agent";
-        }
-    }
-
-    private static long countMessages(final List<AgentMessage> messages,
-                                      final Class<? extends AgentMessage> type) {
-        return messages.stream().filter(type::isInstance).count();
-    }
 
     private static StreamConsumer createStreamConsumer(final PrintStream outputStream) {
         return new StreamConsumer() {
@@ -173,12 +127,21 @@ class ConfiguredModelStreamingTest {
                                         final com.fasterxml.jackson.databind.ObjectMapper objectMapper,
                                         final OkHttpClient httpClient,
                                         final ExecutorService executor) {
-        final var model = TestModels.testModel(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"),
-                                               TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
-                                               httpClient,
-                                               ModelOptions.builder()
-                                                       .toolChoice(ModelOptions.ToolChoice.AUTO)
-                                                       .build());
+        final var apiKey = TestStubs.useRealEndpoints()
+                ? TestStubs.getTestProperty("AZURE_API_KEY", null)
+                : null;
+        final var model = ConfiguredModel.builder()
+                .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                .provider(Provider.builder()
+                        .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(apiKey == null ? null : HeaderAuth.bearer(apiKey))
+                        .build())
+                .httpClient(httpClient)
+                .modelOptions(ModelOptions.builder()
+                        .toolChoice(ModelOptions.ToolChoice.AUTO)
+                        .build())
+                .build();
         return new TestAgent(AgentSetup.builder()
                 .model(model)
                 .mapper(objectMapper)

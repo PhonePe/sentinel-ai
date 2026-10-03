@@ -23,8 +23,11 @@ import com.knuddels.jtokkit.api.EncodingType;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.MediaTypes.AudioFormat;
 import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
@@ -37,8 +40,12 @@ import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 
+import lombok.SneakyThrows;
+
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.ToIntFunction;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -53,6 +60,109 @@ class GenericTokenCounterTest {
     private GenericTokenCounter tokenCounter;
     private Encoding encoder;
 
+    @SneakyThrows
+    static Stream<CountingCase> countingCases() {
+        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
+        return Stream.of(
+                         new CountingCase("assistant text response",
+                                          List.of(new Text("s1",
+                                                           "r1",
+                                                           "I am fine, thank you!",
+                                                           new ModelUsageStats(),
+                                                           100)),
+                                          self -> self.assistantOverhead() + self.messageOverhead("assistant")
+                                                  + self.countTokens("I am fine, thank you!")),
+                         new CountingCase("audio prompt counts base64 as text",
+                                          List.of(UserPrompt.audio("s1",
+                                                                   "r1",
+                                                                   "base64audiodata",
+                                                                   AudioFormat.WAV,
+                                                                   sentAt)),
+                                          self -> self.assistantOverhead() + self.messageOverhead("user")
+                                                  + self.countTokens("base64audiodata")),
+                         new CountingCase("empty messages only pay the priming overhead",
+                                          List.of(),
+                                          self -> self.assistantOverhead()),
+                         new CountingCase("generic text",
+                                          List.of(new GenericText("s1",
+                                                                  "r1",
+                                                                  AgentGenericMessage.Role.USER,
+                                                                  "Some generic text")),
+                                          self -> self.assistantOverhead() + self.messageOverhead("user")
+                                                  + self.countTokens("Some generic text")),
+                         new CountingCase("image prompt counts fixed cost not base64",
+                                          List.of(UserPrompt.imageData("s1",
+                                                                       "r1",
+                                                                       "data:image/png;base64,"
+                                                                               + "iVBORw0KGgoAAAANSUhEUg".repeat(1000),
+                                                                       ImageDetail.AUTO,
+                                                                       sentAt)),
+                                          self -> self.assistantOverhead() + self.messageOverhead("user")
+                                                  + TokenCountingConfig.DEFAULT.getImageTokenCost()),
+                         new CountingCase("image url prompt",
+                                          List.of(UserPrompt.imageURL("s1",
+                                                                      "r1",
+                                                                      java.net.URI.create(
+                                                                                          "https://example.com/image.png")
+                                                                              .toURL(),
+                                                                      ImageDetail.AUTO,
+                                                                      sentAt)),
+                                          self -> self.assistantOverhead() + self.messageOverhead("user")
+                                                  + TokenCountingConfig.DEFAULT.getImageTokenCost()),
+                         new CountingCase("multiple messages",
+                                          List.of(new SystemPrompt("s1", "r1", "System", false, null),
+                                                  UserPrompt.text("s1", "r1", "User", sentAt)),
+                                          self -> self.assistantOverhead() + self.messageOverhead("system")
+                                                  + self.countTokens("System") + self.messageOverhead("user")
+                                                  + self.countTokens("User")),
+                         new CountingCase("structured output",
+                                          List.of(new StructuredOutput("s1",
+                                                                       "r1",
+                                                                       "{\"answer\": \"fine\"}",
+                                                                       new ModelUsageStats(),
+                                                                       100)),
+                                          self -> self.assistantOverhead() + self.messageOverhead("assistant")
+                                                  + self.countTokens("{\"answer\": \"fine\"}")),
+                         new CountingCase("system prompt",
+                                          List.of(new SystemPrompt("s1",
+                                                                   "r1",
+                                                                   "You are a helpful assistant.",
+                                                                   false,
+                                                                   null)),
+                                          self -> self.assistantOverhead() + self.messageOverhead("system")
+                                                  + self.countTokens("You are a helpful assistant.")),
+                         new CountingCase("tool call",
+                                          List.of(new ToolCall("s1",
+                                                               "r1",
+                                                               "call_123",
+                                                               "get_weather",
+                                                               "{\"location\": \"Bangalore\"}")),
+                                          self -> self.assistantOverhead() + TokenCountingConfig.DEFAULT
+                                                  .getMessageOverHead()
+                                                  + self.countTokens("assistant") + self.countTokens("call_123")
+                                                  + self.countTokens("get_weather")
+                                                  + TokenCountingConfig.DEFAULT.getFormattingOverhead()
+                                                  + self.countTokens("{\"location\": \"Bangalore\"}")),
+                         new CountingCase("tool call response",
+                                          List.of(new ToolCallResponse("s1",
+                                                                       "r1",
+                                                                       "call_123",
+                                                                       "get_weather",
+                                                                       ErrorType.SUCCESS,
+                                                                       "Cloudy with a chance of meatballs",
+                                                                       sentAt)),
+                                          self -> self.assistantOverhead() + TokenCountingConfig.DEFAULT
+                                                  .getMessageOverHead()
+                                                  + self.countTokens("tool")
+                                                  + TokenCountingConfig.DEFAULT.getFormattingOverhead()
+                                                  + self.countTokens("call_123")
+                                                  + self.countTokens("Cloudy with a chance of meatballs")),
+                         new CountingCase("user prompt",
+                                          List.of(UserPrompt.text("s1", "r1", "Hello, how are you?", sentAt)),
+                                          self -> self.assistantOverhead() + self.messageOverhead("user")
+                                                  + self.countTokens("Hello, how are you?")));
+    }
+
     @BeforeEach
     void setUp() {
         tokenCounter = new GenericTokenCounter();
@@ -60,103 +170,24 @@ class GenericTokenCounterTest {
         encoder = encodingRegistry.getEncoding(EncodingType.CL100K_BASE);
     }
 
-    @Test
-    void testEstimateTokenCountAssistantTextResponse() {
-        final var content = "I am fine, thank you!";
-        final var assistantResponse = new Text("s1", "r1", content, new ModelUsageStats(), 100);
-
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + TokenCountingConfig.DEFAULT.getMessageOverHead()
-                + countTokens("assistant")
-                + countTokens(content);
-
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(assistantResponse),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
-    }
-
-    @Test
-    void testEstimateTokenCountAudioPrompt() {
-        final var audioData = "base64audiodata";
-        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
-        final var audioPrompt = UserPrompt.audio("s1",
-                                                 "r1",
-                                                 audioData,
-                                                 AudioFormat.WAV,
-                                                 sentAt);
-
-        // Audio content is counted as text (the base64 data), not a fixed image cost.
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + TokenCountingConfig.DEFAULT.getMessageOverHead()
-                + countTokens("user")
-                + countTokens(audioData);
-
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(audioPrompt),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
-    }
-
-    @Test
-    void testEstimateTokenCountEmptyMessages() {
-        assertEquals(TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead(),
-                     tokenCounter.estimateTokenCount(List.of(),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
-    }
-
-    @Test
-    void testEstimateTokenCountGenericText() {
-        final var content = "Some generic text";
-        final var genericText = new GenericText("s1",
-                                                "r1",
-                                                AgentGenericMessage.Role.USER,
-                                                content);
-
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + TokenCountingConfig.DEFAULT.getMessageOverHead()
-                + countTokens("user")
-                + countTokens(content);
-
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(genericText),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
-    }
-
-    @Test
-    void testEstimateTokenCountImagePromptCountsFixedCostNotBase64() {
-        final var base64Data = "iVBORw0KGgoAAAANSUhEUg".repeat(1000); // ~23KB of base64
-        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
-        final var imagePrompt = UserPrompt.imageData("s1",
-                                                     "r1",
-                                                     "data:image/png;base64," + base64Data,
-                                                     ImageDetail.AUTO,
-                                                     sentAt);
-
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + TokenCountingConfig.DEFAULT.getMessageOverHead()
-                + countTokens("user")
-                + TokenCountingConfig.DEFAULT.getImageTokenCost();
-
-        final var actual = tokenCounter.estimateTokenCount(List.of(imagePrompt),
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("countingCases")
+    void testEstimateTokenCount(final CountingCase countingCase) {
+        final var expected = countingCase.expected().applyAsInt(this);
+        final var actual = tokenCounter.estimateTokenCount(countingCase.messages(),
                                                            TokenCountingConfig.DEFAULT,
                                                            EncodingType.CL100K_BASE);
-        assertEquals(expected, actual);
-        // The base64 payload must not be counted as text. 23K chars would be ~7K text tokens.
-        assertTrue(actual < 1000, "Image tokens should be a fixed cost, not proportional to base64 length");
+        assertEquals(expected, actual, countingCase.name());
     }
 
     @Test
-    void testEstimateTokenCountImagePromptWithCustomCost() {
+    void testImagePromptWithCustomCostConfig() {
         final var base64Data = "iVBORw0KGgoAAAANSUhEUg".repeat(1000);
-        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
         final var imagePrompt = UserPrompt.imageData("s1",
                                                      "r1",
                                                      "data:image/png;base64," + base64Data,
                                                      ImageDetail.AUTO,
-                                                     sentAt);
+                                                     LocalDateTime.of(2026, 7, 25, 10, 0, 0));
         final var config = TokenCountingConfig.DEFAULT.withImageTokenCost(1575);
 
         final var expected = config.getAssistantPrimingOverhead()
@@ -164,147 +195,34 @@ class GenericTokenCounterTest {
                 + countTokens("user")
                 + config.getImageTokenCost();
 
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(imagePrompt), config, EncodingType.CL100K_BASE));
+        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(imagePrompt), config, EncodingType.CL100K_BASE));
     }
 
     @Test
-    void testEstimateTokenCountImageUrlPrompt() throws java.net.MalformedURLException {
-        final var imageUrl = "https://example.com/image.png";
-        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
-        final var imagePrompt = UserPrompt.imageURL("s1",
-                                                    "r1",
-                                                    java.net.URI.create(imageUrl).toURL(),
-                                                    ImageDetail.AUTO,
-                                                    sentAt);
+    void testImageTokensAreAFixedCostNotProportionalToBase64Length() {
+        final var base64Data = "iVBORw0KGgoAAAANSUhEUg".repeat(1000); // ~23KB of base64
+        final var imagePrompt = UserPrompt.imageData("s1",
+                                                     "r1",
+                                                     "data:image/png;base64," + base64Data,
+                                                     ImageDetail.AUTO,
+                                                     LocalDateTime.of(2026, 7, 25, 10, 0, 0));
 
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + TokenCountingConfig.DEFAULT.getMessageOverHead()
-                + countTokens("user")
-                + TokenCountingConfig.DEFAULT.getImageTokenCost();
-
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(imagePrompt),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
+        final var actual = tokenCounter.estimateTokenCount(List.of(imagePrompt),
+                                                           TokenCountingConfig.DEFAULT,
+                                                           EncodingType.CL100K_BASE);
+        // The base64 payload must not be counted as text. 23K chars would be ~7K text tokens.
+        assertTrue(actual < 1000, "Image tokens should be a fixed cost, not proportional to base64 length");
     }
 
-    @Test
-    void testEstimateTokenCountMultipleMessages() {
-        final var systemPrompt = new SystemPrompt("s1", "r1", "System", false, null);
-        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
-        final var userPrompt = UserPrompt.text("s1", "r1", "User", sentAt);
-
-        // The neutral counter counts user prompt content as-is; the <sentAt> prefix is a
-        // wire-format concern owned by the protocol codec, not the counter.
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + (TokenCountingConfig.DEFAULT.getMessageOverHead()
-                        + countTokens("system")
-                        + countTokens("System"))
-                + (TokenCountingConfig.DEFAULT.getMessageOverHead()
-                        + countTokens("user")
-                        + countTokens("User"));
-
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(systemPrompt, userPrompt),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
+    private record CountingCase(
+            String name,
+            List<AgentMessage> messages,
+            ToIntFunction<GenericTokenCounterTest> expected
+    ) {
     }
 
-    @Test
-    void testEstimateTokenCountStructuredOutput() {
-        final var content = "{\"answer\": \"fine\"}";
-        final var structuredOutput = new StructuredOutput("s1", "r1", content, new ModelUsageStats(), 100);
-
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + TokenCountingConfig.DEFAULT.getMessageOverHead()
-                + countTokens("assistant")
-                + countTokens(content);
-
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(structuredOutput),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
-    }
-
-    @Test
-    void testEstimateTokenCountSystemPrompt() {
-        final var content = "You are a helpful assistant.";
-        final var systemPrompt = new SystemPrompt("s1", "r1", content, false, null);
-
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + TokenCountingConfig.DEFAULT.getMessageOverHead()
-                + countTokens("system")
-                + countTokens(content);
-
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(systemPrompt),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
-    }
-
-    @Test
-    void testEstimateTokenCountToolCall() {
-        final var toolName = "get_weather";
-        final var arguments = "{\"location\": \"Bangalore\"}";
-        final var toolCallId = "call_123";
-        final var toolCall = new ToolCall("s1", "r1", toolCallId, toolName, arguments);
-
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + TokenCountingConfig.DEFAULT.getMessageOverHead()
-                + countTokens("assistant")
-                + countTokens(toolCallId)
-                + countTokens(toolName)
-                + TokenCountingConfig.DEFAULT.getFormattingOverhead()
-                + countTokens(arguments);
-
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(toolCall),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
-    }
-
-    @Test
-    void testEstimateTokenCountToolCallResponse() {
-        final var response = "Cloudy with a chance of meatballs";
-        final var toolCallId = "call_123";
-        final var toolName = "get_weather";
-        final var toolCallResponse = new ToolCallResponse("s1",
-                                                          "r1",
-                                                          toolCallId,
-                                                          toolName,
-                                                          ErrorType.SUCCESS,
-                                                          response,
-                                                          LocalDateTime.now());
-
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + TokenCountingConfig.DEFAULT.getMessageOverHead()
-                + countTokens("tool")
-                + TokenCountingConfig.DEFAULT.getFormattingOverhead()
-                + countTokens(toolCallId)
-                + countTokens(response);
-
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(toolCallResponse),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
-    }
-
-    @Test
-    void testEstimateTokenCountUserPrompt() {
-        final var content = "Hello, how are you?";
-        final var sentAt = LocalDateTime.of(2026, 7, 25, 10, 0, 0);
-        final var userPrompt = UserPrompt.text("s1", "r1", content, sentAt);
-
-        final var expected = TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead()
-                + TokenCountingConfig.DEFAULT.getMessageOverHead()
-                + countTokens("user")
-                + countTokens(content);
-
-        assertEquals(expected,
-                     tokenCounter.estimateTokenCount(List.of(userPrompt),
-                                                     TokenCountingConfig.DEFAULT,
-                                                     EncodingType.CL100K_BASE));
+    private int assistantOverhead() {
+        return TokenCountingConfig.DEFAULT.getAssistantPrimingOverhead();
     }
 
     private int countTokens(final String content) {
@@ -312,5 +230,9 @@ class GenericTokenCounterTest {
             return 0;
         }
         return encoder.encodeOrdinary(content).size();
+    }
+
+    private int messageOverhead(final String role) {
+        return TokenCountingConfig.DEFAULT.getMessageOverHead() + countTokens(role);
     }
 }

@@ -22,7 +22,6 @@ import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -36,7 +35,6 @@ import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.RetrySetup;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategy;
@@ -51,6 +49,9 @@ import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
+import com.phonepe.sentinelai.models.openai.ChatCompletionsProtocol;
+import com.phonepe.sentinelai.models.provider.HeaderAuth;
+import com.phonepe.sentinelai.models.provider.Provider;
 
 import lombok.Builder;
 import lombok.SneakyThrows;
@@ -104,10 +105,6 @@ class ConfiguredModelTest {
 
         @Tool("Get name of user")
         public String getName() {
-            final var endTime = System.currentTimeMillis() + 1000;
-            Awaitility.await()
-                    .pollDelay(Duration.ofSeconds(1))
-                    .until(() -> System.currentTimeMillis() >= endTime);
             return "Santanu";
         }
 
@@ -115,6 +112,28 @@ class ConfiguredModelTest {
         public String name() {
             return "simple-agent";
         }
+    }
+
+    public static Stream<Arguments> generateEarlyTerminationStrategies() {
+        return Stream.of(Arguments.of("null response runs to completion",
+                                      (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> null,
+                                      ErrorType.SUCCESS,
+                                      ErrorType.SUCCESS.getMessage()),
+                         Arguments.of("do-not-terminate runs to completion",
+                                      (EarlyTerminationStrategy) (modelSettings,
+                                                                  modelRunContext,
+                                                                  output) -> EarlyTerminationStrategyResponse
+                                                                          .doNotTerminate(),
+                                      ErrorType.SUCCESS,
+                                      ErrorType.SUCCESS.getMessage()),
+                         Arguments.of("terminate ends the run",
+                                      (EarlyTerminationStrategy) (modelSettings,
+                                                                  modelRunContext,
+                                                                  output) -> EarlyTerminationStrategyResponse
+                                                                          .terminate(ErrorType.MODEL_RUN_TERMINATED,
+                                                                                     "Terminating run early as per strategy"),
+                                      ErrorType.MODEL_RUN_TERMINATED,
+                                      "Terminating run early as per strategy"));
     }
 
     public static Stream<Arguments> generateFaults() {
@@ -131,6 +150,31 @@ class ConfiguredModelTest {
                          Arguments.of(500,
                                       "Internal Server Error",
                                       ErrorType.MODEL_CALL_HTTP_FAILURE));
+    }
+
+    public static Stream<Arguments> generateInvalidPreProcessors() {
+        return Stream.of(Arguments.of("no system prompt",
+                                      (AgentMessagesPreProcessor) (ctx,
+                                                                   allMessages,
+                                                                   newMessages) -> new AgentMessagesPreProcessResult(
+                                                                                                                     List.of(new GenericText("s1",
+                                                                                                                                             "r1",
+                                                                                                                                             AgentGenericMessage.Role.ASSISTANT,
+                                                                                                                                             "123-")),
+                                                                                                                     List.of())),
+                         Arguments.of("no user prompt",
+                                      (AgentMessagesPreProcessor) (ctx,
+                                                                   allMessages,
+                                                                   newMessages) -> new AgentMessagesPreProcessResult(
+                                                                                                                     List.of(allMessages
+                                                                                                                             .get(0)),
+                                                                                                                     List.of())),
+                         Arguments.of("empty message list",
+                                      (AgentMessagesPreProcessor) (ctx,
+                                                                   allMessages,
+                                                                   newMessages) -> new AgentMessagesPreProcessResult(
+                                                                                                                     List.of(),
+                                                                                                                     null)));
     }
 
     private static AgentOutput<OutputObject> executeAgent(final WireMockRuntimeInfo wiremock) {
@@ -168,10 +212,20 @@ class ConfiguredModelTest {
                                               final WireMockRuntimeInfo wiremock,
                                               final ObjectMapper mapper,
                                               final OkHttpClient okHttpClient) {
-        return TestModels.testModel(modelName,
-                                    TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()),
-                                    okHttpClient);
+        final var apiKey = TestStubs.useRealEndpoints()
+                ? TestStubs.getTestProperty("AZURE_API_KEY", null)
+                : null;
+        return ConfiguredModel.builder()
+                .modelName(modelName)
+                .provider(Provider.builder()
+                        .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                        .protocol(new ChatCompletionsProtocol())
+                        .auth(apiKey == null ? null : HeaderAuth.bearer(apiKey))
+                        .build())
+                .httpClient(okHttpClient)
+                .build();
     }
+
 
     public record OutputObject(
             String username,
@@ -183,41 +237,6 @@ class ConfiguredModelTest {
     public record UserInput(
             String data
     ) {
-    }
-
-
-    @Test
-    @SneakyThrows
-    void testAbsenceOfSystemPromptInPreprocessorOutput(final WireMockRuntimeInfo wiremock) {
-        final var response = testInternal(wiremock,
-                                          4,
-                                          "tool-output",
-                                          List.of((ctx, allMessages, newMessages) -> {
-                                              final List<AgentMessage> transformedMessages = List
-                                                      .of(new GenericText("s1",
-                                                                          "r1",
-                                                                          AgentGenericMessage.Role.ASSISTANT,
-                                                                          "123-"));
-
-                                              return new AgentMessagesPreProcessResult(transformedMessages,
-                                                                                       List.of());
-                                          }));
-        assertEquals(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID,
-                     response.getError().getErrorType());
-    }
-
-    @Test
-    @SneakyThrows
-    void testAbsenceOfUserMessageInPreprocessorOutput(final WireMockRuntimeInfo wiremock) {
-        final var response = testInternal(wiremock,
-                                          4,
-                                          "tool-output",
-                                          List.of((ctx, allMessages, newMessages) -> new AgentMessagesPreProcessResult(
-                                                                                                                       List.of(allMessages
-                                                                                                                               .get(0)),
-                                                                                                                       List.of())));
-        assertEquals(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID,
-                     response.getError().getErrorType());
     }
 
     @ParameterizedTest
@@ -237,15 +256,18 @@ class ConfiguredModelTest {
                                                                   response.getError()));
     }
 
-    @Test
+    @ParameterizedTest
     @SneakyThrows
-    void testEarlyTerminationStrategyReturningNull(final WireMockRuntimeInfo wiremock) {
+    @MethodSource("generateEarlyTerminationStrategies")
+    void testEarlyTerminationStrategy(final String name,
+                                      final EarlyTerminationStrategy earlyTerminationStrategy,
+                                      final ErrorType expectedErrorType,
+                                      final String expectedMessage,
+                                      final WireMockRuntimeInfo wiremock) {
         final var isStrategyInvoked = new AtomicBoolean(false);
-        final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings,
-                                                                         modelRunContext,
-                                                                         output) -> {
+        final var invokedStrategy = (EarlyTerminationStrategy) (modelSettings, modelRunContext, output) -> {
             isStrategyInvoked.set(true);
-            return null;
+            return earlyTerminationStrategy.evaluate(modelSettings, modelRunContext, output);
         };
 
         final var response = testInternalWithTerminationStrategy(wiremock,
@@ -254,68 +276,10 @@ class ConfiguredModelTest {
                                                                  setup -> setup
                                                                          .outputGenerationMode(
                                                                                                OutputGenerationMode.STRUCTURED_OUTPUT),
-                                                                 earlyTerminationStrategy);
+                                                                 invokedStrategy);
         assertTrue(isStrategyInvoked.get(), "Early termination strategy should have been invoked");
-        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-    }
-
-    @Test
-    @SneakyThrows
-    void testEarlyTerminationStrategyShouldContinue(final WireMockRuntimeInfo wiremock) {
-        final var terminationInvoked = new AtomicBoolean(false);
-        final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings,
-                                                                         modelRunContext,
-                                                                         output) -> {
-            terminationInvoked.set(true);
-            return EarlyTerminationStrategyResponse.doNotTerminate();
-        };
-
-        final var response = testInternalWithTerminationStrategy(wiremock,
-                                                                 3,
-                                                                 "structured-output",
-                                                                 setup -> setup
-                                                                         .outputGenerationMode(
-                                                                                               OutputGenerationMode.STRUCTURED_OUTPUT),
-                                                                 earlyTerminationStrategy);
-        assertTrue(terminationInvoked.get(), "Early termination strategy should have been invoked");
-        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-    }
-
-    @Test
-    @SneakyThrows
-    void testEarlyTerminationStrategyWithModelOutputError(final WireMockRuntimeInfo wiremock) {
-        final var isStrategyInvoked = new AtomicBoolean(false);
-        final var earlyTerminationStrategy = (EarlyTerminationStrategy) (modelSettings,
-                                                                         modelRunContext,
-                                                                         output) -> {
-            isStrategyInvoked.set(true);
-            return EarlyTerminationStrategyResponse.terminate(ErrorType.MODEL_RUN_TERMINATED,
-                                                              "Terminating run early as per strategy");
-        };
-
-        final var response = testInternalWithTerminationStrategy(wiremock,
-                                                                 3,
-                                                                 "structured-output",
-                                                                 setup -> setup
-                                                                         .outputGenerationMode(
-                                                                                               OutputGenerationMode.STRUCTURED_OUTPUT),
-                                                                 earlyTerminationStrategy);
-        assertTrue(isStrategyInvoked.get(), "Early termination strategy should have been invoked");
-        assertEquals(ErrorType.MODEL_RUN_TERMINATED, response.getError().getErrorType());
-        assertEquals("Terminating run early as per strategy", response.getError().getMessage());
-    }
-
-    @Test
-    @SneakyThrows
-    void testEmptyListReturnedByAProcessorFails(final WireMockRuntimeInfo wiremock) {
-        final var response = testInternal(wiremock,
-                                          4,
-                                          "tool-output",
-                                          List.of((ctx, allMessages, newMessages) -> new AgentMessagesPreProcessResult(
-                                                                                                                       List.of(),
-                                                                                                                       null)));
-        assertEquals(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID,
-                     response.getError().getErrorType());
+        assertEquals(expectedErrorType, response.getError().getErrorType(), name);
+        assertEquals(expectedMessage, response.getError().getMessage(), name);
     }
 
     @Test
@@ -438,6 +402,21 @@ class ConfiguredModelTest {
                 .build());
         log.info("Agent response: {}", response.getData());
         return response;
+    }
+
+    @ParameterizedTest
+    @SneakyThrows
+    @MethodSource("generateInvalidPreProcessors")
+    void testInvalidPreProcessorOutput(final String name,
+                                       final AgentMessagesPreProcessor preProcessor,
+                                       final WireMockRuntimeInfo wiremock) {
+        final var response = testInternal(wiremock,
+                                          4,
+                                          "tool-output",
+                                          List.of(preProcessor));
+        assertEquals(ErrorType.PREPROCESSOR_MESSAGES_OUTPUT_INVALID,
+                     response.getError().getErrorType(),
+                     "Invalid pre-processor output rejected: " + name);
     }
 
     @Test

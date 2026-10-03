@@ -260,6 +260,63 @@ class ChatCompletionsProtocolTest {
     }
 
     @Test
+    void regressionFrameWithRoleDeltaThenToolCallNameAndFinishReason() {
+        // Real-world regression capture (godric): a stream where one frame carries a plain
+        // role delta, a later frame the tool-call name, and the final frame the tool-call
+        // arguments together with finish_reason. Every frame must emit its own events.
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var roleEvents = protocol.decodeStreamEvent(
+                                                          context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                          sseEvent("""
+                                                                  {"id":"chatcmpl-regression001","object":"chat.completion.chunk","model":"test-model",
+                                                                   "choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+                                                                  """));
+        assertTrue(roleEvents.isEmpty());
+
+        final var nameEvents = protocol.decodeStreamEvent(
+                                                          context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                          sseEvent("""
+                                                                  {"id":"chatcmpl-regression001","object":"chat.completion.chunk","model":"test-model",
+                                                                   "choices":[{"index":0,"delta":{"tool_calls":[{"id":"call-regression01","type":"function","index":0,
+                                                                                    "function":{"name":"test_agent_get_name"}}]},"finish_reason":null}]}
+                                                                  """));
+        assertEquals(1, nameEvents.size());
+        final var nameDelta = (WireStreamEvent.ToolCallDelta) nameEvents.get(0);
+        assertEquals("call-regression01", nameDelta.getId());
+        assertEquals("test_agent_get_name", nameDelta.getName());
+        assertEquals(0, nameDelta.getIndex());
+
+        final var finishEvents = protocol.decodeStreamEvent(
+                                                            context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                            sseEvent("""
+                                                                    {"id":"chatcmpl-regression001","object":"chat.completion.chunk","model":"test-model",
+                                                                     "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{}"}}]},
+                                                                                 "finish_reason":"tool_calls"},
+                                                                                {"usage":{"prompt_tokens":217,"completion_tokens":13,"total_tokens":230}}]}
+                                                                    """));
+        assertEquals(2, finishEvents.size());
+        assertEquals(WireStreamEvent.ToolCallDelta.class, finishEvents.get(0).getClass());
+        assertEquals("{}", ((WireStreamEvent.ToolCallDelta) finishEvents.get(0)).getArgumentsFragment());
+        assertEquals(WireStreamEvent.StreamFinishEvent.class, finishEvents.get(1).getClass());
+        assertEquals(WireResponse.FinishReasons.TOOL_CALLS,
+                     ((WireStreamEvent.StreamFinishEvent) finishEvents.get(1)).getFinishReason());
+
+        // The captured stream closes with a separate usage-only frame after the finish frame.
+        final var usageEvents = protocol.decodeStreamEvent(
+                                                           context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                           sseEvent("""
+                                                                   {"id":"chatcmpl-regression001","object":"chat.completion.chunk","model":"test-model",
+                                                                       "choices":[],"usage":{"prompt_tokens":217,"completion_tokens":13,"total_tokens":230,
+                                                                                         "prompt_tokens_details":{"cached_tokens":192},
+                                                                                         "completion_tokens_details":{"reasoning_tokens":0}}}
+                                                                   """));
+        assertEquals(1, usageEvents.size());
+        assertEquals(WireStreamEvent.StreamUsageEvent.class, usageEvents.get(0).getClass());
+        assertEquals(230, ((WireStreamEvent.StreamUsageEvent) usageEvents.get(0)).getUsage().getTotalTokens());
+    }
+
+    @Test
     void requestBodyCarriesCoreFields() {
         final var protocol = new ChatCompletionsProtocol();
 

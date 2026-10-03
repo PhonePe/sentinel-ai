@@ -23,6 +23,9 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
@@ -58,7 +61,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -182,6 +188,76 @@ class AgentSessionExtensionTest {
 
     }
 
+    /**
+     * Test addMessagePersistencePreFilter / addMessageSelector: singular and plural variants
+     * register the given functions on top of the defaults.
+     */
+    static Stream<Arguments> addModifierScenarios() {
+        return Stream.of(Arguments.of("single persistence pre-filter",
+                                      (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> extension
+                                              .addMessagePersistencePreFilter(messages -> messages),
+                                      2,
+                                      3),
+                         Arguments.of("multiple persistence pre-filters",
+                                      (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> extension
+                                              .addMessagePersistencePreFilters(List.of(
+                                                                                       messages -> messages,
+                                                                                       messages -> messages.stream()
+                                                                                               .limit(5).toList())),
+                                      2,
+                                      4),
+                         Arguments.of("single message selector",
+                                      (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> extension
+                                              .addMessageSelector((sessionId, messages) -> messages),
+                                      1,
+                                      2),
+                         Arguments.of("multiple message selectors",
+                                      (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> extension
+                                              .addMessageSelectors(List.of(
+                                                                           (sessionId, messages) -> messages,
+                                                                           (sessionId, messages) -> messages.stream()
+                                                                                   .limit(10).toList())),
+                                      1,
+                                      3));
+    }
+
+    /**
+     * Test extension builder with null values: each field falls back to its default.
+     */
+    static Stream<Arguments> builderNullScenarios() {
+        return Stream.of(Arguments.of("null historyModifiers",
+                                      (UnaryOperator<AgentSessionExtension.AgentSessionExtensionBuilder<UserInput, String, SimpleAgent>>) builder -> builder
+                                              .historyModifiers(null),
+                                      (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> assertEquals(
+                                                                                                                                  2,
+                                                                                                                                  extension
+                                                                                                                                          .getHistoryModifiers()
+                                                                                                                                          .size())),
+                         Arguments.of("null mapper",
+                                      (UnaryOperator<AgentSessionExtension.AgentSessionExtensionBuilder<UserInput, String, SimpleAgent>>) builder -> builder
+                                              .mapper(null),
+                                      (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> assertNotNull(
+                                                                                                                                   extension
+                                                                                                                                           .getMapper())),
+                         Arguments.of("null messageSelectors",
+                                      (UnaryOperator<AgentSessionExtension.AgentSessionExtensionBuilder<UserInput, String, SimpleAgent>>) builder -> builder
+                                              .messageSelectors(null),
+                                      (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> assertEquals(
+                                                                                                                                  1,
+                                                                                                                                  extension
+                                                                                                                                          .getMessageSelectors()
+                                                                                                                                          .size())),
+                         Arguments.of("null setup",
+                                      (UnaryOperator<AgentSessionExtension.AgentSessionExtensionBuilder<UserInput, String, SimpleAgent>>) builder -> builder
+                                              .setup(null),
+                                      (Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>>) extension -> {
+                                          assertNotNull(extension.getSetup());
+                                          assertEquals(AgentSessionExtensionSetup.DEFAULT
+                                                  .getHistoricalMessageFetchSize(),
+                                                       extension.getSetup().getHistoricalMessageFetchSize());
+                                      }));
+    }
+
     public record OutputObject(
             String username,
             String message
@@ -192,6 +268,7 @@ class AgentSessionExtensionTest {
             List<String> salutation
     ) {
     }
+
 
     @JsonClassDescription("Parameter to be passed to get salutation for a user")
     public record SalutationParams(
@@ -204,7 +281,6 @@ class AgentSessionExtensionTest {
             String data
     ) {
     }
-
 
     @Test
     @SneakyThrows
@@ -264,94 +340,25 @@ class AgentSessionExtensionTest {
         }
     }
 
-    /**
-     * Test addMessagePersistencePreFilter method
-     */
-    @Test
-    void testAddMessagePersistencePreFilter() {
-        final var sessionStore = new InMemorySessionStore();
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("addModifierScenarios")
+    void testAddMessageModifier(final String name,
+                                final Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>> adder,
+                                final int defaultCount,
+                                final int expectedCount) {
         final var extension = AgentSessionExtension
                 .<UserInput, String, SimpleAgent>builder()
-                .sessionStore(sessionStore)
+                .sessionStore(new InMemorySessionStore())
                 .mapper(JsonUtils.createMapper())
                 .build();
 
-        // Default has 2 filters
-        assertEquals(2, extension.getHistoryModifiers().size());
+        final var before = extension.getHistoryModifiers().size() + extension.getMessageSelectors().size();
+        assertEquals(defaultCount + 1, before, name); // 2 history modifiers + 1 selector
 
-        // Add a custom filter
-        extension.addMessagePersistencePreFilter(messages -> messages);
+        adder.accept(extension);
 
-        assertEquals(3, extension.getHistoryModifiers().size());
-    }
-
-    /**
-     * Test addMessagePersistencePreFilters method with list
-     */
-    @Test
-    void testAddMessagePersistencePreFilters() {
-        final var sessionStore = new InMemorySessionStore();
-        final var extension = AgentSessionExtension
-                .<UserInput, String, SimpleAgent>builder()
-                .sessionStore(sessionStore)
-                .mapper(JsonUtils.createMapper())
-                .build();
-
-        // Default has 2 filters
-        assertEquals(2, extension.getHistoryModifiers().size());
-
-        // Add multiple custom filters
-        extension.addMessagePersistencePreFilters(List.of(
-                                                          messages -> messages,
-                                                          messages -> messages.stream().limit(5).toList()
-        ));
-
-        assertEquals(4, extension.getHistoryModifiers().size());
-    }
-
-    /**
-     * Test addMessageSelector method
-     */
-    @Test
-    void testAddMessageSelector() {
-        final var sessionStore = new InMemorySessionStore();
-        final var extension = AgentSessionExtension
-                .<UserInput, String, SimpleAgent>builder()
-                .sessionStore(sessionStore)
-                .mapper(JsonUtils.createMapper())
-                .build();
-
-        // Default has 1 selector
-        assertEquals(1, extension.getMessageSelectors().size());
-
-        // Add a custom selector
-        extension.addMessageSelector((sessionId, messages) -> messages);
-
-        assertEquals(2, extension.getMessageSelectors().size());
-    }
-
-    /**
-     * Test addMessageSelectors method with list
-     */
-    @Test
-    void testAddMessageSelectors() {
-        final var sessionStore = new InMemorySessionStore();
-        final var extension = AgentSessionExtension
-                .<UserInput, String, SimpleAgent>builder()
-                .sessionStore(sessionStore)
-                .mapper(JsonUtils.createMapper())
-                .build();
-
-        // Default has 1 selector
-        assertEquals(1, extension.getMessageSelectors().size());
-
-        // Add multiple custom selectors
-        extension.addMessageSelectors(List.of(
-                                              (sessionId, messages) -> messages,
-                                              (sessionId, messages) -> messages.stream().limit(10).toList()
-        ));
-
-        assertEquals(3, extension.getMessageSelectors().size());
+        final var after = extension.getHistoryModifiers().size() + extension.getMessageSelectors().size();
+        assertEquals(expectedCount, after - 1, name);
     }
 
     /**
@@ -420,70 +427,16 @@ class AgentSessionExtensionTest {
         assertNotNull(result);
     }
 
-    /**
-     * Test extension builder with null historyModifiers (should use defaults)
-     */
-    @Test
-    void testBuilderWithNullHistoryModifiers() {
-        final var sessionStore = new InMemorySessionStore();
-        final var extension = AgentSessionExtension
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("builderNullScenarios")
+    void testBuilderWithNullValues(final String name,
+                                   final UnaryOperator<AgentSessionExtension.AgentSessionExtensionBuilder<UserInput, String, SimpleAgent>> customizer,
+                                   final Consumer<AgentSessionExtension<UserInput, String, SimpleAgent>> assertion) {
+        final var builder = AgentSessionExtension
                 .<UserInput, String, SimpleAgent>builder()
-                .sessionStore(sessionStore)
-                .historyModifiers(null)
-                .build();
-
-        // Should have default 2 modifiers
-        assertEquals(2, extension.getHistoryModifiers().size());
-    }
-
-    /**
-     * Test extension builder with null mapper (should use default)
-     */
-    @Test
-    void testBuilderWithNullMapper() {
-        final var sessionStore = new InMemorySessionStore();
-        final var extension = AgentSessionExtension
-                .<UserInput, String, SimpleAgent>builder()
-                .sessionStore(sessionStore)
-                .mapper(null)  // null mapper
-                .build();
-
-        // Should not throw, should use default mapper
-        assertNotNull(extension.getMapper());
-    }
-
-    /**
-     * Test extension builder with null messageSelectors (should use defaults)
-     */
-    @Test
-    void testBuilderWithNullMessageSelectors() {
-        final var sessionStore = new InMemorySessionStore();
-        final var extension = AgentSessionExtension
-                .<UserInput, String, SimpleAgent>builder()
-                .sessionStore(sessionStore)
-                .messageSelectors(null)
-                .build();
-
-        // Should have default 1 selector
-        assertEquals(1, extension.getMessageSelectors().size());
-    }
-
-    /**
-     * Test extension builder with null setup (should use default)
-     */
-    @Test
-    void testBuilderWithNullSetup() {
-        final var sessionStore = new InMemorySessionStore();
-        final var extension = AgentSessionExtension
-                .<UserInput, String, SimpleAgent>builder()
-                .sessionStore(sessionStore)
-                .setup(null)  // null setup
-                .build();
-
-        // Should use default setup
-        assertNotNull(extension.getSetup());
-        assertEquals(AgentSessionExtensionSetup.DEFAULT.getHistoricalMessageFetchSize(),
-                     extension.getSetup().getHistoricalMessageFetchSize());
+                .sessionStore(new InMemorySessionStore());
+        final var extension = customizer.apply(builder).build();
+        assertion.accept(extension);
     }
 
     /**

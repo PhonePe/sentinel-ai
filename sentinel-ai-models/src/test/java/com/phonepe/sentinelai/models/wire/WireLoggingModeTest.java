@@ -16,80 +16,83 @@
 
 package com.phonepe.sentinelai.models.wire;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for {@link WireLoggingMode}: level gates and override resolution.
  */
 class WireLoggingModeTest {
 
-    @Test
-    void testFramesLogsEverything() {
-        assertTrue(WireLoggingMode.FRAMES.logsResponses());
-        assertTrue(WireLoggingMode.FRAMES.logsFrames());
+    static Stream<Arguments> resolveScenarios() {
+        return Stream.of(Arguments.of("blank value keeps configured", " ", WireLoggingMode.ON, WireLoggingMode.ON),
+                         Arguments.of("invalid value keeps configured",
+                                      "garbage",
+                                      WireLoggingMode.OFF,
+                                      WireLoggingMode.OFF),
+                         Arguments.of("valid value overrides configured",
+                                      "frames",
+                                      WireLoggingMode.OFF,
+                                      WireLoggingMode.FRAMES));
     }
 
-    @Test
-    void testOffLogsNothing() {
-        assertFalse(WireLoggingMode.OFF.logsResponses());
-        assertFalse(WireLoggingMode.OFF.logsFrames());
+    @ParameterizedTest
+    @CsvSource({
+            "FRAMES, true, true",
+            "ON, true, false",
+            "OFF, false, false"
+    })
+    void testLevelGates(final WireLoggingMode mode, final boolean logsResponses, final boolean logsFrames) {
+        assertEquals(logsResponses, mode.logsResponses(), mode + " responses gate");
+        assertEquals(logsFrames, mode.logsFrames(), mode + " frames gate");
     }
 
-    @Test
-    void testOnLogsResponsesNotFrames() {
-        assertTrue(WireLoggingMode.ON.logsResponses());
-        assertFalse(WireLoggingMode.ON.logsFrames());
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("resolveScenarios")
+    void testResolve(final String name,
+                     final String systemPropertyValue,
+                     final WireLoggingMode configured,
+                     final WireLoggingMode expected) {
+        withSystemProperty(systemPropertyValue,
+                           () -> assertEquals(expected, WireLoggingMode.resolve(configured), name));
     }
 
-    @Test
-    void testResolveBlankValueKeepsConfigured() {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("resolveScenarios")
+    void testResolveNullConfiguredDefaultsToOn(final String name,
+                                               final String systemPropertyValue,
+                                               final WireLoggingMode configured,
+                                               final WireLoggingMode expected) {
+        // Null configured mode with no override resolves to ON.
+        withSystemProperty(null, () -> assertEquals(WireLoggingMode.ON, WireLoggingMode.resolve(null), name));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("resolveScenarios")
+    void testResolveWithNoSystemPropertyFallsBackToConfigured(final String name,
+                                                              final String systemPropertyValue,
+                                                              final WireLoggingMode configured,
+                                                              final WireLoggingMode expected) {
+        // Without the system property set, the configured mode always wins.
+        withSystemProperty(null, () -> assertEquals(configured, WireLoggingMode.resolve(configured), name));
+    }
+
+    private void withSystemProperty(final String value, final Runnable assertion) {
         final var previous = System.getProperty(WireLoggingMode.SYSTEM_PROPERTY);
         try {
-            System.setProperty(WireLoggingMode.SYSTEM_PROPERTY, " ");
-            assertEquals(WireLoggingMode.ON, WireLoggingMode.resolve(WireLoggingMode.ON));
-        }
-        finally {
-            if (previous == null) {
+            if (value == null) {
                 System.clearProperty(WireLoggingMode.SYSTEM_PROPERTY);
             }
             else {
-                System.setProperty(WireLoggingMode.SYSTEM_PROPERTY, previous);
+                System.setProperty(WireLoggingMode.SYSTEM_PROPERTY, value);
             }
-        }
-    }
-
-    @Test
-    void testResolveDefaultsToOn() {
-        assertEquals(WireLoggingMode.ON, WireLoggingMode.resolve(null));
-    }
-
-    @Test
-    void testResolveInvalidValueKeepsConfigured() {
-        final var previous = System.getProperty(WireLoggingMode.SYSTEM_PROPERTY);
-        try {
-            System.setProperty(WireLoggingMode.SYSTEM_PROPERTY, "garbage");
-            assertEquals(WireLoggingMode.OFF, WireLoggingMode.resolve(WireLoggingMode.OFF));
-        }
-        finally {
-            if (previous == null) {
-                System.clearProperty(WireLoggingMode.SYSTEM_PROPERTY);
-            }
-            else {
-                System.setProperty(WireLoggingMode.SYSTEM_PROPERTY, previous);
-            }
-        }
-    }
-
-    @Test
-    void testResolveSystemPropertyOverrides() {
-        final var previous = System.getProperty(WireLoggingMode.SYSTEM_PROPERTY);
-        try {
-            System.setProperty(WireLoggingMode.SYSTEM_PROPERTY, "frames");
-            assertEquals(WireLoggingMode.FRAMES, WireLoggingMode.resolve(WireLoggingMode.OFF));
+            assertion.run();
         }
         finally {
             if (previous == null) {

@@ -21,25 +21,25 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentInput;
-import com.phonepe.sentinelai.core.agent.AgentOutput;
 import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.MediaInput;
 import com.phonepe.sentinelai.core.agent.RetrySetup;
-import com.phonepe.sentinelai.core.agent.StreamConsumer;
-import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
-import com.phonepe.sentinelai.core.tools.Tool;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.models.ConfiguredModel;
+import com.phonepe.sentinelai.models.TestAgents.OutputObjectAgent;
+import com.phonepe.sentinelai.models.TestAgents.TestAgent;
 import com.phonepe.sentinelai.models.TestStubs;
 import com.phonepe.sentinelai.models.provider.HeaderAuth;
 import com.phonepe.sentinelai.models.provider.Provider;
@@ -50,10 +50,9 @@ import okhttp3.OkHttpClient;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -64,13 +63,16 @@ import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
+import static com.phonepe.sentinelai.models.TestAgents.countMessages;
+import static com.phonepe.sentinelai.models.TestAgents.execute;
+import static com.phonepe.sentinelai.models.TestAgents.streamConsumer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * WireMock parity tests for {@link ResponsesModel} over the OpenAI Responses wire format. The
+ * WireMock parity tests for {@link ConfiguredModel} over the OpenAI Responses wire format. The
  * fixtures speak the Responses format: flat {@code function_call} items, top-level
  * {@code instructions} and named SSE events.
  */
@@ -83,81 +85,18 @@ class ConfiguredModelResponsesTest {
      */
     private static final String ENDPOINT = "/responses";
 
-    private static final class OutputObjectAgent extends Agent<OutputObject, OutputObject, OutputObjectAgent> {
-
-        public OutputObjectAgent(@lombok.NonNull AgentSetup setup) {
-            super(OutputObject.class,
-                  "Greet the user by name and respond to queries",
-                  setup,
-                  List.of(),
-                  Map.of());
-        }
-
-        @Tool("Get name of the user")
-        public String getName() {
-            return "Santanu";
-        }
-
-        @Override
-        public String name() {
-            return "test-agent";
-        }
-    }
-
-    /**
-     * String-typed agent for the streaming tests. The streaming fixtures call
-     * {@code test_agent_*} tools, so this class executes them.
-     */
-    private static final class TestAgent extends Agent<String, String, TestAgent> {
-
-        private final AtomicInteger getNameCalls = new AtomicInteger();
-
-        public TestAgent(@lombok.NonNull AgentSetup setup) {
-            super(String.class,
-                  "Greet the user by name and respond to queries",
-                  setup,
-                  List.of(),
-                  Map.of());
-        }
-
-        @Tool("Get location of the user")
-        public String getLocation(@com.fasterxml.jackson.annotation.JsonPropertyDescription("User name") String name) {
-            if (name.equalsIgnoreCase("santanu")) {
-                return "Bangalore";
-            }
-            throw new IllegalArgumentException("Invalid parameter");
-        }
-
-        @Tool("Get name of the user")
-        public String getName() {
-            getNameCalls.incrementAndGet();
-            return "Santanu";
-        }
-
-        @Tool("Get weather for city")
-        public String getWeather(@com.fasterxml.jackson.annotation.JsonPropertyDescription("City name") String city) {
-            if (city.equalsIgnoreCase("bangalore")) {
-                return "Sunny";
-            }
-            throw new IllegalArgumentException("Invalid parameter");
-        }
-
-        @Override
-        public String name() {
-            return "test-agent";
-        }
-    }
-
-    private static long countMessages(final List<AgentMessage> messages,
-                                      final Class<? extends AgentMessage> type) {
-        return messages.stream().filter(type::isInstance).count();
-    }
-
-    private static AgentOutput<OutputObject> execute(final OutputObjectAgent agent) {
-        return agent.execute(AgentInput.<OutputObject>builder()
-                .request(new OutputObject(null, "Hi"))
-                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").build())
-                .build());
+    static Stream<Arguments> generateStreamingToolLoopScenarios() {
+        return Stream.of(Arguments.of("duplicate finish chunk", "resp-duplicate-finish", "Hello, Santanu!", 1, 1),
+                         Arguments.of("multiple tool calls with split arguments",
+                                      "resp-gpt6sol-multi",
+                                      "Hello Santanu",
+                                      2,
+                                      2),
+                         Arguments.of("reasoning then tool call at non-zero index",
+                                      "resp-gpt6sol-reasoning",
+                                      "Hello Santanu",
+                                      1,
+                                      1));
     }
 
     private static ConfiguredModel responsesModel(final WireMockRuntimeInfo wiremock,
@@ -198,15 +137,6 @@ class ConfiguredModelResponsesTest {
                 .willReturn(okForContentType("application/json",
                                              TestStubs.readStubFile(i, prefix, ConfiguredModelResponsesTest.class)))
                 .willSetStateTo(Objects.toString(i + 1))));
-    }
-
-    private static StreamConsumer streamConsumer() {
-        return new StreamConsumer() {
-            @Override
-            public void consumeContent(final String content) {
-                log.info("RECEIVED: {}", content);
-            }
-        };
     }
 
     @Test
@@ -276,25 +206,6 @@ class ConfiguredModelResponsesTest {
 
     @Test
     @SneakyThrows
-    void streamingDuplicateFinishChunk(final WireMockRuntimeInfo wiremock) {
-        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        setupSseMocks(2, "resp-duplicate-finish");
-        final var agent = new TestAgent(setupBase(wiremock)
-                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
-                .build());
-
-        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
-                .request("Hi")
-                .build(), streamConsumer())
-                .join();
-        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-        assertEquals(1, agent.getNameCalls.get());
-        assertEquals(1, countMessages(response.getAllMessages(), ToolCall.class));
-        assertEquals(1, countMessages(response.getAllMessages(), ToolCallResponse.class));
-    }
-
-    @Test
-    @SneakyThrows
     void streamingImageUpload(final WireMockRuntimeInfo wiremock) {
         assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         stubFor(post(ENDPOINT).willReturn(okForContentType("text/event-stream",
@@ -313,48 +224,6 @@ class ConfiguredModelResponsesTest {
                 .join();
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertTrue(response.getData().contains("A man with dark hair and glasses"));
-        assertTrue(response.getUsage().getTotalTokens() > 1);
-    }
-
-    @Test
-    @SneakyThrows
-    void streamingMultipleToolCallsWithSplitArguments(final WireMockRuntimeInfo wiremock) {
-        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        setupSseMocks(2, "resp-gpt6sol-multi");
-        final var agent = new TestAgent(setupBase(wiremock)
-                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
-                .build());
-
-        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
-                .request("Hi")
-                .build(), streamConsumer())
-                .join();
-        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-        assertEquals("Hello Santanu", response.getData());
-        assertEquals(1, agent.getNameCalls.get());
-        assertEquals(2, countMessages(response.getAllMessages(), ToolCall.class));
-        assertEquals(2, countMessages(response.getAllMessages(), ToolCallResponse.class));
-        assertTrue(response.getUsage().getTotalTokens() > 1);
-    }
-
-    @Test
-    @SneakyThrows
-    void streamingReasoningThenSingleToolCallAtNonZeroIndex(final WireMockRuntimeInfo wiremock) {
-        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
-        setupSseMocks(2, "resp-gpt6sol-reasoning");
-        final var agent = new TestAgent(setupBase(wiremock)
-                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
-                .build());
-
-        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
-                .request("Hi")
-                .build(), streamConsumer())
-                .join();
-        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-        assertEquals("Hello Santanu", response.getData());
-        assertEquals(1, agent.getNameCalls.get());
-        assertEquals(1, countMessages(response.getAllMessages(), ToolCall.class));
-        assertEquals(1, countMessages(response.getAllMessages(), ToolCallResponse.class));
         assertTrue(response.getUsage().getTotalTokens() > 1);
     }
 
@@ -393,6 +262,32 @@ class ConfiguredModelResponsesTest {
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
         assertNotNull(response.getData());
         assertTrue(response.getUsage().getTotalTokens() > 1);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @SneakyThrows
+    @MethodSource("generateStreamingToolLoopScenarios")
+    void streamingToolLoopDecoding(final String name,
+                                   final String fixturePrefix,
+                                   final String expectedData,
+                                   final int expectedToolCalls,
+                                   final int expectedToolResponses,
+                                   final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        setupSseMocks(2, fixturePrefix);
+        final var agent = new TestAgent(setupBase(wiremock)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .build(), streamConsumer())
+                .join();
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType(), name);
+        assertEquals(expectedData, response.getData(), name);
+        assertEquals(1, agent.getNameCalls.get(), name);
+        assertEquals(expectedToolCalls, countMessages(response.getAllMessages(), ToolCall.class), name);
+        assertEquals(expectedToolResponses, countMessages(response.getAllMessages(), ToolCallResponse.class), name);
+        assertTrue(response.getUsage().getTotalTokens() > 1, name);
     }
 
     @Test
@@ -446,7 +341,6 @@ class ConfiguredModelResponsesTest {
         assertTrue(countMessages(response.getAllMessages(), ToolCallResponse.class) >= 1);
     }
 
-
     @Test
     @SneakyThrows
     void toolsDisabledRun(final WireMockRuntimeInfo wiremock) {
@@ -484,12 +378,6 @@ class ConfiguredModelResponsesTest {
 
         final var response = execute(agent);
         assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
-    }
-
-    private record OutputObject(
-            String username,
-            String message
-    ) {
     }
 
     private void setupSseMocks(final int numStates, final String prefix) {

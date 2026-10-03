@@ -23,12 +23,17 @@ import org.junit.jupiter.api.Test;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.models.wire.SseEvent;
 import com.phonepe.sentinelai.models.wire.WireContext;
+import com.phonepe.sentinelai.models.wire.WireResponse;
 import com.phonepe.sentinelai.models.wire.WireStreamEvent;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ResponsesProtocolStreamTest {
@@ -55,6 +60,90 @@ class ResponsesProtocolStreamTest {
     }
 
     @Test
+    void blockingResponseDecodesCompletedMessageOutput() throws Exception {
+        final var response = protocol.decodeResponse(context(),
+                                                     mapper.readTree(fixture("/wiremock/resp-notools.1.json")));
+
+        assertEquals(WireResponse.FinishReasons.STOP, response.getFinishReason());
+        assertEquals("{\"output\": {\"message\": \"Hello, Santanu! How can I assist you today?\", "
+                + "\"username\": \"Santanu\"}}",
+                     response.getContent());
+        assertTrue(response.getToolCalls().isEmpty());
+        final var usage = response.getUsage();
+        assertEquals(284, usage.getInputTokens());
+        assertEquals(31, usage.getOutputTokens());
+        assertEquals(315, usage.getTotalTokens());
+        assertEquals(0, usage.getInputCachedTokens());
+        assertEquals(0, usage.getOutputReasoningTokens());
+    }
+
+    @Test
+    void blockingResponseDecodesRefusalPart() throws Exception {
+        final var body = mapper.readTree("""
+                {"output": [
+                    {"type": "message",
+                     "content": [
+                        {"type": "output_text", "text": "partial"},
+                        {"type": "refusal", "refusal": "cannot help with that"}
+                     ]}
+                 ],
+                 "status": "completed"}""");
+
+        final var response = protocol.decodeResponse(context(), body);
+
+        assertEquals("partial", response.getContent());
+        assertEquals("cannot help with that", response.getRefusal());
+        assertEquals(WireResponse.FinishReasons.STOP, response.getFinishReason());
+    }
+
+    @Test
+    void blockingResponseDecodesToolCalls() throws Exception {
+        final var response = protocol.decodeResponse(context(),
+                                                     mapper.readTree(fixture("/wiremock/resp-tool-output.1.json")));
+
+        assertEquals(WireResponse.FinishReasons.TOOL_CALLS, response.getFinishReason());
+        assertNull(response.getContent());
+        assertEquals(1, response.getToolCalls().size());
+        final var call = response.getToolCalls().get(0);
+        assertEquals("call_PqPR7R6ueMHA71WNOnsMHDOQ", call.getId());
+        assertEquals("simple_agent_get_name", call.getName());
+        assertEquals("{}", call.getArgumentsJson());
+    }
+
+
+    @Test
+    void blockingResponseMapsErrorToRefused() throws Exception {
+        final var body = mapper.createObjectNode();
+        body.put("status", "failed");
+        body.set("error", mapper.readTree("{\"code\":\"server_error\"}"));
+        body.set("output", mapper.createArrayNode());
+
+        final var response = protocol.decodeResponse(context(), body);
+
+        assertEquals(WireResponse.FinishReasons.REFUSED, response.getFinishReason());
+        assertTrue(response.getToolCalls().isEmpty());
+    }
+
+    @Test
+    void blockingResponseMapsIncompleteToLength() throws Exception {
+        final var body = mapper.createObjectNode();
+        body.put("status", "incomplete");
+        body.set("output", mapper.createArrayNode());
+
+        final var response = protocol.decodeResponse(context(), body);
+
+        assertEquals(WireResponse.FinishReasons.LENGTH, response.getFinishReason());
+        assertNull(response.getContent());
+    }
+
+    @Test
+    void blockingResponseWithoutOutputThrows() {
+        final var body = mapper.createObjectNode();
+
+        assertThrows(IllegalStateException.class, () -> protocol.decodeResponse(context(), body));
+    }
+
+    @Test
     void emptyFrameIsIgnored() {
         assertTrue(protocol.decodeStreamEvent(context(), sseEvent(null, "null")).isEmpty());
     }
@@ -76,7 +165,6 @@ class ResponsesProtocolStreamTest {
         assertEquals(com.phonepe.sentinelai.models.wire.WireResponse.FinishReasons.LENGTH,
                      ((WireStreamEvent.StreamFinishEvent) events.get(0)).getFinishReason());
     }
-
 
     @Test
     void outputItemAddedCarriesFrameOutputIndex() {
@@ -137,7 +225,6 @@ class ResponsesProtocolStreamTest {
         assertTrue(events.isEmpty());
     }
 
-
     @Test
     void reasoningDeltaDecodesAsReasoningNotContent() {
         final var events = protocol.decodeStreamEvent(context(),
@@ -162,6 +249,10 @@ class ResponsesProtocolStreamTest {
                 .tools(Map.of())
                 .outputDefinitions(List.of())
                 .build();
+    }
+
+    private String fixture(final String resource) throws Exception {
+        return Files.readString(Path.of(getClass().getResource(resource).toURI()));
     }
 
     private SseEvent sseEvent(final String event, final String json) {

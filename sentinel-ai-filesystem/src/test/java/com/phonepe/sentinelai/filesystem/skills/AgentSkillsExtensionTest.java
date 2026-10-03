@@ -20,6 +20,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
 
@@ -29,6 +32,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -42,6 +46,14 @@ class AgentSkillsExtensionTest {
     Path tempDir;
 
     private Path skillsDir;
+
+    static Stream<Arguments> directInjectionThresholdScenarios() {
+        return Stream.of(Arguments.of("two skills with threshold 1 forces discovery", 2, 1, false),
+                         Arguments.of("two skills with threshold 2 allows direct injection", 2, 2, true),
+                         Arguments.of("five skills equals the default threshold: direct injection", 5, null, true),
+                         Arguments.of("three skills is below the default threshold: direct injection", 3, null, true),
+                         Arguments.of("six skills is above the default threshold: discovery", 6, null, false));
+    }
 
     @BeforeEach
     void setUp() throws IOException {
@@ -97,125 +109,6 @@ class AgentSkillsExtensionTest {
     }
 
     @Test
-    void testAdditionalSystemPromptsCustomDirectInjectionThreshold() throws IOException {
-        createTestSkill("skill-one", "First skill");
-        createTestSkill("skill-two", "Second skill");
-
-        // Threshold of 1 forces discovery mode with 2 skills
-        final var discoveryModeExtension = AgentSkillsExtension.withMultipleSkills()
-                .baseDir(tempDir.toString())
-                .skillsDirectories(List.of(skillsDir.toString()))
-                .skillsToLoad(null)
-                .directInjectionThreshold(1)
-                .build();
-
-        final var discoveryResult = discoveryModeExtension.additionalSystemPrompts(
-                                                                                   null,
-                                                                                   null,
-                                                                                   null,
-                                                                                   ProcessingMode.DIRECT);
-        assertTrue(discoveryResult.getTask()
-                .get(0)
-                .getInstructions()
-                .toString()
-                .contains("Review the available skills catalog"));
-
-        // Threshold of 2 allows direct injection with 2 skills
-        final var directInjectionExtension = AgentSkillsExtension.withMultipleSkills()
-                .baseDir(tempDir.toString())
-                .skillsDirectories(List.of(skillsDir.toString()))
-                .skillsToLoad(null)
-                .directInjectionThreshold(2)
-                .build();
-
-        final var directInjectionResult = directInjectionExtension.additionalSystemPrompts(
-                                                                                           null,
-                                                                                           null,
-                                                                                           null,
-                                                                                           ProcessingMode.DIRECT);
-        assertTrue(directInjectionResult.getTask()
-                .get(0)
-                .getInstructions()
-                .toString()
-                .contains("You can activate and use any of the skills"));
-    }
-
-    @Test
-    void testAdditionalSystemPromptsDirectInjectionAtExactThreshold() throws IOException {
-        // 5 skills equals the default threshold of 5, so direct injection still applies
-        for (int i = 1; i <= 5; i++) {
-            createTestSkill("skill-" + i, "Skill number " + i);
-        }
-
-        final var extension = AgentSkillsExtension.withMultipleSkills()
-                .baseDir(tempDir.toString())
-                .skillsDirectories(List.of(skillsDir.toString()))
-                .skillsToLoad(null)
-                .build();
-
-        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
-
-        assertNotNull(result);
-        assertEquals(1, result.getTask().size());
-        final var instructions = result.getTask().get(0).getInstructions().toString();
-        assertTrue(instructions.contains("Available Skills"));
-        assertTrue(instructions.contains("skill-5"));
-    }
-
-
-    @Test
-    void testAdditionalSystemPromptsDirectInjectionBelowThreshold() throws IOException {
-        // 3 skills is below the default threshold of 5, so the catalog is injected directly
-        createTestSkill("skill-one", "First skill");
-        createTestSkill("skill-two", "Second skill");
-        createTestSkill("skill-three", "Third skill");
-
-        final var extension = AgentSkillsExtension.withMultipleSkills()
-                .baseDir(tempDir.toString())
-                .skillsDirectories(List.of(skillsDir.toString()))
-                .skillsToLoad(null)
-                .build();
-
-        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
-
-        assertNotNull(result);
-        assertEquals(1, result.getTask().size());
-        final var instructions = result.getTask().get(0).getInstructions().toString();
-        // The full catalog (names and descriptions) should be injected directly
-        assertTrue(instructions.contains("Available Skills"));
-        assertTrue(instructions.contains("skill-one"));
-        assertTrue(instructions.contains("First skill"));
-        assertTrue(instructions.contains("skill-two"));
-        assertTrue(instructions.contains("Second skill"));
-        assertTrue(instructions.contains("skill-three"));
-        assertTrue(instructions.contains("Third skill"));
-        assertTrue(instructions.contains("You can activate and use any of the skills"));
-    }
-
-    @Test
-    void testAdditionalSystemPromptsDiscoveryModeAboveThreshold() throws IOException {
-        // 6 skills is above the default threshold of 5, so discovery instructions are used
-        for (int i = 1; i <= 6; i++) {
-            createTestSkill("skill-" + i, "Skill number " + i);
-        }
-
-        final var extension = AgentSkillsExtension.withMultipleSkills()
-                .baseDir(tempDir.toString())
-                .skillsDirectories(List.of(skillsDir.toString()))
-                .skillsToLoad(null)
-                .build();
-
-        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
-
-        assertNotNull(result);
-        assertEquals(1, result.getTask().size());
-        final var instructions = result.getTask().get(0).getInstructions().toString();
-        // Discovery mode does not inject the catalog directly
-        assertTrue(instructions.contains("Review the available skills catalog"));
-        assertFalse(instructions.contains("Available Skills"));
-    }
-
-    @Test
     void testAdditionalSystemPromptsEmptyRegistry() {
         final var extension = AgentSkillsExtension.withMultipleSkills()
                 .baseDir(tempDir.toString())
@@ -246,6 +139,40 @@ class AgentSkillsExtensionTest {
         // Single skill mode: instructions should be injected directly as a task
         assertEquals(1, result.getTask().size());
         assertTrue(result.getTask().get(0).getInstructions().toString().contains("single-skill"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("directInjectionThresholdScenarios")
+    void testDirectInjectionThreshold(final String name,
+                                      final int skillCount,
+                                      final Integer configuredThreshold,
+                                      final boolean expectDirectInjection) throws IOException {
+        for (int i = 1; i <= skillCount; i++) {
+            createTestSkill("skill-" + i, "Skill number " + i);
+        }
+
+        final var builder = AgentSkillsExtension.withMultipleSkills()
+                .baseDir(tempDir.toString())
+                .skillsDirectories(List.of(skillsDir.toString()))
+                .skillsToLoad(null);
+        if (configuredThreshold != null) {
+            builder.directInjectionThreshold(configuredThreshold);
+        }
+        final var extension = builder.build();
+
+        final var result = extension.additionalSystemPrompts(null, null, null, ProcessingMode.DIRECT);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTask().size());
+        final var instructions = result.getTask().get(0).getInstructions().toString();
+        if (expectDirectInjection) {
+            assertTrue(instructions.contains("Available Skills"), name);
+            assertTrue(instructions.contains("skill-" + skillCount), name);
+        }
+        else {
+            assertTrue(instructions.contains("Review the available skills catalog"), name);
+            assertFalse(instructions.contains("Available Skills"), name);
+        }
     }
 
 
