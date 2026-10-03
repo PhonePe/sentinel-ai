@@ -47,18 +47,10 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 public class TestStubs {
 
     /**
-     * The neutral Chat Completions endpoint used by the test wire protocol.
-     */
-    /**
      * The neutral Chat Completions endpoint with the default /v1 prefix.
      */
     public static final String ENDPOINT = "/v1/chat/completions";
 
-    /**
-     * The neutral Chat Completions endpoint without a prefix, used by test providers
-     * that declare {@link Provider#NO_ENDPOINT_PREFIX}.
-     */
-    public static final String NO_PREFIX_ENDPOINT = "/chat/completions";
 
     /**
      * Reads a test property. In mock mode returns {@code mockValue}; in real mode (system
@@ -86,26 +78,17 @@ public class TestStubs {
     }
 
     public static void setupMocks(final int numStates, final String prefix, final Class<?> clazz) {
-        IntStream.rangeClosed(1, numStates).forEach(i -> {
-            stubFor(post(NO_PREFIX_ENDPOINT).inScenario("model-test")
-                    .whenScenarioStateIs(i == 1 ? Scenario.STARTED : Objects.toString(i))
-                    .willReturn(okForContentType("application/json", readStubFile(i, prefix, clazz)))
-                    .willSetStateTo(Objects.toString(i + 1)));
-            stubFor(post(ENDPOINT).inScenario("model-test-v1")
-                    .whenScenarioStateIs(i == 1 ? Scenario.STARTED : Objects.toString(i))
-                    .willReturn(okForContentType("application/json", readStubFile(i, prefix, clazz)))
-                    .willSetStateTo(Objects.toString(i + 1)));
-        });
+        IntStream.rangeClosed(1, numStates).forEach(i -> stubFor(post(ENDPOINT).inScenario("model-test")
+                .whenScenarioStateIs(i == 1 ? Scenario.STARTED : Objects.toString(i))
+                .willReturn(okForContentType("application/json", readStubFile(i, prefix, clazz)))
+                .willSetStateTo(Objects.toString(i + 1))));
     }
 
     public static void setupMocksWithFault(final Fault fault) {
-        stubFor(post(NO_PREFIX_ENDPOINT).willReturn(aResponse().withFault(fault)));
         stubFor(post(ENDPOINT).willReturn(aResponse().withFault(fault)));
     }
 
     public static void setupMocksWithTimeout(final Duration duration) {
-        stubFor(post(NO_PREFIX_ENDPOINT).willReturn(aResponse().withStatus(200)
-                .withFixedDelay((int) duration.toMillis())));
         stubFor(post(ENDPOINT).willReturn(aResponse().withStatus(200)
                 .withFixedDelay((int) duration.toMillis())));
     }

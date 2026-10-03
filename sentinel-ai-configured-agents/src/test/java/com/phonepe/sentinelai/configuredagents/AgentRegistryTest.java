@@ -323,6 +323,36 @@ class AgentRegistryTest {
     }
 
     @Test
+    void keepsModelIdAndProtocolOverride() {
+        final var defaultProtocol = new ChatCompletionsProtocol();
+        final var requestedProtocol = new com.phonepe.sentinelai.models.openai.ResponsesProtocol();
+        final var provider = Provider.builder()
+                .baseUrl("http://localhost")
+                .protocol(defaultProtocol)
+                .supportedProtocols(List.of(requestedProtocol))
+                .build();
+        final var defaultModel = ConfiguredModel.builder()
+                .modelName("display-name")
+                .modelId("wire-id")
+                .wireLogging(com.phonepe.sentinelai.models.wire.WireLoggingMode.OFF)
+                .provider(provider)
+                .protocol(requestedProtocol)
+                .build();
+        final var config = AgentConfiguration.builder()
+                .agentName("test")
+                .description("test")
+                .prompt("test")
+                .modelConfiguration(ModelConfiguration.builder().name("new-name").build())
+                .build();
+        final var result = (ConfiguredModel) new ConfiguredModelFactory().build(config, defaultModel);
+
+        assertEquals("new-name", result.getModelName());
+        assertEquals("wire-id", result.getModelId());
+        assertEquals(requestedProtocol, result.getProtocol());
+        assertEquals(com.phonepe.sentinelai.models.wire.WireLoggingMode.OFF, result.getWireLogging());
+    }
+
+    @Test
     @SneakyThrows
     void testConfigLoading() {
         final var agentFactory = ConfiguredAgentFactory.builder()

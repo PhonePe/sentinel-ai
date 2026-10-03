@@ -19,6 +19,7 @@ package com.phonepe.sentinelai.models;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
@@ -240,6 +241,7 @@ public class ConfiguredModel implements Model {
     private final TokenCounter tokenCounter;
     private final List<RequestTransformer> requestTransformers;
     private final RequestRetryPolicy requestRetryPolicy;
+    private final WireLoggingMode wireLogging;
     private final FailsafeExecutor<Object> retryExecutor;
     private final WirePayloadLogger wirePayloadLogger;
 
@@ -286,12 +288,13 @@ public class ConfiguredModel implements Model {
         this.requestTransformers = List.copyOf(Objects.requireNonNullElse(requestTransformers,
                                                                           List.of()));
         this.requestRetryPolicy = Objects.requireNonNullElse(requestRetryPolicy, RequestRetryPolicy.DEFAULT);
+        this.wireLogging = wireLogging;
         this.retryExecutor = RequestRetryExecutors.executorFor(this.requestRetryPolicy);
         this.wirePayloadLogger = new WirePayloadLogger(WireLoggingMode.resolve(wireLogging));
     }
 
     /**
-     * Convenience factory: Bearer token auth, no endpoint prefix.
+     * Convenience factory: Bearer token auth with the default endpoint prefix.
      *
      * @param baseUrl  Base URL of the provider.
      * @param apiKey   API key sent as the Bearer token.
@@ -391,18 +394,18 @@ public class ConfiguredModel implements Model {
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
                 final var requestBody = protocol.buildRequestBody(ctx, wireMessages);
-                logDataDebug("Request to model: {}", requestBody);
+                logDataDebug(mapper, "Request to model: {}", requestBody);
 
-                final var response = callModel(ctx,
-                                               requestBody,
-                                               buildTransformerContext(ctx, context, allMessages, wireMessages));
-                if (response == null) {
-                    return errorToModelOutput(context,
-                                              capturedError(),
-                                              newMessages,
-                                              allMessages);
+                final WireResponse response;
+                try {
+                    response = callModel(ctx,
+                                         requestBody,
+                                         buildTransformerContext(ctx, context, allMessages, wireMessages));
                 }
-                logDataDebug("Response from model: {}", response);
+                catch (final Exception e) {
+                    return errorToModelOutput(context, e, newMessages, allMessages);
+                }
+                logDataDebug(mapper, "Response from model: {}", response);
                 mergeUsage(stats, response.getUsage());
                 output = switch (response.getFinishReason()) {
                     case WireResponse.FinishReasons.STOP -> {
@@ -607,7 +610,7 @@ public class ConfiguredModel implements Model {
                 final var stopwatch = Stopwatch.createStarted();
                 stats.incrementRequestsForRun();
                 final var requestBody = protocol.buildRequestBody(ctx, wireMessages);
-                logDataDebug("Request to model: {}", requestBody);
+                logDataDebug(mapper, "Request to model: {}", requestBody);
                 raiseMessageSentEvent(context, prevMessages, allMessages);
                 Stream<WireStreamEvent> eventStream;
                 try {
@@ -623,111 +626,115 @@ public class ConfiguredModel implements Model {
                 catch (Exception e) {
                     return errorToModelOutput(context, e, newMessages, allMessages);
                 }
-                //We use the following to merge the pieces of response we get from stream into final output
-                final var responseData = new StringBuilder();
-                //We use the following to cobble together the fragments of tool call objects we get from the stream
-                final var toolCallData = new HashMap<Integer, ToolCallAccumulator>();
-                //Providers repeat the finish reason on trailing chunks (usage etc.). Only the first one is handled.
-                final var finishHandled = new AtomicBoolean(false);
+                try (eventStream) {
+                    //We use the following to merge the pieces of response we get from stream into final output
+                    final var responseData = new StringBuilder();
+                    //We use the following to cobble together the fragments of tool call objects we get from the stream
+                    final var toolCallData = new HashMap<Integer, ToolCallAccumulator>();
+                    //Providers repeat the finish reason on trailing chunks (usage etc.). Only the first one is handled.
+                    final var finishHandled = new AtomicBoolean(false);
 
-                final var outputs = eventStream.map(streamEvent -> {
-                    ModelOutput eventOutput = null;
-                    if (streamEvent instanceof WireStreamEvent.ContentDelta contentDelta) {
-                        responseData.append(contentDelta.getContent());
-                        streamHandler.consumeReasoningAndContent(null, contentDelta.getContent());
-                    }
-                    else if (streamEvent instanceof WireStreamEvent.ReasoningDelta reasoningDelta) {
-                        streamHandler.consumeReasoningAndContent(reasoningDelta.getContent(), null);
-                    }
-                    else if (streamEvent instanceof WireStreamEvent.ToolCallDelta toolCallDelta) {
-                        // Caution: the following is not for people with weak constitution
-                        // The api sends fully formed objects with partial data in the field
-                        // So we try to assemble the pieces together to form a complete object
-                        final var node = toolCallData.compute(toolCallDelta.getIndex(),
-                                                              (idx, existing) -> existing == null
-                                                                      ? new ToolCallAccumulator(idx).merge(
-                                                                                                           toolCallDelta)
-                                                                      : existing.merge(toolCallDelta));
-                        logDataDebug("Function till now: {} -> {}", node, node.toToolCall());
-                    }
-                    else if (streamEvent instanceof WireStreamEvent.ToolCallComplete toolCallComplete) {
-                        // The provider sent the finished tool call item; replace any fragment
-                        // state for this index so the complete values win
-                        final var node = toolCallData.put(toolCallComplete.getIndex(),
-                                                          ToolCallAccumulator.complete(toolCallComplete));
-                        logDataDebug("Complete function call: {} -> {}",
-                                     node,
-                                     toolCallData.get(toolCallComplete.getIndex())
-                                             .toToolCall());
-                    }
-                    else if (streamEvent instanceof WireStreamEvent.StreamUsageEvent usageEvent) {
-                        mergeUsage(stats, usageEvent.getUsage());
-                    }
-                    else if (streamEvent instanceof WireStreamEvent.StreamFinishEvent finishEvent) {
-                        if (finishHandled.compareAndSet(false, true)) {
-                            logDataDebug("Finish event from model: {}", finishEvent.getFinishReason());
-                            wirePayloadLogger.streamResponse(modelName,
-                                                             finishEvent,
-                                                             responseData.toString(),
-                                                             toolCallData.values()
-                                                                     .stream()
-                                                                     .sorted(Comparator.comparing(
-                                                                                                  ToolCallAccumulator::indexOf))
-                                                                     .map(ToolCallAccumulator::toToolCall)
-                                                                     .toList(),
-                                                             mapper);
-                            if (finishEvent.getUsage() != null) {
+                    final var outputs = eventStream.map(streamEvent -> {
+                        ModelOutput eventOutput = null;
+                        if (streamEvent instanceof WireStreamEvent.ContentDelta contentDelta) {
+                            responseData.append(contentDelta.getContent());
+                            streamHandler.consumeReasoningAndContent(null, contentDelta.getContent());
+                        }
+                        else if (streamEvent instanceof WireStreamEvent.ReasoningDelta reasoningDelta) {
+                            streamHandler.consumeReasoningAndContent(reasoningDelta.getContent(), null);
+                        }
+                        else if (streamEvent instanceof WireStreamEvent.ToolCallDelta toolCallDelta) {
+                            // Caution: the following is not for people with weak constitution
+                            // The api sends fully formed objects with partial data in the field
+                            // So we try to assemble the pieces together to form a complete object
+                            final var node = toolCallData.compute(toolCallDelta.getIndex(),
+                                                                  (idx, existing) -> existing == null
+                                                                          ? new ToolCallAccumulator(idx).merge(
+                                                                                                               toolCallDelta)
+                                                                          : existing.merge(toolCallDelta));
+                            logDataDebug(mapper,
+                                    "Function till now: {} -> {}", node, node.toToolCall());
+                        }
+                        else if (streamEvent instanceof WireStreamEvent.ToolCallComplete toolCallComplete) {
+                            // The provider sent the finished tool call item; replace any fragment
+                            // state for this index so the complete values win
+                            final var node = toolCallData.put(toolCallComplete.getIndex(),
+                                                              ToolCallAccumulator.complete(toolCallComplete));
+                            logDataDebug(mapper,
+                                         "Complete function call: {} -> {}",
+                                         node,
+                                         toolCallData.get(toolCallComplete.getIndex())
+                                                 .toToolCall());
+                        }
+                        else if (streamEvent instanceof WireStreamEvent.StreamUsageEvent usageEvent) {
+                            mergeUsage(stats, usageEvent.getUsage());
+                        }
+                        else if (streamEvent instanceof WireStreamEvent.StreamFinishEvent finishEvent) {
+                            if (finishHandled.compareAndSet(false, true)) {
+                                logDataDebug(mapper, "Finish event from model: {}", finishEvent.getFinishReason());
+                                wirePayloadLogger.streamResponse(modelName,
+                                                                 finishEvent,
+                                                                 responseData.toString(),
+                                                                 toolCallData.values()
+                                                                         .stream()
+                                                                         .sorted(Comparator.comparing(
+                                                                                                      ToolCallAccumulator::indexOf))
+                                                                         .map(ToolCallAccumulator::toToolCall)
+                                                                         .toList(),
+                                                                 mapper);
+                                if (finishEvent.getUsage() != null) {
+                                    mergeUsage(stats, finishEvent.getUsage());
+                                }
+                                eventOutput = handleStreamFinish(finishEvent,
+                                                                 streamProcessingMode,
+                                                                 context,
+                                                                 oldMessages,
+                                                                 stats,
+                                                                 allMessages,
+                                                                 newMessages,
+                                                                 stopwatch,
+                                                                 responseData,
+                                                                 toolCallData,
+                                                                 generatedOutput,
+                                                                 toolsForExecution,
+                                                                 toolRunner,
+                                                                 wireMessages);
+                            }
+                            else if (finishEvent.getUsage() != null) {
+                                // Providers repeat the finish reason on trailing chunks that carry usage.
+                                // The first finish is already handled, so only the usage is merged here.
                                 mergeUsage(stats, finishEvent.getUsage());
                             }
-                            eventOutput = handleStreamFinish(finishEvent,
-                                                             streamProcessingMode,
-                                                             context,
-                                                             oldMessages,
-                                                             stats,
-                                                             allMessages,
-                                                             newMessages,
-                                                             stopwatch,
-                                                             responseData,
-                                                             toolCallData,
-                                                             generatedOutput,
-                                                             toolsForExecution,
-                                                             toolRunner,
-                                                             wireMessages);
                         }
-                        else if (finishEvent.getUsage() != null) {
-                            // Providers repeat the finish reason on trailing chunks that carry usage.
-                            // The first finish is already handled, so only the usage is merged here.
-                            mergeUsage(stats, finishEvent.getUsage());
-                        }
+                        return eventOutput;
+                    }).filter(Objects::nonNull).toList();
+                    //NOTE::DO NOT MERGE THE STREAM WITH BELOW
+                    //The flow is intentionally done this way
+                    // This needs to be done in two steps to ensure all chunks are consumed. Otherwise, some stuff like
+                    // usage etc. will get missed. Usage for example comes only after the full response is received.
+                    output = outputs.isEmpty() ? null : outputs.get(outputs.size() - 1);
+                    if (shouldLoop(output)) {
+                        final var modelOutput = Objects.requireNonNullElseGet(output,
+                                                                              () -> new ModelOutput(null,
+                                                                                                    newMessages,
+                                                                                                    allMessages,
+                                                                                                    stats,
+                                                                                                    null));
+                        final var receivedMessages = AgentMessages
+                                .builder()
+                                .newMessages(newMessages)
+                                .allMessages(allMessages)
+                                .wireMessages(wireMessages)
+                                .build();
+                        output = evaluateRunTerminationStrategy(context,
+                                                                earlyTerminationStrategy,
+                                                                modelSettings,
+                                                                modelOutput,
+                                                                stats,
+                                                                receivedMessages);
                     }
-                    return eventOutput;
-                }).filter(Objects::nonNull).toList();
-                //NOTE::DO NOT MERGE THE STREAM WITH BELOW
-                //The flow is intentionally done this way
-                // This needs to be done in two steps to ensure all chunks are consumed. Otherwise, some stuff like
-                // usage etc. will get missed. Usage for example comes only after the full response is received.
-                output = outputs.isEmpty() ? null : outputs.get(outputs.size() - 1);
-                if (shouldLoop(output)) {
-                    final var modelOutput = Objects.requireNonNullElseGet(output,
-                                                                          () -> new ModelOutput(null,
-                                                                                                newMessages,
-                                                                                                allMessages,
-                                                                                                stats,
-                                                                                                null));
-                    final var receivedMessages = AgentMessages
-                            .builder()
-                            .newMessages(newMessages)
-                            .allMessages(allMessages)
-                            .wireMessages(wireMessages)
-                            .build();
-                    output = evaluateRunTerminationStrategy(context,
-                                                            earlyTerminationStrategy,
-                                                            modelSettings,
-                                                            modelOutput,
-                                                            stats,
-                                                            receivedMessages);
+                    prevMessages = List.copyOf(allMessages); // Keep a copy. we need to find delta
                 }
-                prevMessages = List.copyOf(allMessages); // Keep a copy. we need to find delta
             } while (shouldLoop(output));
             return output;
         }, agentSetup.getExecutorService());
@@ -849,27 +856,17 @@ public class ConfiguredModel implements Model {
     }
 
     /**
-     * Executes one blocking model call; returns null on failure (see {@link #capturedError()}).
+     * Executes one blocking model call.
      */
     private WireResponse callModel(final WireContext ctx,
                                    final ObjectNode requestBody,
-                                   final RequestTransformerContext transformerContext) {
-        try {
-            final var response = retryExecutor.get(() -> execute(ctx, requestBody, transformerContext));
-            try (response; final var body = response.body()) {
-                final var bytes = body == null ? new byte[0] : body.bytes();
-                wirePayloadLogger.response(modelName, new String(bytes, StandardCharsets.UTF_8));
-                final var json = ctx.getMapper().readTree(bytes);
-                return protocol.decodeResponse(ctx, json);
-            }
-        }
-        catch (final HttpModelCallException e) {
-            captured = e;
-            return null;
-        }
-        catch (final Exception e) {
-            captured = e;
-            return null;
+                                   final RequestTransformerContext transformerContext) throws IOException {
+        try (final var response = retryExecutor.get(() -> execute(ctx, requestBody, transformerContext))) {
+            final var body = response.body();
+            final var bytes = body == null ? new byte[0] : body.bytes();
+            wirePayloadLogger.response(modelName, new String(bytes, StandardCharsets.UTF_8));
+            final var json = ctx.getMapper().readTree(bytes);
+            return protocol.decodeResponse(ctx, json);
         }
     }
 
@@ -892,13 +889,14 @@ public class ConfiguredModel implements Model {
     private <E extends ModelHttpException> E httpError(final Response response,
                                                        final HttpErrorFactory<E> errorFactory)
             throws IOException {
-        final var retryAfter = ModelHttpException.parseRetryAfter(response.header("Retry-After"));
-        final var body = response.body();
-        final var bytes = body == null ? new byte[0] : body.bytes();
-        final var text = new String(bytes, StandardCharsets.UTF_8);
-        wirePayloadLogger.error(modelName, response.code(), text);
-        response.close();
-        return errorFactory.create(response.code(), text, retryAfter);
+        try (response) {
+            final var retryAfter = ModelHttpException.parseRetryAfter(response.header("Retry-After"));
+            final var body = response.body();
+            final var bytes = body == null ? new byte[0] : body.bytes();
+            final var text = new String(bytes, StandardCharsets.UTF_8);
+            wirePayloadLogger.error(modelName, response.code(), text);
+            return errorFactory.create(response.code(), text, retryAfter);
+        }
     }
 
     /**
@@ -979,17 +977,6 @@ public class ConfiguredModel implements Model {
         }
     }
 
-    /**
-     * Last failure captured by {@link #callModel}; guarded by the single-threaded run loop.
-     */
-    private Throwable captured;
-
-    private Throwable capturedError() {
-        final var error = captured;
-        captured = null;
-        return error == null ? new IllegalStateException("Model call failed without a captured error") : error;
-    }
-
     @SuppressWarnings("java:S107")
     private WireContext buildWireContext(final ModelRunContext runContext,
                                          final ObjectMapper mapper,
@@ -1048,20 +1035,27 @@ public class ConfiguredModel implements Model {
                 }
 
                 @Override
-                public void onResponse(final Call call, final Response response) throws IOException {
-                    if (!response.isSuccessful()) {
-                        // Read the body so the caller can classify the error, then fail the stream.
-                        future.completeExceptionally(httpError(response, HttpStreamException::new));
-                        return;
+                public void onResponse(final Call call, final Response response) {
+                    try {
+                        if (!response.isSuccessful()) {
+                            future.completeExceptionally(httpError(response, HttpStreamException::new));
+                            return;
+                        }
+                        final var body = response.body();
+                        if (body == null) {
+                            response.close();
+                            future.completeExceptionally(new IOException("No response body for model stream"));
+                            return;
+                        }
+                        if (!future.complete(SseReader.stream(response, body)
+                                .peek(event -> wirePayloadLogger.streamFrame(modelName, event)))) {
+                            response.close();
+                        }
                     }
-                    final var body = response.body();
-                    if (body == null) {
+                    catch (final Exception e) {
                         response.close();
-                        future.completeExceptionally(new IOException("No response body for model stream"));
-                        return;
+                        future.completeExceptionally(e);
                     }
-                    future.complete(SseReader.stream(response, body)
-                            .peek(event -> wirePayloadLogger.streamFrame(modelName, event)));
                 }
             });
             return future.join();
@@ -1399,12 +1393,12 @@ public class ConfiguredModel implements Model {
                 .getOutputGenerationMode(), OutputGenerationMode.TOOL_BASED);
     }
 
-    private void logDataDebug(final String fmtStr, final Object... nodes) {
+    private void logDataDebug(final ObjectMapper mapper, final String fmtStr, final Object... nodes) {
         if (log.isDebugEnabled()) {
             try {
                 log.debug(fmtStr,
-                          new ObjectMapper().writerWithDefaultPrettyPrinter()
-                                  .writeValueAsString(nodes.length == 1 ? nodes[0] : List.of(nodes)));
+                          mapper.writerWithDefaultPrettyPrinter()
+                              .writeValueAsString(nodes.length == 1 ? nodes[0] : List.of(nodes)));
             }
             catch (JsonProcessingException e) {
                 //Do nothing

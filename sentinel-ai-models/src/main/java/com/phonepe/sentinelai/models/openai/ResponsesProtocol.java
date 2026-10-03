@@ -100,10 +100,8 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.TYPE_FUNCTION
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.USER;
 
 /**
- * {@link WireProtocol} for the OpenAI Responses wire format. Assembles the request (flat function
- * tools, top-level instructions, structured output through {@code text.format.json_schema}) and
- * decodes blocking responses and named SSE events into the neutral wire types. Stateless: every
- * call takes the run mapper from the context.
+ * {@link WireProtocol} for the OpenAI Responses format. It builds flat tools and the
+ * {@code text.format} schema, then decodes responses and stream events.
  */
 @Slf4j
 public class ResponsesProtocol implements WireProtocol {
@@ -229,7 +227,13 @@ public class ResponsesProtocol implements WireProtocol {
         catch (final Exception e) {
             return List.of();
         }
+        if (body == null || body.isNull()) {
+            return List.of();
+        }
         final var name = event.getEvent() != null ? event.getEvent() : textOrNull(body.get(TYPE));
+        if (name == null) {
+            return List.of();
+        }
         final WireStreamEvent decoded = switch (name) {
             case EVENT_OUTPUT_TEXT_DELTA -> contentDelta(body.get(DELTA), body.get(TEXT_FIELD));
             case EVENT_REASONING_DELTA, EVENT_REASONING_SUMMARY_TEXT_DELTA -> reasoningDelta(body.get(DELTA));
@@ -243,13 +247,10 @@ public class ResponsesProtocol implements WireProtocol {
                                                                                           textOrEmpty(body.get(DELTA)));
             case EVENT_OUTPUT_ITEM_DONE -> outputItemDoneEvent(body.get(ITEM), body.get(OUTPUT_INDEX));
             case EVENT_RESPONSE_COMPLETED -> finalResponseEvent(ctx, body.get(RESPONSE));
-            case EVENT_RESPONSE_FAILED, EVENT_RESPONSE_INCOMPLETE -> new WireStreamEvent.StreamFinishEvent(
-                                                                                                           finishReasonOf(body
-                                                                                                                   .get(RESPONSE)
-                                                                                                                   == null ? body
-                                                                                                                           : body.get(RESPONSE),
-                                                                                                                          false),
-                                                                                                           null);
+            case EVENT_RESPONSE_FAILED -> new WireStreamEvent.StreamFinishEvent("failed", null);
+            case EVENT_RESPONSE_INCOMPLETE -> new WireStreamEvent.StreamFinishEvent(
+                                                                                    WireResponse.FinishReasons.LENGTH,
+                                                                                    null);
             default -> null;
         };
         return decoded == null ? List.of() : List.of(decoded);
@@ -345,17 +346,21 @@ public class ResponsesProtocol implements WireProtocol {
     }
 
     private String finishReasonOf(final JsonNode response, final boolean hasToolCalls) {
-        final var error = textOrNull(response.get(ERROR));
-        if (error != null && !error.isEmpty()) {
+        if (response == null || response.isNull()) {
+            return null;
+        }
+        final var error = response.get(ERROR);
+        if (error != null && !error.isNull()) {
             return WireResponse.FinishReasons.REFUSED;
         }
-        return switch (textOrNull(response.get(STATUS))) {
-            case STATUS_COMPLETED -> hasToolCalls
-                    ? WireResponse.FinishReasons.TOOL_CALLS
-                    : WireResponse.FinishReasons.STOP;
-            case STATUS_INCOMPLETE -> WireResponse.FinishReasons.LENGTH;
-            default -> null;
-        };
+        final var status = textOrNull(response.get(STATUS));
+        if (STATUS_COMPLETED.equals(status)) {
+            return hasToolCalls ? WireResponse.FinishReasons.TOOL_CALLS : WireResponse.FinishReasons.STOP;
+        }
+        if (STATUS_INCOMPLETE.equals(status)) {
+            return WireResponse.FinishReasons.LENGTH;
+        }
+        return null;
     }
 
     private String liftInstructions(final com.fasterxml.jackson.databind.node.ArrayNode inputArray) {

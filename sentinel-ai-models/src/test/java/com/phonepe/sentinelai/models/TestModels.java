@@ -93,14 +93,13 @@ public class TestModels {
      * Builds the test provider for the given base URL.
      *
      * @param baseUrl Base URL of the endpoint; the test wire protocol appends
-     *                {@code /chat/completions}.
+     *                {@code /v1/chat/completions}.
      * @return Provider around the test protocol.
      */
     public static Provider testProvider(final String baseUrl) {
         return Provider.builder()
                 .baseUrl(baseUrl)
                 .protocol(testProtocol())
-                .endpointPrefix(TestStubs.useRealEndpoints() ? null : Provider.NO_ENDPOINT_PREFIX)
                 .auth(testAuth())
                 .build();
     }

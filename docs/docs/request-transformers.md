@@ -60,10 +60,10 @@ final var model = ConfiguredModel.builder()
                 .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
                 .protocol(new ChatCompletionsProtocol())
                 .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
-                .requestTransformer(JoltRequestTransformer.fromJson("""
+                .requestTransformers(List.of(JoltRequestTransformer.fromJson("""
                         [
                           {"operation": "default", "spec": {"chat_template_kwargs": {"thinking": false}}}
-                        ]"""))
+                        ]""")))
                 .build())
         .build();
 ```

@@ -41,6 +41,9 @@ import okhttp3.OkHttpClient;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.okForContentType;
@@ -106,6 +109,57 @@ class RequestRetryTest {
                 .httpClient(new OkHttpClient.Builder().build())
                 .requestRetryPolicy(retryPolicy)
                 .build();
+    }
+
+    @Test
+    @SneakyThrows
+    void concurrentFailuresKeepTheirOwnErrors(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        final var entered = new CountDownLatch(2);
+        final var release = new CountDownLatch(1);
+        final var issued = new java.util.concurrent.atomic.AtomicInteger();
+        final var client = new OkHttpClient.Builder().addInterceptor(chain -> {
+            final var index = issued.getAndIncrement();
+            entered.countDown();
+            try {
+                if (!release.await(5, TimeUnit.SECONDS)) {
+                    throw new java.io.IOException("Requests did not overlap");
+                }
+            }
+            catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new java.io.IOException("Interrupted while waiting for other request", e);
+            }
+            if (index == 0) {
+                return new okhttp3.Response.Builder()
+                        .request(chain.request())
+                        .protocol(okhttp3.Protocol.HTTP_1_1)
+                        .code(400)
+                        .message("Bad Request")
+                        .body(okhttp3.ResponseBody.create("failure", okhttp3.MediaType.parse("application/json")))
+                        .build();
+            }
+            throw new java.io.IOException("failure-1");
+        }).build();
+        final var model = ConfiguredModel.builder()
+                .modelName("gpt-4o")
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ChatCompletionsProtocol())
+                        .build())
+                .httpClient(client)
+                .build();
+        final var agentA = new TestAgent(agentSetup(model));
+        final var agentB = new TestAgent(agentSetup(model));
+        final var first = CompletableFuture.supplyAsync(() -> execute(agentA));
+        final var second = CompletableFuture.supplyAsync(() -> execute(agentB));
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+        release.countDown();
+        final var outputA = first.get(10, TimeUnit.SECONDS);
+        final var outputB = second.get(10, TimeUnit.SECONDS);
+        final var types = List.of(outputA.getError().getErrorType(), outputB.getError().getErrorType());
+        assertTrue(types.contains(ErrorType.MODEL_CALL_HTTP_FAILURE));
+        assertTrue(types.contains(ErrorType.MODEL_CALL_COMMUNICATION_ERROR));
     }
 
     @Test

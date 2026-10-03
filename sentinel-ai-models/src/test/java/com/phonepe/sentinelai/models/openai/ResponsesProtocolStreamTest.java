@@ -55,6 +55,30 @@ class ResponsesProtocolStreamTest {
     }
 
     @Test
+    void emptyFrameIsIgnored() {
+        assertTrue(protocol.decodeStreamEvent(context(), sseEvent(null, "null")).isEmpty());
+    }
+
+    @Test
+    void failedFrameWithErrorObjectEndsStream() {
+        final var events = protocol.decodeStreamEvent(context(),
+                                                      sseEvent("response.failed",
+                                                               "{\"response\":{\"status\":\"failed\",\"error\":{\"code\":\"server_error\"}}}"));
+        assertEquals(1, events.size());
+        assertEquals("failed", ((WireStreamEvent.StreamFinishEvent) events.get(0)).getFinishReason());
+    }
+
+    @Test
+    void incompleteFrameWithoutStatusDoesNotThrow() {
+        final var events = protocol.decodeStreamEvent(context(),
+                                                      sseEvent("response.incomplete", "{\"response\":{}}"));
+        assertEquals(1, events.size());
+        assertEquals(com.phonepe.sentinelai.models.wire.WireResponse.FinishReasons.LENGTH,
+                     ((WireStreamEvent.StreamFinishEvent) events.get(0)).getFinishReason());
+    }
+
+
+    @Test
     void outputItemAddedCarriesFrameOutputIndex() {
         final var events = protocol.decodeStreamEvent(context(),
                                                       sseEvent("response.output_item.added",

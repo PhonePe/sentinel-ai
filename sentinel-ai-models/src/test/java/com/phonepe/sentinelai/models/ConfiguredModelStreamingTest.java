@@ -17,6 +17,7 @@
 package com.phonepe.sentinelai.models;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
@@ -46,7 +47,12 @@ import com.phonepe.sentinelai.core.utils.JsonUtils;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import okhttp3.ResponseBody;
+import okio.BufferedSource;
+import okio.ForwardingSource;
+import okio.Okio;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -227,6 +233,63 @@ class ConfiguredModelStreamingTest {
 
     @Test
     @SneakyThrows
+    void errorBodyReadFailureCompletesStream(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(TestStubs.ENDPOINT)
+                .willReturn(com.github.tomakehurst.wiremock.client.WireMock.aResponse()
+                        .withStatus(503)
+                        .withFault(Fault.MALFORMED_RESPONSE_CHUNK)));
+
+        final var httpClient = new OkHttpClient.Builder().readTimeout(Duration.ofMillis(300)).build();
+        final var response = execute(wiremock, httpClient);
+        assertNotNull(response.getError());
+    }
+
+
+    @Test
+    @SneakyThrows
+    void streamingClosesResponseBody(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        TestStubs.setupMocks(1, "duplicate-stop", getClass());
+        final var closed = new AtomicBoolean();
+        final var httpClient = new OkHttpClient.Builder()
+                .addNetworkInterceptor(chain -> {
+                    final var response = chain.proceed(chain.request());
+                    final var original = response.body();
+                    final var source = new ForwardingSource(original.source()) {
+                        @Override
+                        public void close() throws java.io.IOException {
+                            closed.set(true);
+                            super.close();
+                        }
+                    };
+                    final ResponseBody body = new ResponseBody() {
+                        @Override
+                        public long contentLength() {
+                            return original.contentLength();
+                        }
+
+                        @Override
+                        public MediaType contentType() {
+                            return original.contentType();
+                        }
+
+                        @Override
+                        public BufferedSource source() {
+                            return Okio.buffer(source);
+                        }
+                    };
+                    return response.newBuilder().body(body).build();
+                })
+                .build();
+
+        final var response = execute(wiremock, httpClient);
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertTrue(closed.get(), "The stream response body must close after the model call");
+    }
+
+    @Test
+    @SneakyThrows
     void testAgent(final WireMockRuntimeInfo wiremock) {
         // Setup stub for SSE
         setupSseStubs();
@@ -279,10 +342,10 @@ class ConfiguredModelStreamingTest {
     void testImageUploadStreaming(final WireMockRuntimeInfo wiremock) {
         assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
         // Setup stub for SSE with image response
-        stubFor(post(TestStubs.NO_PREFIX_ENDPOINT).willReturn(okForContentType("text/event-stream",
-                                                                               TestStubs.readStubFile(1,
-                                                                                                      "image-stream",
-                                                                                                      getClass()))));
+        stubFor(post(TestStubs.ENDPOINT).willReturn(okForContentType("text/event-stream",
+                                                                     TestStubs.readStubFile(1,
+                                                                                            "image-stream",
+                                                                                            getClass()))));
 
         final var objectMapper = JsonUtils.createMapper();
         final var executor = Executors.newCachedThreadPool();
@@ -367,7 +430,7 @@ class ConfiguredModelStreamingTest {
 
     private void setupSseStubs() {
         // Setup stub for SSE
-        IntStream.rangeClosed(1, 5).forEach(i -> stubFor(post(TestStubs.NO_PREFIX_ENDPOINT)
+        IntStream.rangeClosed(1, 5).forEach(i -> stubFor(post(TestStubs.ENDPOINT)
                 .inScenario("model-test")
                 .whenScenarioStateIs(i == 1 ? Scenario.STARTED : Objects.toString(i))
                 .willReturn(okForContentType("text/event-stream",

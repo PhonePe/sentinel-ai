@@ -21,7 +21,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
+import com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse.ResponseType;
+import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.tools.loopdetection.ToolLoopProtectionDecision.DecisionType;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 
@@ -154,6 +157,25 @@ class ToolLoopProtectionTest {
         assertEquals(expected, decision.getType());
     }
 
+    @Test
+    void cumulativeMessagesCountOnlyNewCalls() {
+        final var setup = ToolLoopProtectionSetup.builder()
+                .maxToolCalls(3)
+                .instructionThreshold(100)
+                .terminationThreshold(100)
+                .build();
+        final var strategy = new ToolLoopProtectionStrategy(null, protection(setup));
+        final var history = new java.util.ArrayList<AgentMessage>();
+        for (var i = 0; i < 3; i++) {
+            history.add(toolCall("call-" + i, "search", "{\"q\":" + i + "}"));
+            final var output = new ModelOutput(null, history, history, null, null);
+            assertEquals(ResponseType.CONTINUE, strategy.evaluate(null, null, output).getResponseType());
+        }
+        history.add(toolCall("call-3", "search", "{\"q\":3}"));
+        final var output = new ModelOutput(null, history, history, null, null);
+        assertEquals(ResponseType.TERMINATE, strategy.evaluate(null, null, output).getResponseType());
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("cycleScenarios")
     void cycleDetection(String name,
@@ -249,4 +271,5 @@ class ToolLoopProtectionTest {
             assertEquals(DecisionType.CONTINUE, decision.getType());
         }
     }
+
 }

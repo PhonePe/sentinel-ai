@@ -45,7 +45,6 @@ public class AgentSetup {
     public static final int DEFAULT_MAX_TOOL_RESPONSE_PERCENTAGE = 10;
 
     /**
-     * /**
      * The object mapper to use for serialization/deserialization. If not provided, a default one will be created.
      */
     ObjectMapper mapper;

@@ -741,15 +741,7 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
     }
 
     /**
-     * Wraps the configured early termination strategy with tool loop protection for one
-     * run. Creates fresh protection state per run, so rounds from previous runs do not
-     * leak into the current run.
-     *
-     * @param mergedAgentSetup The merged agent setup of the run.
-     * @return The strategy to use for the run.
-     */
-    /**
-     * Collects the request transformers of all extensions of this agent in extension order.
+     * Collects request transformers from the extensions in extension order.
      */
     private List<RequestTransformer> extensionRequestTransformers(AgentRunContext<R> context, R request) {
         return extensions.stream()
@@ -757,6 +749,9 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                 .toList();
     }
 
+    /**
+     * Creates tool loop protection for one run.
+     */
     private EarlyTerminationStrategy toolLoopProtectedStrategy(AgentSetup mergedAgentSetup) {
         final var protectionSetup = Objects.requireNonNullElse(mergedAgentSetup.getToolLoopProtectionSetup(),
                                                                ToolLoopProtectionSetup.DEFAULT);

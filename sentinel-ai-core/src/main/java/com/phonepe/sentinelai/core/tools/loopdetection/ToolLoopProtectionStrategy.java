@@ -25,12 +25,13 @@ import com.phonepe.sentinelai.core.model.ModelOutput;
 import com.phonepe.sentinelai.core.model.ModelRunContext;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import static com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse.doNotTerminate;
 import static com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrategyResponse.terminate;
@@ -49,27 +50,16 @@ import static com.phonepe.sentinelai.core.earlytermination.EarlyTerminationStrat
  * protection decisions.</p>
  */
 @Slf4j
-@AllArgsConstructor
 public class ToolLoopProtectionStrategy implements EarlyTerminationStrategy {
 
     private final EarlyTerminationStrategy delegate;
     private final ToolLoopProtection protection;
+    private final Set<String> seenToolCallIds = new HashSet<>();
 
-    /**
-     * Extracts the tool calls of the latest model round from the new messages of the output.
-     *
-     * @param output The current model output.
-     * @return The tool calls of the latest round.
-     */
-    private static List<ToolCall> latestRoundToolCalls(ModelOutput output) {
-        if (null == output || null == output.getNewMessages()) {
-            return List.of();
-        }
-        return output.getNewMessages()
-                .stream()
-                .filter(ToolCall.class::isInstance)
-                .map(ToolCall.class::cast)
-                .toList();
+    public ToolLoopProtectionStrategy(final EarlyTerminationStrategy delegate,
+                                      final ToolLoopProtection protection) {
+        this.delegate = delegate;
+        this.protection = protection;
     }
 
     @Override
@@ -94,5 +84,20 @@ public class ToolLoopProtectionStrategy implements EarlyTerminationStrategy {
             case INSTRUCT -> EarlyTerminationStrategyResponse.instructWithFeedback(decision.instruction());
             case CONTINUE -> Objects.requireNonNullElse(delegateResponse, doNotTerminate());
         };
+    }
+
+    /**
+     * Extracts tool calls that this strategy has not recorded.
+     */
+    private List<ToolCall> latestRoundToolCalls(final ModelOutput output) {
+        if (output == null || output.getNewMessages() == null) {
+            return List.of();
+        }
+        return output.getNewMessages()
+                .stream()
+                .filter(ToolCall.class::isInstance)
+                .map(ToolCall.class::cast)
+                .filter(call -> seenToolCallIds.add(call.getMessageId()))
+                .toList();
     }
 }

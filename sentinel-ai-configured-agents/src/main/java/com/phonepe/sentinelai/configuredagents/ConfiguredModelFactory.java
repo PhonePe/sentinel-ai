@@ -42,12 +42,15 @@ public class ConfiguredModelFactory implements ModelFactory {
             final var modelName = providedSetting.getName();
             return ConfiguredModel.builder()
                     .modelName(modelName)
+                    .modelId(configuredModel.getModelId())
                     .provider(configuredModel.getProvider())
+                    .protocol(configuredModel.getProtocol())
                     .httpClient(configuredModel.getHttpClient())
                     .modelOptions(configuredModel.getModelOptions())
                     .tokenCounter(configuredModel.getTokenCounter())
                     .requestTransformers(configuredModel.getRequestTransformers())
                     .requestRetryPolicy(configuredModel.getRequestRetryPolicy())
+                    .wireLogging(configuredModel.getWireLogging())
                     .build();
         }
         throw new IllegalArgumentException("Unsupported model type: " + defaultModel

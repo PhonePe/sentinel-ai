@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,6 +37,16 @@ class SkillRegistryTest {
 
     private Path tempDir;
     private SkillRegistry registry;
+
+    @Test
+    void catalogKeepsDiscoveryOrder() throws IOException {
+        createTestSkill("first", "First skill");
+        createTestSkill("second", "Second skill");
+        registry.discoverSkills(tempDir, Set.of());
+
+        assertEquals(List.copyOf(registry.getSkillNames()),
+                     List.copyOf(registry.getSkillCatalog().keySet()));
+    }
 
     @BeforeEach
     void setUp() throws IOException {

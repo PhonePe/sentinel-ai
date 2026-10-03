@@ -27,7 +27,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /** Registry for discovering and managing Agent Skills */
@@ -128,11 +127,9 @@ public class SkillRegistry {
 
     /** Get skill catalog (name + description only) */
     public Map<String, String> getSkillCatalog() {
-        return skillCatalog.entrySet()
-                .stream()
-                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey,
-                                                      e -> e.getValue().getDescription(),
-                                                      (a, b) -> a));
+        final var catalog = new LinkedHashMap<String, String>();
+        skillCatalog.forEach((name, metadata) -> catalog.put(name, metadata.getDescription()));
+        return Map.copyOf(catalog);
     }
 
     /** Get all discovered skill names */
