@@ -129,7 +129,8 @@ public class SkillRegistry {
     public Map<String, String> getSkillCatalog() {
         final var catalog = new LinkedHashMap<String, String>();
         skillCatalog.forEach((name, metadata) -> catalog.put(name, metadata.getDescription()));
-        return Map.copyOf(catalog);
+        skillCatalog.forEach((name, metadata) -> catalog.put(name, metadata.getDescription()));
+        return Collections.unmodifiableMap(catalog);
     }
 
     /** Get all discovered skill names */
