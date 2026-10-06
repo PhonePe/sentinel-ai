@@ -295,7 +295,7 @@ class EventUtilsTest {
     @Test
     void raiseMessageSentEventFiltersOutNonRequestMessages() {
         // Text is a model response, not an AgentRequest — it must be excluded from sent-message events
-        final var textMsg = new Text(SESSION_ID, RUN_ID, "llm response", usageStats, 100L);
+        final var textMsg = new Text(SESSION_ID, RUN_ID, null, null, "llm response", usageStats, 100L, null);
         final List<AgentMessage> currentAllMessages = List.of(textMsg);
 
         EventUtils.raiseMessageSentEvent(modelRunContext, List.of(), currentAllMessages);

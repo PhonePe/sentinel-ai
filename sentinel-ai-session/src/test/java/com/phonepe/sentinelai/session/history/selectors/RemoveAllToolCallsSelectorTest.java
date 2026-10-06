@@ -49,9 +49,23 @@ class RemoveAllToolCallsSelectorTest {
         var selector = new RemoveAllToolCallsSelector();
         final var messages = List.<AgentMessage>of(
                                                    UserPrompt.text("session-1", "run-1", "u1", LocalDateTime.now()),
-                                                   new ToolCall("session-1", "run-1", "tc-1", "tool", "{}"),
+                                                   new ToolCall("session-1",
+                                                                "run-1",
+                                                                null,
+                                                                null,
+                                                                "tc-1",
+                                                                "tool",
+                                                                "{}",
+                                                                null),
                                                    UserPrompt.text("session-2", "run-2", "u2", LocalDateTime.now()),
-                                                   new ToolCall("session-2", "run-2", "tc-2", "tool", "{}")
+                                                   new ToolCall("session-2",
+                                                                "run-2",
+                                                                null,
+                                                                null,
+                                                                "tc-2",
+                                                                "tool",
+                                                                "{}",
+                                                                null)
         );
         final var result = selector.select("session-1", new ArrayList<>(messages));
         assertEquals(2, result.size());
@@ -69,9 +83,12 @@ class RemoveAllToolCallsSelectorTest {
                                                      LocalDateTime.now()),
                                      new Text(sessionId,
                                               runId,
+                                              null,
+                                              null,
                                               "t3",
                                               new ModelUsageStats(),
-                                              100),
+                                              100,
+                                              null),
                                      new GenericText(sessionId,
                                                      runId,
                                                      Role.USER,
@@ -87,11 +104,25 @@ class RemoveAllToolCallsSelectorTest {
         final var sessionId = "s-6";
         final var runId = "r-6";
         var userPrompt = UserPrompt.text(sessionId, runId, "user", LocalDateTime.now());
-        var textResponse = new Text(sessionId, runId, "text", new ModelUsageStats(), 100);
+        var textResponse = new Text(sessionId,
+                                    runId,
+                                    null,
+                                    null,
+                                    "text",
+                                    new ModelUsageStats(),
+                                    100,
+                                    null);
         var genericText = new GenericText(sessionId, runId, Role.USER, "generic");
         final var messages = List.<AgentMessage>of(
                                                    userPrompt,
-                                                   new ToolCall(sessionId, runId, "tc-1", "tool", "{}"),
+                                                   new ToolCall(sessionId,
+                                                                runId,
+                                                                null,
+                                                                null,
+                                                                "tc-1",
+                                                                "tool",
+                                                                "{}",
+                                                                null),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
                                                                         "tc-1",
@@ -100,7 +131,14 @@ class RemoveAllToolCallsSelectorTest {
                                                                         "resp",
                                                                         LocalDateTime.now()),
                                                    textResponse,
-                                                   new ToolCall(sessionId, runId, "tc-2", "tool2", "{}"),
+                                                   new ToolCall(sessionId,
+                                                                runId,
+                                                                null,
+                                                                null,
+                                                                "tc-2",
+                                                                "tool2",
+                                                                "{}",
+                                                                null),
                                                    genericText
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
@@ -116,7 +154,14 @@ class RemoveAllToolCallsSelectorTest {
         final var sessionId = "s-5";
         final var messages = List.<AgentMessage>of(
                                                    UserPrompt.text(sessionId, "run-1", "user1", LocalDateTime.now()),
-                                                   new ToolCall(sessionId, "run-1", "tc-1", "tool1", "{}"),
+                                                   new ToolCall(sessionId,
+                                                                "run-1",
+                                                                null,
+                                                                null,
+                                                                "tc-1",
+                                                                "tool1",
+                                                                "{}",
+                                                                null),
                                                    new ToolCallResponse(sessionId,
                                                                         "run-1",
                                                                         "tc-1",
@@ -124,9 +169,23 @@ class RemoveAllToolCallsSelectorTest {
                                                                         null,
                                                                         "resp1",
                                                                         LocalDateTime.now()),
-                                                   new Text(sessionId, "run-1", "text1", new ModelUsageStats(), 100),
+                                                   new Text(sessionId,
+                                                            "run-1",
+                                                            null,
+                                                            null,
+                                                            "text1",
+                                                            new ModelUsageStats(),
+                                                            100,
+                                                            null),
                                                    UserPrompt.text(sessionId, "run-2", "user2", LocalDateTime.now()),
-                                                   new ToolCall(sessionId, "run-2", "tc-2", "tool2", "{}"),
+                                                   new ToolCall(sessionId,
+                                                                "run-2",
+                                                                null,
+                                                                null,
+                                                                "tc-2",
+                                                                "tool2",
+                                                                "{}",
+                                                                null),
                                                    new ToolCallResponse(sessionId,
                                                                         "run-2",
                                                                         "tc-2",
@@ -134,7 +193,14 @@ class RemoveAllToolCallsSelectorTest {
                                                                         null,
                                                                         "resp2",
                                                                         LocalDateTime.now()),
-                                                   new Text(sessionId, "run-2", "text2", new ModelUsageStats(), 100)
+                                                   new Text(sessionId,
+                                                            "run-2",
+                                                            null,
+                                                            null,
+                                                            "text2",
+                                                            new ModelUsageStats(),
+                                                            100,
+                                                            null)
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
         assertEquals(4, result.size());
@@ -153,10 +219,20 @@ class RemoveAllToolCallsSelectorTest {
                                      LocalDateTime.now()));
         messages.add(new Text(sessionId,
                               runId,
+                              null,
+                              null,
                               "t1",
                               new ModelUsageStats(),
-                              100));
-        messages.add(new ToolCall(sessionId, runId, "tc-1", "tool", "{}"));
+                              100,
+                              null));
+        messages.add(new ToolCall(sessionId,
+                                  runId,
+                                  null,
+                                  null,
+                                  "tc-1",
+                                  "tool",
+                                  "{}",
+                                  null));
         messages.add(new ToolCallResponse(sessionId,
                                           runId,
                                           "tc-1",
@@ -180,9 +256,12 @@ class RemoveAllToolCallsSelectorTest {
         final var runId = "r-2";
         final var messages = List.of(new ToolCall(sessionId,
                                                   runId,
+                                                  null,
+                                                  null,
                                                   "tc-2",
                                                   "tool",
-                                                  "{}"),
+                                                  "{}",
+                                                  null),
                                      new ToolCallResponse(sessionId,
                                                           runId,
                                                           "tc-2",
@@ -202,8 +281,22 @@ class RemoveAllToolCallsSelectorTest {
         final var runId = "r-7";
         final var messages = List.<AgentMessage>of(
                                                    UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
-                                                   new ToolCall(sessionId, runId, "tc-orphan", "tool", "{}"),
-                                                   new Text(sessionId, runId, "text", new ModelUsageStats(), 100)
+                                                   new ToolCall(sessionId,
+                                                                runId,
+                                                                null,
+                                                                null,
+                                                                "tc-orphan",
+                                                                "tool",
+                                                                "{}",
+                                                                null),
+                                                   new Text(sessionId,
+                                                            runId,
+                                                            null,
+                                                            null,
+                                                            "text",
+                                                            new ModelUsageStats(),
+                                                            100,
+                                                            null)
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
         assertEquals(2, result.size());
@@ -224,7 +317,14 @@ class RemoveAllToolCallsSelectorTest {
                                                                         null,
                                                                         "resp",
                                                                         LocalDateTime.now()),
-                                                   new Text(sessionId, runId, "text", new ModelUsageStats(), 100)
+                                                   new Text(sessionId,
+                                                            runId,
+                                                            null,
+                                                            null,
+                                                            "text",
+                                                            new ModelUsageStats(),
+                                                            100,
+                                                            null)
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
         assertEquals(2, result.size());
@@ -237,8 +337,22 @@ class RemoveAllToolCallsSelectorTest {
         final var runId = "r-9";
         final var messages = List.<AgentMessage>of(
                                                    UserPrompt.text(null, runId, "user", LocalDateTime.now()),
-                                                   new ToolCall(null, runId, "tc-1", "tool", "{}"),
-                                                   new Text(null, runId, "text", new ModelUsageStats(), 100)
+                                                   new ToolCall(null,
+                                                                runId,
+                                                                null,
+                                                                null,
+                                                                "tc-1",
+                                                                "tool",
+                                                                "{}",
+                                                                null),
+                                                   new Text(null,
+                                                            runId,
+                                                            null,
+                                                            null,
+                                                            "text",
+                                                            new ModelUsageStats(),
+                                                            100,
+                                                            null)
         );
         final var result = selector.select(null, new ArrayList<>(messages));
         assertEquals(2, result.size());

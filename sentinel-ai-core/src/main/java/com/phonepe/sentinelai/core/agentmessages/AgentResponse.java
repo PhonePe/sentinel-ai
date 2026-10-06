@@ -16,24 +16,31 @@
 
 package com.phonepe.sentinelai.core.agentmessages;
 
-import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.ToString;
 
 /**
  * Responses as received from LLM
  */
-@Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 public abstract class AgentResponse extends AgentMessage {
+
+    /**
+     * Response id as received from LLM
+     */
+    @Getter
+    private final String responseId;
 
     protected AgentResponse(AgentMessageType messageType,
                             String sessionId,
                             String runId,
                             String messageId,
-                            Long timestamp) {
+                            Long timestamp,
+                            String responseId) {
         super(messageType, sessionId, runId, messageId, timestamp);
+        this.responseId = responseId;
     }
 
     @Override

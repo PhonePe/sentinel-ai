@@ -303,6 +303,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                  ErrorType.NO_RESPONSE));
                 }
                 final var message = response.getMessage();
+                final var responseId = completionResponse.getId();
                 output = switch (response.getFinishReason()) {
                     case FinishReasons.STOP -> {
                         final var refusal = message.getRefusal();
@@ -323,9 +324,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                               openAiMessages,
                                                               allMessages,
                                                               newMessages,
-                                                              oldMessages);
+                                                              oldMessages,
+                                                              responseId);
                         yield runToolsResponse.orElseGet(() -> processOutput(context,
                                                                              message.getContent(),
+                                                                             responseId,
                                                                              oldMessages,
                                                                              stats,
                                                                              allMessages,
@@ -343,7 +346,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                                            openAiMessages,
                                                                                            allMessages,
                                                                                            newMessages,
-                                                                                           oldMessages)
+                                                                                           oldMessages,
+                                                                                           responseId)
                             .orElse(null);
                     case FinishReasons.LENGTH -> ModelOutput.error(oldMessages,
                                                                    stats,
@@ -580,6 +584,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                 yield processOutput(context,
                                                     responseData.toString(),
                                                     //We just take what we gathered return that
+                                                    completionResponse.getId(),
                                                     oldMessages,
                                                     stats,
                                                     allMessages,
@@ -591,6 +596,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                 yield processStreamingOutput(context,
                                                              responseData.toString(),
                                                              //We just take what we gathered return that
+                                                             completionResponse.getId(),
                                                              oldMessages,
                                                              stats,
                                                              allMessages,
@@ -621,7 +627,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                 calls,
                                                 agentMessages,
                                                 stats,
-                                                stopwatch);
+                                                stopwatch,
+                                                completionResponse.getId());
                                 toolCallData.clear();
                                 if (generatedOutput.get() != null) {
                                     //If the output generator was called, we use the generated output
@@ -629,6 +636,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
                                         yield processOutput(context,
                                                             generatedOutput.get(),
+                                                            completionResponse.getId(),
                                                             oldMessages,
                                                             stats,
                                                             allMessages,
@@ -639,6 +647,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
                                         yield processStreamingOutput(context,
                                                                      generatedOutput.get(),
+                                                                     completionResponse.getId(),
                                                                      oldMessages,
                                                                      stats,
                                                                      allMessages,
@@ -773,7 +782,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                            ArrayList<ChatMessage> openAiMessages,
                                            ArrayList<AgentMessage> allMessages,
                                            ArrayList<AgentMessage> newMessages,
-                                           List<AgentMessage> oldMessages) {
+                                           List<AgentMessage> oldMessages,
+                                           String responseId) {
         final var toolCalls = Objects.requireNonNullElseGet(receivedCalls,
                                                             List::<io.github.sashirestela.openai.common.tool.ToolCall>of);
 
@@ -788,10 +798,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                     .openAiMessages(openAiMessages)
                                     .build(),
                             stats,
-                            stopwatch);
+                            stopwatch,
+                            responseId);
             return Optional.ofNullable(generatedOutput.get())
                     .map(data -> processOutput(context,
                                                data,
+                                               responseId,
                                                oldMessages,
                                                stats,
                                                allMessages,
@@ -966,6 +978,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
 
     private ModelOutput processOutput(ModelRunContext context,
                                       String content,
+                                      String responseId,
                                       List<AgentMessage> oldMessages,
                                       ModelUsageStats stats,
                                       ArrayList<AgentMessage> allMessages,
@@ -974,10 +987,13 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         if (!Strings.isNullOrEmpty(content)) {
             final var newMessage = new StructuredOutput(context.getSessionId(),
                                                         context.getRunId(),
+                                                        null,
+                                                        null,
                                                         content,
                                                         stats,
                                                         stopwatch.elapsed(
-                                                                          TimeUnit.MILLISECONDS));
+                                                                          TimeUnit.MILLISECONDS),
+                                                        responseId);
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, List.of(newMessage), allMessages, stopwatch);
@@ -1006,6 +1022,7 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
      */
     private ModelOutput processStreamingOutput(ModelRunContext context,
                                                String content,
+                                               String responseId,
                                                List<AgentMessage> oldMessages,
                                                ModelUsageStats stats,
                                                ArrayList<AgentMessage> allMessages,
@@ -1015,10 +1032,13 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         if (!Strings.isNullOrEmpty(content)) {
             final var newMessage = new Text(context.getSessionId(),
                                             context.getRunId(),
+                                            null,
+                                            null,
                                             content,
                                             stats,
                                             stopwatch.elapsed(
-                                                              TimeUnit.MILLISECONDS)); //Always text output
+                                                              TimeUnit.MILLISECONDS),
+                                            responseId); //Always text output
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, List.of(newMessage), allMessages, stopwatch);
@@ -1215,7 +1235,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                         List<io.github.sashirestela.openai.common.tool.ToolCall> toolCalls,
                                         AgentMessages agentMessages,
                                         ModelUsageStats stats,
-                                        Stopwatch stopwatch) {
+                                        Stopwatch stopwatch,
+                                        String responseId) {
         final var prevMessages = List.copyOf(agentMessages.getAllMessages());
         handleToolCalls(context.getAgentName(),
                         context.getRunId(),
@@ -1227,7 +1248,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                         toolCalls,
                         agentMessages,
                         stats,
-                        stopwatch);
+                        stopwatch,
+                        responseId);
         raiseMessageSentEvent(context,
                               prevMessages,
                               agentMessages.getAllMessages());
@@ -1244,16 +1266,20 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                                          List<io.github.sashirestela.openai.common.tool.ToolCall> toolCalls,
                                                                          AgentMessages agentMessages,
                                                                          ModelUsageStats stats,
-                                                                         Stopwatch stopwatch) {
+                                                                         Stopwatch stopwatch,
+                                                                         String responseId) {
         final var seenToolCallIds = new HashSet<String>();
         final var toolCallMessages = toolCalls.stream()
                 .filter(toolCall -> !Strings.isNullOrEmpty(toolCall.getId()))
                 .filter(toolCall -> seenToolCallIds.add(toolCall.getId()))
                 .map(toolCall -> new ToolCall(sessionId,
                                               runId,
+                                              null,
+                                              null,
                                               toolCall.getId(),
                                               toolCall.getFunction().getName(),
-                                              toolCall.getFunction().getArguments()))
+                                              toolCall.getFunction().getArguments(),
+                                              responseId))
                 .toList();
 
         raiseMessageReceivedEvent(agentName,

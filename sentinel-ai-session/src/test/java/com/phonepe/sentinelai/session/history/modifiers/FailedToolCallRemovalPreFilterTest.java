@@ -62,7 +62,8 @@ class FailedToolCallRemovalPreFilterTest {
                                                           null,
                                                           toolCallId,
                                                           "testTool",
-                                                          "{}"),
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-2",
@@ -72,7 +73,14 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.SUCCESS,
                                                                   "success response",
                                                                   LocalDateTime.now()),
-                                             new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
+                                             new Text(sessionId,
+                                                      runId,
+                                                      null,
+                                                      null,
+                                                      "response",
+                                                      new ModelUsageStats(),
+                                                      100,
+                                                      null)
         );
         var result = filter.filter(messages);
         assertEquals(4, result.size());
@@ -95,7 +103,8 @@ class FailedToolCallRemovalPreFilterTest {
                                                           null,
                                                           successId,
                                                           "successTool",
-                                                          "{}"),
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-2",
@@ -105,7 +114,14 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.SUCCESS,
                                                                   "ok",
                                                                   LocalDateTime.now()),
-                                             new ToolCall(sessionId, runId, "msg-3", null, failId, "failTool", "{}"),
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-3",
+                                                          null,
+                                                          failId,
+                                                          "failTool",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-4",
@@ -115,7 +131,14 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.TOOL_CALL_TEMPORARY_FAILURE,
                                                                   "temp error",
                                                                   LocalDateTime.now()),
-                                             new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
+                                             new Text(sessionId,
+                                                      runId,
+                                                      null,
+                                                      null,
+                                                      "response",
+                                                      new ModelUsageStats(),
+                                                      100,
+                                                      null)
         );
         var result = filter.filter(messages);
         assertEquals(4, result.size());
@@ -131,7 +154,14 @@ class FailedToolCallRemovalPreFilterTest {
         var sessionId = "session-8";
         var messages = List.<AgentMessage>of(
                                              UserPrompt.text(sessionId, "run-1", "user 1", LocalDateTime.now()),
-                                             new ToolCall(sessionId, "run-1", "msg-1", null, "tc-1", "tool", "{}"),
+                                             new ToolCall(sessionId,
+                                                          "run-1",
+                                                          "msg-1",
+                                                          null,
+                                                          "tc-1",
+                                                          "tool",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   "run-1",
                                                                   "msg-2",
@@ -142,7 +172,14 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   "ok",
                                                                   LocalDateTime.now()),
                                              UserPrompt.text(sessionId, "run-2", "user 2", LocalDateTime.now()),
-                                             new ToolCall(sessionId, "run-2", "msg-3", null, "tc-2", "tool", "{}"),
+                                             new ToolCall(sessionId,
+                                                          "run-2",
+                                                          "msg-3",
+                                                          null,
+                                                          "tc-2",
+                                                          "tool",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   "run-2",
                                                                   "msg-4",
@@ -167,10 +204,24 @@ class FailedToolCallRemovalPreFilterTest {
         var sessionId = "session-7";
         var runId = "run-7";
         var userPrompt = UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now());
-        var textResponse = new Text(sessionId, runId, "response", new ModelUsageStats(), 100);
+        var textResponse = new Text(sessionId,
+                                    runId,
+                                    null,
+                                    null,
+                                    "response",
+                                    new ModelUsageStats(),
+                                    100,
+                                    null);
         var messages = List.<AgentMessage>of(
                                              userPrompt,
-                                             new ToolCall(sessionId, runId, "msg-1", null, "tc-1", "tool", "{}"),
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-1",
+                                                          null,
+                                                          "tc-1",
+                                                          "tool",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-2",
@@ -202,7 +253,8 @@ class FailedToolCallRemovalPreFilterTest {
                                                           null,
                                                           toolCallId,
                                                           "testTool",
-                                                          "{}"),
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-2",
@@ -212,7 +264,14 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.TOOL_CALL_PERMANENT_FAILURE,
                                                                   "error response",
                                                                   LocalDateTime.now()),
-                                             new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
+                                             new Text(sessionId,
+                                                      runId,
+                                                      null,
+                                                      null,
+                                                      "response",
+                                                      new ModelUsageStats(),
+                                                      100,
+                                                      null)
         );
         var result = filter.filter(messages);
         assertEquals(2, result.size());
@@ -231,7 +290,14 @@ class FailedToolCallRemovalPreFilterTest {
         var successId = "tc-success";
 
         var messages = List.<AgentMessage>of(
-                                             new ToolCall(sessionId, runId, "msg-1", null, timeoutId, "tool1", "{}"),
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-1",
+                                                          null,
+                                                          timeoutId,
+                                                          "tool1",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-2",
@@ -241,7 +307,14 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.TOOL_CALL_TIMEOUT,
                                                                   "timeout",
                                                                   LocalDateTime.now()),
-                                             new ToolCall(sessionId, runId, "msg-3", null, permFailId, "tool2", "{}"),
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-3",
+                                                          null,
+                                                          permFailId,
+                                                          "tool2",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-4",
@@ -251,7 +324,14 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.TOOL_CALL_PERMANENT_FAILURE,
                                                                   "perm fail",
                                                                   LocalDateTime.now()),
-                                             new ToolCall(sessionId, runId, "msg-5", null, tempFailId, "tool3", "{}"),
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-5",
+                                                          null,
+                                                          tempFailId,
+                                                          "tool3",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-6",
@@ -261,7 +341,14 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.TOOL_CALL_TEMPORARY_FAILURE,
                                                                   "temp fail",
                                                                   LocalDateTime.now()),
-                                             new ToolCall(sessionId, runId, "msg-7", null, successId, "tool4", "{}"),
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-7",
+                                                          null,
+                                                          successId,
+                                                          "tool4",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-8",
@@ -286,7 +373,14 @@ class FailedToolCallRemovalPreFilterTest {
         var messages = List.<AgentMessage>of(
                                              new GenericText(sessionId, runId, Role.USER, "generic text"),
                                              UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
-                                             new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
+                                             new Text(sessionId,
+                                                      runId,
+                                                      null,
+                                                      null,
+                                                      "response",
+                                                      new ModelUsageStats(),
+                                                      100,
+                                                      null)
         );
         var result = filter.filter(messages);
         assertEquals(3, result.size());
@@ -301,7 +395,14 @@ class FailedToolCallRemovalPreFilterTest {
                                              new SystemPrompt(sessionId, runId, "system", true, "m"),
                                              new GenericText(sessionId, runId, Role.USER, "generic"),
                                              UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
-                                             new ToolCall(sessionId, runId, "msg-1", null, "tc-1", "tool", "{}"),
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-1",
+                                                          null,
+                                                          "tc-1",
+                                                          "tool",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-2",
@@ -311,8 +412,22 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.TOOL_CALL_PERMANENT_FAILURE,
                                                                   "failed",
                                                                   LocalDateTime.now()),
-                                             new Text(sessionId, runId, "text", new ModelUsageStats(), 100),
-                                             new StructuredOutput(sessionId, runId, "{}", new ModelUsageStats(), 100)
+                                             new Text(sessionId,
+                                                      runId,
+                                                      null,
+                                                      null,
+                                                      "text",
+                                                      new ModelUsageStats(),
+                                                      100,
+                                                      null),
+                                             new StructuredOutput(sessionId,
+                                                                  runId,
+                                                                  null,
+                                                                  null,
+                                                                  "{}",
+                                                                  new ModelUsageStats(),
+                                                                  100,
+                                                                  null)
         );
         var result = filter.filter(messages);
         assertEquals(5, result.size());
@@ -327,7 +442,14 @@ class FailedToolCallRemovalPreFilterTest {
         var runId = "run-1";
         var messages = List.<AgentMessage>of(
                                              UserPrompt.text(sessionId, runId, "user message", LocalDateTime.now()),
-                                             new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
+                                             new Text(sessionId,
+                                                      runId,
+                                                      null,
+                                                      null,
+                                                      "response",
+                                                      new ModelUsageStats(),
+                                                      100,
+                                                      null)
         );
         var result = filter.filter(messages);
         assertEquals(2, result.size());
@@ -339,7 +461,14 @@ class FailedToolCallRemovalPreFilterTest {
         var sessionId = "session-5";
         var runId = "run-5";
         var messages = List.<AgentMessage>of(
-                                             new ToolCall(sessionId, runId, "msg-1", null, "tc-1", "tool1", "{}"),
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-1",
+                                                          null,
+                                                          "tc-1",
+                                                          "tool1",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-2",
@@ -349,7 +478,14 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.TOOL_CALL_TIMEOUT,
                                                                   "timeout",
                                                                   LocalDateTime.now()),
-                                             new ToolCall(sessionId, runId, "msg-3", null, "tc-2", "tool2", "{}"),
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-3",
+                                                          null,
+                                                          "tc-2",
+                                                          "tool2",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-4",
@@ -373,10 +509,20 @@ class FailedToolCallRemovalPreFilterTest {
                                              UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
                                              new StructuredOutput(sessionId,
                                                                   runId,
+                                                                  null,
+                                                                  null,
                                                                   "{\"key\": \"value\"}",
                                                                   new ModelUsageStats(),
-                                                                  100),
-                                             new ToolCall(sessionId, runId, "msg-1", null, "tc-1", "tool", "{}"),
+                                                                  100,
+                                                                  null),
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-1",
+                                                          null,
+                                                          "tc-1",
+                                                          "tool",
+                                                          "{}",
+                                                          null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
                                                                   "msg-2",
@@ -399,7 +545,14 @@ class FailedToolCallRemovalPreFilterTest {
         var messages = List.<AgentMessage>of(
                                              new SystemPrompt(sessionId, runId, "system prompt", true, "method"),
                                              UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
-                                             new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
+                                             new Text(sessionId,
+                                                      runId,
+                                                      null,
+                                                      null,
+                                                      "response",
+                                                      new ModelUsageStats(),
+                                                      100,
+                                                      null)
         );
         var result = filter.filter(messages);
         assertEquals(3, result.size());
@@ -412,8 +565,22 @@ class FailedToolCallRemovalPreFilterTest {
         var runId = "run-9";
         var messages = List.<AgentMessage>of(
                                              UserPrompt.text(sessionId, runId, "user", LocalDateTime.now()),
-                                             new ToolCall(sessionId, runId, "msg-1", null, "tc-orphan", "tool", "{}"),
-                                             new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
+                                             new ToolCall(sessionId,
+                                                          runId,
+                                                          "msg-1",
+                                                          null,
+                                                          "tc-orphan",
+                                                          "tool",
+                                                          "{}",
+                                                          null),
+                                             new Text(sessionId,
+                                                      runId,
+                                                      null,
+                                                      null,
+                                                      "response",
+                                                      new ModelUsageStats(),
+                                                      100,
+                                                      null)
         );
         var result = filter.filter(messages);
         assertEquals(3, result.size());
@@ -435,7 +602,14 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   ErrorType.TOOL_CALL_PERMANENT_FAILURE,
                                                                   "failed",
                                                                   LocalDateTime.now()),
-                                             new Text(sessionId, runId, "response", new ModelUsageStats(), 100)
+                                             new Text(sessionId,
+                                                      runId,
+                                                      null,
+                                                      null,
+                                                      "response",
+                                                      new ModelUsageStats(),
+                                                      100,
+                                                      null)
         );
         var result = filter.filter(messages);
         assertEquals(2, result.size());

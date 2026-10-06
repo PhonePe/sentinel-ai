@@ -199,7 +199,8 @@ public class ChatCompletionsProtocol implements WireProtocol {
                                 message == null ? null : textOrNull(message.get(REASONING_CONTENT)),
                                 message == null ? null : textOrNull(message.get(REFUSAL)),
                                 toolCalls,
-                                decodeUsage(body.get(USAGE)));
+                                decodeUsage(body.get(USAGE)),
+                                textOrNull(body.get(ID)));
     }
 
     @Override

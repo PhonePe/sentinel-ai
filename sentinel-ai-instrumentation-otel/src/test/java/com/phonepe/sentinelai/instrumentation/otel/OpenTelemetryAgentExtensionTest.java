@@ -410,9 +410,12 @@ class OpenTelemetryAgentExtensionTest {
             toolRunner.runTool(tools,
                                new ToolCall(context.getSessionId(),
                                             context.getRunId(),
+                                            null,
+                                            null,
                                             toolCallId,
                                             toolName,
-                                            arguments));
+                                            arguments,
+                                            null));
             final List<AgentMessage> messages = invocation.getArgument(2);
             return CompletableFuture.completedFuture(ModelOutput.success(outputData("ok"),
                                                                          List.of(),

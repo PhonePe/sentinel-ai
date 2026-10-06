@@ -93,14 +93,27 @@ public sealed interface WireStreamEvent permits WireStreamEvent.ContentDelta,
 
         WireUsage usage;
 
+        /**
+         * Provider-assigned id of the finished response.
+         */
+        String responseId;
+
         public StreamFinishEvent(final String finishReason, final String refusal) {
             this(finishReason, refusal, null);
         }
 
         public StreamFinishEvent(final String finishReason, final String refusal, final WireUsage usage) {
+            this(finishReason, refusal, usage, null);
+        }
+
+        public StreamFinishEvent(final String finishReason,
+                                 final String refusal,
+                                 final WireUsage usage,
+                                 final String responseId) {
             this.finishReason = finishReason;
             this.refusal = refusal;
             this.usage = usage;
+            this.responseId = responseId;
         }
     }
 

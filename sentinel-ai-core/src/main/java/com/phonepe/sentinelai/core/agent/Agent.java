@@ -737,7 +737,8 @@ public abstract class Agent<R, T, A extends Agent<R, T, A>> {
                             toolCall.getTimestamp(),
                             toolCall.getToolCallId(),
                             toolCall.getToolName(),
-                            mapper.writeValueAsString(argumentNode));
+                            mapper.writeValueAsString(argumentNode),
+                            toolCall.getResponseId());
     }
 
     /**

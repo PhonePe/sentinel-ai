@@ -80,7 +80,14 @@ class OpenAIMessageUtilsTest {
                                  .toolName("weather")
                                  .response("{}")
                                  .build(), ChatMessage.ToolMessage.class, "{}"),
-                         Arguments.of(new Text(SESSION_ID, RUN_ID, "hello", new ModelUsageStats(), 1L),
+                         Arguments.of(new Text(SESSION_ID,
+                                               RUN_ID,
+                                               null,
+                                               null,
+                                               "hello",
+                                               new ModelUsageStats(),
+                                               1L,
+                                               null),
                                       ChatMessage.AssistantMessage.class,
                                       "hello"),
                          Arguments.of(StructuredOutput.builder()
@@ -265,7 +272,14 @@ class OpenAIMessageUtilsTest {
                 .content("rules")
                 .build(),
                                                     UserPrompt.text(SESSION_ID, RUN_ID, "hi", SENT_AT),
-                                                    new Text(SESSION_ID, RUN_ID, "hello", new ModelUsageStats(), 1L));
+                                                    new Text(SESSION_ID,
+                                                             RUN_ID,
+                                                             null,
+                                                             null,
+                                                             "hello",
+                                                             new ModelUsageStats(),
+                                                             1L,
+                                                             null));
         final var converted = OpenAIMessageUtils.convertToOpenAIMessages(messages);
 
         assertEquals(3, converted.size());
@@ -281,7 +295,14 @@ class OpenAIMessageUtilsTest {
                 .content("rules")
                 .build(),
                                                     UserPrompt.text(SESSION_ID, RUN_ID, "old", SENT_AT),
-                                                    new Text(SESSION_ID, RUN_ID, "answer", new ModelUsageStats(), 1L),
+                                                    new Text(SESSION_ID,
+                                                             RUN_ID,
+                                                             null,
+                                                             null,
+                                                             "answer",
+                                                             new ModelUsageStats(),
+                                                             1L,
+                                                             null),
                                                     UserPrompt.compactedText(SESSION_ID, RUN_ID, "summary", SENT_AT),
                                                     UserPrompt.text(SESSION_ID, RUN_ID, "new", SENT_AT));
 

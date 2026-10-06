@@ -61,23 +61,17 @@ public class ToolCall extends AgentResponse {
                     Long timestamp,
                     @NonNull String toolCallId,
                     @NonNull String toolName,
-                    String arguments) {
+                    String arguments,
+                    String responseId) {
         super(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE,
               sessionId,
               runId,
               messageId,
-              timestamp);
+              timestamp,
+              responseId);
         this.toolCallId = toolCallId;
         this.toolName = toolName;
         this.arguments = Strings.isNullOrEmpty(arguments) ? EMPTY_ARGUMENTS : arguments;
-    }
-
-    public ToolCall(String sessionId,
-                    String runId,
-                    @NonNull String toolCallId,
-                    @NonNull String toolName,
-                    String arguments) {
-        this(sessionId, runId, null, null, toolCallId, toolName, arguments);
     }
 
     @Override

@@ -66,9 +66,12 @@ class OpenAICompletionsTokenCounterTest {
         final var content = "I am fine, thank you!";
         Text assistantResponse = new Text("s1",
                                           "r1",
+                                          null,
+                                          null,
                                           content,
                                           new ModelUsageStats(),
-                                          100);
+                                          100,
+                                          null);
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + TokenCountingConfig.DEFAULT
@@ -226,9 +229,12 @@ class OpenAICompletionsTokenCounterTest {
         final var content = "{\"answer\": \"fine\"}";
         StructuredOutput structuredOutput = new StructuredOutput("s1",
                                                                  "r1",
+                                                                 null,
+                                                                 null,
                                                                  content,
                                                                  new ModelUsageStats(),
-                                                                 100);
+                                                                 100,
+                                                                 null);
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + TokenCountingConfig.DEFAULT
@@ -266,9 +272,12 @@ class OpenAICompletionsTokenCounterTest {
         final var toolCallId = "call_123";
         ToolCall toolCall = new ToolCall("s1",
                                          "r1",
+                                         null,
+                                         null,
                                          toolCallId,
                                          toolName,
-                                         arguments);
+                                         arguments,
+                                         null);
 
         int expected = TokenCountingConfig.DEFAULT
                 .getAssistantPrimingOverhead() + TokenCountingConfig.DEFAULT

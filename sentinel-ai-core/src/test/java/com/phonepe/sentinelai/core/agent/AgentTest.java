@@ -265,11 +265,14 @@ class AgentTest {
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
+                                                                                 null,
+                                                                                 null,
                                                                                  "TC1",
                                                                                  "test_agent_session_summary",
                                                                                  """
                                                                                          { "input": "Test Data" }
-                                                                                         """));
+                                                                                         """,
+                                                                                 null));
                             assertTrue(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
                             final var messages = new ArrayList<>(oldMessages);
@@ -478,6 +481,8 @@ class AgentTest {
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
+                                                                                 null,
+                                                                                 null,
                                                                                  "TC1",
                                                                                  "test_agent_structured_tool",
                                                                                  """
@@ -486,7 +491,8 @@ class AgentTest {
                                                                                                 "data" : "Test Data"
                                                                                             }
                                                                                          }
-                                                                                         """));
+                                                                                         """,
+                                                                                 null));
                             assertTrue(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
                             final var messages = new ArrayList<>(oldMessages);
@@ -542,9 +548,12 @@ class AgentTest {
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
+                                                                                 null,
+                                                                                 null,
                                                                                  "TC1",
                                                                                  "test_agent_get_name",
-                                                                                 "{}"));
+                                                                                 "{}",
+                                                                                 null));
                             assertTrue(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
                             final var messages = new ArrayList<>(oldMessages);
@@ -597,6 +606,8 @@ class AgentTest {
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
+                                                                                 null,
+                                                                                 null,
                                                                                  "TC1",
                                                                                  "test_agent_structured_tool",
                                                                                  """
@@ -605,7 +616,8 @@ class AgentTest {
                                                                                                 "data" : "Test Data"
                                                                                             }
                                                                                          }
-                                                                                         """));
+                                                                                         """,
+                                                                                 null));
                             assertTrue(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
                             final var messages = new ArrayList<>(oldMessages);
@@ -657,6 +669,8 @@ class AgentTest {
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
+                                                                                 null,
+                                                                                 null,
                                                                                  "TC1",
                                                                                  "test_agent_structured_tool",
                                                                                  """
@@ -665,7 +679,8 @@ class AgentTest {
                                                                                                 "data" : "Test Data"
                                                                                             }
                                                                                          }
-                                                                                         """));
+                                                                                         """,
+                                                                                 null));
                             assertFalse(response.isSuccess());
                             assertEquals(ErrorType.TOOL_CALL_PREPROCESSING_FAILURE,
                                          response.getErrorType());
@@ -720,9 +735,12 @@ class AgentTest {
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
+                                                                                 null,
+                                                                                 null,
                                                                                  "TC1",
                                                                                  "test_agent_throw_tool",
-                                                                                 "{}"));
+                                                                                 "{}",
+                                                                                 null));
                             assertFalse(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
                             final var messages = new ArrayList<>(oldMessages);
@@ -776,6 +794,8 @@ class AgentTest {
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
+                                                                                 null,
+                                                                                 null,
                                                                                  "TC1",
                                                                                  "test_agent_structured_tool",
                                                                                  """
@@ -784,7 +804,8 @@ class AgentTest {
                                                                                                 "data" : "Test Data"
                                                                                             }
                                                                                          }
-                                                                                         """));
+                                                                                         """,
+                                                                                 null));
                             assertFalse(response.isSuccess());
                             assertEquals(ErrorType.TOOL_CALL_PERMANENT_FAILURE,
                                          response.getErrorType());
@@ -838,9 +859,12 @@ class AgentTest {
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
+                                                                                 null,
+                                                                                 null,
                                                                                  "TC1",
                                                                                  "test_agent_get_name",
-                                                                                 "{}"));
+                                                                                 "{}",
+                                                                                 null));
                             assertFalse(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
                             final var messages = new ArrayList<>(oldMessages);
@@ -898,9 +922,12 @@ class AgentTest {
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
+                                                                                 null,
+                                                                                 null,
                                                                                  "TC1",
                                                                                  "getUnknown",
-                                                                                 "{}"));
+                                                                                 "{}",
+                                                                                 null));
                             assertFalse(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
                             final var messages = new ArrayList<>(oldMessages);
@@ -957,9 +984,12 @@ class AgentTest {
                             final var response = toolRunner.runTool(tools,
                                                                     new ToolCall("s1",
                                                                                  "r1",
+                                                                                 null,
+                                                                                 null,
                                                                                  "TC1",
                                                                                  "test_agent_void_tool",
-                                                                                 "{}"));
+                                                                                 "{}",
+                                                                                 null));
                             assertTrue(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
                             final var messages = new ArrayList<>(oldMessages);

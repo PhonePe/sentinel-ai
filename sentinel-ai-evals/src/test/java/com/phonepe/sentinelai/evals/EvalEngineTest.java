@@ -94,15 +94,21 @@ class EvalEngineTest {
                 for (int i = 0; i < encodedToolOrder.size(); i++) {
                     newMessages.add(new ToolCall(sessionId,
                                                  runId,
+                                                 null,
+                                                 null,
                                                  "tc-" + i,
                                                  encodedToolOrder.get(i),
-                                                 "{}"));
+                                                 "{}",
+                                                 null));
                 }
                 newMessages.add(new Text(sessionId,
                                          runId,
+                                         null,
+                                         null,
                                          finalOutput,
                                          usage,
-                                         0));
+                                         0,
+                                         null));
 
                 final var allMessages = new ArrayList<>(oldMessages);
                 allMessages.addAll(newMessages);

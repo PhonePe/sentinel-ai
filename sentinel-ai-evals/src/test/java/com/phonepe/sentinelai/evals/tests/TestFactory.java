@@ -118,9 +118,12 @@ public class TestFactory {
                 data.put(Agent.OUTPUT_VARIABLE_NAME, output);
                 val newMessages = List.<AgentMessage>of(new Text(context.getSessionId(),
                                                                  context.getRunId(),
+                                                                 null,
+                                                                 null,
                                                                  output,
                                                                  usage,
-                                                                 2));
+                                                                 2,
+                                                                 null));
                 val allMessages = new ArrayList<>(oldMessages);
                 allMessages.addAll(newMessages);
                 return ModelOutput.success(data,

@@ -67,9 +67,12 @@ class GenericTokenCounterTest {
                          new CountingCase("assistant text response",
                                           List.of(new Text("s1",
                                                            "r1",
+                                                           null,
+                                                           null,
                                                            "I am fine, thank you!",
                                                            new ModelUsageStats(),
-                                                           100)),
+                                                           100,
+                                                           null)),
                                           self -> self.assistantOverhead() + self.messageOverhead("assistant")
                                                   + self.countTokens("I am fine, thank you!")),
                          new CountingCase("audio prompt counts base64 as text",
@@ -118,9 +121,12 @@ class GenericTokenCounterTest {
                          new CountingCase("structured output",
                                           List.of(new StructuredOutput("s1",
                                                                        "r1",
+                                                                       null,
+                                                                       null,
                                                                        "{\"answer\": \"fine\"}",
                                                                        new ModelUsageStats(),
-                                                                       100)),
+                                                                       100,
+                                                                       null)),
                                           self -> self.assistantOverhead() + self.messageOverhead("assistant")
                                                   + self.countTokens("{\"answer\": \"fine\"}")),
                          new CountingCase("system prompt",
@@ -134,9 +140,12 @@ class GenericTokenCounterTest {
                          new CountingCase("tool call",
                                           List.of(new ToolCall("s1",
                                                                "r1",
+                                                               null,
+                                                               null,
                                                                "call_123",
                                                                "get_weather",
-                                                               "{\"location\": \"Bangalore\"}")),
+                                                               "{\"location\": \"Bangalore\"}",
+                                                               null)),
                                           self -> self.assistantOverhead() + TokenCountingConfig.DEFAULT
                                                   .getMessageOverHead()
                                                   + self.countTokens("assistant") + self.countTokens("call_123")

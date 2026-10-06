@@ -58,6 +58,7 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.EVENT_RESPONS
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.EVENT_RESPONSE_FAILED;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.EVENT_RESPONSE_INCOMPLETE;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.FORMAT;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.INPUT;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.INPUT_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.INPUT_TOKEN_DETAILS;
@@ -215,7 +216,8 @@ public class ResponsesProtocol implements WireProtocol {
                                 null,
                                 refusal,
                                 toolCalls,
-                                decodeUsage(body.get(ResponsesFields.USAGE)));
+                                decodeUsage(body.get(ResponsesFields.USAGE)),
+                                textOrNull(body.get(ID)));
     }
 
     @Override
@@ -332,7 +334,8 @@ public class ResponsesProtocol implements WireProtocol {
         if (decoded.getFinishReason() != null) {
             return new WireStreamEvent.StreamFinishEvent(decoded.getFinishReason(),
                                                          decoded.getRefusal(),
-                                                         decoded.getUsage());
+                                                         decoded.getUsage(),
+                                                         decoded.getResponseId());
         }
         return null;
     }

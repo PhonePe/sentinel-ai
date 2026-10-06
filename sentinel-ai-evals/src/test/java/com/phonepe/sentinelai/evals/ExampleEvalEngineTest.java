@@ -119,9 +119,12 @@ class ExampleEvalEngineTest {
 
                 final var text = new Text(context.getSessionId(),
                                           context.getRunId(),
+                                          null,
+                                          null,
                                           "Decision generated",
                                           usage,
-                                          0);
+                                          0,
+                                          null);
 
                 final var allMessages = new ArrayList<>(oldMessages);
                 allMessages.add(text);
@@ -167,26 +170,38 @@ class ExampleEvalEngineTest {
 
                 final var text = new Text(context.getSessionId(),
                                           context.getRunId(),
+                                          null,
+                                          null,
                                           output,
                                           usage,
-                                          0);
+                                          0,
+                                          null);
 
                 final var allMessages = new ArrayList<>(oldMessages);
                 allMessages.add(new ToolCall(context.getSessionId(),
                                              context.getRunId(),
+                                             null,
+                                             null,
                                              "tc-1",
                                              "fetch_weather",
-                                             "{\"city\":\"blr\"}"));
+                                             "{\"city\":\"blr\"}",
+                                             null));
                 allMessages.add(new ToolCall(context.getSessionId(),
                                              context.getRunId(),
+                                             null,
+                                             null,
                                              "tc-2",
                                              "fetch_calculator",
-                                             "{\"expression\":\"2+2\"}"));
+                                             "{\"expression\":\"2+2\"}",
+                                             null));
                 allMessages.add(new ToolCall(context.getSessionId(),
                                              context.getRunId(),
+                                             null,
+                                             null,
                                              "tc-3",
                                              "fetch_weather",
-                                             "{\"city\":\"blr\"}"));
+                                             "{\"city\":\"blr\"}",
+                                             null));
                 allMessages.add(text);
 
                 return ModelOutput.success(data,

@@ -345,6 +345,7 @@ public class ConfiguredModel implements Model {
         final var toolsForExecution = new HashMap<>(Objects
                 .requireNonNullElseGet(tools, Map::of));
         final var generatedOutput = new AtomicReference<String>(null);
+        final var lastResponseId = new AtomicReference<String>(null);
         final var schema = outputDefinitions.isEmpty()
                 ? null
                 : compliantSchema(mapper, outputDefinitions);
@@ -406,6 +407,7 @@ public class ConfiguredModel implements Model {
                 }
                 logDataDebug(mapper, "Response from model: {}", response);
                 mergeUsage(stats, response.getUsage());
+                lastResponseId.set(response.getResponseId());
                 output = switch (response.getFinishReason()) {
                     case WireResponse.FinishReasons.STOP -> {
                         if (!Strings.isNullOrEmpty(response.getRefusal())) {
@@ -422,12 +424,14 @@ public class ConfiguredModel implements Model {
                                                               stats,
                                                               stopwatch,
                                                               generatedOutput,
+                                                              lastResponseId,
                                                               wireMessages,
                                                               allMessages,
                                                               newMessages,
                                                               oldMessages);
                         yield runToolsResponse.orElseGet(() -> processOutput(context,
                                                                              response.getContent(),
+                                                                             lastResponseId.get(),
                                                                              oldMessages,
                                                                              stats,
                                                                              allMessages,
@@ -441,6 +445,7 @@ public class ConfiguredModel implements Model {
                                                                            stats,
                                                                            stopwatch,
                                                                            generatedOutput,
+                                                                           lastResponseId,
                                                                            wireMessages,
                                                                            allMessages,
                                                                            newMessages,
@@ -570,6 +575,7 @@ public class ConfiguredModel implements Model {
         final var outputGenerator = Objects.requireNonNullElseGet(agentSetup
                 .getOutputGenerationTool(), IdentityOutputGenerator::new);
         final var generatedOutput = new AtomicReference<String>(null);
+        final var lastResponseId = new AtomicReference<String>(null);
         final var schema = outputDefinitions.isEmpty()
                 ? null
                 : compliantSchema(mapper, outputDefinitions);
@@ -673,6 +679,9 @@ public class ConfiguredModel implements Model {
                         else if (streamEvent instanceof WireStreamEvent.StreamFinishEvent finishEvent) {
                             if (finishHandled.compareAndSet(false, true)) {
                                 logDataDebug(mapper, "Finish event from model: {}", finishEvent.getFinishReason());
+                                if (finishEvent.getResponseId() != null) {
+                                    lastResponseId.set(finishEvent.getResponseId());
+                                }
                                 wirePayloadLogger.streamResponse(modelName,
                                                                  finishEvent,
                                                                  responseData.toString(),
@@ -773,6 +782,7 @@ public class ConfiguredModel implements Model {
                     yield processOutput(context,
                                         responseData.toString(),
                                         //We just take what we gathered return that
+                                        finishEvent.getResponseId(),
                                         oldMessages,
                                         stats,
                                         allMessages,
@@ -784,6 +794,7 @@ public class ConfiguredModel implements Model {
                     yield processStreamingOutput(context,
                                                  responseData.toString(),
                                                  //We just take what we gathered return that
+                                                 finishEvent.getResponseId(),
                                                  oldMessages,
                                                  stats,
                                                  allMessages,
@@ -814,7 +825,8 @@ public class ConfiguredModel implements Model {
                                     calls,
                                     agentMessages,
                                     stats,
-                                    stopwatch);
+                                    stopwatch,
+                                    finishEvent.getResponseId());
                     toolCallData.clear();
                     if (generatedOutput.get() != null) {
                         //If the output generator was called, we use the generated output
@@ -822,6 +834,7 @@ public class ConfiguredModel implements Model {
 
                             yield processOutput(context,
                                                 generatedOutput.get(),
+                                                finishEvent.getResponseId(),
                                                 oldMessages,
                                                 stats,
                                                 allMessages,
@@ -832,6 +845,7 @@ public class ConfiguredModel implements Model {
 
                             yield processStreamingOutput(context,
                                                          generatedOutput.get(),
+                                                         finishEvent.getResponseId(),
                                                          oldMessages,
                                                          stats,
                                                          allMessages,
@@ -1163,6 +1177,7 @@ public class ConfiguredModel implements Model {
                                            final ModelUsageStats stats,
                                            final Stopwatch stopwatch,
                                            final AtomicReference<String> generatedOutput,
+                                           final AtomicReference<String> lastResponseId,
                                            final ArrayList<JsonNode> wireMessages,
                                            final ArrayList<AgentMessage> allMessages,
                                            final ArrayList<AgentMessage> newMessages,
@@ -1181,10 +1196,12 @@ public class ConfiguredModel implements Model {
                                     .wireMessages(wireMessages)
                                     .build(),
                             stats,
-                            stopwatch);
+                            stopwatch,
+                            lastResponseId.get());
             return Optional.ofNullable(generatedOutput.get())
                     .map(data -> processOutput(context,
                                                data,
+                                               lastResponseId.get(),
                                                oldMessages,
                                                stats,
                                                allMessages,
@@ -1312,6 +1329,7 @@ public class ConfiguredModel implements Model {
 
     private ModelOutput processOutput(final ModelRunContext context,
                                       final String content,
+                                      final String responseId,
                                       final List<AgentMessage> oldMessages,
                                       final ModelUsageStats stats,
                                       final ArrayList<AgentMessage> allMessages,
@@ -1320,10 +1338,13 @@ public class ConfiguredModel implements Model {
         if (!Strings.isNullOrEmpty(content)) {
             final var newMessage = new StructuredOutput(context.getSessionId(),
                                                         context.getRunId(),
+                                                        null,
+                                                        null,
                                                         content,
                                                         stats,
                                                         stopwatch.elapsed(
-                                                                          TimeUnit.MILLISECONDS));
+                                                                          TimeUnit.MILLISECONDS),
+                                                        responseId);
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, List.of(newMessage), allMessages, stopwatch);
@@ -1352,6 +1373,7 @@ public class ConfiguredModel implements Model {
      */
     private ModelOutput processStreamingOutput(final ModelRunContext context,
                                                final String content,
+                                               final String responseId,
                                                final List<AgentMessage> oldMessages,
                                                final ModelUsageStats stats,
                                                final ArrayList<AgentMessage> allMessages,
@@ -1361,10 +1383,13 @@ public class ConfiguredModel implements Model {
         if (!Strings.isNullOrEmpty(content)) {
             final var newMessage = new Text(context.getSessionId(),
                                             context.getRunId(),
+                                            null,
+                                            null,
                                             content,
                                             stats,
                                             stopwatch.elapsed(
-                                                              TimeUnit.MILLISECONDS)); //Always text output
+                                                              TimeUnit.MILLISECONDS),
+                                            responseId); //Always text output
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, List.of(newMessage), allMessages, stopwatch);
@@ -1428,7 +1453,8 @@ public class ConfiguredModel implements Model {
                                  final List<WireToolCall> toolCalls,
                                  final AgentMessages agentMessages,
                                  final ModelUsageStats stats,
-                                 final Stopwatch stopwatch) {
+                                 final Stopwatch stopwatch,
+                                 final String responseId) {
         final var prevMessages = List.copyOf(agentMessages.getAllMessages());
         handleToolCalls(context.getAgentName(),
                         context.getRunId(),
@@ -1440,7 +1466,8 @@ public class ConfiguredModel implements Model {
                         toolCalls,
                         agentMessages,
                         stats,
-                        stopwatch);
+                        stopwatch,
+                        responseId);
         raiseMessageSentEvent(context,
                               prevMessages,
                               agentMessages.getAllMessages());
@@ -1457,7 +1484,8 @@ public class ConfiguredModel implements Model {
                                  final List<WireToolCall> toolCalls,
                                  final AgentMessages agentMessages,
                                  final ModelUsageStats stats,
-                                 final Stopwatch stopwatch) {
+                                 final Stopwatch stopwatch,
+                                 final String responseId) {
         final var seenToolCallIds = new HashSet<String>();
         final var mapper = agentSetup.getMapper();
         final var toolCallMessages = toolCalls.stream()
@@ -1465,9 +1493,12 @@ public class ConfiguredModel implements Model {
                 .filter(toolCall -> seenToolCallIds.add(toolCall.getId()))
                 .map(toolCall -> new ToolCall(sessionId,
                                               runId,
+                                              null,
+                                              null,
                                               toolCall.getId(),
                                               toolCall.getName(),
-                                              toolCall.getArgumentsJson()))
+                                              toolCall.getArgumentsJson(),
+                                              responseId))
                 .toList();
 
         raiseMessageReceivedEvent(agentName,

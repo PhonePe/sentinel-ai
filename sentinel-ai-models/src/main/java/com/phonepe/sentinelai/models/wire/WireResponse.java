@@ -61,4 +61,9 @@ public class WireResponse {
     List<WireToolCall> toolCalls;
 
     WireUsage usage;
+
+    /**
+     * Provider-assigned id of this response, if any.
+     */
+    String responseId;
 }

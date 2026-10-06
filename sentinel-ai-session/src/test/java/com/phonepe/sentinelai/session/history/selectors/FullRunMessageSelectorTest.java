@@ -40,9 +40,23 @@ class FullRunMessageSelectorTest {
         final var sessionId = "session-all-complete";
         final var messages = List.of(
                                      UserPrompt.text(sessionId, "run-a", "user a", LocalDateTime.now()),
-                                     new Text(sessionId, "run-a", "text a", new ModelUsageStats(), 100),
+                                     new Text(sessionId,
+                                              "run-a",
+                                              null,
+                                              null,
+                                              "text a",
+                                              new ModelUsageStats(),
+                                              100,
+                                              null),
                                      UserPrompt.text(sessionId, "run-b", "user b", LocalDateTime.now()),
-                                     new StructuredOutput(sessionId, "run-b", "{}", new ModelUsageStats(), 100)
+                                     new StructuredOutput(sessionId,
+                                                          "run-b",
+                                                          null,
+                                                          null,
+                                                          "{}",
+                                                          new ModelUsageStats(),
+                                                          100,
+                                                          null)
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
         assertEquals(4, result.size());
@@ -55,8 +69,22 @@ class FullRunMessageSelectorTest {
         final var messages = List.of(
                                      UserPrompt.text(sessionId, "run-a", "user a", LocalDateTime.now()),
                                      UserPrompt.text(sessionId, "run-b", "user b", LocalDateTime.now()),
-                                     new Text(sessionId, "run-c", "text only", new ModelUsageStats(), 100),
-                                     new StructuredOutput(sessionId, "run-d", "{}", new ModelUsageStats(), 100)
+                                     new Text(sessionId,
+                                              "run-c",
+                                              null,
+                                              null,
+                                              "text only",
+                                              new ModelUsageStats(),
+                                              100,
+                                              null),
+                                     new StructuredOutput(sessionId,
+                                                          "run-d",
+                                                          null,
+                                                          null,
+                                                          "{}",
+                                                          new ModelUsageStats(),
+                                                          100,
+                                                          null)
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
         assertTrue(result.isEmpty());
@@ -88,19 +116,28 @@ class FullRunMessageSelectorTest {
                                                      LocalDateTime.now()),
                                      new Text(sessionId,
                                               runA,
+                                              null,
+                                              null,
                                               "t1",
                                               new ModelUsageStats(),
-                                              100),
+                                              100,
+                                              null),
                                      new StructuredOutput(sessionId,
                                                           runB,
+                                                          null,
+                                                          null,
                                                           "{}",
                                                           new ModelUsageStats(),
-                                                          100),
+                                                          100,
+                                                          null),
                                      new Text(sessionId,
                                               runC,
+                                              null,
+                                              null,
                                               "t-only",
                                               new ModelUsageStats(),
-                                              100));
+                                              100,
+                                              null));
         final var modifiable = new ArrayList<AgentMessage>(messages);
         final var result = selector.select(sessionId, modifiable);
         assertEquals(4, result.size());
@@ -118,7 +155,14 @@ class FullRunMessageSelectorTest {
         final var runIncomplete = "run-incomplete";
         final var messages = List.of(
                                      UserPrompt.text(sessionId1, runComplete, "u1", LocalDateTime.now()),
-                                     new Text(sessionId1, runComplete, "t1", new ModelUsageStats(), 100),
+                                     new Text(sessionId1,
+                                              runComplete,
+                                              null,
+                                              null,
+                                              "t1",
+                                              new ModelUsageStats(),
+                                              100,
+                                              null),
                                      UserPrompt.text(sessionId2, runIncomplete, "u2", LocalDateTime.now())
         );
         final var result = selector.select(sessionId1, new ArrayList<>(messages));
@@ -132,7 +176,14 @@ class FullRunMessageSelectorTest {
         final var sessionId = "session-order";
         final var runComplete = "run-complete";
         var userPrompt = UserPrompt.text(sessionId, runComplete, "user", LocalDateTime.now());
-        var textResponse = new Text(sessionId, runComplete, "text", new ModelUsageStats(), 100);
+        var textResponse = new Text(sessionId,
+                                    runComplete,
+                                    null,
+                                    null,
+                                    "text",
+                                    new ModelUsageStats(),
+                                    100,
+                                    null);
         final var messages = List.of(
                                      userPrompt,
                                      UserPrompt.text(sessionId, "run-incomplete", "orphan", LocalDateTime.now()),
@@ -153,13 +204,23 @@ class FullRunMessageSelectorTest {
         final var incompleteRun = "incomplete-run";
         final var messages = List.of(
                                      UserPrompt.text(sessionId, textRun, "user text", LocalDateTime.now()),
-                                     new Text(sessionId, textRun, "response text", new ModelUsageStats(), 100),
+                                     new Text(sessionId,
+                                              textRun,
+                                              null,
+                                              null,
+                                              "response text",
+                                              new ModelUsageStats(),
+                                              100,
+                                              null),
                                      UserPrompt.text(sessionId, soRun, "user so", LocalDateTime.now()),
                                      new StructuredOutput(sessionId,
                                                           soRun,
+                                                          null,
+                                                          null,
                                                           "{\"key\": \"value\"}",
                                                           new ModelUsageStats(),
-                                                          100),
+                                                          100,
+                                                          null),
                                      UserPrompt.text(sessionId, incompleteRun, "user incomplete", LocalDateTime.now())
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
@@ -175,7 +236,14 @@ class FullRunMessageSelectorTest {
         final var runComplete = "run-complete";
         final var messages = List.of(
                                      UserPrompt.text(null, runComplete, "user", LocalDateTime.now()),
-                                     new Text(null, runComplete, "text", new ModelUsageStats(), 100)
+                                     new Text(null,
+                                              runComplete,
+                                              null,
+                                              null,
+                                              "text",
+                                              new ModelUsageStats(),
+                                              100,
+                                              null)
         );
         final var result = selector.select(null, new ArrayList<>(messages));
         assertEquals(2, result.size());
@@ -194,14 +262,20 @@ class FullRunMessageSelectorTest {
                                      LocalDateTime.now()));
         messages.add(new StructuredOutput(sessionId,
                                           runComplete,
+                                          null,
+                                          null,
                                           "{}",
                                           new ModelUsageStats(),
-                                          100));
+                                          100,
+                                          null));
         messages.add(new StructuredOutput(sessionId,
                                           runIncomplete,
+                                          null,
+                                          null,
                                           "{}",
                                           new ModelUsageStats(),
-                                          100));
+                                          100,
+                                          null));
         final var result = selector.select(sessionId, messages);
         assertEquals(2, result.size());
         assertTrue(result.stream()
@@ -221,9 +295,12 @@ class FullRunMessageSelectorTest {
                                      LocalDateTime.now()));
         messages.add(new Text(sessionId,
                               runComplete,
+                              null,
+                              null,
                               "hi",
                               new ModelUsageStats(),
-                              100));
+                              100,
+                              null));
         messages.add(UserPrompt.text(sessionId,
                                      runIncomplete,
                                      "only user",

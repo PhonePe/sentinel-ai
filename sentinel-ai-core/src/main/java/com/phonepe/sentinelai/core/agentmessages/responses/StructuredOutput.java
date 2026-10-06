@@ -58,23 +58,17 @@ public class StructuredOutput extends AgentResponse {
                             Long timestamp,
                             @NonNull String content,
                             @NonNull ModelUsageStats stats,
-                            long elapsedTimeMs) {
+                            long elapsedTimeMs,
+                            String responseId) {
         super(AgentMessageType.STRUCTURED_OUTPUT_RESPONSE_MESSAGE,
               sessionId,
               runId,
               messageId,
-              timestamp);
+              timestamp,
+              responseId);
         this.content = content;
         this.stats = stats;
         this.elapsedTimeMs = elapsedTimeMs;
-    }
-
-    public StructuredOutput(String sessionId,
-                            String runId,
-                            @NonNull String content,
-                            @NonNull ModelUsageStats stats,
-                            long elapsedTimeMs) {
-        this(sessionId, runId, null, null, content, stats, elapsedTimeMs);
     }
 
     @Override
