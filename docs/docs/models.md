@@ -154,6 +154,43 @@ final var model = ConfiguredModel.builder()
         .build();
 ```
 
+### Response Chaining
+
+Models over the OpenAI Responses protocol support server-side conversation chaining via `ModelOptions.ResponseChaining`.
+When enabled, each request references the previous stored response (`previous_response_id`) and sends only the new input
+items; the provider stitches the conversation history server-side. This reduces request payload size and latency and
+improves prompt cache hit rates, but it does **not** reduce billed input tokens: all chained history is billed as input
+tokens by the provider.
+
+| Mode     | Behavior                                                                                                   |
+|----------|------------------------------------------------------------------------------------------------------------|
+| `OFF`    | Default. Full history replay on every request; nothing is stored on the provider side.                      |
+| `IN_RUN` | Chain only within one run's tool loop. Each run starts a fresh conversation.                                 |
+| `SESSION`| Chain across runs in a session, anchored on the last stored response. Compaction always breaks the chain.    |
+
+**Privacy note**: chaining requires the provider to store the generated responses (`store: true`); OpenAI retains stored
+responses for at least 30 days. Keep chaining off if that is unacceptable. Compaction (automatic or manual) always
+restarts the chain: the compacted summary plus the post-compaction history is sent as a fresh full request.
+
+Chain-break errors (for example an expired or unknown stored response id) are surfaced to the caller as model call
+errors; there is no automatic full-history retry yet.
+
+```java
+final var modelOptions = ModelOptions.builder()
+        .responseChaining(ModelOptions.ResponseChaining.SESSION)
+        .build();
+
+final var model = ConfiguredModel.builder()
+        .modelName("gpt-4o")
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ResponsesProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .build())
+        .modelOptions(modelOptions)
+        .build();
+```
+
 ### Model Call Retry
 
 A model call retries on failure when a `RequestRetryPolicy` is set on the model. The default policy does not retry; one

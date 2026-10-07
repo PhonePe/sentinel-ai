@@ -115,6 +115,12 @@ public class ResponsesFields {
     public static final String TOOL_CHOICE_REQUIRED = "required";
     public static final String TOOL_CHOICE_NONE = "none";
 
+    // Internal chaining markers (never sent to the provider; the protocol strips them while
+    // assembling the request body)
+    public static final String MARKER_RESPONSE_ID = "_responseId";
+    public static final String MARKER_RUN_ID = "_runId";
+    public static final String MARKER_COMPACTED = "_compacted";
+
     // Stream event names
     public static final String EVENT_RESPONSE_COMPLETED = "response.completed";
     public static final String EVENT_RESPONSE_FAILED = "response.failed";

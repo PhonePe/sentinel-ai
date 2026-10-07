@@ -30,14 +30,20 @@ import com.phonepe.sentinelai.core.agent.AgentRequestMetadata;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.MediaInput;
 import com.phonepe.sentinelai.core.agent.RetrySetup;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.MediaTypes;
 import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
+import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.models.ConfiguredModel;
+import com.phonepe.sentinelai.models.ModelOptions;
+import com.phonepe.sentinelai.models.TestAgents;
+import com.phonepe.sentinelai.models.TestAgents.OutputObject;
 import com.phonepe.sentinelai.models.TestAgents.OutputObjectAgent;
 import com.phonepe.sentinelai.models.TestAgents.TestAgent;
 import com.phonepe.sentinelai.models.TestStubs;
@@ -49,6 +55,7 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.IntStream;
@@ -85,6 +92,29 @@ class ConfiguredModelResponsesTest {
      */
     private static final String ENDPOINT = "/responses";
 
+    static Stream<Arguments> generateChainingToolLoopScenarios() {
+        // Fresh run without prior history: within the run's tool loop, IN_RUN and SESSION
+        // behave identically (both chain the second request to the first response)
+        return Stream.of(Arguments.of(ModelOptions.ResponseChaining.OFF, false),
+                         Arguments.of(ModelOptions.ResponseChaining.IN_RUN, true),
+                         Arguments.of(ModelOptions.ResponseChaining.SESSION, true));
+    }
+
+    static Stream<Arguments> generateSeededHistoryChainingScenarios() {
+        return Stream.of(Arguments.of("SESSION chains across runs",
+                                      ModelOptions.ResponseChaining.SESSION,
+                                      historyWithAnchor(),
+                                      "resp_run1"),
+                         Arguments.of("IN_RUN ignores previous-run anchor",
+                                      ModelOptions.ResponseChaining.IN_RUN,
+                                      historyWithAnchor(),
+                                      null),
+                         Arguments.of("compaction breaks the SESSION chain",
+                                      ModelOptions.ResponseChaining.SESSION,
+                                      historyWithCompaction(),
+                                      null));
+    }
+
     static Stream<Arguments> generateStreamingToolLoopScenarios() {
         return Stream.of(Arguments.of("duplicate finish chunk", "resp-duplicate-finish", "Hello, Santanu!", 1, 1),
                          Arguments.of("multiple tool calls with split arguments",
@@ -97,6 +127,80 @@ class ConfiguredModelResponsesTest {
                                       "Hello Santanu",
                                       1,
                                       1));
+    }
+
+    private static ConfiguredModel chainedResponsesModel(final WireMockRuntimeInfo wiremock,
+                                                         final ModelOptions.ResponseChaining chaining) {
+        return ConfiguredModel.builder()
+                .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                .provider(Provider.builder()
+                        .baseUrl(wiremock.getHttpBaseUrl())
+                        .protocol(new ResponsesProtocol())
+                        .endpointPrefix(TestStubs.useRealEndpoints() ? null : Provider.NO_ENDPOINT_PREFIX)
+                        .build())
+                .modelOptions(ModelOptions.builder()
+                        .responseChaining(chaining)
+                        .build())
+                .build();
+    }
+
+    private static AgentSetup.AgentSetupBuilder chainingSetupBase(final WireMockRuntimeInfo wiremock,
+                                                                  final ModelOptions.ResponseChaining chaining) {
+        return AgentSetup.builder()
+                .mapper(JsonUtils.createMapper())
+                .model(chainedResponsesModel(wiremock, chaining))
+                .modelSettings(ModelSettings.builder()
+                        .temperature(0.1f)
+                        .build())
+                .retrySetup(RetrySetup.builder()
+                        .totalAttempts(1)
+                        .delayAfterFailedAttempt(Duration.ofMillis(10))
+                        .build());
+    }
+
+    private static List<AgentMessage> historyWithAnchor() {
+        // Run 1 of the session: a user prompt and a stored tool call carrying the
+        // provider response id of the response that produced it
+        return List.of(UserPrompt.builder()
+                .sessionId("s1")
+                .runId("run-1")
+                .contentType(MediaTypes.MessageContentType.TEXT)
+                .content("Hi")
+                .build(),
+                       new ToolCall("s1",
+                                    "run-1",
+                                    null,
+                                    null,
+                                    "call_hist",
+                                    "output_object_agent_get_name",
+                                    "{}",
+                                    "resp_run1"));
+    }
+
+    private static List<AgentMessage> historyWithCompaction() {
+        // A stored anchor tool call, then a compaction summary prompt (chain breaker), then a
+        // follow-up user prompt
+        return List.of(new ToolCall("s1",
+                                    "run-1",
+                                    null,
+                                    null,
+                                    "call_hist",
+                                    "output_object_agent_get_name",
+                                    "{}",
+                                    "resp_run1"),
+                       UserPrompt.builder()
+                               .sessionId("s1")
+                               .runId("run-1")
+                               .contentType(MediaTypes.MessageContentType.TEXT)
+                               .content("Summary of earlier conversation")
+                               .compacted(true)
+                               .build(),
+                       UserPrompt.builder()
+                               .sessionId("s1")
+                               .runId("run-2")
+                               .contentType(MediaTypes.MessageContentType.TEXT)
+                               .content("Hi again")
+                               .build());
     }
 
     private static ConfiguredModel responsesModel(final WireMockRuntimeInfo wiremock,
@@ -202,6 +306,97 @@ class ConfiguredModelResponsesTest {
                 .withHeader("Accept", equalTo("application/json"))
                 .withRequestBody(WireMock
                         .notContaining("\"stream\"")));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @SneakyThrows
+    @MethodSource("generateChainingToolLoopScenarios")
+    void chainingToolLoopBehavior(final ModelOptions.ResponseChaining chaining,
+                                  final boolean chained,
+                                  final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        setupBlockingMocks(4, "resp-tool-output");
+        final var agent = new OutputObjectAgent(chainingSetupBase(wiremock, chaining)
+                .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
+                .outputGenerationTool(output -> output)
+                .build());
+
+        final var response = execute(agent);
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType(), chaining.name());
+
+        if (chained) {
+            // First request: full history, stored (the first hop of a chain must be stored)
+            WireMock.verify(1,
+                            postRequestedFor(urlEqualTo(ENDPOINT))
+                                    .withRequestBody(matchingJsonPath("$[?(@.store == true)]"))
+                                    .withRequestBody(WireMock.notContaining("previous_response_id")));
+            // Second request (after the tool round): chains to the first response id and
+            // carries only the delta item (the function_call_output), not the history
+            WireMock.verify(1,
+                            postRequestedFor(urlEqualTo(ENDPOINT))
+                                    .withRequestBody(matchingJsonPath("$.previous_response_id", equalTo("resp_test")))
+                                    .withRequestBody(matchingJsonPath("$[?(@.store == true)]"))
+                                    .withRequestBody(matchingJsonPath("$.input.length()", equalTo("1")))
+                                    .withRequestBody(matchingJsonPath(
+                                                                      "$.input[?(@.type == 'function_call_output')].call_id",
+                                                                      equalTo("call_PqPR7R6ueMHA71WNOnsMHDOQ"))));
+        }
+        else {
+            // Every request: full history, nothing stored, no chaining markers on the wire
+            WireMock.verify(2,
+                            postRequestedFor(urlEqualTo(ENDPOINT))
+                                    .withRequestBody(matchingJsonPath("$[?(@.store == false)]"))
+                                    .withRequestBody(WireMock.notContaining("previous_response_id"))
+                                    .withRequestBody(WireMock.notContaining("_responseId"))
+                                    .withRequestBody(WireMock.notContaining("_runId")));
+            // The tool call item is replayed as history on the second request
+            WireMock.verify(1,
+                            postRequestedFor(urlEqualTo(ENDPOINT))
+                                    .withRequestBody(matchingJsonPath("$.input[?(@.type == 'function_call')]"))
+                                    .withRequestBody(matchingJsonPath("$[?(@.store == false)]")));
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @SneakyThrows
+    @MethodSource("generateSeededHistoryChainingScenarios")
+    void seededHistoryChainingBehavior(final String name,
+                                       final ModelOptions.ResponseChaining chaining,
+                                       final List<AgentMessage> history,
+                                       final String expectedPreviousResponseId,
+                                       final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        setupBlockingMocks(4, "resp-tool-output");
+        final var agent = new OutputObjectAgent(chainingSetupBase(wiremock, chaining)
+                .outputGenerationMode(OutputGenerationMode.TOOL_BASED)
+                .outputGenerationTool(output -> output)
+                .build());
+
+        agent.execute(AgentInput.<OutputObject>builder()
+                .request(new TestAgents.OutputObject(null, "Hi"))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .oldMessages(new ArrayList<>(history))
+                .build());
+
+        final var firstRequest = postRequestedFor(urlEqualTo(ENDPOINT))
+                .withRequestBody(matchingJsonPath("$[?(@.store == true)]"))
+                .withRequestBody(WireMock.notContaining("_responseId"))
+                .withRequestBody(WireMock.notContaining("_compacted"));
+        if (expectedPreviousResponseId != null) {
+            WireMock.verify(1,
+                            firstRequest
+                                    .withRequestBody(matchingJsonPath("$.previous_response_id",
+                                                                      equalTo(expectedPreviousResponseId)))
+                                    .withRequestBody(matchingJsonPath("$.input.length()", equalTo("2")))
+                                    .withRequestBody(WireMock.notContaining("call_hist")));
+        }
+        else {
+            WireMock.verify(1,
+                            firstRequest.withRequestBody(WireMock.notContaining("previous_response_id")));
+        }
     }
 
     @Test

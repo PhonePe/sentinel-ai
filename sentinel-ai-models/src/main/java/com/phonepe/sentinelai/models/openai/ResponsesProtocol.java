@@ -17,12 +17,14 @@
 package com.phonepe.sentinelai.models.openai;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ParameterMapper;
+import com.phonepe.sentinelai.models.ModelOptions;
 import com.phonepe.sentinelai.models.wire.MessageCodec;
 import com.phonepe.sentinelai.models.wire.SseEvent;
 import com.phonepe.sentinelai.models.wire.WireContext;
@@ -32,6 +34,7 @@ import com.phonepe.sentinelai.models.wire.WireStreamEvent;
 import com.phonepe.sentinelai.models.wire.WireToolCall;
 import com.phonepe.sentinelai.models.wire.WireUsage;
 
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -67,6 +70,9 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_FUNCTION_CALL;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_MESSAGE;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.JSON_SCHEMA;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_COMPACTED;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_RESPONSE_ID;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_RUN_ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MAX_OUTPUT_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MODEL;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.NAME;
@@ -75,6 +81,7 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.OUTPUT_TEXT;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.OUTPUT_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.OUTPUT_TOKEN_DETAILS;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.PARAMETERS;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.PREVIOUS_RESPONSE_ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.REASONING;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.REASONING_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.REFUSAL;
@@ -131,15 +138,31 @@ public class ResponsesProtocol implements WireProtocol {
     public ObjectNode buildRequestBody(final WireContext ctx, final List<JsonNode> messages) {
         final var mapper = ctx.getMapper();
         final var body = mapper.createObjectNode();
+        final var chaining = ctx.getResponseChaining();
+        final var anchor = chaining == ModelOptions.ResponseChaining.OFF
+                ? null
+                : resolveChainAnchor(ctx, messages);
         final var inputArray = mapper.createArrayNode();
-        messages.forEach(inputArray::add);
+        if (anchor != null) {
+            // Chained request: only the input items appended after the anchor's response items
+            // go on the wire; the provider stitches the earlier conversation server-side.
+            messages.subList(anchor.getInputStartIndex(), messages.size())
+                    .forEach(item -> inputArray.add(stripChainMarkers(item, mapper)));
+            body.put(PREVIOUS_RESPONSE_ID, anchor.getResponseId());
+        }
+        else {
+            messages.forEach(item -> inputArray.add(stripChainMarkers(item, mapper)));
+        }
         body.set(INPUT, inputArray);
         body.put(MODEL, ctx.effectiveModelId());
         final var instructions = liftInstructions(inputArray);
         if (instructions != null) {
             body.put(INSTRUCTIONS, instructions);
         }
-        body.put(STORE, false);
+        // Chaining requires stored responses (the next hop references this one), so any
+        // chaining-enabled request stores its response provider-side. Chaining-off keeps the
+        // privacy default: nothing is retained.
+        body.put(STORE, anchor != null || chaining != ModelOptions.ResponseChaining.OFF);
         if (ctx.getUserId() != null && !ctx.getUserId().isEmpty()) {
             body.put(USER, ctx.getUserId());
         }
@@ -364,6 +387,61 @@ public class ResponsesProtocol implements WireProtocol {
             return WireResponse.FinishReasons.LENGTH;
         }
         return null;
+    }
+
+    /**
+     * Result of the chaining anchor scan: the id of the stored response the request chains to
+     * and the index of the first input item that still needs to be sent.
+     */
+    @Value
+    private static class ChainAnchor {
+        String responseId;
+        int inputStartIndex;
+    }
+
+    /**
+     * Scans the message nodes backwards for the chaining anchor: the most recent item produced
+     * by a stored response. A compaction marker always breaks the chain (compacted history is a
+     * local summary; the server-side copy must not be trusted past it), and in
+     * {@link ModelOptions.ResponseChaining#IN_RUN} mode only items from the current run anchor
+     * the chain. Returns null when there is no valid anchor, which sends the full history.
+     */
+    private ChainAnchor resolveChainAnchor(final WireContext ctx, final List<JsonNode> messages) {
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            final var item = messages.get(i);
+            if (item.path(MARKER_COMPACTED).asBoolean(false)) {
+                return null;
+            }
+            final var responseId = textOrNull(item.get(MARKER_RESPONSE_ID));
+            if (responseId == null) {
+                continue;
+            }
+            if (ctx.getResponseChaining() == ModelOptions.ResponseChaining.IN_RUN
+                    && !ctx.getRunId().equals(textOrNull(item.get(MARKER_RUN_ID)))) {
+                continue;
+            }
+            // All items sharing this response id (parallel tool calls of one response) belong
+            // to the stored server response; the delta starts after the last of them.
+            return new ChainAnchor(responseId, i + 1);
+        }
+        return null;
+    }
+
+    /**
+     * Copies a wire item without the internal chaining markers. Input nodes must never be
+     * mutated and markers must never reach the provider.
+     */
+    private JsonNode stripChainMarkers(final JsonNode item, final ObjectMapper mapper) {
+        if (item == null || !item.isObject()
+                || (!item.has(MARKER_RESPONSE_ID) && !item.has(MARKER_RUN_ID)
+                        && !item.has(MARKER_COMPACTED))) {
+            return item;
+        }
+        final var copy = (ObjectNode) item.deepCopy();
+        copy.remove(MARKER_RESPONSE_ID);
+        copy.remove(MARKER_RUN_ID);
+        copy.remove(MARKER_COMPACTED);
+        return copy;
     }
 
     private String liftInstructions(final com.fasterxml.jackson.databind.node.ArrayNode inputArray) {

@@ -55,6 +55,9 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.INPUT_IMAGE;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_FUNCTION_CALL;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_FUNCTION_CALL_OUTPUT;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_MESSAGE;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_COMPACTED;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_RESPONSE_ID;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_RUN_ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.NAME;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.OUTPUT;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ROLE;
@@ -72,6 +75,20 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.TYPE;
  * into the top-level {@code instructions} field. Stateless: every call takes the run mapper.
  */
 public class ResponsesMessageCodec implements MessageCodec {
+
+    /**
+     * Embeds internal chaining markers on nodes produced from agent responses that carry a
+     * provider response id. The markers never reach the provider; the protocol strips them
+     * while assembling the request body and uses them to resolve the chaining anchor.
+     */
+    private static void addChainMarkers(final ObjectNode node, final AgentResponse response) {
+        final var responseId = response.getResponseId();
+        if (responseId == null || responseId.isBlank()) {
+            return;
+        }
+        node.put(MARKER_RESPONSE_ID, responseId);
+        node.put(MARKER_RUN_ID, response.getRunId());
+    }
 
     private static String imageDetailOf(final MediaTypes.ImageDetail detail) {
         return switch (detail) {
@@ -145,7 +162,7 @@ public class ResponsesMessageCodec implements MessageCodec {
 
                     @Override
                     public ObjectNode visit(final UserPrompt userPrompt) {
-                        return switch (userPrompt.getContentType()) {
+                        final ObjectNode node = switch (userPrompt.getContentType()) {
                             case TEXT -> messageItem(mapper, ROLE_USER, withSentAt(userPrompt));
                             case AUDIO -> throw unsupported("Audio content");
                             case IMAGE_URL, IMAGE_DATA -> imageItem(mapper, userPrompt);
@@ -154,6 +171,10 @@ public class ResponsesMessageCodec implements MessageCodec {
                                                                           "Unexpected value: " + userPrompt
                                                                                   .getContentType());
                         };
+                        if (userPrompt.isCompacted()) {
+                            node.put(MARKER_COMPACTED, true);
+                        }
+                        return node;
                     }
                 });
             }
@@ -163,12 +184,16 @@ public class ResponsesMessageCodec implements MessageCodec {
                 return response.accept(new AgentResponseVisitor<>() {
                     @Override
                     public ObjectNode visit(final StructuredOutput structuredOutput) {
-                        return messageItem(mapper, ROLE_ASSISTANT, structuredOutput.getContent());
+                        final var node = messageItem(mapper, ROLE_ASSISTANT, structuredOutput.getContent());
+                        addChainMarkers(node, response);
+                        return node;
                     }
 
                     @Override
                     public ObjectNode visit(final Text text) {
-                        return messageItem(mapper, ROLE_ASSISTANT, text.getContent());
+                        final var node = messageItem(mapper, ROLE_ASSISTANT, text.getContent());
+                        addChainMarkers(node, response);
+                        return node;
                     }
 
                     @Override
@@ -178,6 +203,7 @@ public class ResponsesMessageCodec implements MessageCodec {
                         node.put(CALL_ID, toolCall.getToolCallId());
                         node.put(NAME, toolCall.getToolName());
                         node.put(ARGUMENTS, toolCall.getArguments());
+                        addChainMarkers(node, response);
                         return node;
                     }
                 });

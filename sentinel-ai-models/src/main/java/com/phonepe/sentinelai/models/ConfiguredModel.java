@@ -1016,6 +1016,7 @@ public class ConfiguredModel implements Model {
                 .outputGenerationMode(outputGenerationMode)
                 .extras(modelOptions.getExtras())
                 .toolChoice(modelOptions.getToolChoice())
+                .responseChaining(modelOptions.getResponseChaining())
                 .streaming(streaming)
                 .mapper(mapper)
                 .extensionRequestTransformers(List.copyOf(runContext.getRequestTransformers()))

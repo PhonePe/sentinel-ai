@@ -94,6 +94,13 @@ public class WireContext {
     @Builder.Default
     ModelOptions.ToolChoice toolChoice = ModelOptions.DEFAULT_TOOL_CHOICE;
 
+    /**
+     * Server-side response chaining policy; protocols that support chaining (OpenAI Responses
+     * {@code previous_response_id}) honor it, others ignore it. Default {@link ModelOptions.ResponseChaining#OFF}.
+     */
+    @Builder.Default
+    ModelOptions.ResponseChaining responseChaining = ModelOptions.DEFAULT_RESPONSE_CHAINING;
+
     @NonNull
     ObjectMapper mapper;
 
