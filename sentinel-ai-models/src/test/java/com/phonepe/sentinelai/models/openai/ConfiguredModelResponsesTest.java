@@ -61,6 +61,7 @@ import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
@@ -91,6 +92,29 @@ class ConfiguredModelResponsesTest {
      * The Responses endpoint used by the stubs.
      */
     private static final String ENDPOINT = "/responses";
+
+    /**
+     * Error body a provider returns when the {@code previous_response_id} of a chained request is
+     * unknown or expired (chain break).
+     */
+    private static final String CHAIN_BREAK_ERROR_BODY = """
+            {"error": {"message": "No response found with id 'resp_run1'.", \
+            "type": "invalid_request_error", "param": "previous_response_id", \
+            "code": "previous_response_id_not_found"}}""";
+
+    /**
+     * Plain single-message SSE stream the retried request returns.
+     */
+    private static final String STREAM_RETRY_SSE_BODY = """
+            event: response.output_text.delta
+            data: {"delta": "{\\\"output\\\": \\\"Hello, Santanu!\\\"}"}
+
+            event: response.completed
+            data: {"response": {"id": "resp_stream", "object": "response", "created_at": 1755064668, \
+            "model": "gpt-4o", "status": "completed", "output": [{"type": "message", "role": "assistant", \
+            "status": "completed", "content": [{"type": "output_text", "text": "{\\\"output\\\": \\\"Hello, Santanu!\\\"}"}]}], \
+            "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}}}
+            """;
 
     static Stream<Arguments> generateChainingToolLoopScenarios() {
         // Fresh run without prior history: within the run's tool loop, IN_RUN and SESSION
@@ -308,6 +332,132 @@ class ConfiguredModelResponsesTest {
                         .notContaining("\"stream\"")));
     }
 
+    @Test
+    @SneakyThrows
+    void chainBreakRetriesOnStreamingPath(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(ENDPOINT).inScenario("chain-break-stream")
+                .whenScenarioStateIs(STARTED)
+                .willReturn(aResponse().withStatus(400)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(CHAIN_BREAK_ERROR_BODY))
+                .willSetStateTo("retried"));
+        stubFor(post(ENDPOINT).inScenario("chain-break-stream")
+                .whenScenarioStateIs("retried")
+                .willReturn(okForContentType("text/event-stream", STREAM_RETRY_SSE_BODY)));
+
+        final var agent = new TestAgent(chainingSetupBase(wiremock,
+                                                          ModelOptions.ResponseChaining.SESSION)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .oldMessages(new ArrayList<>(historyWithAnchor()))
+                .build(), streamConsumer())
+                .join();
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertEquals("Hello, Santanu!", response.getData());
+        WireMock.verify(1,
+                        postRequestedFor(urlEqualTo(ENDPOINT))
+                                .withRequestBody(matchingJsonPath("$.previous_response_id", equalTo("resp_run1"))));
+        WireMock.verify(1,
+                        postRequestedFor(urlEqualTo(ENDPOINT))
+                                .withRequestBody(WireMock.notContaining("previous_response_id"))
+                                .withRequestBody(matchingJsonPath("$[?(@.store == true)]")));
+    }
+
+    @Test
+    @SneakyThrows
+    void chainBreakRetriesOnceWithFullHistory(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(ENDPOINT).inScenario("chain-break-retry")
+                .whenScenarioStateIs(STARTED)
+                .willReturn(aResponse().withStatus(400)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(CHAIN_BREAK_ERROR_BODY))
+                .willSetStateTo("retried"));
+        stubFor(post(ENDPOINT).inScenario("chain-break-retry")
+                .whenScenarioStateIs("retried")
+                .willReturn(okForContentType("application/json",
+                                             TestStubs.readStubFile(1,
+                                                                    "resp-notools",
+                                                                    ConfiguredModelResponsesTest.class))));
+
+        final var agent = new OutputObjectAgent(chainingSetupBase(wiremock,
+                                                                  ModelOptions.ResponseChaining.SESSION)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+        final var response = agent.execute(AgentInput.<OutputObject>builder()
+                .request(new TestAgents.OutputObject(null, "Hi"))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .oldMessages(new ArrayList<>(historyWithAnchor()))
+                .build());
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertNotNull(response.getData());
+        // First request chained to the seeded anchor and was rejected
+        WireMock.verify(1,
+                        postRequestedFor(urlEqualTo(ENDPOINT))
+                                .withRequestBody(matchingJsonPath("$.previous_response_id", equalTo("resp_run1"))));
+        // Retry carries the full history with no anchor and is stored (it becomes the new anchor)
+        WireMock.verify(1,
+                        postRequestedFor(urlEqualTo(ENDPOINT))
+                                .withRequestBody(WireMock.notContaining("previous_response_id"))
+                                .withRequestBody(matchingJsonPath("$.input.length()", equalTo("4")))
+                                .withRequestBody(matchingJsonPath(
+                                                                  "$.input[?(@.type == 'function_call' && @.call_id == 'call_hist')]"))
+                                .withRequestBody(matchingJsonPath("$[?(@.store == true)]")));
+    }
+
+    @Test
+    @SneakyThrows
+    void chainBreakRetryHappensOnlyOnce(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(ENDPOINT).inScenario("chain-break-once")
+                .whenScenarioStateIs(STARTED)
+                .willReturn(aResponse().withStatus(400)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(CHAIN_BREAK_ERROR_BODY))
+                .willSetStateTo("second"));
+        stubFor(post(ENDPOINT).inScenario("chain-break-once")
+                .whenScenarioStateIs("second")
+                .willReturn(aResponse().withStatus(400)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(CHAIN_BREAK_ERROR_BODY))
+                .willSetStateTo("third"));
+        stubFor(post(ENDPOINT).inScenario("chain-break-once")
+                .whenScenarioStateIs("third")
+                .willReturn(okForContentType("application/json",
+                                             TestStubs.readStubFile(1,
+                                                                    "resp-notools",
+                                                                    ConfiguredModelResponsesTest.class))));
+
+        final var agent = new OutputObjectAgent(chainingSetupBase(wiremock,
+                                                                  ModelOptions.ResponseChaining.SESSION)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+        final var response = agent.execute(AgentInput.<OutputObject>builder()
+                .request(new TestAgents.OutputObject(null, "Hi"))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .oldMessages(new ArrayList<>(historyWithAnchor()))
+                .build());
+
+        // The second failure surfaces; the retry never runs a third time
+        assertEquals(ErrorType.MODEL_CALL_HTTP_FAILURE, response.getError().getErrorType());
+        WireMock.verify(2, postRequestedFor(urlEqualTo(ENDPOINT)));
+    }
+
     @ParameterizedTest(name = "{0}")
     @SneakyThrows
     @MethodSource("generateChainingToolLoopScenarios")
@@ -355,6 +505,34 @@ class ConfiguredModelResponsesTest {
                                     .withRequestBody(matchingJsonPath("$.input[?(@.type == 'function_call')]"))
                                     .withRequestBody(matchingJsonPath("$[?(@.store == false)]")));
         }
+    }
+
+    @Test
+    @SneakyThrows
+    void nonChainBreakErrorIsNotRetried(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(ENDPOINT)
+                .willReturn(aResponse().withStatus(400)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"error": {"message": "The model `gpt-4o` does not exist", \
+                                "type": "invalid_request_error", "param": "model"}}""")));
+
+        final var agent = new OutputObjectAgent(chainingSetupBase(wiremock,
+                                                                  ModelOptions.ResponseChaining.SESSION)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+        final var response = agent.execute(AgentInput.<OutputObject>builder()
+                .request(new TestAgents.OutputObject(null, "Hi"))
+                .requestMetadata(AgentRequestMetadata.builder()
+                        .sessionId("s1")
+                        .userId("ss")
+                        .build())
+                .oldMessages(new ArrayList<>(historyWithAnchor()))
+                .build());
+
+        assertEquals(ErrorType.MODEL_CALL_HTTP_FAILURE, response.getError().getErrorType());
+        WireMock.verify(1, postRequestedFor(urlEqualTo(ENDPOINT)));
     }
 
     @ParameterizedTest(name = "{0}")

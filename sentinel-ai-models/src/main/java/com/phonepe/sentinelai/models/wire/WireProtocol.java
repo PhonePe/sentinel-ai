@@ -27,6 +27,7 @@ import com.phonepe.sentinelai.core.tools.ParameterMapper;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * One implementation per wire format (OpenAI Chat Completions, OpenAI Responses, Anthropic
@@ -100,6 +101,16 @@ public interface WireProtocol {
     }
 
     /**
+     * Builds the retry body for a chain break: the full conversation history with no anchor, so
+     * the provider rebuilds its server-side state and stores the new response. Called only after
+     * {@link #isChainBreakError(int, JsonNode)} returned true for the same failure. Protocols
+     * without server-side chaining return an empty Optional.
+     */
+    default Optional<ObjectNode> buildChainBreakRetryBody(WireContext ctx, List<JsonNode> messages) {
+        return Optional.empty();
+    }
+
+    /**
      * Builds the flat tool array for protocols with a flat tools list.
      */
     default ArrayNode buildFlatTools(WireContext ctx) {
@@ -149,6 +160,14 @@ public interface WireProtocol {
      *         plus the protocol path.
      */
     String endpoint(WireContext ctx);
+
+    /**
+     * Returns true when the call failed because the {@code previous_response_id} it chained to is
+     * unknown or expired (a chain break). Protocols without server-side chaining return false.
+     */
+    default boolean isChainBreakError(int status, JsonNode errorBody) {
+        return false;
+    }
 
     /**
      * @return The stateless codec translating {@link AgentMessage} to this wire format.

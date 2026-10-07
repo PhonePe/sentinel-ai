@@ -81,6 +81,8 @@ public class ResponsesFields {
     public static final String STATUS = "status";
     public static final String ERROR = "error";
     public static final String MESSAGE = "message";
+    public static final String PARAM = "param";
+    public static final String CODE = "code";
     public static final String INCOMPLETE_DETAILS = "incomplete_details";
     public static final String REASON = "reason";
     public static final String USAGE = "usage";

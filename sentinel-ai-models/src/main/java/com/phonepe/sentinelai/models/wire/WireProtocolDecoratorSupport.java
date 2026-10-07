@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Base for protocol decorators. Implements every {@link WireProtocol} method by delegation to
@@ -36,6 +37,11 @@ public abstract class WireProtocolDecoratorSupport implements WireProtocol {
     @Override
     public void applyExtras(final ObjectNode body, final JsonNode extras) {
         delegate().applyExtras(body, transformExtras(extras));
+    }
+
+    @Override
+    public Optional<ObjectNode> buildChainBreakRetryBody(final WireContext ctx, final List<JsonNode> messages) {
+        return delegate().buildChainBreakRetryBody(ctx, messages);
     }
 
     @Override
@@ -56,6 +62,11 @@ public abstract class WireProtocolDecoratorSupport implements WireProtocol {
     @Override
     public List<WireStreamEvent> decodeStreamEvent(final WireContext ctx, final SseEvent event) {
         return delegate().decodeStreamEvent(ctx, transformStreamEvent(event));
+    }
+
+    @Override
+    public boolean isChainBreakError(final int status, final JsonNode errorBody) {
+        return delegate().isChainBreakError(status, errorBody);
     }
 
     @Override

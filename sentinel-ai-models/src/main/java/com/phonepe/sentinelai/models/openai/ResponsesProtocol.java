@@ -41,10 +41,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ARGUMENTS;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.CACHED_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.CALL_ID;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.CODE;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.CONTENT;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.DELTA;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.DESCRIPTION;
@@ -74,12 +76,14 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_COMPAC
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_RESPONSE_ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_RUN_ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MAX_OUTPUT_TOKENS;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.MESSAGE;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MODEL;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.NAME;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.OUTPUT_INDEX;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.OUTPUT_TEXT;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.OUTPUT_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.OUTPUT_TOKEN_DETAILS;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.PARAM;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.PARAMETERS;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.PREVIOUS_RESPONSE_ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.REASONING;
@@ -116,6 +120,9 @@ public class ResponsesProtocol implements WireProtocol {
 
     private static final String ENDPOINT_PATH = "/responses";
 
+    private static final int HTTP_BAD_REQUEST = 400;
+    private static final int HTTP_NOT_FOUND = 404;
+
     private final MessageCodec messageCodec;
 
     /**
@@ -136,10 +143,23 @@ public class ResponsesProtocol implements WireProtocol {
 
     @Override
     public ObjectNode buildRequestBody(final WireContext ctx, final List<JsonNode> messages) {
+        return buildRequestBody(ctx, messages, false);
+    }
+
+    @Override
+    public Optional<ObjectNode> buildChainBreakRetryBody(final WireContext ctx, final List<JsonNode> messages) {
+        // Full history with no anchor; chaining stays on, so the retried response is stored
+        // provider-side and becomes the anchor of the next request.
+        return Optional.of(buildRequestBody(ctx, messages, true));
+    }
+
+    private ObjectNode buildRequestBody(final WireContext ctx,
+                                        final List<JsonNode> messages,
+                                        final boolean suppressChainAnchor) {
         final var mapper = ctx.getMapper();
         final var body = mapper.createObjectNode();
         final var chaining = ctx.getResponseChaining();
-        final var anchor = chaining == ModelOptions.ResponseChaining.OFF
+        final var anchor = chaining == ModelOptions.ResponseChaining.OFF || suppressChainAnchor
                 ? null
                 : resolveChainAnchor(ctx, messages);
         final var inputArray = mapper.createArrayNode();
@@ -196,6 +216,17 @@ public class ResponsesProtocol implements WireProtocol {
             case 429 -> ErrorType.MODEL_CALL_RATE_LIMIT_EXCEEDED;
             default -> ErrorType.MODEL_CALL_HTTP_FAILURE;
         };
+    }
+
+    @Override
+    public boolean isChainBreakError(final int status, final JsonNode errorBody) {
+        if ((status != HTTP_BAD_REQUEST && status != HTTP_NOT_FOUND)
+                || errorBody == null || errorBody.isNull()) {
+            return false;
+        }
+        // The rejected id surfaces in different places depending on the server: the OpenAI error
+        // object carries it in param/code/message; compatible gateways may flatten the error.
+        return mentionsPreviousResponseId(errorBody) || mentionsPreviousResponseId(errorBody.path(ERROR));
     }
 
     @Override
@@ -397,6 +428,26 @@ public class ResponsesProtocol implements WireProtocol {
     private static class ChainAnchor {
         String responseId;
         int inputStartIndex;
+    }
+
+    /**
+     * Returns true when the error node references {@code previous_response_id}, whether as the
+     * offending parameter, in the error code or in the message text.
+     */
+    private static boolean mentionsPreviousResponseId(final JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return false;
+        }
+        final var param = textOrNull(node.get(PARAM));
+        if (PREVIOUS_RESPONSE_ID.equals(param)) {
+            return true;
+        }
+        final var code = textOrNull(node.get(CODE));
+        if (code != null && code.contains(PREVIOUS_RESPONSE_ID)) {
+            return true;
+        }
+        final var message = textOrNull(node.get(MESSAGE));
+        return message != null && message.contains(PREVIOUS_RESPONSE_ID);
     }
 
     /**

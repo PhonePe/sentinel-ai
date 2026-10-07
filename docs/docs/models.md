@@ -172,8 +172,12 @@ tokens by the provider.
 responses for at least 30 days. Keep chaining off if that is unacceptable. Compaction (automatic or manual) always
 restarts the chain: the compacted summary plus the post-compaction history is sent as a fresh full request.
 
-Chain-break errors (for example an expired or unknown stored response id) are surfaced to the caller as model call
-errors; there is no automatic full-history retry yet.
+**Chain-break retry**: stored responses expire (OpenAI retains them for at least 30 days), so a chained request can
+fail because its `previous_response_id` is unknown or expired. When a chained call is rejected this way — HTTP 400/404
+with `previous_response_id` named in the error `param`, `code` or `message` — the model retries once with the full
+history and no anchor. Chaining stays on for the retry, so the retried response is stored and becomes the anchor of
+the next request. Any other failure surfaces to the caller unchanged, the retry runs at most once per model call, and
+a streaming response that already delivered events is never retried.
 
 ```java
 final var modelOptions = ModelOptions.builder()

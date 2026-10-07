@@ -398,9 +398,14 @@ public class ConfiguredModel implements Model {
 
                 final WireResponse response;
                 try {
-                    response = callModel(ctx,
-                                         requestBody,
-                                         buildTransformerContext(ctx, context, allMessages, wireMessages));
+                    response = callModelWithChainBreakRetry(ctx,
+                                                            requestBody,
+                                                            buildTransformerContext(ctx,
+                                                                                    context,
+                                                                                    allMessages,
+                                                                                    wireMessages),
+                                                            wireMessages,
+                                                            stats);
                 }
                 catch (final Exception e) {
                     return errorToModelOutput(context, e, newMessages, allMessages);
@@ -619,9 +624,14 @@ public class ConfiguredModel implements Model {
                 raiseMessageSentEvent(context, prevMessages, allMessages);
                 Stream<WireStreamEvent> eventStream;
                 try {
-                    eventStream = openSseStream(ctx,
-                                                requestBody,
-                                                buildTransformerContext(ctx, context, allMessages, wireMessages))
+                    eventStream = openSseStreamWithChainBreakRetry(ctx,
+                                                                   requestBody,
+                                                                   buildTransformerContext(ctx,
+                                                                                           context,
+                                                                                           allMessages,
+                                                                                           wireMessages),
+                                                                   wireMessages,
+                                                                   stats)
                             .filter(event -> !event.isDoneSentinel())
                             .mapMulti((SseEvent event, Consumer<WireStreamEvent> consumer) -> protocol
                                     .decodeStreamEvent(ctx, event)
@@ -883,6 +893,86 @@ public class ConfiguredModel implements Model {
             final var json = ctx.getMapper().readTree(bytes);
             return protocol.decodeResponse(ctx, json);
         }
+    }
+
+    /**
+     * Executes one blocking model call; on a chain break (the provider rejected the
+     * {@code previous_response_id} of a chained request) retries once with the full history.
+     */
+    private WireResponse callModelWithChainBreakRetry(final WireContext ctx,
+                                                      final ObjectNode requestBody,
+                                                      final RequestTransformerContext transformerContext,
+                                                      final List<JsonNode> wireMessages,
+                                                      final ModelUsageStats stats) throws IOException {
+        try {
+            return callModel(ctx, requestBody, transformerContext);
+        }
+        catch (final Exception e) {
+            final var retryBody = chainBreakRetryBody(ctx, e, wireMessages);
+            if (retryBody.isEmpty()) {
+                throw e;
+            }
+            stats.incrementRequestsForRun();
+            return callModel(ctx, retryBody.get(), transformerContext);
+        }
+    }
+
+    /**
+     * Opens the model stream; on a chain break (the provider rejected the
+     * {@code previous_response_id} of a chained request) retries once with the full history. A
+     * stream that already delivered events is never retried: the failure surfaces before the
+     * first frame or not at all.
+     */
+    private Stream<SseEvent> openSseStreamWithChainBreakRetry(final WireContext ctx,
+                                                              final ObjectNode requestBody,
+                                                              final RequestTransformerContext transformerContext,
+                                                              final List<JsonNode> wireMessages,
+                                                              final ModelUsageStats stats) {
+        try {
+            return openSseStream(ctx, requestBody, transformerContext);
+        }
+        catch (final Exception e) {
+            final var retryBody = chainBreakRetryBody(ctx, e, wireMessages);
+            if (retryBody.isEmpty()) {
+                throw e;
+            }
+            stats.incrementRequestsForRun();
+            return openSseStream(ctx, retryBody.get(), transformerContext);
+        }
+    }
+
+    /**
+     * Builds the chain-break retry body when a chained call was rejected because its
+     * {@code previous_response_id} is unknown or expired; empty when the failure is not a
+     * retryable chain break. The retry carries the full history with no anchor, and chaining
+     * stays on so the retried response is stored and becomes the new chain anchor.
+     */
+    private Optional<ObjectNode> chainBreakRetryBody(final WireContext ctx,
+                                                     final Throwable error,
+                                                     final List<JsonNode> wireMessages) {
+        if (ctx.getResponseChaining() == ModelOptions.ResponseChaining.OFF) {
+            return Optional.empty();
+        }
+        final var rootCause = AgentUtils.rootCause(error);
+        final int status;
+        final String errorBody;
+        if (rootCause instanceof HttpModelCallException httpError) {
+            status = httpError.getStatus();
+            errorBody = httpError.body;
+        }
+        else if (rootCause instanceof HttpStreamException streamError) {
+            status = streamError.getStatus();
+            errorBody = streamError.body;
+        }
+        else {
+            return Optional.empty();
+        }
+        if (!protocol.isChainBreakError(status, parseErrorBody(ctx.getMapper(), errorBody))) {
+            return Optional.empty();
+        }
+        log.warn("Chained model call rejected with status {} (previous_response_id unknown or "
+                + "expired); retrying once with the full history", status);
+        return protocol.buildChainBreakRetryBody(ctx, wireMessages);
     }
 
     /**
