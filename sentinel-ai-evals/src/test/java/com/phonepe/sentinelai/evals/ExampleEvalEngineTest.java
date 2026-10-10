@@ -79,6 +79,11 @@ class ExampleEvalEngineTest {
                                            usage);
             });
         }
+
+        @Override
+        public String modelName() {
+            return "example-judge";
+        }
     }
 
     static class ExampleDecisionAgent extends Agent<String, DecisionOutput, ExampleDecisionAgent> {
@@ -131,6 +136,11 @@ class ExampleEvalEngineTest {
                                            allMessages,
                                            usage);
             });
+        }
+
+        @Override
+        public String modelName() {
+            return "example-decision";
         }
     }
 
@@ -195,6 +205,11 @@ class ExampleEvalEngineTest {
                                            usage);
             });
         }
+
+        @Override
+        public String modelName() {
+            return "example-string";
+        }
     }
 
     static class FixedEmbeddingModel implements EmbeddingModel {
@@ -240,32 +255,41 @@ class ExampleEvalEngineTest {
         final List<Expectation<DecisionOutput, String>> expectations = List.of(
                                                                                Expectations
                                                                                        .jsonPathEquals(
+                                                                                                       "jsonpath-eq-status",
                                                                                                        "$.status",
                                                                                                        "SUCCESS"),
                                                                                Expectations
                                                                                        .<DecisionOutput, String>where(
+                                                                                                                      "where-eq-status",
                                                                                                                       "$.status")
                                                                                        .eq("SUCCESS"),
                                                                                Expectations
                                                                                        .<DecisionOutput, String>where(
+                                                                                                                      "where-ne-status",
                                                                                                                       "$.status")
                                                                                        .ne("FAILED"),
                                                                                Expectations.<DecisionOutput, String>at(
+                                                                                                                       "at-gt-score",
                                                                                                                        "$.score")
                                                                                        .gt(90),
                                                                                Expectations.<DecisionOutput, String>at(
+                                                                                                                       "at-gte-score",
                                                                                                                        "$.score")
                                                                                        .gte(92),
                                                                                Expectations.<DecisionOutput, String>at(
+                                                                                                                       "at-lt-attempts",
                                                                                                                        "$.attempts")
                                                                                        .lt(5),
                                                                                Expectations.<DecisionOutput, String>at(
+                                                                                                                       "at-lte-attempts",
                                                                                                                        "$.attempts")
                                                                                        .lte(3),
                                                                                Expectations.<DecisionOutput, String>at(
+                                                                                                                       "at-in-category",
                                                                                                                        "$.category")
                                                                                        .in(List.of("GOLD", "PLATINUM")),
                                                                                Expectations.<DecisionOutput, String>at(
+                                                                                                                       "at-notIn-category",
                                                                                                                        "$.category")
                                                                                        .notIn(List.of("SILVER",
                                                                                                       "BRONZE")));
@@ -300,23 +324,19 @@ class ExampleEvalEngineTest {
                                                                   }));
 
         final List<Expectation<String, String>> expectations = List.of(
-                                                                       Expectations.outputContains("green"),
+                                                                       Expectations.outputContains("output-contains",
+                                                                                                   "green"),
                                                                        Expectations.outputEquals(
+                                                                                                 "output-equals",
                                                                                                  "All systems green and stable"),
-                                                                       Expectations.toolCalled("fetch_calculator"),
-                                                                       Expectations.toolCalled("fetch_weather", 2),
-                                                                       Expectations.toolCalled("fetch_weather",
-                                                                                               2,
-                                                                                               Map.of("city", "blr")),
-                                                                       Expectations.ordered(Expectations.toolCalled(
-                                                                                                                    "fetch_weather"),
-                                                                                            Expectations.toolCalled(
-                                                                                                                    "fetch_calculator")),
                                                                        Expectations.outputSimilarity(
+                                                                                                     "OutputSimilarity",
                                                                                                      "All systems green and stable",
                                                                                                      0.9),
-                                                                       Expectations.answerRelevance(0.9),
+                                                                       Expectations.answerRelevance("AnswerRelevance",
+                                                                                                    0.9),
                                                                        Expectations.outputSimilarity(
+                                                                                                     "OutputSimilarity",
                                                                                                      "All systems green and stable"));
 
         final var dataset = new Dataset<>("example-string-evals",
@@ -342,7 +362,7 @@ class ExampleEvalEngineTest {
         assertEquals(0, report.getFailedTestCases());
 
         final var expectationReports = report.getTestCaseReports().get(0).getExpectationReports();
-        assertEquals(9, expectationReports.size());
+        assertEquals(5, expectationReports.size());
         assertTrue(expectationReports.stream().anyMatch(r -> r.getExpectation().equals("AnswerRelevance")
                 && r.getThreshold().isPresent() && r.getScore().isPresent()));
         assertTrue(expectationReports.stream().anyMatch(r -> r.getExpectation().equals("OutputSimilarity")

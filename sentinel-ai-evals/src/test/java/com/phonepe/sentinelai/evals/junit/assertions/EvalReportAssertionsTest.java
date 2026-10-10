@@ -45,11 +45,14 @@ class EvalReportAssertionsTest {
                 .testCaseReports(List.of(new TestCaseReport("input",
                                                             EvalStatus.FAILED,
                                                             "output",
-                                                            List.of(ExpectationReport.passFail("contains green",
-                                                                                               false,
-                                                                                               "Expected output to contain green")),
+                                                            List.of(ExpectationReport.builder()
+                                                                    .expectation("contains green")
+                                                                    .status(EvalStatus.FAILED)
+                                                                    .details("Expected output to contain green")
+                                                                    .build()),
                                                             "Expectation failed: contains green",
-                                                            1)))
+                                                            1,
+                                                            null)))
                 .build();
 
         assertThrows(AssertionError.class, () -> EvalReportAssertions.assertNoFailures(report));
@@ -70,9 +73,14 @@ class EvalReportAssertionsTest {
                 .testCaseReports(List.of(new TestCaseReport("input",
                                                             EvalStatus.PASSED,
                                                             "output",
-                                                            List.of(ExpectationReport.passFail("x", true, "ok")),
+                                                            List.of(ExpectationReport.builder()
+                                                                    .expectation("x")
+                                                                    .status(EvalStatus.PASSED)
+                                                                    .details("ok")
+                                                                    .build()),
                                                             "All expectations passed",
-                                                            1)))
+                                                            1,
+                                                            null)))
                 .build();
 
         assertDoesNotThrow(() -> EvalReportAssertions.assertNoFailures(report));

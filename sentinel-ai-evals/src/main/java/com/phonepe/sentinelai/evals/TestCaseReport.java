@@ -36,5 +36,7 @@ public class TestCaseReport {
     /** Human-readable summary of the outcome. */
     String details;
     /** Test-case execution duration in milliseconds. */
-    long durationMs;
+    long evalDurationMs;
+    /** Agent execute() latency in milliseconds, or null if unavailable. */
+    Long agentLatencyMs;
 }

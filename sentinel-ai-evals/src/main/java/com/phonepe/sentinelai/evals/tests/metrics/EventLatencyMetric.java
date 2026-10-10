@@ -14,28 +14,26 @@
  * limitations under the License.
  */
 
-package com.phonepe.sentinelai.evals;
+package com.phonepe.sentinelai.evals.tests.metrics;
 
-import lombok.Builder;
+import com.phonepe.sentinelai.core.events.EventType;
+
 import lombok.Value;
 
-import java.util.Optional;
-
 /**
- * Report of an expectation evaluation.
+ * A metric that measures the average latency of a specific agent event type.
  *
- * Supports both pass/fail and metric-based (scored) expectations:
- * - Pass/fail: score and threshold are empty
- * - Scored: score (0.0-1.0) and optional threshold are populated
+ * @param <R> result/output type
+ * @param <T> input/request type
  */
 @Value
-@Builder
-public class ExpectationReport {
-    String expectation;
-    EvalStatus status;
-    String details;
-    @Builder.Default
-    Optional<Double> score = Optional.empty();
-    @Builder.Default
-    Optional<Double> threshold = Optional.empty();
+public class EventLatencyMetric<R, T> implements Metric<R, T> {
+    String agentName;
+    EventType eventType;
+    String eventKey;
+
+    @Override
+    public String metricName() {
+        return "EventLatency";
+    }
 }

@@ -201,6 +201,11 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
     }
 
     @Override
+    public String modelName() {
+        return modelName;
+    }
+
+    @Override
     public CompletableFuture<ModelOutput> compute(ModelRunContext context,
                                                   Collection<ModelOutputDefinition> outputDefinitions,
                                                   List<AgentMessage> oldMessages,

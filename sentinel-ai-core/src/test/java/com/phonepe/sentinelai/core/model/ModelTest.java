@@ -52,6 +52,11 @@ class ModelTest {
                 return null;
             }
 
+            @Override
+            public String modelName() {
+                return "test-model";
+            }
+
         };
         assertThrows(NotImplementedException.class,
                      () -> model.streamText(null,
@@ -75,6 +80,11 @@ class ModelTest {
                                                           EarlyTerminationStrategy earlyTerminationStrategy,
                                                           List<AgentMessagesPreProcessor> preProcessors) {
                 return null;
+            }
+
+            @Override
+            public String modelName() {
+                return "test-model";
             }
 
         };

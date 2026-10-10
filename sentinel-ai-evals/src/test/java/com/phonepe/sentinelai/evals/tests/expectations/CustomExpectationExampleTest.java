@@ -55,20 +55,16 @@ class CustomExpectationExampleTest {
      * This shows how easy it is to create additional custom expectations
      * for your specific domain needs.
      */
-    static class ResponseTimeExpectation implements Expectation<String, String> {
+    static class ResponseTimeExpectation extends Expectation<String, String> {
         private final long maxMillis;
 
         public ResponseTimeExpectation(long maxMillis) {
+            super("response-time");
             this.maxMillis = maxMillis;
         }
 
         public long getMaxMillis() {
             return maxMillis;
-        }
-
-        @Override
-        public String toString() {
-            return "ResponseTimeExpectation(maxMs=%d)".formatted(maxMillis);
         }
     }
 
@@ -86,11 +82,6 @@ class CustomExpectationExampleTest {
             final long responseTime = context.getModelUsageStats().getTotalTokens(); // Dummy value
             return responseTime <= expectation.getMaxMillis();
         }
-
-        @Override
-        public String toString() {
-            return expectation.toString();
-        }
     }
 
     /**
@@ -100,11 +91,12 @@ class CustomExpectationExampleTest {
      * WHAT to assert. It should implement the Expectation interface and hold
      * all necessary parameters for evaluation.
      */
-    static class StringLengthExpectation implements Expectation<String, String> {
+    static class StringLengthExpectation extends Expectation<String, String> {
         private final int minLength;
         private final int maxLength;
 
         public StringLengthExpectation(int minLength, int maxLength) {
+            super("string-length");
             if (minLength < 0 || maxLength < minLength) {
                 throw new IllegalArgumentException(
                                                    "minLength must be >= 0 and <= maxLength");
@@ -119,11 +111,6 @@ class CustomExpectationExampleTest {
 
         public int getMinLength() {
             return minLength;
-        }
-
-        @Override
-        public String toString() {
-            return "StringLengthExpectation(min=%d, max=%d)".formatted(minLength, maxLength);
         }
     }
 
@@ -147,11 +134,6 @@ class CustomExpectationExampleTest {
             }
             final int length = result.length();
             return length >= expectation.getMinLength() && length <= expectation.getMaxLength();
-        }
-
-        @Override
-        public String toString() {
-            return expectation.toString();
         }
     }
 

@@ -255,7 +255,7 @@
                 </dependencies>
                 <configuration>
                     <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
-                    <outputDirectory>${delombok.output}</outputDirectory>
+                    <outputDirectory>${project.build.directory}/delombok</outputDirectory>
                     <addOutputDirectory>false</addOutputDirectory>
                 </configuration>
                 <executions>
