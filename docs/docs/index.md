@@ -23,18 +23,22 @@ tasks.
 
 ## Available Modules
 
-Sentinel AI libraries are published on maven central. Sentinel-ai is arranged as modules:
+Sentinel AI libraries are published on Maven Central. Sentinel AI is arranged as modules:
 
-- `sentinel-ai-core`: The core library that contains the main classes and interfaces for building agents.
-- `sentinel-ai-models-simple-openai`: Using OpenAI api compliant models for agents.
-- `sentinel-ai-embedding`: Provides embedding models to be used for indexing information in vector databases.
+- `sentinel-ai-bom`: BOM for managing compatible Sentinel AI dependency versions. See [Add the required dependencies](#add-the-required-dependencies).
+- `sentinel-ai-core`: The core library that contains the main classes and interfaces for building agents. See [Agents](agents.md).
+- `sentinel-ai-models-simple-openai`: Support for OpenAI API-compatible models. See [Agents](agents.md).
+- `sentinel-ai-embedding`: Embedding abstractions and implementations for indexing and retrieval workflows.
+- `sentinel-ai-toolbox-mcp`: Support for Model Context Protocol (MCP) servers. See [Using MCP Servers](using-mcp-servers.md).
+- `sentinel-ai-toolbox-remote-http`: Flexible toolbox for making declarative HTTP calls to remote services. See [Calling Remote Services](calling-remote-services.md).
 - `sentinel-ai-agent-memory`: Extension that implements memory extraction and storage from conversations. See [Agent Memory](agent-memory.md).
 - `sentinel-ai-session`: Extension that can be used to store and update information about a conversation session. See [Messages and Sessions](messages-session.md).
-- `sentinel-ai-storage-es`: Elasticsearch based implementation for storage abstractions for agent memory, sessions etc.
-- `sentinel-ai-configured-agents`: Implementation for Agent Registry and Planner-Worker orchestration. See [Agent Registry](agent-registry.md).
-- `sentinel-ai-toolbox-remote-http`: Flexible toolbox for making declarative HTTP calls to remote services. See [Calling Remote Services](calling-remote-services.md).
-- `sentinel-ai-toolbox-mcp`: Support for Model Context Protocol (MCP) servers. See [Using MCP Servers](using-mcp-servers.md).
-- `sentinel-ai-filesystem`: Local file system based storage for memories and sessions.
+- `sentinel-ai-filesystem`: Local file system-based storage for memories and sessions. See [Agent Memory](agent-memory.md) and [Messages and Sessions](messages-session.md).
+- `sentinel-ai-configured-agents`: Implementation for Agent Registry and planner-worker orchestration. See [Agent Registry](agent-registry.md).
+- `sentinel-ai-storage-es`: Elasticsearch-based implementation for storage abstractions used by agent memory and sessions. See [Agent Memory](agent-memory.md) and [Messages and Sessions](messages-session.md).
+- `sentinel-ai-evals`: Evaluation utilities and workflows for measuring agent quality. See [Evals](evals.md).
+- `sentinel-ai-instrumentation-otel`: OpenTelemetry instrumentation for agent execution. See [OpenTelemetry](opentelemetry.md).
+- `sentinel-ai-examples`: End-to-end example applications demonstrating Sentinel AI capabilities. See [Examples](examples.md).
 
 ## Additional Features
 

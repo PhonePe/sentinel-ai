@@ -2,3 +2,27 @@
 [data-md-color-scheme="slate"] img {
     background-color: lightgray;
 }
+
+/* Primary sidebar nav: render nested sections as a tree */
+.md-sidebar--primary .md-nav--primary .md-nav__item--nested > .md-nav {
+    margin-left: 0.45rem;
+    padding-left: 0.9rem;
+    border-left: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-sidebar--primary .md-nav--primary .md-nav__item--nested > .md-nav > .md-nav__list > .md-nav__item {
+    position: relative;
+}
+
+.md-sidebar--primary .md-nav--primary .md-nav__item--nested > .md-nav > .md-nav__list > .md-nav__item::before {
+    content: "";
+    position: absolute;
+    top: 1.15rem;
+    left: -0.9rem;
+    width: 0.65rem;
+    border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-sidebar--primary .md-nav--primary .md-nav__item--nested > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link {
+    padding-left: 0.15rem;
+}
