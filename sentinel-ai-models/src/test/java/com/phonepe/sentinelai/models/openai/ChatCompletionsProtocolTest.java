@@ -19,6 +19,9 @@ package com.phonepe.sentinelai.models.openai;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelSettings;
@@ -33,6 +36,7 @@ import com.phonepe.sentinelai.models.wire.WireStreamEvent;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,6 +50,48 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ChatCompletionsProtocolTest {
 
     private final ObjectMapper mapper = JsonUtils.createMapper();
+
+    static Stream<Arguments> reasoningFieldVariants() {
+        return Stream.of(
+                         Arguments.of("reasoning_content string field",
+                                      """
+                                              {"role": "assistant", "reasoning_content": "Thinking step by step.", "content": "A"}
+                                              """,
+                                      "reasoning_content",
+                                      "Thinking step by step."),
+                         Arguments.of("thinking field",
+                                      """
+                                              {"role": "assistant", "thinking": "Let me analyse this step by step.", "content": "A"}
+                                              """,
+                                      "thinking",
+                                      "Let me analyse this step by step."),
+                         Arguments.of("thinking_content field",
+                                      """
+                                              {"role": "assistant", "thinking_content": "Reasoning here.", "content": "A"}
+                                              """,
+                                      "thinking_content",
+                                      "Reasoning here."),
+                         Arguments.of("reasoning object with text field",
+                                      """
+                                              {"role": "assistant", "reasoning": {"text": "Direct text reasoning."}, "content": "A"}
+                                              """,
+                                      "reasoning",
+                                      "Direct text reasoning."),
+                         Arguments.of("reasoning object with nested content summaries",
+                                      """
+                                              {"role": "assistant", "reasoning": {"content": [
+                                                  {"type": "summary", "summary": "First part. "},
+                                                  {"type": "summary", "summary": "Second part."}]}, "content": "A"}
+                                              """,
+                                      "reasoning",
+                                      "First part. Second part."),
+                         Arguments.of("reasoning string field",
+                                      """
+                                              {"role": "assistant", "reasoning": "Plain reasoning string.", "content": "A"}
+                                              """,
+                                      "reasoning",
+                                      "Plain reasoning string."));
+    }
 
     @Test
     void blockingRequestOmitsStreamFlag() {
@@ -238,6 +284,43 @@ class ChatCompletionsProtocolTest {
     }
 
     @Test
+    void messageWithoutReasoningDecodesWithoutReasoningPayload() throws Exception {
+        final var protocol = new ChatCompletionsProtocol();
+        final var body = mapper.readTree("""
+                {"id": "chatcmpl-r2", "choices": [{"index": 0,
+                                                   "message": {"role": "assistant", "content": "No reasoning here."},
+                                                   "finish_reason": "stop"}]}
+                """);
+
+        final var response = protocol.decodeResponse(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null), body);
+
+        assertNull(response.getReasoningContent());
+        assertNull(response.getReasoningFieldName());
+        assertTrue(response.getReasoningItems().isEmpty());
+    }
+
+    @Test
+    void messagesWithoutMarkerAreByteIdenticalForReplayOnAndOff() throws Exception {
+        final var protocol = new ChatCompletionsProtocol();
+        final var first = mapper.readTree("""
+                {"role": "user", "content": "hi"}
+                """);
+        final var second = mapper.readTree("""
+                {"role": "assistant", "content": "hello"}
+                """);
+        final var messages = List.of(first, second);
+        final var replayOn = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null).toBuilder()
+                .reasoningReplay(com.phonepe.sentinelai.models.ModelOptions.ReasoningReplay.ON)
+                .build();
+        final var replayOff = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null);
+
+        final var onBody = protocol.buildRequestBody(replayOn, messages);
+        final var offBody = protocol.buildRequestBody(replayOff, messages);
+
+        assertEquals(offBody, onBody);
+    }
+
+    @Test
     void noExtrasLeavesBodyUntouched() {
         final var protocol = new ChatCompletionsProtocol();
         final var settings = ModelSettings.builder().temperature(0.1f).build();
@@ -257,6 +340,61 @@ class ChatCompletionsProtocolTest {
                                                    List.of());
 
         assertFalse(body.has(ChatCompletionsFields.RESPONSE_FORMAT));
+    }
+
+    @Test
+    void reasoningMarkerExpandsIntoMessageFieldWhenReplayOn() throws Exception {
+        final var protocol = new ChatCompletionsProtocol();
+        final var message = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree("""
+                {"role": "assistant", "content": "A",
+                 "_reasoning": {"field": "thinking", "item": "Let me analyse this step by step."}}
+                """);
+        final var ctx = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null).toBuilder()
+                .reasoningReplay(com.phonepe.sentinelai.models.ModelOptions.ReasoningReplay.ON)
+                .build();
+
+        final var body = protocol.buildRequestBody(ctx, List.of(message));
+
+        final var built = body.get(ChatCompletionsFields.MESSAGES).get(0);
+        assertFalse(built.has(ChatCompletionsFields.MARKER_REASONING));
+        assertEquals("Let me analyse this step by step.", built.get("thinking").asText());
+        assertEquals("A", built.get(ChatCompletionsFields.CONTENT).asText());
+    }
+
+    @Test
+    void reasoningMarkerIsStrippedWhenReplayOff() throws Exception {
+        final var protocol = new ChatCompletionsProtocol();
+        final var message = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree("""
+                {"role": "assistant", "content": "A",
+                 "_reasoning": {"field": "thinking", "item": "Let me analyse this step by step."}}
+                """);
+
+        final var body = protocol.buildRequestBody(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                   List.of(message));
+
+        final var built = body.get(ChatCompletionsFields.MESSAGES).get(0);
+        assertFalse(built.has(ChatCompletionsFields.MARKER_REASONING));
+        assertFalse(built.has("thinking"));
+        assertFalse(built.has("reasoning_content"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("reasoningFieldVariants")
+    void reasoningVariantsDecodeToReasoningPayload(final String name,
+                                                   final String messageJson,
+                                                   final String expectedFieldName,
+                                                   final String expectedText) throws Exception {
+        final var protocol = new ChatCompletionsProtocol();
+        final var body = mapper.readTree("""
+                {"id": "chatcmpl-r1", "choices": [{"index": 0, "message": %s, "finish_reason": "stop"}]}
+                """.formatted(messageJson));
+
+        final var response = protocol.decodeResponse(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null), body);
+
+        assertEquals(WireResponse.FinishReasons.STOP, response.getFinishReason());
+        assertEquals(expectedText, response.getReasoningContent());
+        assertEquals(expectedFieldName, response.getReasoningFieldName());
+        assertEquals(1, response.getReasoningItems().size());
     }
 
     @Test

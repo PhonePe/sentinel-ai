@@ -87,6 +87,7 @@ class OpenAIMessageUtilsTest {
                                                "hello",
                                                new ModelUsageStats(),
                                                1L,
+                                               null,
                                                null),
                                       ChatMessage.AssistantMessage.class,
                                       "hello"),
@@ -279,6 +280,7 @@ class OpenAIMessageUtilsTest {
                                                              "hello",
                                                              new ModelUsageStats(),
                                                              1L,
+                                                             null,
                                                              null));
         final var converted = OpenAIMessageUtils.convertToOpenAIMessages(messages);
 
@@ -302,6 +304,7 @@ class OpenAIMessageUtilsTest {
                                                              "answer",
                                                              new ModelUsageStats(),
                                                              1L,
+                                                             null,
                                                              null),
                                                     UserPrompt.compactedText(SESSION_ID, RUN_ID, "summary", SENT_AT),
                                                     UserPrompt.text(SESSION_ID, RUN_ID, "new", SENT_AT));

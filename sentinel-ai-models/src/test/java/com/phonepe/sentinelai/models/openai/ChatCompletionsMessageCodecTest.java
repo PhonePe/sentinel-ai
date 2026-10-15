@@ -86,6 +86,7 @@ class ChatCompletionsMessageCodecTest {
                                                "hello",
                                                new ModelUsageStats(),
                                                1L,
+                                               null,
                                                null),
                                       ChatCompletionsFields.ROLE_ASSISTANT,
                                       "hello"),

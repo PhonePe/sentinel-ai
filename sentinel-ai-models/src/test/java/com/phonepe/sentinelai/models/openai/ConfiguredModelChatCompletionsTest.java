@@ -35,6 +35,7 @@ import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.models.ConfiguredModel;
+import com.phonepe.sentinelai.models.ModelOptions;
 import com.phonepe.sentinelai.models.TestAgents.OutputObjectAgent;
 import com.phonepe.sentinelai.models.TestAgents.TestAgent;
 import com.phonepe.sentinelai.models.TestStubs;
@@ -93,6 +94,28 @@ class ConfiguredModelChatCompletionsTest {
                         .build())
                 .httpClient(httpClient)
                 .build();
+    }
+
+    private static AgentSetup.AgentSetupBuilder replaySetupBase(final WireMockRuntimeInfo wiremock) {
+        return AgentSetup.builder()
+                .mapper(JsonUtils.createMapper())
+                .model(ConfiguredModel.builder()
+                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                        .provider(Provider.builder()
+                                .baseUrl(TestStubs.getTestProperty("AZURE_ENDPOINT", wiremock.getHttpBaseUrl()))
+                                .protocol(new ChatCompletionsProtocol())
+                                .build())
+                        .modelOptions(ModelOptions.builder()
+                                .reasoningReplay(ModelOptions.ReasoningReplay.ON)
+                                .build())
+                        .build())
+                .modelSettings(ModelSettings.builder()
+                        .temperature(0.1f)
+                        .build())
+                .retrySetup(RetrySetup.builder()
+                        .totalAttempts(1)
+                        .delayAfterFailedAttempt(Duration.ofMillis(10))
+                        .build());
     }
 
     private static AgentSetup.AgentSetupBuilder setupBase(final WireMockRuntimeInfo wiremock) {
@@ -155,6 +178,118 @@ class ConfiguredModelChatCompletionsTest {
         WireMock.verify(postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
                 .withHeader("Accept", equalTo("application/json"))
                 .withRequestBody(notContaining("\"stream\"")));
+    }
+
+    @Test
+    @SneakyThrows
+    void reasoningReplayOffOmitsReasoningFromFollowUpRequest(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(TestStubs.ENDPOINT).inScenario("cc-replay-off")
+                .whenScenarioStateIs(STARTED)
+                .willReturn(okForContentType("application/json",
+                                             """
+                                                     {"id": "chatcmpl-r3", "object": "chat.completion", "created": 1755064668,
+                                                      "model": "test-model",
+                                                      "choices": [{"index": 0,
+                                                                   "message": {"role": "assistant",
+                                                                               "reasoning_content": "Thinking about which tool to use",
+                                                                               "tool_calls": [{"id": "call_R3", "type": "function",
+                                                                                               "function": {"name": "test_agent_get_name", "arguments": "{}"}}]},
+                                                                   "finish_reason": "tool_calls"}],
+                                                      "usage": {"prompt_tokens": 100, "completion_tokens": 10, "total_tokens": 110}}
+                                                     """))
+                .willSetStateTo("second"));
+        stubFor(post(TestStubs.ENDPOINT).inScenario("cc-replay-off")
+                .whenScenarioStateIs("second")
+                .willReturn(okForContentType("application/json",
+                                             """
+                                                     {"id": "chatcmpl-r4", "object": "chat.completion", "created": 1755064669,
+                                                      "model": "test-model",
+                                                      "choices": [{"index": 0,
+                                                                   "message": {"role": "assistant", "content": "{\\"output\\": \\"Hello Santanu\\"}"},
+                                                                   "finish_reason": "stop"}],
+                                                      "usage": {"prompt_tokens": 200, "completion_tokens": 5, "total_tokens": 205}}
+                                                     """)));
+        final var agent = new TestAgent(setupBase(wiremock).build());
+
+        final var response = agent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").build())
+                .build());
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        // Replay off: reasoning is still captured and stored on the messages (so it survives in
+        // history), but it must never reach the wire and no internal marker may leak
+        WireMock.verify(2,
+                        postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
+                                .withRequestBody(notContaining("reasoning_content"))
+                                .withRequestBody(notContaining("_reasoning")));
+        final var toolCall = response.getAllMessages()
+                .stream()
+                .filter(ToolCall.class::isInstance)
+                .map(ToolCall.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertNotNull(toolCall.getReasoning());
+        assertEquals("reasoning_content", toolCall.getReasoning().getWireFieldName());
+    }
+
+    @Test
+    @SneakyThrows
+    void reasoningReplayOnResendsReasoningContentOnFollowUpRequest(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(TestStubs.ENDPOINT).inScenario("cc-replay-on")
+                .whenScenarioStateIs(STARTED)
+                .willReturn(okForContentType("application/json",
+                                             """
+                                                     {"id": "chatcmpl-r1", "object": "chat.completion", "created": 1755064668,
+                                                      "model": "test-model",
+                                                      "choices": [{"index": 0,
+                                                                   "message": {"role": "assistant",
+                                                                               "reasoning_content": "Thinking about which tool to use",
+                                                                               "tool_calls": [{"id": "call_R1", "type": "function",
+                                                                                               "function": {"name": "test_agent_get_name", "arguments": "{}"}}]},
+                                                                   "finish_reason": "tool_calls"}],
+                                                      "usage": {"prompt_tokens": 100, "completion_tokens": 10, "total_tokens": 110}}
+                                                     """))
+                .willSetStateTo("second"));
+        stubFor(post(TestStubs.ENDPOINT).inScenario("cc-replay-on")
+                .whenScenarioStateIs("second")
+                .willReturn(okForContentType("application/json",
+                                             """
+                                                     {"id": "chatcmpl-r2", "object": "chat.completion", "created": 1755064669,
+                                                      "model": "test-model",
+                                                      "choices": [{"index": 0,
+                                                                   "message": {"role": "assistant", "content": "{\\"output\\": \\"Hello Santanu\\"}"},
+                                                                   "finish_reason": "stop"}],
+                                                      "usage": {"prompt_tokens": 200, "completion_tokens": 5, "total_tokens": 205}}
+                                                     """)));
+        final var agent = new TestAgent(replaySetupBase(wiremock).build());
+
+        final var response = agent.execute(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").build())
+                .build());
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        assertEquals("Hello Santanu", response.getData());
+        // The follow-up request carries the captured reasoning on the assistant message,
+        // in the same field it arrived in, with no internal marker on the wire
+        WireMock.verify(1,
+                        postRequestedFor(urlEqualTo(TestStubs.ENDPOINT))
+                                .withRequestBody(matchingJsonPath(
+                                                                  "$.messages[?(@.role == 'assistant')].reasoning_content",
+                                                                  equalTo("Thinking about which tool to use")))
+                                .withRequestBody(notContaining("_reasoning")));
+        // Reasoning is stored on the captured ToolCall
+        final var toolCall = response.getAllMessages()
+                .stream()
+                .filter(ToolCall.class::isInstance)
+                .map(ToolCall.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertNotNull(toolCall.getReasoning());
+        assertEquals("reasoning_content", toolCall.getReasoning().getWireFieldName());
     }
 
     @Test

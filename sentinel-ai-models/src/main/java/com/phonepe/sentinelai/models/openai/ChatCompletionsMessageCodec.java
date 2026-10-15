@@ -29,6 +29,7 @@ import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
 import com.phonepe.sentinelai.core.agentmessages.MediaTypes;
+import com.phonepe.sentinelai.core.agentmessages.ReasoningContent;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
@@ -51,7 +52,11 @@ import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.FUNCTIO
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.ID;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.IMAGE_URL;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.INPUT_AUDIO;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MARKER_REASONING;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MARKER_REASONING_FIELD_NAME;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MARKER_REASONING_RAW_ITEM;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.NAME;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.REASONING_CONTENT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.ROLE;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.ROLE_ASSISTANT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.ROLE_SYSTEM;
@@ -67,6 +72,25 @@ import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.URL;
  * Translates {@link AgentMessage}s into OpenAI Chat Completions message JSON.
  */
 public class ChatCompletionsMessageCodec implements MessageCodec {
+
+    /**
+     * Embeds the internal reasoning marker on an assistant message node when the response
+     * carries reasoning. The marker never reaches the provider; the protocol expands it into the
+     * message's own reasoning field when replay is on and strips it otherwise. The raw item is
+     * deep-copied so the stored node is never mutated.
+     */
+    private static void addReasoningMarker(final ObjectNode node, final ReasoningContent reasoning) {
+        if (reasoning == null || reasoning.getRawItem() == null || reasoning.getRawItem().isNull()) {
+            return;
+        }
+        final var marker = node.objectNode();
+        marker.put(MARKER_REASONING_FIELD_NAME,
+                   reasoning.getWireFieldName() == null
+                           ? REASONING_CONTENT
+                           : reasoning.getWireFieldName());
+        marker.set(MARKER_REASONING_RAW_ITEM, reasoning.getRawItem().deepCopy());
+        node.set(MARKER_REASONING, marker);
+    }
 
     private static String imageDetailOf(final MediaTypes.ImageDetail detail) {
         return switch (detail) {
@@ -173,12 +197,16 @@ public class ChatCompletionsMessageCodec implements MessageCodec {
                 return response.accept(new AgentResponseVisitor<>() {
                     @Override
                     public ObjectNode visit(final StructuredOutput structuredOutput) {
-                        return roleMessage(mapper, ROLE_ASSISTANT, structuredOutput.getContent());
+                        final var node = roleMessage(mapper, ROLE_ASSISTANT, structuredOutput.getContent());
+                        addReasoningMarker(node, structuredOutput.getReasoning());
+                        return node;
                     }
 
                     @Override
                     public ObjectNode visit(final Text text) {
-                        return roleMessage(mapper, ROLE_ASSISTANT, text.getContent());
+                        final var node = roleMessage(mapper, ROLE_ASSISTANT, text.getContent());
+                        addReasoningMarker(node, text.getReasoning());
+                        return node;
                     }
 
                     @Override
@@ -194,6 +222,7 @@ public class ChatCompletionsMessageCodec implements MessageCodec {
                         call.set(FUNCTION, function);
                         calls.add(call);
                         node.set(TOOL_CALLS, calls);
+                        addReasoningMarker(node, toolCall.getReasoning());
                         return node;
                     }
                 });

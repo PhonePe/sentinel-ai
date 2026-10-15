@@ -63,6 +63,7 @@ class UnpairedToolCallsRemoverTest {
                                                   "tcX",
                                                   "tool",
                                                   "{}",
+                                                  null,
                                                   null),
                                      new ToolCallResponse(sessionId,
                                                           runId,
@@ -100,6 +101,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-paired",
                                                                 "tool1",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -117,6 +119,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-unpaired-req",
                                                                 "tool2",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -134,6 +137,7 @@ class UnpairedToolCallsRemoverTest {
                                                             "response",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null)
         );
         final var result = remover.select(sessionId, new ArrayList<>(messages));
@@ -161,6 +165,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-1",
                                                                 "tool1",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -178,6 +183,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-2",
                                                                 "tool2",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -195,6 +201,7 @@ class UnpairedToolCallsRemoverTest {
                                                             "response",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null)
         );
         final var result = remover.select(sessionId, new ArrayList<>(messages));
@@ -213,6 +220,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-1",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse("session-1",
                                                                         "run-1",
@@ -231,6 +239,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-2",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null)
         );
         final var result = remover.select("session-1", new ArrayList<>(messages));
@@ -257,6 +266,7 @@ class UnpairedToolCallsRemoverTest {
                                   tcId,
                                   "tool",
                                   "{}",
+                                  null,
                                   null));
         messages.add(new ToolCall(sessionId,
                                   runId,
@@ -265,6 +275,7 @@ class UnpairedToolCallsRemoverTest {
                                   tcId,
                                   "tool",
                                   "{}",
+                                  null,
                                   null));
         final var result = remover.select(sessionId, messages);
         final var remainingIds = result.stream()
@@ -288,6 +299,7 @@ class UnpairedToolCallsRemoverTest {
                                                             "response",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null)
         );
         final var result = remover.select(sessionId, new ArrayList<>(messages));
@@ -307,6 +319,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-1",
                                                                 "tool1",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCall(sessionId,
                                                                 runId,
@@ -315,6 +328,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-2",
                                                                 "tool2",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCall(sessionId,
                                                                 runId,
@@ -323,6 +337,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-3",
                                                                 "tool3",
                                                                 "{}",
+                                                                null,
                                                                 null)
         );
         final var result = remover.select(sessionId, new ArrayList<>(messages));
@@ -371,6 +386,7 @@ class UnpairedToolCallsRemoverTest {
                                     "response",
                                     new ModelUsageStats(),
                                     100,
+                                    null,
                                     null);
         final var messages = List.<AgentMessage>of(
                                                    userPrompt,
@@ -381,6 +397,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-unpaired",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    textResponse
         );
@@ -411,6 +428,7 @@ class UnpairedToolCallsRemoverTest {
                                   "tcA",
                                   "tool",
                                   "{}",
+                                  null,
                                   null));
         messages.add(new ToolCallResponse(sessionId,
                                           runId,
@@ -428,6 +446,7 @@ class UnpairedToolCallsRemoverTest {
                                   "tcC",
                                   "tool",
                                   "{}",
+                                  null,
                                   null));
         messages.add(new ToolCallResponse(sessionId,
                                           runId,
@@ -445,6 +464,7 @@ class UnpairedToolCallsRemoverTest {
                               "txt",
                               new ModelUsageStats(),
                               100,
+                              null,
                               null));
         final var msgIdsByType = messages.stream()
                 .collect(Collectors.groupingBy(AgentMessage::getMessageType,
@@ -481,6 +501,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-1",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -498,6 +519,7 @@ class UnpairedToolCallsRemoverTest {
                                                             "response",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null)
         );
         final var result = remover.select(sessionId, new ArrayList<>(messages));
@@ -520,6 +542,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-unpaired",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new Text(sessionId,
                                                             runId,
@@ -528,6 +551,7 @@ class UnpairedToolCallsRemoverTest {
                                                             "text",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null),
                                                    new StructuredOutput(sessionId,
                                                                         runId,
@@ -536,6 +560,7 @@ class UnpairedToolCallsRemoverTest {
                                                                         "{}",
                                                                         new ModelUsageStats(),
                                                                         100,
+                                                                        null,
                                                                         null)
         );
         final var result = remover.select(sessionId, new ArrayList<>(messages));
@@ -559,6 +584,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-1",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(null,
                                                                         runId,
@@ -588,6 +614,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-1",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -605,6 +632,7 @@ class UnpairedToolCallsRemoverTest {
                                                                         "{\"key\": \"value\"}",
                                                                         new ModelUsageStats(),
                                                                         100,
+                                                                        null,
                                                                         null)
         );
         final var result = remover.select(sessionId, new ArrayList<>(messages));
@@ -626,6 +654,7 @@ class UnpairedToolCallsRemoverTest {
                                                                 "tc-1",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -643,6 +672,7 @@ class UnpairedToolCallsRemoverTest {
                                                             "response",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null)
         );
         final var result = remover.select(sessionId, new ArrayList<>(messages));

@@ -63,6 +63,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           toolCallId,
                                                           "testTool",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -80,6 +81,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                       "response",
                                                       new ModelUsageStats(),
                                                       100,
+                                                      null,
                                                       null)
         );
         var result = filter.filter(messages);
@@ -104,6 +106,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           successId,
                                                           "successTool",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -121,6 +124,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           failId,
                                                           "failTool",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -138,6 +142,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                       "response",
                                                       new ModelUsageStats(),
                                                       100,
+                                                      null,
                                                       null)
         );
         var result = filter.filter(messages);
@@ -161,6 +166,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           "tc-1",
                                                           "tool",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   "run-1",
@@ -179,6 +185,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           "tc-2",
                                                           "tool",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   "run-2",
@@ -211,6 +218,7 @@ class FailedToolCallRemovalPreFilterTest {
                                     "response",
                                     new ModelUsageStats(),
                                     100,
+                                    null,
                                     null);
         var messages = List.<AgentMessage>of(
                                              userPrompt,
@@ -221,6 +229,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           "tc-1",
                                                           "tool",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -254,6 +263,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           toolCallId,
                                                           "testTool",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -271,6 +281,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                       "response",
                                                       new ModelUsageStats(),
                                                       100,
+                                                      null,
                                                       null)
         );
         var result = filter.filter(messages);
@@ -297,6 +308,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           timeoutId,
                                                           "tool1",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -314,6 +326,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           permFailId,
                                                           "tool2",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -331,6 +344,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           tempFailId,
                                                           "tool3",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -348,6 +362,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           successId,
                                                           "tool4",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -380,6 +395,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                       "response",
                                                       new ModelUsageStats(),
                                                       100,
+                                                      null,
                                                       null)
         );
         var result = filter.filter(messages);
@@ -402,6 +418,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           "tc-1",
                                                           "tool",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -419,6 +436,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                       "text",
                                                       new ModelUsageStats(),
                                                       100,
+                                                      null,
                                                       null),
                                              new StructuredOutput(sessionId,
                                                                   runId,
@@ -427,6 +445,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   "{}",
                                                                   new ModelUsageStats(),
                                                                   100,
+                                                                  null,
                                                                   null)
         );
         var result = filter.filter(messages);
@@ -449,6 +468,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                       "response",
                                                       new ModelUsageStats(),
                                                       100,
+                                                      null,
                                                       null)
         );
         var result = filter.filter(messages);
@@ -468,6 +488,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           "tc-1",
                                                           "tool1",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -485,6 +506,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           "tc-2",
                                                           "tool2",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -514,6 +536,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                                   "{\"key\": \"value\"}",
                                                                   new ModelUsageStats(),
                                                                   100,
+                                                                  null,
                                                                   null),
                                              new ToolCall(sessionId,
                                                           runId,
@@ -522,6 +545,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           "tc-1",
                                                           "tool",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new ToolCallResponse(sessionId,
                                                                   runId,
@@ -552,6 +576,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                       "response",
                                                       new ModelUsageStats(),
                                                       100,
+                                                      null,
                                                       null)
         );
         var result = filter.filter(messages);
@@ -572,6 +597,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                           "tc-orphan",
                                                           "tool",
                                                           "{}",
+                                                          null,
                                                           null),
                                              new Text(sessionId,
                                                       runId,
@@ -580,6 +606,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                       "response",
                                                       new ModelUsageStats(),
                                                       100,
+                                                      null,
                                                       null)
         );
         var result = filter.filter(messages);
@@ -609,6 +636,7 @@ class FailedToolCallRemovalPreFilterTest {
                                                       "response",
                                                       new ModelUsageStats(),
                                                       100,
+                                                      null,
                                                       null)
         );
         var result = filter.filter(messages);

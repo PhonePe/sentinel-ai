@@ -41,6 +41,7 @@ class ToolCalledExpectationTest {
                                                                          "tc-1",
                                                                          "get_weather",
                                                                          "{\"city\":\"Bengaluru\"}",
+                                                                         null,
                                                                          null)));
 
         assertFalse(TestFactory.evaluate(expectation, null, context));
@@ -57,6 +58,7 @@ class ToolCalledExpectationTest {
                                                                          "tc-1",
                                                                          "get_weather",
                                                                          "{\"city\":\"Bengaluru\"}",
+                                                                         null,
                                                                          null),
                                                             new ToolCall("session",
                                                                          "run",
@@ -65,6 +67,7 @@ class ToolCalledExpectationTest {
                                                                          "tc-2",
                                                                          "get_weather",
                                                                          "{\"city\":\"Pune\"}",
+                                                                         null,
                                                                          null)));
 
         assertFalse(TestFactory.evaluate(expectation, null, context));
@@ -81,6 +84,7 @@ class ToolCalledExpectationTest {
                                                                          "tc-1",
                                                                          "get_weather",
                                                                          "{\"city\":\"Bengaluru\"}",
+                                                                         null,
                                                                          null),
                                                             new ToolCall("session",
                                                                          "run",
@@ -89,6 +93,7 @@ class ToolCalledExpectationTest {
                                                                          "tc-2",
                                                                          "get_weather",
                                                                          "{\"city\":\"Bengaluru\"}",
+                                                                         null,
                                                                          null),
                                                             new ToolCall("session",
                                                                          "run",
@@ -97,6 +102,7 @@ class ToolCalledExpectationTest {
                                                                          "tc-3",
                                                                          "get_city",
                                                                          "{\"country\":\"IN\"}",
+                                                                         null,
                                                                          null)));
 
         assertTrue(TestFactory.evaluate(expectation, null, context));
@@ -113,6 +119,7 @@ class ToolCalledExpectationTest {
                                                                          "tc-1",
                                                                          "get_weather",
                                                                          "{\"city\":\"Bengaluru\"}",
+                                                                         null,
                                                                          null)));
 
         assertThrows(IllegalArgumentException.class, () -> TestFactory.evaluate(expectation, null, context));

@@ -16,7 +16,11 @@
 
 package com.phonepe.sentinelai.models.wire;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import lombok.Value;
+
+import java.util.List;
 
 /**
  * Streaming events decoded from provider SSE frames; consumed in order by the model loop.
@@ -98,8 +102,14 @@ public sealed interface WireStreamEvent permits WireStreamEvent.ContentDelta,
          */
         String responseId;
 
+        /**
+         * Raw provider-native reasoning payloads of the finished response captured verbatim
+         * (Responses reasoning output items); empty when the stream carried none.
+         */
+        List<JsonNode> reasoningItems;
+
         public StreamFinishEvent(final String finishReason, final String refusal) {
-            this(finishReason, refusal, null);
+            this(finishReason, refusal, null, null);
         }
 
         public StreamFinishEvent(final String finishReason, final String refusal, final WireUsage usage) {
@@ -110,10 +120,19 @@ public sealed interface WireStreamEvent permits WireStreamEvent.ContentDelta,
                                  final String refusal,
                                  final WireUsage usage,
                                  final String responseId) {
+            this(finishReason, refusal, usage, responseId, List.of());
+        }
+
+        public StreamFinishEvent(final String finishReason,
+                                 final String refusal,
+                                 final WireUsage usage,
+                                 final String responseId,
+                                 final List<JsonNode> reasoningItems) {
             this.finishReason = finishReason;
             this.refusal = refusal;
             this.usage = usage;
             this.responseId = responseId;
+            this.reasoningItems = reasoningItems == null ? List.of() : reasoningItems;
         }
     }
 

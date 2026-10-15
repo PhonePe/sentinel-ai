@@ -71,6 +71,7 @@ class OpenAICompletionsTokenCounterTest {
                                           content,
                                           new ModelUsageStats(),
                                           100,
+                                          null,
                                           null);
 
         int expected = TokenCountingConfig.DEFAULT
@@ -234,6 +235,7 @@ class OpenAICompletionsTokenCounterTest {
                                                                  content,
                                                                  new ModelUsageStats(),
                                                                  100,
+                                                                 null,
                                                                  null);
 
         int expected = TokenCountingConfig.DEFAULT
@@ -277,6 +279,7 @@ class OpenAICompletionsTokenCounterTest {
                                          toolCallId,
                                          toolName,
                                          arguments,
+                                         null,
                                          null);
 
         int expected = TokenCountingConfig.DEFAULT

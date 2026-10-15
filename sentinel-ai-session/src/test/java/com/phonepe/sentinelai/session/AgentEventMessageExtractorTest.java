@@ -54,6 +54,7 @@ class AgentEventMessageExtractorTest {
                                     "response",
                                     new ModelUsageStats(),
                                     100,
+                                    null,
                                     null);
         var newMessages = List.<AgentMessage>of(userPrompt);
         var allMessages = List.<AgentMessage>of(userPrompt, textResponse);
@@ -106,6 +107,7 @@ class AgentEventMessageExtractorTest {
                                                          "response 1",
                                                          new ModelUsageStats(),
                                                          100,
+                                                         null,
                                                          null),
                                                 UserPrompt.text(sessionId, runId, "message 2", LocalDateTime.now())
         );
@@ -118,6 +120,7 @@ class AgentEventMessageExtractorTest {
                                                          "response 1",
                                                          new ModelUsageStats(),
                                                          100,
+                                                         null,
                                                          null),
                                                 UserPrompt.text(sessionId, runId, "message 2", LocalDateTime.now())
         );
@@ -186,6 +189,7 @@ class AgentEventMessageExtractorTest {
                                                          "response",
                                                          new ModelUsageStats(),
                                                          100,
+                                                         null,
                                                          null)
         );
         var event = MessageReceivedAgentEvent.builder()
@@ -217,6 +221,7 @@ class AgentEventMessageExtractorTest {
                                                          "response",
                                                          new ModelUsageStats(),
                                                          100,
+                                                         null,
                                                          null)
         );
         var allMessages = List.<AgentMessage>of(
@@ -228,6 +233,7 @@ class AgentEventMessageExtractorTest {
                                                          "response",
                                                          new ModelUsageStats(),
                                                          100,
+                                                         null,
                                                          null)
         );
         var event = MessageSentAgentEvent.builder()

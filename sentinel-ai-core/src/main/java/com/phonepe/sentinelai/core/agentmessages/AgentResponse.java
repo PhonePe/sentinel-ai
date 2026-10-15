@@ -33,14 +33,23 @@ public abstract class AgentResponse extends AgentMessage {
     @Getter
     private final String responseId;
 
+    /**
+     * Reasoning content of this assistant turn; null unless reasoning replay is enabled and the
+     * model returned reasoning. Replayed verbatim by the codecs when enabled.
+     */
+    @Getter
+    private final ReasoningContent reasoning;
+
     protected AgentResponse(AgentMessageType messageType,
                             String sessionId,
                             String runId,
                             String messageId,
                             Long timestamp,
-                            String responseId) {
+                            String responseId,
+                            ReasoningContent reasoning) {
         super(messageType, sessionId, runId, messageId, timestamp);
         this.responseId = responseId;
+        this.reasoning = reasoning;
     }
 
     @Override

@@ -73,6 +73,16 @@ public class ChatCompletionsFields {
     public static final String FINISH_REASON = "finish_reason";
     public static final String REFUSAL = "refusal";
     public static final String REASONING_CONTENT = "reasoning_content";
+    public static final String THINKING = "thinking";
+    public static final String THINKING_CONTENT = "thinking_content";
+    public static final String REASONING = "reasoning";
+
+    // Internal reasoning replay marker (never sent to the provider; the protocol strips it while
+    // assembling the request body and expands it into the message field when replay is on)
+    public static final String MARKER_REASONING = "_reasoning";
+    // Payload keys carried inside the marker object
+    public static final String MARKER_REASONING_FIELD_NAME = "field";
+    public static final String MARKER_REASONING_RAW_ITEM = "item";
     public static final String USAGE = "usage";
     public static final String INDEX = "index";
     public static final String SCHEMA = "schema";

@@ -194,6 +194,51 @@ final var model = ConfiguredModel.builder()
         .build();
 ```
 
+### Reasoning Replay
+
+Reasoning models return their reasoning alongside the visible output. By default that reasoning is captured and
+stored on the agent message history but is **not** sent back to the provider on subsequent requests. `ModelOptions.ReasoningReplay`
+controls whether the reasoning captured from a previous response is re-sent on later requests in the same
+conversation.
+
+| Mode | Behavior                                                                                                        |
+|------|-----------------------------------------------------------------------------------------------------------------|
+| `OFF` | Default. Reasoning from earlier responses is never sent back to the provider. Request bodies are identical to runs that never saw reasoning. |
+| `ON`  | Reasoning items captured from earlier responses are re-sent to the provider verbatim, in the wire shape the provider returned them. |
+
+When `ON`, the protocol re-emits the reasoning exactly as it arrived: over the Responses protocol the captured
+reasoning items (including any `encrypted_content`) are re-sent as input items ahead of the assistant message they
+preceded; over the Chat Completions protocol the reasoning is re-sent on the assistant message, under the same wire
+field the provider used originally (`reasoning_content`, `thinking`, `thinking_content` or `reasoning`). With parallel
+tool calls, the reasoning is attached to the first tool call's message only, mirroring how the provider delivered it
+once for the response.
+
+Replay composes with response chaining: the captured reasoning items travel with the anchored history and are
+included both in chained deltas and in the full-history resend that follows a chain break. Token estimates include
+the re-sent reasoning when replay is `ON` and exclude it when replay is `OFF`.
+
+```java
+final var modelOptions = ModelOptions.builder()
+        .reasoningReplay(ModelOptions.ReasoningReplay.ON)
+        .build();
+
+final var model = ConfiguredModel.builder()
+        .modelName("gpt-5")
+        .provider(Provider.builder()
+                .baseUrl(EnvLoader.readEnv("OPENAI_ENDPOINT"))
+                .protocol(new ResponsesProtocol())
+                .auth(HeaderAuth.bearer(EnvLoader.readEnv("OPENAI_API_KEY")))
+                .build())
+        .modelOptions(modelOptions)
+        .build();
+```
+
+!!!tip "When to enable"
+    Replay `ON` is useful with reasoning models that accept prior reasoning back on the wire, notably providers that
+    return `encrypted_content` and expect it re-sent to resume a reasoning chain efficiently. Replay `OFF` is safer for
+    providers that reject unknown fields, and it keeps request payloads minimal. Providers that require it can also
+    request encrypted reasoning via `ModelOptions` extras (for example `include: ["reasoning.encrypted_content"]`).
+
 ### Model Call Retry
 
 A model call retries on failure when a `RequestRetryPolicy` is set on the model. The default policy does not retry; one

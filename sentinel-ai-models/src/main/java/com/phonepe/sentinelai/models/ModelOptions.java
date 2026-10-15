@@ -36,10 +36,32 @@ public class ModelOptions {
     public static final ToolChoice DEFAULT_TOOL_CHOICE = ToolChoice.DEFAULT;
     public static final TokenCountingConfig DEFAULT_TOKEN_COUNTING_CONFIG = TokenCountingConfig.DEFAULT;
     public static final ResponseChaining DEFAULT_RESPONSE_CHAINING = ResponseChaining.OFF;
+    public static final ReasoningReplay DEFAULT_REASONING_REPLAY = ReasoningReplay.OFF;
     public static final ModelOptions DEFAULT = new ModelOptions(DEFAULT_TOOL_CHOICE,
                                                                 DEFAULT_TOKEN_COUNTING_CONFIG,
                                                                 DEFAULT_RESPONSE_CHAINING,
+                                                                DEFAULT_REASONING_REPLAY,
                                                                 null);
+
+    /**
+     * Reasoning replay policy: whether reasoning content captured from model responses is stored
+     * on the assistant messages and sent back to the provider on subsequent requests so reasoning
+     * models keep their chain-of-thought continuity across tool calls and turns.
+     */
+    public enum ReasoningReplay {
+        /**
+         * Reasoning is not stored or replayed (default): current behavior.
+         */
+        OFF,
+        /**
+         * Capture reasoning on assistant response messages and replay it to the provider
+         * verbatim on subsequent requests. Intended for providers that require reasoning
+         * pass-back to continue reasoning across turns (OpenAI Responses stateless mode,
+         * xAI Grok); leave OFF for providers that do not need it (e.g. DeepSeek) where replay
+         * only adds input tokens.
+         */
+        ON
+    }
 
     /**
      * Server-side conversation chaining policy for protocols that support it (OpenAI Responses
@@ -63,6 +85,7 @@ public class ModelOptions {
          */
         SESSION
     }
+
 
     /**
      * Tool choice policy for the model.
@@ -88,6 +111,8 @@ public class ModelOptions {
 
     ResponseChaining responseChaining;
 
+    ReasoningReplay reasoningReplay;
+
     /**
      * Free-form extras merged into the request body last; extras override protocol fields.
      */
@@ -98,11 +123,13 @@ public class ModelOptions {
     public ModelOptions(final ToolChoice toolChoice,
                         final TokenCountingConfig tokenCountingConfig,
                         final ResponseChaining responseChaining,
+                        final ReasoningReplay reasoningReplay,
                         final ObjectNode extras) {
         this.toolChoice = Objects.requireNonNullElse(toolChoice, DEFAULT_TOOL_CHOICE);
         this.tokenCountingConfig = Objects.requireNonNullElse(tokenCountingConfig,
                                                               TokenCountingConfig.DEFAULT);
         this.responseChaining = Objects.requireNonNullElse(responseChaining, DEFAULT_RESPONSE_CHAINING);
+        this.reasoningReplay = Objects.requireNonNullElse(reasoningReplay, DEFAULT_REASONING_REPLAY);
         this.extras = extras;
     }
 
@@ -115,6 +142,8 @@ public class ModelOptions {
                                                            this.tokenCountingConfig),
                                 Objects.requireNonNullElse(other.getResponseChaining(),
                                                            this.responseChaining),
+                                Objects.requireNonNullElse(other.getReasoningReplay(),
+                                                           this.reasoningReplay),
                                 Objects.requireNonNullElse(other.getExtras(), this.extras));
     }
 }

@@ -16,6 +16,8 @@
 
 package com.phonepe.sentinelai.models.wire;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import lombok.Value;
 
 import java.util.List;
@@ -55,6 +57,19 @@ public class WireResponse {
     String content;
 
     String reasoningContent;
+
+    /**
+     * Raw provider-native reasoning payloads captured verbatim for replay: the raw value node of
+     * the message reasoning field (Chat Completions, single-element list) or the raw reasoning
+     * output items (Responses). Empty when the model returned no reasoning.
+     */
+    List<JsonNode> reasoningItems;
+
+    /**
+     * Name of the message field the reasoning arrived in (Chat Completions variants like
+     * {@code reasoning_content}, {@code thinking}); null for item-based (Responses) reasoning.
+     */
+    String reasoningFieldName;
 
     String refusal;
 

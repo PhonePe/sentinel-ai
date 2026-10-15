@@ -24,20 +24,23 @@ import java.util.List;
 
 /**
  * Interface for counting tokens in messages.
- * By default, Sentinel AI uses OpenAICompletionsTokenCounter for OpenAI models.
- * However certain proviers like anthropic have an endpoint thar can provide precise counts. Override that if needed.
+ * By default, Sentinel AI uses GenericTokenCounter for OpenAI models.
+ * However certain providers like anthropic have an endpoint that can provide precise counts. Override that if needed.
  */
 public interface TokenCounter {
     /**
-     * Count tokens in the given text
+     * Count tokens in the given messages
      *
-     * @param messages     Messages to count tokens in
-     * @param config       Configuration for token counting
+     * @param modelOptions Model options carrying the token counting configuration and the
+     *                     reasoning replay policy (replayed reasoning is counted only when
+     *                     replay is on, so estimates match what actually goes on the wire);
+     *                     null means {@link ModelOptions#DEFAULT}
      * @param encodingType Encoding type to use for token counting
+     * @param messages     Messages to count tokens in
      * @return Number of tokens in the messages
      */
-    int estimateTokenCount(final List<AgentMessage> messages,
-                           final TokenCountingConfig config,
-                           final EncodingType encodingType);
+    int estimateTokenCount(final ModelOptions modelOptions,
+                           final EncodingType encodingType,
+                           final List<AgentMessage> messages);
 
 }

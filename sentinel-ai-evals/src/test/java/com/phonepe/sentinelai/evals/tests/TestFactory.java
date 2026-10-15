@@ -123,6 +123,7 @@ public class TestFactory {
                                                                  output,
                                                                  usage,
                                                                  2,
+                                                                 null,
                                                                  null));
                 val allMessages = new ArrayList<>(oldMessages);
                 allMessages.addAll(newMessages);

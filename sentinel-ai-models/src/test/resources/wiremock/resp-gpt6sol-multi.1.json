@@ -43,5 +43,5 @@ data: {"output_index":2,"item":{"type":"function_call","arguments":"{\"city\": \
 
 
 event: response.completed
-data: {"response":{"id":"resp_3","object":"response","status":"completed","output":[{"type":"function_call","id":"fc_A","call_id":"call_A","name":"test_agent_get_name","arguments":"{}","status":"completed"},{"type":"function_call","id":"fc_B","call_id":"call_B","name":"test_agent_get_weather","arguments":"{\"city\": \"bangalore\"}","status":"completed"}],"usage":{"input_tokens":300,"output_tokens":20,"total_tokens":320}}}
+data: {"response":{"id":"resp_3","object":"response","status":"completed","output":[{"type":"reasoning","id":"rs_1","content":[],"summary":[]},{"type":"function_call","id":"fc_A","call_id":"call_A","name":"test_agent_get_name","arguments":"{}","status":"completed"},{"type":"function_call","id":"fc_B","call_id":"call_B","name":"test_agent_get_weather","arguments":"{\"city\": \"bangalore\"}","status":"completed"}],"usage":{"input_tokens":300,"output_tokens":20,"total_tokens":320}}}
 

@@ -56,6 +56,7 @@ class RemoveAllToolCallsSelectorTest {
                                                                 "tc-1",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    UserPrompt.text("session-2", "run-2", "u2", LocalDateTime.now()),
                                                    new ToolCall("session-2",
@@ -65,6 +66,7 @@ class RemoveAllToolCallsSelectorTest {
                                                                 "tc-2",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null)
         );
         final var result = selector.select("session-1", new ArrayList<>(messages));
@@ -88,6 +90,7 @@ class RemoveAllToolCallsSelectorTest {
                                               "t3",
                                               new ModelUsageStats(),
                                               100,
+                                              null,
                                               null),
                                      new GenericText(sessionId,
                                                      runId,
@@ -111,6 +114,7 @@ class RemoveAllToolCallsSelectorTest {
                                     "text",
                                     new ModelUsageStats(),
                                     100,
+                                    null,
                                     null);
         var genericText = new GenericText(sessionId, runId, Role.USER, "generic");
         final var messages = List.<AgentMessage>of(
@@ -122,6 +126,7 @@ class RemoveAllToolCallsSelectorTest {
                                                                 "tc-1",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(sessionId,
                                                                         runId,
@@ -138,6 +143,7 @@ class RemoveAllToolCallsSelectorTest {
                                                                 "tc-2",
                                                                 "tool2",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    genericText
         );
@@ -161,6 +167,7 @@ class RemoveAllToolCallsSelectorTest {
                                                                 "tc-1",
                                                                 "tool1",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(sessionId,
                                                                         "run-1",
@@ -176,6 +183,7 @@ class RemoveAllToolCallsSelectorTest {
                                                             "text1",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null),
                                                    UserPrompt.text(sessionId, "run-2", "user2", LocalDateTime.now()),
                                                    new ToolCall(sessionId,
@@ -185,6 +193,7 @@ class RemoveAllToolCallsSelectorTest {
                                                                 "tc-2",
                                                                 "tool2",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new ToolCallResponse(sessionId,
                                                                         "run-2",
@@ -200,6 +209,7 @@ class RemoveAllToolCallsSelectorTest {
                                                             "text2",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null)
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
@@ -224,6 +234,7 @@ class RemoveAllToolCallsSelectorTest {
                               "t1",
                               new ModelUsageStats(),
                               100,
+                              null,
                               null));
         messages.add(new ToolCall(sessionId,
                                   runId,
@@ -232,6 +243,7 @@ class RemoveAllToolCallsSelectorTest {
                                   "tc-1",
                                   "tool",
                                   "{}",
+                                  null,
                                   null));
         messages.add(new ToolCallResponse(sessionId,
                                           runId,
@@ -261,6 +273,7 @@ class RemoveAllToolCallsSelectorTest {
                                                   "tc-2",
                                                   "tool",
                                                   "{}",
+                                                  null,
                                                   null),
                                      new ToolCallResponse(sessionId,
                                                           runId,
@@ -288,6 +301,7 @@ class RemoveAllToolCallsSelectorTest {
                                                                 "tc-orphan",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new Text(sessionId,
                                                             runId,
@@ -296,6 +310,7 @@ class RemoveAllToolCallsSelectorTest {
                                                             "text",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null)
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
@@ -324,6 +339,7 @@ class RemoveAllToolCallsSelectorTest {
                                                             "text",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null)
         );
         final var result = selector.select(sessionId, new ArrayList<>(messages));
@@ -344,6 +360,7 @@ class RemoveAllToolCallsSelectorTest {
                                                                 "tc-1",
                                                                 "tool",
                                                                 "{}",
+                                                                null,
                                                                 null),
                                                    new Text(null,
                                                             runId,
@@ -352,6 +369,7 @@ class RemoveAllToolCallsSelectorTest {
                                                             "text",
                                                             new ModelUsageStats(),
                                                             100,
+                                                            null,
                                                             null)
         );
         final var result = selector.select(null, new ArrayList<>(messages));

@@ -33,6 +33,7 @@ import com.phonepe.sentinelai.core.agent.RetrySetup;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.MediaTypes;
 import com.phonepe.sentinelai.core.agentmessages.MediaTypes.ImageDetail;
+import com.phonepe.sentinelai.core.agentmessages.ReasoningContent;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
@@ -76,6 +77,7 @@ import static com.phonepe.sentinelai.models.TestAgents.execute;
 import static com.phonepe.sentinelai.models.TestAgents.streamConsumer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -168,6 +170,23 @@ class ConfiguredModelResponsesTest {
                 .build();
     }
 
+    private static AgentSetup.AgentSetupBuilder chainingReplaySetupBase(final WireMockRuntimeInfo wiremock,
+                                                                        final ModelOptions.ResponseChaining chaining) {
+        return chainingSetupBase(wiremock, chaining)
+                .model(ConfiguredModel.builder()
+                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                        .provider(Provider.builder()
+                                .baseUrl(wiremock.getHttpBaseUrl())
+                                .protocol(new ResponsesProtocol())
+                                .endpointPrefix(TestStubs.useRealEndpoints() ? null : Provider.NO_ENDPOINT_PREFIX)
+                                .build())
+                        .modelOptions(ModelOptions.builder()
+                                .responseChaining(chaining)
+                                .reasoningReplay(ModelOptions.ReasoningReplay.ON)
+                                .build())
+                        .build());
+    }
+
     private static AgentSetup.AgentSetupBuilder chainingSetupBase(final WireMockRuntimeInfo wiremock,
                                                                   final ModelOptions.ResponseChaining chaining) {
         return AgentSetup.builder()
@@ -198,7 +217,8 @@ class ConfiguredModelResponsesTest {
                                     "call_hist",
                                     "output_object_agent_get_name",
                                     "{}",
-                                    "resp_run1"));
+                                    "resp_run1",
+                                    null));
     }
 
     private static List<AgentMessage> historyWithCompaction() {
@@ -211,7 +231,8 @@ class ConfiguredModelResponsesTest {
                                     "call_hist",
                                     "output_object_agent_get_name",
                                     "{}",
-                                    "resp_run1"),
+                                    "resp_run1",
+                                    null),
                        UserPrompt.builder()
                                .sessionId("s1")
                                .runId("run-1")
@@ -225,6 +246,47 @@ class ConfiguredModelResponsesTest {
                                .contentType(MediaTypes.MessageContentType.TEXT)
                                .content("Hi again")
                                .build());
+    }
+
+    @SneakyThrows
+    private static List<AgentMessage> historyWithReasoningAnchor() {
+        // Run 1 of the session: a stored tool call carrying the provider response id of the
+        // response that produced it, along with the reasoning item that response contained
+        return List.of(UserPrompt.builder()
+                .sessionId("s1")
+                .runId("run-1")
+                .contentType(MediaTypes.MessageContentType.TEXT)
+                .content("Hi")
+                .build(),
+                       new ToolCall("s1",
+                                    "run-1",
+                                    null,
+                                    null,
+                                    "call_hist",
+                                    "output_object_agent_get_name",
+                                    "{}",
+                                    "resp_run1",
+                                    ReasoningContent.builder()
+                                            .content("Thinking about which tool to use")
+                                            .rawItem(JsonUtils.createMapper().readTree(
+                                                                                       """
+                                                                                               {"type":"reasoning","id":"rs_1","content":[],"summary":[]}"""))
+                                            .build()));
+    }
+
+    private static AgentSetup.AgentSetupBuilder replaySetupBase(final WireMockRuntimeInfo wiremock) {
+        return setupBase(wiremock)
+                .model(ConfiguredModel.builder()
+                        .modelName(TestStubs.getTestProperty("AZURE_MODEL", "gpt-4o"))
+                        .provider(Provider.builder()
+                                .baseUrl(wiremock.getHttpBaseUrl())
+                                .protocol(new ResponsesProtocol())
+                                .endpointPrefix(TestStubs.useRealEndpoints() ? null : Provider.NO_ENDPOINT_PREFIX)
+                                .build())
+                        .modelOptions(ModelOptions.builder()
+                                .reasoningReplay(ModelOptions.ReasoningReplay.ON)
+                                .build())
+                        .build());
     }
 
     private static ConfiguredModel responsesModel(final WireMockRuntimeInfo wiremock,
@@ -458,6 +520,96 @@ class ConfiguredModelResponsesTest {
         WireMock.verify(2, postRequestedFor(urlEqualTo(ENDPOINT)));
     }
 
+    @Test
+    @SneakyThrows
+    void chainBreakRetryResendsReasoningWithFullHistory(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(ENDPOINT).inScenario("replay-chainbreak")
+                .whenScenarioStateIs(STARTED)
+                .willReturn(aResponse().withStatus(400)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(CHAIN_BREAK_ERROR_BODY))
+                .willSetStateTo("retried"));
+        stubFor(post(ENDPOINT).inScenario("replay-chainbreak")
+                .whenScenarioStateIs("retried")
+                .willReturn(okForContentType("text/event-stream",
+                                             TestStubs.readStubFile(1,
+                                                                    "resp-gpt6sol-reasoning",
+                                                                    ConfiguredModelResponsesTest.class)))
+                .willSetStateTo("final"));
+        stubFor(post(ENDPOINT).inScenario("replay-chainbreak")
+                .whenScenarioStateIs("final")
+                .willReturn(okForContentType("text/event-stream",
+                                             TestStubs.readStubFile(2,
+                                                                    "resp-gpt6sol-reasoning",
+                                                                    ConfiguredModelResponsesTest.class))));
+        final var agent = new TestAgent(chainingReplaySetupBase(wiremock, ModelOptions.ResponseChaining.SESSION)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").build())
+                .oldMessages(new ArrayList<>(historyWithReasoningAnchor()))
+                .build(), streamConsumer())
+                .join();
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        // The first request chains to the seeded anchor and is rejected by the provider
+        WireMock.verify(1,
+                        postRequestedFor(urlEqualTo(ENDPOINT))
+                                .withRequestBody(matchingJsonPath("$.previous_response_id", equalTo("resp_run1"))));
+        // The retry resends the full history including the seeded reasoning item, with no anchor
+        WireMock.verify(1,
+                        postRequestedFor(urlEqualTo(ENDPOINT))
+                                .withRequestBody(matchingJsonPath(
+                                                                  "$.input[?(@.type == 'reasoning' && @.id == 'rs_1')]"))
+                                .withRequestBody(matchingJsonPath("$.input.length()", equalTo("5")))
+                                .withRequestBody(matchingJsonPath(
+                                                                  "$.input[?(@.type == 'function_call' && @.call_id == 'call_hist')]"))
+                                .withRequestBody(WireMock.notContaining("previous_response_id")));
+    }
+
+    @Test
+    @SneakyThrows
+    void chainedDeltaIncludesReasoningItems(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(ENDPOINT).inScenario("replay-chain")
+                .whenScenarioStateIs(STARTED)
+                .willReturn(okForContentType("text/event-stream",
+                                             TestStubs.readStubFile(1,
+                                                                    "resp-gpt6sol-reasoning",
+                                                                    ConfiguredModelResponsesTest.class)))
+                .willSetStateTo("second"));
+        stubFor(post(ENDPOINT).inScenario("replay-chain")
+                .whenScenarioStateIs("second")
+                .willReturn(okForContentType("text/event-stream",
+                                             TestStubs.readStubFile(2,
+                                                                    "resp-gpt6sol-reasoning",
+                                                                    ConfiguredModelResponsesTest.class))));
+        final var agent = new TestAgent(chainingReplaySetupBase(wiremock, ModelOptions.ResponseChaining.IN_RUN)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").build())
+                .build(), streamConsumer())
+                .join();
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        // The second (chained) request carries only the delta: the provider stitches the
+        // anchored history (including its reasoning item) server-side, so the delta holds
+        // just the tool outputs. The chain-break retry below covers the resend path.
+        WireMock.verify(1,
+                        postRequestedFor(urlEqualTo(ENDPOINT))
+                                .withRequestBody(matchingJsonPath("$.previous_response_id", equalTo("resp_1")))
+                                .withRequestBody(matchingJsonPath("$.input.length()", equalTo("1")))
+                                .withRequestBody(matchingJsonPath(
+                                                                  "$.input[?(@.type == 'function_call_output')].call_id",
+                                                                  equalTo("call_X1"))));
+    }
+
     @ParameterizedTest(name = "{0}")
     @SneakyThrows
     @MethodSource("generateChainingToolLoopScenarios")
@@ -533,6 +685,130 @@ class ConfiguredModelResponsesTest {
 
         assertEquals(ErrorType.MODEL_CALL_HTTP_FAILURE, response.getError().getErrorType());
         WireMock.verify(1, postRequestedFor(urlEqualTo(ENDPOINT)));
+    }
+
+    @Test
+    @SneakyThrows
+    void parallelToolCallsAttachReasoningToFirstCallOnly(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        setupSseMocks(2, "resp-gpt6sol-multi");
+        final var agent = new TestAgent(replaySetupBase(wiremock)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").build())
+                .build(), streamConsumer())
+                .join();
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        final var toolCalls = response.getAllMessages()
+                .stream()
+                .filter(ToolCall.class::isInstance)
+                .map(ToolCall.class::cast)
+                .toList();
+        assertEquals(2, toolCalls.size());
+        assertNotNull(toolCalls.get(0).getReasoning());
+        assertNull(toolCalls.get(1).getReasoning());
+        // Exactly one reasoning item is replayed on the follow-up request: the first tool
+        // call carries it, so the replayed item precedes that call's function_call item
+        WireMock.verify(1,
+                        postRequestedFor(urlEqualTo(ENDPOINT))
+                                .withRequestBody(matchingJsonPath(
+                                                                  "$.input[?(@.type == 'reasoning' && @.id == 'rs_1')]"))
+                                .withRequestBody(matchingJsonPath("$.input.length()", equalTo("7"))));
+    }
+
+    @Test
+    @SneakyThrows
+    void reasoningReplayOffDoesNotSendReasoningItems(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(ENDPOINT).inScenario("replay-off")
+                .whenScenarioStateIs(STARTED)
+                .willReturn(okForContentType("text/event-stream",
+                                             TestStubs.readStubFile(1,
+                                                                    "resp-gpt6sol-reasoning",
+                                                                    ConfiguredModelResponsesTest.class)))
+                .willSetStateTo("second"));
+        stubFor(post(ENDPOINT).inScenario("replay-off")
+                .whenScenarioStateIs("second")
+                .willReturn(okForContentType("text/event-stream",
+                                             TestStubs.readStubFile(2,
+                                                                    "resp-gpt6sol-reasoning",
+                                                                    ConfiguredModelResponsesTest.class))));
+        final var agent = new TestAgent(setupBase(wiremock)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").build())
+                .build(), streamConsumer())
+                .join();
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        // Replay off: no reasoning item on the wire and no internal markers leak
+        WireMock.verify(2,
+                        postRequestedFor(urlEqualTo(ENDPOINT))
+                                .withRequestBody(WireMock.notContaining("\"type\":\"reasoning\""))
+                                .withRequestBody(WireMock.notContaining("_reasoning")));
+        // Reasoning is still captured and stored on the messages so it survives in history;
+        // only the wire emission is suppressed when replay is off
+        final var toolCall = response.getAllMessages()
+                .stream()
+                .filter(ToolCall.class::isInstance)
+                .map(ToolCall.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertNotNull(toolCall.getReasoning());
+        assertEquals("rs_1", toolCall.getReasoning().getRawItem().get("id").asText());
+    }
+
+    @Test
+    @SneakyThrows
+    void reasoningReplayOnResendsReasoningItemVerbatim(final WireMockRuntimeInfo wiremock) {
+        assumeTrue(!TestStubs.useRealEndpoints(), "WireMock-only test");
+        stubFor(post(ENDPOINT).inScenario("replay-on")
+                .whenScenarioStateIs(STARTED)
+                .willReturn(okForContentType("text/event-stream",
+                                             TestStubs.readStubFile(1,
+                                                                    "resp-gpt6sol-reasoning",
+                                                                    ConfiguredModelResponsesTest.class)))
+                .willSetStateTo("second"));
+        stubFor(post(ENDPOINT).inScenario("replay-on")
+                .whenScenarioStateIs("second")
+                .willReturn(okForContentType("text/event-stream",
+                                             TestStubs.readStubFile(2,
+                                                                    "resp-gpt6sol-reasoning",
+                                                                    ConfiguredModelResponsesTest.class))));
+        final var agent = new TestAgent(replaySetupBase(wiremock)
+                .outputGenerationMode(OutputGenerationMode.STRUCTURED_OUTPUT)
+                .build());
+
+        final var response = agent.executeAsyncStreaming(AgentInput.<String>builder()
+                .request("Hi")
+                .requestMetadata(AgentRequestMetadata.builder().sessionId("s1").userId("ss").build())
+                .build(), streamConsumer())
+                .join();
+
+        assertEquals(ErrorType.SUCCESS, response.getError().getErrorType());
+        // The reasoning item captured from the first response is resent verbatim on the
+        // second request, as a standalone input item preceding the function call item
+        WireMock.verify(1,
+                        postRequestedFor(urlEqualTo(ENDPOINT))
+                                .withRequestBody(matchingJsonPath(
+                                                                  "$.input[?(@.type == 'reasoning' && @.id == 'rs_1')]"))
+                                .withRequestBody(WireMock.notContaining("_reasoning")));
+        // Reasoning is attached to the captured ToolCall of the first response
+        final var toolCall = response.getAllMessages()
+                .stream()
+                .filter(ToolCall.class::isInstance)
+                .map(ToolCall.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertNotNull(toolCall.getReasoning());
+        assertEquals("rs_1", toolCall.getReasoning().getRawItem().get("id").asText());
     }
 
     @ParameterizedTest(name = "{0}")

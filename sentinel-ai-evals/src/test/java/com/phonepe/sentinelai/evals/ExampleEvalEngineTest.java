@@ -124,6 +124,7 @@ class ExampleEvalEngineTest {
                                           "Decision generated",
                                           usage,
                                           0,
+                                          null,
                                           null);
 
                 final var allMessages = new ArrayList<>(oldMessages);
@@ -175,6 +176,7 @@ class ExampleEvalEngineTest {
                                           output,
                                           usage,
                                           0,
+                                          null,
                                           null);
 
                 final var allMessages = new ArrayList<>(oldMessages);
@@ -185,6 +187,7 @@ class ExampleEvalEngineTest {
                                              "tc-1",
                                              "fetch_weather",
                                              "{\"city\":\"blr\"}",
+                                             null,
                                              null));
                 allMessages.add(new ToolCall(context.getSessionId(),
                                              context.getRunId(),
@@ -193,6 +196,7 @@ class ExampleEvalEngineTest {
                                              "tc-2",
                                              "fetch_calculator",
                                              "{\"expression\":\"2+2\"}",
+                                             null,
                                              null));
                 allMessages.add(new ToolCall(context.getSessionId(),
                                              context.getRunId(),
@@ -201,6 +205,7 @@ class ExampleEvalEngineTest {
                                              "tc-3",
                                              "fetch_weather",
                                              "{\"city\":\"blr\"}",
+                                             null,
                                              null));
                 allMessages.add(text);
 

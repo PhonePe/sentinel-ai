@@ -101,6 +101,14 @@ public class WireContext {
     @Builder.Default
     ModelOptions.ResponseChaining responseChaining = ModelOptions.DEFAULT_RESPONSE_CHAINING;
 
+    /**
+     * Reasoning replay policy; protocols replay stored reasoning content to the provider when
+     * this is {@link ModelOptions.ReasoningReplay#ON}. Default
+     * {@link ModelOptions.ReasoningReplay#OFF}.
+     */
+    @Builder.Default
+    ModelOptions.ReasoningReplay reasoningReplay = ModelOptions.DEFAULT_REASONING_REPLAY;
+
     @NonNull
     ObjectMapper mapper;
 

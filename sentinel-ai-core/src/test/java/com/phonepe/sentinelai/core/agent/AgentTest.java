@@ -272,6 +272,7 @@ class AgentTest {
                                                                                  """
                                                                                          { "input": "Test Data" }
                                                                                          """,
+                                                                                 null,
                                                                                  null));
                             assertTrue(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
@@ -492,6 +493,7 @@ class AgentTest {
                                                                                             }
                                                                                          }
                                                                                          """,
+                                                                                 null,
                                                                                  null));
                             assertTrue(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
@@ -553,6 +555,7 @@ class AgentTest {
                                                                                  "TC1",
                                                                                  "test_agent_get_name",
                                                                                  "{}",
+                                                                                 null,
                                                                                  null));
                             assertTrue(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
@@ -617,6 +620,7 @@ class AgentTest {
                                                                                             }
                                                                                          }
                                                                                          """,
+                                                                                 null,
                                                                                  null));
                             assertTrue(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
@@ -680,6 +684,7 @@ class AgentTest {
                                                                                             }
                                                                                          }
                                                                                          """,
+                                                                                 null,
                                                                                  null));
                             assertFalse(response.isSuccess());
                             assertEquals(ErrorType.TOOL_CALL_PREPROCESSING_FAILURE,
@@ -740,6 +745,7 @@ class AgentTest {
                                                                                  "TC1",
                                                                                  "test_agent_throw_tool",
                                                                                  "{}",
+                                                                                 null,
                                                                                  null));
                             assertFalse(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
@@ -805,6 +811,7 @@ class AgentTest {
                                                                                             }
                                                                                          }
                                                                                          """,
+                                                                                 null,
                                                                                  null));
                             assertFalse(response.isSuccess());
                             assertEquals(ErrorType.TOOL_CALL_PERMANENT_FAILURE,
@@ -864,6 +871,7 @@ class AgentTest {
                                                                                  "TC1",
                                                                                  "test_agent_get_name",
                                                                                  "{}",
+                                                                                 null,
                                                                                  null));
                             assertFalse(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
@@ -927,6 +935,7 @@ class AgentTest {
                                                                                  "TC1",
                                                                                  "getUnknown",
                                                                                  "{}",
+                                                                                 null,
                                                                                  null));
                             assertFalse(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());
@@ -989,6 +998,7 @@ class AgentTest {
                                                                                  "TC1",
                                                                                  "test_agent_void_tool",
                                                                                  "{}",
+                                                                                 null,
                                                                                  null));
                             assertTrue(response.isSuccess());
                             assertEquals("TC1", response.getToolCallId());

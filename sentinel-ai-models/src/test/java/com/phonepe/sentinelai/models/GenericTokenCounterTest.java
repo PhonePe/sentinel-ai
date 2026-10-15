@@ -72,6 +72,7 @@ class GenericTokenCounterTest {
                                                            "I am fine, thank you!",
                                                            new ModelUsageStats(),
                                                            100,
+                                                           null,
                                                            null)),
                                           self -> self.assistantOverhead() + self.messageOverhead("assistant")
                                                   + self.countTokens("I am fine, thank you!")),
@@ -126,6 +127,7 @@ class GenericTokenCounterTest {
                                                                        "{\"answer\": \"fine\"}",
                                                                        new ModelUsageStats(),
                                                                        100,
+                                                                       null,
                                                                        null)),
                                           self -> self.assistantOverhead() + self.messageOverhead("assistant")
                                                   + self.countTokens("{\"answer\": \"fine\"}")),
@@ -145,6 +147,7 @@ class GenericTokenCounterTest {
                                                                "call_123",
                                                                "get_weather",
                                                                "{\"location\": \"Bangalore\"}",
+                                                               null,
                                                                null)),
                                           self -> self.assistantOverhead() + TokenCountingConfig.DEFAULT
                                                   .getMessageOverHead()
@@ -172,6 +175,69 @@ class GenericTokenCounterTest {
                                                   + self.countTokens("Hello, how are you?")));
     }
 
+    @Test
+    void reasoningIsCountedOnlyWhenReplayIsOn() {
+        final var reasoning = com.phonepe.sentinelai.core.agentmessages.ReasoningContent.builder()
+                .content("Think hard")
+                .rawItem(mapperNode())
+                .wireFieldName("reasoning_content")
+                .build();
+        final var text = new Text("s1",
+                                  "r1",
+                                  null,
+                                  null,
+                                  "Answer",
+                                  new ModelUsageStats(),
+                                  100,
+                                  null,
+                                  reasoning);
+
+        final var withoutReplay = tokenCounter.estimateTokenCount(ModelOptions.builder().build(),
+                                                                  EncodingType.CL100K_BASE,
+                                                                  List.of(text));
+        final var withReplay = tokenCounter.estimateTokenCount(ModelOptions.builder()
+                .reasoningReplay(ModelOptions.ReasoningReplay.ON)
+                .build(),
+                                                               EncodingType.CL100K_BASE,
+                                                               List.of(text));
+
+        final var expectedWithoutReplay = assistantOverhead() + messageOverhead("assistant")
+                + countTokens("Answer");
+        assertEquals(expectedWithoutReplay, withoutReplay);
+        // Raw item wins over normalized text: the serialized raw node is what goes on the wire
+        final var expectedWithReplay = expectedWithoutReplay
+                + countTokens(reasoning.getRawItem().toString());
+        assertEquals(expectedWithReplay, withReplay);
+        assertTrue(withReplay > withoutReplay);
+    }
+
+    @Test
+    void reasoningWithoutRawItemCountsContentOnlyWhenReplayIsOn() {
+        final var reasoning = com.phonepe.sentinelai.core.agentmessages.ReasoningContent.builder()
+                .content("Think hard")
+                .build();
+        final var text = new Text("s1",
+                                  "r1",
+                                  null,
+                                  null,
+                                  "Answer",
+                                  new ModelUsageStats(),
+                                  100,
+                                  null,
+                                  reasoning);
+
+        final var withoutReplay = tokenCounter.estimateTokenCount(ModelOptions.builder().build(),
+                                                                  EncodingType.CL100K_BASE,
+                                                                  List.of(text));
+        final var withReplay = tokenCounter.estimateTokenCount(ModelOptions.builder()
+                .reasoningReplay(ModelOptions.ReasoningReplay.ON)
+                .build(),
+                                                               EncodingType.CL100K_BASE,
+                                                               List.of(text));
+
+        assertEquals(withoutReplay + countTokens("Think hard"), withReplay);
+    }
+
     @BeforeEach
     void setUp() {
         tokenCounter = new GenericTokenCounter();
@@ -183,9 +249,12 @@ class GenericTokenCounterTest {
     @MethodSource("countingCases")
     void testEstimateTokenCount(final CountingCase countingCase) {
         final var expected = countingCase.expected().applyAsInt(this);
-        final var actual = tokenCounter.estimateTokenCount(countingCase.messages(),
-                                                           TokenCountingConfig.DEFAULT,
-                                                           EncodingType.CL100K_BASE);
+        final var actual = tokenCounter.estimateTokenCount(
+                                                           ModelOptions.builder()
+                                                                   .tokenCountingConfig(TokenCountingConfig.DEFAULT)
+                                                                   .build(),
+                                                           EncodingType.CL100K_BASE,
+                                                           countingCase.messages());
         assertEquals(expected, actual, countingCase.name());
     }
 
@@ -204,7 +273,12 @@ class GenericTokenCounterTest {
                 + countTokens("user")
                 + config.getImageTokenCost();
 
-        assertEquals(expected, tokenCounter.estimateTokenCount(List.of(imagePrompt), config, EncodingType.CL100K_BASE));
+        assertEquals(expected,
+                     tokenCounter.estimateTokenCount(ModelOptions.builder()
+                             .tokenCountingConfig(config)
+                             .build(),
+                                                     EncodingType.CL100K_BASE,
+                                                     List.of(imagePrompt)));
     }
 
     @Test
@@ -216,9 +290,12 @@ class GenericTokenCounterTest {
                                                      ImageDetail.AUTO,
                                                      LocalDateTime.of(2026, 7, 25, 10, 0, 0));
 
-        final var actual = tokenCounter.estimateTokenCount(List.of(imagePrompt),
-                                                           TokenCountingConfig.DEFAULT,
-                                                           EncodingType.CL100K_BASE);
+        final var actual = tokenCounter.estimateTokenCount(
+                                                           ModelOptions.builder()
+                                                                   .tokenCountingConfig(TokenCountingConfig.DEFAULT)
+                                                                   .build(),
+                                                           EncodingType.CL100K_BASE,
+                                                           List.of(imagePrompt));
         // The base64 payload must not be counted as text. 23K chars would be ~7K text tokens.
         assertTrue(actual < 1000, "Image tokens should be a fixed cost, not proportional to base64 length");
     }
@@ -239,6 +316,16 @@ class GenericTokenCounterTest {
             return 0;
         }
         return encoder.encodeOrdinary(content).size();
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode mapperNode() {
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().readTree(
+                                                                              "{\"type\": \"reasoning\", \"id\": \"rs_1\", \"encrypted_content\": \"gAAAAABoNDg7\"}");
+        }
+        catch (final Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private int messageOverhead(final String role) {

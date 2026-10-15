@@ -111,6 +111,7 @@ public class ResponsesFields {
     public static final String ITEM_FUNCTION_CALL = "function_call";
     public static final String ITEM_FUNCTION_CALL_OUTPUT = "function_call_output";
     public static final String ITEM_REASONING = "reasoning";
+    public static final String SUMMARY = "summary";
 
     // Tool choice values
     public static final String TOOL_CHOICE_AUTO = "auto";
@@ -122,6 +123,10 @@ public class ResponsesFields {
     public static final String MARKER_RESPONSE_ID = "_responseId";
     public static final String MARKER_RUN_ID = "_runId";
     public static final String MARKER_COMPACTED = "_compacted";
+
+    // Internal reasoning replay marker (never sent to the provider; the protocol strips it while
+    // assembling the request body and expands it into a preceding input item when replay is on)
+    public static final String MARKER_REASONING = "_reasoning";
 
     // Stream event names
     public static final String EVENT_RESPONSE_COMPLETED = "response.completed";

@@ -30,6 +30,7 @@ import com.phonepe.sentinelai.core.agentmessages.AgentRequest;
 import com.phonepe.sentinelai.core.agentmessages.AgentRequestVisitor;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
+import com.phonepe.sentinelai.core.agentmessages.ReasoningContent;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericResource;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt;
@@ -59,10 +60,12 @@ public class GenericTokenCounter implements TokenCounter {
 
         private final Encoding encoder;
         private final TokenCountingConfig config;
+        private final boolean countReasoning;
 
-        Counter(final Encoding encoder, final TokenCountingConfig config) {
+        Counter(final Encoding encoder, final TokenCountingConfig config, final boolean countReasoning) {
             this.encoder = encoder;
             this.config = config;
+            this.countReasoning = countReasoning;
         }
 
         private static String roleOf(final AgentGenericMessage.Role role) {
@@ -125,12 +128,15 @@ public class GenericTokenCounter implements TokenCounter {
                 @Override
                 public MessageCount visit(final StructuredOutput structuredOutput) {
                     return simple(ROLE_ASSISTANT,
-                                  countString(encoder, structuredOutput.getContent()));
+                                  countString(encoder, structuredOutput.getContent())
+                                          + reasoningTokens(encoder, structuredOutput.getReasoning()));
                 }
 
                 @Override
                 public MessageCount visit(final Text text) {
-                    return simple(ROLE_ASSISTANT, countString(encoder, text.getContent()));
+                    return simple(ROLE_ASSISTANT,
+                                  countString(encoder, text.getContent())
+                                          + reasoningTokens(encoder, text.getReasoning()));
                 }
 
                 @Override
@@ -141,9 +147,25 @@ public class GenericTokenCounter implements TokenCounter {
                         tokens += config.getFormattingOverhead()
                                 + countString(encoder, toolCall.getArguments());
                     }
+                    tokens += reasoningTokens(encoder, toolCall.getReasoning());
                     return simple(ROLE_ASSISTANT, tokens);
                 }
             });
+        }
+
+        /**
+         * Counts the reasoning of an assistant message when replay is on: replayed reasoning
+         * items consume real input tokens on the wire. The serialized raw item is counted with
+         * the same encoder (encrypted payloads are opaque; the estimate is conservatively high).
+         */
+        private int reasoningTokens(final Encoding encoder, final ReasoningContent reasoning) {
+            if (!countReasoning || reasoning == null) {
+                return 0;
+            }
+            if (reasoning.getRawItem() != null && !reasoning.getRawItem().isNull()) {
+                return countString(encoder, reasoning.getRawItem().toString());
+            }
+            return countString(encoder, reasoning.getContent());
         }
 
         private MessageCount simple(final String role, final int contentTokens) {
@@ -191,20 +213,27 @@ public class GenericTokenCounter implements TokenCounter {
     }
 
     @Override
-    public int estimateTokenCount(final List<AgentMessage> messages,
-                                  final TokenCountingConfig tokenCountingConfig,
-                                  final EncodingType encodingType) {
+    public int estimateTokenCount(final ModelOptions modelOptions,
+                                  final EncodingType encodingType,
+                                  final List<AgentMessage> messages) {
+        final var options = Objects.requireNonNullElse(modelOptions, ModelOptions.DEFAULT);
+        final var countingConfig = options.getTokenCountingConfig() == null
+                ? TokenCountingConfig.DEFAULT
+                : options.getTokenCountingConfig();
         final var currentEncodingType = Objects.requireNonNullElse(encodingType,
                                                                    EncodingType.CL100K_BASE);
         final var encoder = encodingRegistry.getEncoding(currentEncodingType);
 
         var totalTokens = 0;
         for (final var message : messages) {
-            final var counted = message.accept(new Counter(encoder, tokenCountingConfig));
-            totalTokens += tokenCountingConfig.getMessageOverHead() + counted.getRoleTokens();
+            final var counted = message.accept(new Counter(encoder,
+                                                           countingConfig,
+                                                           options.getReasoningReplay()
+                                                                   == ModelOptions.ReasoningReplay.ON));
+            totalTokens += countingConfig.getMessageOverHead() + counted.getRoleTokens();
             totalTokens += counted.getContentTokens();
         }
-        totalTokens += tokenCountingConfig.getAssistantPrimingOverhead();
+        totalTokens += countingConfig.getAssistantPrimingOverhead();
         return totalTokens;
     }
 }

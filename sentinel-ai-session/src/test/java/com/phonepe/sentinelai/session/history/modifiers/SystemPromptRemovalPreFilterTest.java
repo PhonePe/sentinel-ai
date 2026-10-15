@@ -55,6 +55,7 @@ class SystemPromptRemovalPreFilterTest {
                                         "response 1",
                                         new ModelUsageStats(),
                                         100,
+                                        null,
                                         null),
                                UserPrompt.text(sessionId, runId, "user message 2", LocalDateTime.now()),
                                new Text(sessionId,
@@ -64,6 +65,7 @@ class SystemPromptRemovalPreFilterTest {
                                         "response 2",
                                         new ModelUsageStats(),
                                         100,
+                                        null,
                                         null)
         );
         var result = filter.filter(messages);
@@ -83,6 +85,7 @@ class SystemPromptRemovalPreFilterTest {
                                     "response",
                                     new ModelUsageStats(),
                                     100,
+                                    null,
                                     null);
         var messages = List.of(
                                new SystemPrompt(sessionId, runId, "system prompt", true, "method1"),
@@ -112,6 +115,7 @@ class SystemPromptRemovalPreFilterTest {
                                         "response",
                                         new ModelUsageStats(),
                                         100,
+                                        null,
                                         null)
         );
         var result = filter.filter(messages);

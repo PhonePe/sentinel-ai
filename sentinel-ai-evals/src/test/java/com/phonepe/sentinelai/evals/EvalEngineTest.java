@@ -99,6 +99,7 @@ class EvalEngineTest {
                                                  "tc-" + i,
                                                  encodedToolOrder.get(i),
                                                  "{}",
+                                                 null,
                                                  null));
                 }
                 newMessages.add(new Text(sessionId,
@@ -108,6 +109,7 @@ class EvalEngineTest {
                                          finalOutput,
                                          usage,
                                          0,
+                                         null,
                                          null));
 
                 final var allMessages = new ArrayList<>(oldMessages);

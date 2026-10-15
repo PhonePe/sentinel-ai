@@ -56,6 +56,7 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_FUNCTION
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_FUNCTION_CALL_OUTPUT;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_MESSAGE;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_COMPACTED;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_REASONING;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_RESPONSE_ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_RUN_ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.NAME;
@@ -88,6 +89,20 @@ public class ResponsesMessageCodec implements MessageCodec {
         }
         node.put(MARKER_RESPONSE_ID, responseId);
         node.put(MARKER_RUN_ID, response.getRunId());
+    }
+
+    /**
+     * Embeds the internal reasoning marker on a node produced from an agent response that carries
+     * reasoning. The marker never reaches the provider; the protocol expands it into a preceding
+     * input item when replay is on and strips it otherwise. Raw items are deep-copied so the
+     * stored nodes are never mutated.
+     */
+    private static void addReasoningMarker(final ObjectNode node, final AgentResponse response) {
+        final var reasoning = response.getReasoning();
+        if (reasoning == null || reasoning.getRawItem() == null || reasoning.getRawItem().isNull()) {
+            return;
+        }
+        node.set(MARKER_REASONING, reasoning.getRawItem().deepCopy());
     }
 
     private static String imageDetailOf(final MediaTypes.ImageDetail detail) {
@@ -186,6 +201,7 @@ public class ResponsesMessageCodec implements MessageCodec {
                     public ObjectNode visit(final StructuredOutput structuredOutput) {
                         final var node = messageItem(mapper, ROLE_ASSISTANT, structuredOutput.getContent());
                         addChainMarkers(node, response);
+                        addReasoningMarker(node, response);
                         return node;
                     }
 
@@ -193,6 +209,7 @@ public class ResponsesMessageCodec implements MessageCodec {
                     public ObjectNode visit(final Text text) {
                         final var node = messageItem(mapper, ROLE_ASSISTANT, text.getContent());
                         addChainMarkers(node, response);
+                        addReasoningMarker(node, response);
                         return node;
                     }
 
@@ -204,6 +221,7 @@ public class ResponsesMessageCodec implements MessageCodec {
                         node.put(NAME, toolCall.getToolName());
                         node.put(ARGUMENTS, toolCall.getArguments());
                         addChainMarkers(node, response);
+                        addReasoningMarker(node, response);
                         return node;
                     }
                 });

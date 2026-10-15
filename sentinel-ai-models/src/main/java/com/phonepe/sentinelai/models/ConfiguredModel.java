@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -34,6 +35,7 @@ import com.phonepe.sentinelai.core.agent.ToolRunner;
 import com.phonepe.sentinelai.core.agentmessages.AgentGenericMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
+import com.phonepe.sentinelai.core.agentmessages.ReasoningContent;
 import com.phonepe.sentinelai.core.agentmessages.requests.GenericText;
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.StructuredOutput;
@@ -423,6 +425,9 @@ public class ConfiguredModel implements Model {
                                                                         response.getRefusal()));
                         }
                         final var runToolsResponse = runTools(response.getToolCalls(),
+                                                              response.getReasoningItems(),
+                                                              response.getReasoningFieldName(),
+                                                              response.getReasoningContent(),
                                                               context,
                                                               toolsForExecution,
                                                               toolRunner,
@@ -436,6 +441,7 @@ public class ConfiguredModel implements Model {
                                                               oldMessages);
                         yield runToolsResponse.orElseGet(() -> processOutput(context,
                                                                              response.getContent(),
+                                                                             reasoningOf(response),
                                                                              lastResponseId.get(),
                                                                              oldMessages,
                                                                              stats,
@@ -444,6 +450,9 @@ public class ConfiguredModel implements Model {
                                                                              stopwatch));
                     }
                     case WireResponse.FinishReasons.TOOL_CALLS -> runTools(response.getToolCalls(),
+                                                                           response.getReasoningItems(),
+                                                                           response.getReasoningFieldName(),
+                                                                           response.getReasoningContent(),
                                                                            context,
                                                                            toolsForExecution,
                                                                            toolRunner,
@@ -541,11 +550,9 @@ public class ConfiguredModel implements Model {
         final var modelAttributes = AgentUtils.getIfNotNull(agentSetup.getModelSettings(),
                                                             ModelSettings::getModelAttributes,
                                                             ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
-        return tokenCounter.estimateTokenCount(messages,
-                                               this.modelOptions
-                                                       .getTokenCountingConfig(),
-                                               modelAttributes
-                                                       .getEncodingType());
+        return tokenCounter.estimateTokenCount(this.modelOptions,
+                                               modelAttributes.getEncodingType(),
+                                               messages);
     }
 
     @SuppressWarnings({
@@ -644,6 +651,7 @@ public class ConfiguredModel implements Model {
                 try (eventStream) {
                     //We use the following to merge the pieces of response we get from stream into final output
                     final var responseData = new StringBuilder();
+                    final var reasoningData = new StringBuilder();
                     //We use the following to cobble together the fragments of tool call objects we get from the stream
                     final var toolCallData = new HashMap<Integer, ToolCallAccumulator>();
                     //Providers repeat the finish reason on trailing chunks (usage etc.). Only the first one is handled.
@@ -656,6 +664,7 @@ public class ConfiguredModel implements Model {
                             streamHandler.consumeReasoningAndContent(null, contentDelta.getContent());
                         }
                         else if (streamEvent instanceof WireStreamEvent.ReasoningDelta reasoningDelta) {
+                            reasoningData.append(reasoningDelta.getContent());
                             streamHandler.consumeReasoningAndContent(reasoningDelta.getContent(), null);
                         }
                         else if (streamEvent instanceof WireStreamEvent.ToolCallDelta toolCallDelta) {
@@ -714,6 +723,7 @@ public class ConfiguredModel implements Model {
                                                                  newMessages,
                                                                  stopwatch,
                                                                  responseData,
+                                                                 reasoningData,
                                                                  toolCallData,
                                                                  generatedOutput,
                                                                  toolsForExecution,
@@ -770,6 +780,7 @@ public class ConfiguredModel implements Model {
                                            final List<AgentMessage> newMessages,
                                            final Stopwatch stopwatch,
                                            final StringBuilder responseData,
+                                           final StringBuilder reasoningData,
                                            final Map<Integer, ToolCallAccumulator> toolCallData,
                                            final AtomicReference<String> generatedOutput,
                                            final Map<String, ExecutableTool> toolsForExecution,
@@ -792,6 +803,7 @@ public class ConfiguredModel implements Model {
                     yield processOutput(context,
                                         responseData.toString(),
                                         //We just take what we gathered return that
+                                        reasoningOf(finishEvent, reasoningData),
                                         finishEvent.getResponseId(),
                                         oldMessages,
                                         stats,
@@ -804,6 +816,7 @@ public class ConfiguredModel implements Model {
                     yield processStreamingOutput(context,
                                                  responseData.toString(),
                                                  //We just take what we gathered return that
+                                                 reasoningOf(finishEvent, reasoningData),
                                                  finishEvent.getResponseId(),
                                                  oldMessages,
                                                  stats,
@@ -833,6 +846,7 @@ public class ConfiguredModel implements Model {
                                     toolsForExecution,
                                     toolRunner,
                                     calls,
+                                    reasoningOf(finishEvent, reasoningData),
                                     agentMessages,
                                     stats,
                                     stopwatch,
@@ -844,6 +858,7 @@ public class ConfiguredModel implements Model {
 
                             yield processOutput(context,
                                                 generatedOutput.get(),
+                                                reasoningOf(finishEvent, reasoningData),
                                                 finishEvent.getResponseId(),
                                                 oldMessages,
                                                 stats,
@@ -855,6 +870,7 @@ public class ConfiguredModel implements Model {
 
                             yield processStreamingOutput(context,
                                                          generatedOutput.get(),
+                                                         reasoningOf(finishEvent, reasoningData),
                                                          finishEvent.getResponseId(),
                                                          oldMessages,
                                                          stats,
@@ -878,6 +894,54 @@ public class ConfiguredModel implements Model {
                                          stats,
                                          SentinelError.error(ErrorType.UNKNOWN_FINISH_REASON, finishReason));
         };
+    }
+
+    /**
+     * Builds the reasoning to attach to the response messages of a blocking call. Raw items win
+     * over normalized text: the raw nodes are replayed verbatim. The reasoning is always captured
+     * onto the message so it survives in history; whether it is sent back is decided later, at
+     * wire-emission time, from the replay policy.
+     */
+    private ReasoningContent reasoningOf(final WireResponse response) {
+        return reasoningOf(response.getReasoningItems(),
+                           response.getReasoningFieldName(),
+                           response.getReasoningContent());
+    }
+
+    /**
+     * Builds the reasoning to attach to the response messages of a streamed turn. Raw items from
+     * the finish event (Responses reasoning output items) win over the accumulated fragments;
+     * fragments fall back to the Chat Completions reasoning field shape. Captured unconditionally
+     * so it survives in history; emission is decided later from the replay policy.
+     */
+    private ReasoningContent reasoningOf(final WireStreamEvent.StreamFinishEvent finishEvent,
+                                         final StringBuilder reasoningData) {
+        if (!finishEvent.getReasoningItems().isEmpty()) {
+            return reasoningOf(finishEvent.getReasoningItems(), null, null);
+        }
+        if (!reasoningData.isEmpty()) {
+            return reasoningOf(List.of(TextNode.valueOf(reasoningData.toString())),
+                               null,
+                               reasoningData.toString());
+        }
+        return null;
+    }
+
+    /**
+     * Assembles the reasoning of one turn from its raw items and normalized text. A single item
+     * carries the turn's reasoning; multiple raw items (Responses) merge into the first.
+     */
+    private static ReasoningContent reasoningOf(final List<JsonNode> reasoningItems,
+                                                final String reasoningFieldName,
+                                                final String reasoningContent) {
+        if (reasoningItems == null || reasoningItems.isEmpty()) {
+            return null;
+        }
+        return ReasoningContent.builder()
+                .content(reasoningContent)
+                .rawItem(reasoningItems.get(0))
+                .wireFieldName(reasoningFieldName)
+                .build();
     }
 
     /**
@@ -1107,6 +1171,7 @@ public class ConfiguredModel implements Model {
                 .extras(modelOptions.getExtras())
                 .toolChoice(modelOptions.getToolChoice())
                 .responseChaining(modelOptions.getResponseChaining())
+                .reasoningReplay(modelOptions.getReasoningReplay())
                 .streaming(streaming)
                 .mapper(mapper)
                 .extensionRequestTransformers(List.copyOf(runContext.getRequestTransformers()))
@@ -1262,6 +1327,9 @@ public class ConfiguredModel implements Model {
 
     @SuppressWarnings("java:S107")
     private Optional<ModelOutput> runTools(final List<WireToolCall> receivedCalls,
+                                           final List<JsonNode> reasoningItems,
+                                           final String reasoningFieldName,
+                                           final String reasoningContent,
                                            final ModelRunContext context,
                                            final Map<String, ExecutableTool> toolsForExecution,
                                            final ToolRunner toolRunner,
@@ -1281,6 +1349,7 @@ public class ConfiguredModel implements Model {
                             toolsForExecution,
                             toolRunner,
                             toolCalls,
+                            reasoningOf(reasoningItems, reasoningFieldName, reasoningContent),
                             AgentMessages.builder()
                                     .newMessages(newMessages)
                                     .allMessages(allMessages)
@@ -1292,6 +1361,7 @@ public class ConfiguredModel implements Model {
             return Optional.ofNullable(generatedOutput.get())
                     .map(data -> processOutput(context,
                                                data,
+                                               null,
                                                lastResponseId.get(),
                                                oldMessages,
                                                stats,
@@ -1420,6 +1490,7 @@ public class ConfiguredModel implements Model {
 
     private ModelOutput processOutput(final ModelRunContext context,
                                       final String content,
+                                      final ReasoningContent reasoning,
                                       final String responseId,
                                       final List<AgentMessage> oldMessages,
                                       final ModelUsageStats stats,
@@ -1435,7 +1506,8 @@ public class ConfiguredModel implements Model {
                                                         stats,
                                                         stopwatch.elapsed(
                                                                           TimeUnit.MILLISECONDS),
-                                                        responseId);
+                                                        responseId,
+                                                        reasoning);
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, List.of(newMessage), allMessages, stopwatch);
@@ -1464,6 +1536,7 @@ public class ConfiguredModel implements Model {
      */
     private ModelOutput processStreamingOutput(final ModelRunContext context,
                                                final String content,
+                                               final ReasoningContent reasoning,
                                                final String responseId,
                                                final List<AgentMessage> oldMessages,
                                                final ModelUsageStats stats,
@@ -1480,7 +1553,8 @@ public class ConfiguredModel implements Model {
                                             stats,
                                             stopwatch.elapsed(
                                                               TimeUnit.MILLISECONDS),
-                                            responseId); //Always text output
+                                            responseId, //Always text output
+                                            reasoning);
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, List.of(newMessage), allMessages, stopwatch);
@@ -1542,6 +1616,7 @@ public class ConfiguredModel implements Model {
                                  final Map<String, ExecutableTool> tools,
                                  final ToolRunner toolRunner,
                                  final List<WireToolCall> toolCalls,
+                                 final ReasoningContent reasoning,
                                  final AgentMessages agentMessages,
                                  final ModelUsageStats stats,
                                  final Stopwatch stopwatch,
@@ -1555,6 +1630,7 @@ public class ConfiguredModel implements Model {
                         tools,
                         toolRunner,
                         toolCalls,
+                        reasoning,
                         agentMessages,
                         stats,
                         stopwatch,
@@ -1573,23 +1649,31 @@ public class ConfiguredModel implements Model {
                                  final Map<String, ExecutableTool> tools,
                                  final ToolRunner toolRunner,
                                  final List<WireToolCall> toolCalls,
+                                 final ReasoningContent reasoning,
                                  final AgentMessages agentMessages,
                                  final ModelUsageStats stats,
                                  final Stopwatch stopwatch,
                                  final String responseId) {
         final var seenToolCallIds = new HashSet<String>();
         final var mapper = agentSetup.getMapper();
+        final var first = new AtomicBoolean(true);
         final var toolCallMessages = toolCalls.stream()
                 .filter(toolCall -> !Strings.isNullOrEmpty(toolCall.getId()))
                 .filter(toolCall -> seenToolCallIds.add(toolCall.getId()))
-                .map(toolCall -> new ToolCall(sessionId,
-                                              runId,
-                                              null,
-                                              null,
-                                              toolCall.getId(),
-                                              toolCall.getName(),
-                                              toolCall.getArgumentsJson(),
-                                              responseId))
+                .map(toolCall -> {
+                    // Parallel tool calls of one response share the turn's reasoning; it is
+                    // attached to the first call only so replay never duplicates it.
+                    final var callReasoning = first.compareAndSet(true, false) ? reasoning : null;
+                    return new ToolCall(sessionId,
+                                        runId,
+                                        null,
+                                        null,
+                                        toolCall.getId(),
+                                        toolCall.getName(),
+                                        toolCall.getArgumentsJson(),
+                                        responseId,
+                                        callReasoning);
+                })
                 .toList();
 
         raiseMessageReceivedEvent(agentName,

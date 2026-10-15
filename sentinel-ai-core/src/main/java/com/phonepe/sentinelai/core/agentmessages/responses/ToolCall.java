@@ -21,6 +21,7 @@ import com.google.common.base.Strings;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponse;
 import com.phonepe.sentinelai.core.agentmessages.AgentResponseVisitor;
+import com.phonepe.sentinelai.core.agentmessages.ReasoningContent;
 
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -62,13 +63,15 @@ public class ToolCall extends AgentResponse {
                     @NonNull String toolCallId,
                     @NonNull String toolName,
                     String arguments,
-                    String responseId) {
+                    String responseId,
+                    ReasoningContent reasoning) {
         super(AgentMessageType.TOOL_CALL_REQUEST_MESSAGE,
               sessionId,
               runId,
               messageId,
               timestamp,
-              responseId);
+              responseId,
+              reasoning);
         this.toolCallId = toolCallId;
         this.toolName = toolName;
         this.arguments = Strings.isNullOrEmpty(arguments) ? EMPTY_ARGUMENTS : arguments;

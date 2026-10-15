@@ -71,8 +71,10 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.INSTRUCTIONS;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_FUNCTION_CALL;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_MESSAGE;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.ITEM_REASONING;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.JSON_SCHEMA;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_COMPACTED;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_REASONING;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_RESPONSE_ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MARKER_RUN_ID;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.MAX_OUTPUT_TOKENS;
@@ -100,6 +102,7 @@ import static com.phonepe.sentinelai.models.openai.ResponsesFields.STATUS_INCOMP
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.STORE;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.STREAM;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.STRICT;
+import static com.phonepe.sentinelai.models.openai.ResponsesFields.SUMMARY;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.TEMPERATURE;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.TEXT;
 import static com.phonepe.sentinelai.models.openai.ResponsesFields.TEXT_FIELD;
@@ -162,16 +165,17 @@ public class ResponsesProtocol implements WireProtocol {
         final var anchor = chaining == ModelOptions.ResponseChaining.OFF || suppressChainAnchor
                 ? null
                 : resolveChainAnchor(ctx, messages);
+        final var replayReasoning = ctx.getReasoningReplay() == ModelOptions.ReasoningReplay.ON;
         final var inputArray = mapper.createArrayNode();
         if (anchor != null) {
             // Chained request: only the input items appended after the anchor's response items
             // go on the wire; the provider stitches the earlier conversation server-side.
             messages.subList(anchor.getInputStartIndex(), messages.size())
-                    .forEach(item -> inputArray.add(stripChainMarkers(item, mapper)));
+                    .forEach(item -> addInputItems(inputArray, item, mapper, replayReasoning));
             body.put(PREVIOUS_RESPONSE_ID, anchor.getResponseId());
         }
         else {
-            messages.forEach(item -> inputArray.add(stripChainMarkers(item, mapper)));
+            messages.forEach(item -> addInputItems(inputArray, item, mapper, replayReasoning));
         }
         body.set(INPUT, inputArray);
         body.put(MODEL, ctx.effectiveModelId());
@@ -233,6 +237,8 @@ public class ResponsesProtocol implements WireProtocol {
     public WireResponse decodeResponse(final WireContext ctx, final JsonNode body) {
         final var toolCalls = new ArrayList<WireToolCall>();
         final var content = new StringBuilder();
+        final var reasoningItems = new ArrayList<JsonNode>();
+        final var reasoningText = new StringBuilder();
         var refusal = (String) null;
         final var output = body.get(RESPONSE_OUTPUT);
         if (output == null || !output.isArray()) {
@@ -242,7 +248,17 @@ public class ResponsesProtocol implements WireProtocol {
         }
         for (final JsonNode item : output) {
             final var type = textOrNull(item.get(TYPE));
-            if (ITEM_FUNCTION_CALL.equals(type)) {
+            if (ITEM_REASONING.equals(type)) {
+                // Reasoning items (including encrypted_content payloads in stateless mode) are
+                // captured verbatim so they can be replayed; the summary text is normalized for
+                // display.
+                reasoningItems.add(item);
+                final var summaryText = reasoningSummaryText(item.get(SUMMARY));
+                if (summaryText != null) {
+                    reasoningText.append(summaryText);
+                }
+            }
+            else if (ITEM_FUNCTION_CALL.equals(type)) {
                 toolCalls.add(new WireToolCall(textOrNull(item.get(CALL_ID)),
                                                textOrNull(item.get(NAME)),
                                                textOrNull(item.get(ARGUMENTS))));
@@ -267,6 +283,8 @@ public class ResponsesProtocol implements WireProtocol {
         }
         return new WireResponse(finishReasonOf(body, !toolCalls.isEmpty()),
                                 content.length() == 0 ? null : content.toString(),
+                                reasoningText.length() == 0 ? null : reasoningText.toString(),
+                                reasoningItems,
                                 null,
                                 refusal,
                                 toolCalls,
@@ -333,6 +351,23 @@ public class ResponsesProtocol implements WireProtocol {
                 && !properties.isEmpty();
     }
 
+    /**
+     * Extracts the plain text of a reasoning item's summary array.
+     */
+    private static String reasoningSummaryText(final JsonNode summary) {
+        if (summary == null || !summary.isArray()) {
+            return null;
+        }
+        final var sb = new StringBuilder();
+        for (final var part : summary) {
+            final var text = textOrNull(part.get(TEXT_FIELD));
+            if (text != null) {
+                sb.append(text);
+            }
+        }
+        return sb.isEmpty() ? null : sb.toString();
+    }
+
     private WireStreamEvent contentDelta(final JsonNode delta, final JsonNode text) {
         final var value = delta != null && !delta.isNull()
                 ? delta.asText()
@@ -389,7 +424,8 @@ public class ResponsesProtocol implements WireProtocol {
             return new WireStreamEvent.StreamFinishEvent(decoded.getFinishReason(),
                                                          decoded.getRefusal(),
                                                          decoded.getUsage(),
-                                                         decoded.getResponseId());
+                                                         decoded.getResponseId(),
+                                                         decoded.getReasoningItems());
         }
         return null;
     }
@@ -479,19 +515,40 @@ public class ResponsesProtocol implements WireProtocol {
     }
 
     /**
-     * Copies a wire item without the internal chaining markers. Input nodes must never be
+     * Adds one wire item to the request input array, expanding the internal reasoning marker
+     * into a preceding input item when reasoning replay is on. When the item carries no markers
+     * it is added as-is; otherwise a copy without the markers is added. Input nodes must never be
      * mutated and markers must never reach the provider.
      */
-    private JsonNode stripChainMarkers(final JsonNode item, final ObjectMapper mapper) {
+    private static void addInputItems(final com.fasterxml.jackson.databind.node.ArrayNode inputArray,
+                                      final JsonNode item,
+                                      final ObjectMapper mapper,
+                                      final boolean replayReasoning) {
+        final var reasoningItem = item == null || !item.isObject()
+                ? null
+                : item.get(MARKER_REASONING);
+        if (reasoningItem != null && !reasoningItem.isNull() && replayReasoning) {
+            // Replay on: the reasoning item precedes its assistant item, verbatim.
+            inputArray.add(reasoningItem.deepCopy());
+        }
+        inputArray.add(stripChainMarkers(item, mapper));
+    }
+
+    /**
+     * Copies a wire item without the internal chaining and reasoning markers. Input nodes must
+     * never be mutated and markers must never reach the provider.
+     */
+    private static JsonNode stripChainMarkers(final JsonNode item, final ObjectMapper mapper) {
         if (item == null || !item.isObject()
                 || (!item.has(MARKER_RESPONSE_ID) && !item.has(MARKER_RUN_ID)
-                        && !item.has(MARKER_COMPACTED))) {
+                        && !item.has(MARKER_COMPACTED) && !item.has(MARKER_REASONING))) {
             return item;
         }
         final var copy = (ObjectNode) item.deepCopy();
         copy.remove(MARKER_RESPONSE_ID);
         copy.remove(MARKER_RUN_ID);
         copy.remove(MARKER_COMPACTED);
+        copy.remove(MARKER_REASONING);
         return copy;
     }
 

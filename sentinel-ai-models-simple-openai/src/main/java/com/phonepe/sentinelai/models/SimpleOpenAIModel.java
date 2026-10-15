@@ -436,11 +436,12 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
         final var modelAttributes = AgentUtils.getIfNotNull(agentSetup.getModelSettings(),
                                                             ModelSettings::getModelAttributes,
                                                             ModelAttributes.DEFAULT_MODEL_ATTRIBUTES);
-        return tokenCounter.estimateTokenCount(messages,
-                                               this.modelOptions
-                                                       .getTokenCountingConfig(),
-                                               modelAttributes
-                                                       .getEncodingType());
+        // The deprecated local TokenCounter keeps its old (messages, config, encoding) signature;
+        // this module's model never replays reasoning, so reasoning replay stays OFF here.
+        return tokenCounter.estimateTokenCount(
+                                               messages,
+                                               this.modelOptions.getTokenCountingConfig(),
+                                               modelAttributes.getEncodingType());
     }
 
 
@@ -993,7 +994,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                                         stats,
                                                         stopwatch.elapsed(
                                                                           TimeUnit.MILLISECONDS),
-                                                        responseId);
+                                                        responseId,
+                                                        null);
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, List.of(newMessage), allMessages, stopwatch);
@@ -1038,7 +1040,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                             stats,
                                             stopwatch.elapsed(
                                                               TimeUnit.MILLISECONDS),
-                                            responseId); //Always text output
+                                            responseId, //Always text output
+                                            null);
             allMessages.add(newMessage);
             newMessages.add(newMessage);
             raiseMessageReceivedEvent(context, List.of(newMessage), allMessages, stopwatch);
@@ -1279,7 +1282,8 @@ public class SimpleOpenAIModel<M extends ChatCompletionServices> implements Mode
                                               toolCall.getId(),
                                               toolCall.getFunction().getName(),
                                               toolCall.getFunction().getArguments(),
-                                              responseId))
+                                              responseId,
+                                              null))
                 .toList();
 
         raiseMessageReceivedEvent(agentName,

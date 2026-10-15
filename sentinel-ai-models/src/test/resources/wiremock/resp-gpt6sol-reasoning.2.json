@@ -2,7 +2,7 @@ event: response.output_item.added
 data: {"output_index":0,"item":{"type":"reasoning","id":"rs_2","content":[],"summary":[]}}
 
 event: response.reasoning.delta
-{"delta":"The tool returned the name. Now greet the user with the structured JSON payload.","output_index":0}
+data: {"delta":"The tool returned the name. Now greet the user with the structured JSON payload.","output_index":0}
 
 event: response.output_item.done
 data: {"output_index":0,"item":{"type":"reasoning","id":"rs_2","content":[],"summary":[]}}

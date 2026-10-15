@@ -18,11 +18,13 @@ package com.phonepe.sentinelai.models.openai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Strings;
 
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.model.OutputGenerationMode;
 import com.phonepe.sentinelai.core.tools.ParameterMapper;
+import com.phonepe.sentinelai.models.ModelOptions;
 import com.phonepe.sentinelai.models.wire.MessageCodec;
 import com.phonepe.sentinelai.models.wire.SseEvent;
 import com.phonepe.sentinelai.models.wire.WireContext;
@@ -57,6 +59,9 @@ import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.INCLUDE
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.INDEX;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.JSON_SCHEMA;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.LOGIT_BIAS;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MARKER_REASONING;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MARKER_REASONING_FIELD_NAME;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MARKER_REASONING_RAW_ITEM;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MAX_COMPLETION_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MESSAGE;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.MESSAGES;
@@ -68,6 +73,7 @@ import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.PARAMET
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.PRESENCE_PENALTY;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.PROMPT_TOKENS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.PROMPT_TOKENS_DETAILS;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.REASONING;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.REASONING_CONTENT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.REASONING_EFFORT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.REASONING_TOKENS;
@@ -79,6 +85,8 @@ import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.STREAM;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.STREAM_OPTIONS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.STRICT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TEMPERATURE;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.THINKING;
+import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.THINKING_CONTENT;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TOOLS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TOOL_CALLS;
 import static com.phonepe.sentinelai.models.openai.ChatCompletionsFields.TOOL_CHOICE;
@@ -133,7 +141,8 @@ public class ChatCompletionsProtocol implements WireProtocol {
         final var mapper = ctx.getMapper();
         final var body = mapper.createObjectNode();
         final var messageArray = mapper.createArrayNode();
-        messages.forEach(messageArray::add);
+        final var replayReasoning = ctx.getReasoningReplay() == ModelOptions.ReasoningReplay.ON;
+        messages.forEach(message -> messageArray.add(expandReasoningMarker(message, replayReasoning)));
         body.set(MESSAGES, messageArray);
         body.put(MODEL, ctx.effectiveModelId());
         body.put(N, 1);
@@ -167,6 +176,120 @@ public class ChatCompletionsProtocol implements WireProtocol {
         return body;
     }
 
+    /**
+     * Captured reasoning of one Chat Completions message: the raw field node, the field it
+     * arrived in, and the normalized plain text.
+     */
+    private record CapturedReasoning(
+            JsonNode rawItem,
+            String fieldName,
+            String text
+    ) {
+
+    }
+
+    /**
+     * Captures the reasoning of an assistant message across provider field-name variants.
+     * Providers disagree on the reasoning field: {@code reasoning_content} (DeepSeek and most
+     * OpenAI-compatible servers), {@code thinking}/{@code thinking_content} (Gemini and
+     * Anthropic OpenAI-compatible endpoints) and {@code reasoning} as a string or an object
+     * with nested content (OpenAI o-series via proxies). The raw node is kept verbatim for
+     * replay; the text is normalized for display.
+     */
+    private static CapturedReasoning decodeReasoning(final JsonNode message) {
+        if (message == null) {
+            return null;
+        }
+        final var reasoningContent = message.get(REASONING_CONTENT);
+        if (reasoningContent != null && !reasoningContent.isNull()) {
+            return new CapturedReasoning(reasoningContent,
+                                         REASONING_CONTENT,
+                                         textOrNull(reasoningContent));
+        }
+        for (final var field : List.of(THINKING, THINKING_CONTENT)) {
+            final var node = message.get(field);
+            if (node != null && node.isTextual()) {
+                return new CapturedReasoning(node, field, node.asText());
+            }
+        }
+        final var reasoning = message.get(REASONING);
+        if (reasoning != null && !reasoning.isNull()) {
+            final var text = extractReasoningText(reasoning);
+            if (text != null) {
+                return new CapturedReasoning(reasoning, REASONING, text);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extracts plain text from an o-series style reasoning object: a string field, a nested
+     * {@code text} or a {@code content} array of summary/text items.
+     */
+    private static String extractReasoningText(final JsonNode reasoning) {
+        if (reasoning.isTextual()) {
+            return reasoning.asText();
+        }
+        if (reasoning.isObject()) {
+            final var text = reasoning.get("text");
+            if (text != null && text.isTextual()) {
+                return text.asText();
+            }
+            final var content = reasoning.get("content");
+            if (content != null && content.isArray()) {
+                final var sb = new StringBuilder();
+                for (final var item : content) {
+                    if (item.isTextual()) {
+                        sb.append(item.asText());
+                    }
+                    else if (item.isObject()) {
+                        final var summary = item.get("summary");
+                        if (summary != null) {
+                            if (summary.isTextual()) {
+                                sb.append(summary.asText());
+                            }
+                            else if (summary.isArray()) {
+                                summary.forEach(part -> sb.append(part.asText()));
+                            }
+                        }
+                        else {
+                            final var itemText = item.get("text");
+                            if (itemText != null) {
+                                sb.append(itemText.asText());
+                            }
+                        }
+                    }
+                }
+                if (!sb.isEmpty()) {
+                    return sb.toString();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Expands the internal reasoning marker on an assistant message node. When replay is on, the
+     * marker is replaced by the original reasoning field on the same message (same field name,
+     * same raw value); when replay is off the marker is dropped. The marker never reaches the
+     * provider.
+     */
+    private static JsonNode expandReasoningMarker(final JsonNode message, final boolean replayReasoning) {
+        if (message == null || !message.isObject() || !message.has(MARKER_REASONING)) {
+            return message;
+        }
+        final var copy = (ObjectNode) message.deepCopy();
+        final var marker = copy.remove(MARKER_REASONING);
+        if (replayReasoning && marker != null && marker.isObject()) {
+            final var fieldName = textOrNull(marker.get(MARKER_REASONING_FIELD_NAME));
+            final var rawItem = marker.get(MARKER_REASONING_RAW_ITEM);
+            if (fieldName != null && !fieldName.isBlank() && rawItem != null && !rawItem.isNull()) {
+                copy.set(fieldName, rawItem);
+            }
+        }
+        return copy;
+    }
+
     @Override
     public ErrorType classifyError(final int status, final JsonNode errorBody) {
         return switch (status) {
@@ -194,9 +317,14 @@ public class ChatCompletionsProtocol implements WireProtocol {
                                                function == null ? null : textOrNull(function.get(ARGUMENTS))));
             });
         }
+        final var reasoning = decodeReasoning(message);
         return new WireResponse(normalizeFinishReason(textOrNull(choice.get(FINISH_REASON))),
                                 message == null ? null : textOrNull(message.get(CONTENT)),
-                                message == null ? null : textOrNull(message.get(REASONING_CONTENT)),
+                                reasoning == null ? null : reasoning.text(),
+                                reasoning == null || reasoning.rawItem() == null
+                                        ? List.of()
+                                        : List.of(reasoning.rawItem()),
+                                reasoning == null ? null : reasoning.fieldName(),
                                 message == null ? null : textOrNull(message.get(REFUSAL)),
                                 toolCalls,
                                 decodeUsage(body.get(USAGE)),
@@ -222,9 +350,9 @@ public class ChatCompletionsProtocol implements WireProtocol {
                 if (content != null && !content.isEmpty()) {
                     events.add(new WireStreamEvent.ContentDelta(content));
                 }
-                final var reasoning = textOrNull(delta.get(REASONING_CONTENT));
-                if (reasoning != null && !reasoning.isEmpty()) {
-                    events.add(new WireStreamEvent.ReasoningDelta(reasoning));
+                final var reasoningDelta = decodeReasoning(delta);
+                if (reasoningDelta != null && !Strings.isNullOrEmpty(reasoningDelta.text())) {
+                    events.add(new WireStreamEvent.ReasoningDelta(reasoningDelta.text()));
                 }
                 final var toolCalls = delta.get(TOOL_CALLS);
                 if (toolCalls != null && toolCalls.isArray()) {

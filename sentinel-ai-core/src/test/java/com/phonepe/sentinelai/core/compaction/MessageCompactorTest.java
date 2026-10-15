@@ -36,11 +36,55 @@ import com.phonepe.sentinelai.core.utils.JsonUtils;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MessageCompactorTest {
 
     private final ObjectMapper mapper = JsonUtils.createMapper();
+
+    @Test
+    void testCompactionDropsReasoningWithAssistantMessages() {
+        final var reasoningRaw = """
+                {"type": "reasoning", "id": "rs_1", "encrypted_content": "gAAAAABoNDg7"}
+                """;
+        final com.phonepe.sentinelai.core.agentmessages.ReasoningContent reasoning;
+        try {
+            reasoning = com.phonepe.sentinelai.core.agentmessages.ReasoningContent.builder()
+                    .content("Thinking about the request.")
+                    .rawItem(mapper.readTree(reasoningRaw))
+                    .build();
+        }
+        catch (final Exception e) {
+            throw new IllegalStateException(e);
+        }
+        final var messages = List.<com.phonepe.sentinelai.core.agentmessages.AgentMessage>of(
+                                                                                             Text.builder()
+                                                                                                     .sessionId("session-1")
+                                                                                                     .runId("run-1")
+                                                                                                     .content("Assistant message")
+                                                                                                     .stats(new ModelUsageStats())
+                                                                                                     .reasoning(reasoning)
+                                                                                                     .build(),
+                                                                                             ToolCall.builder()
+                                                                                                     .sessionId("session-1")
+                                                                                                     .runId("run-1")
+                                                                                                     .toolCallId("call-1")
+                                                                                                     .toolName("get_weather")
+                                                                                                     .arguments("{}")
+                                                                                                     .reasoning(reasoning)
+                                                                                                     .build());
+
+        final var result = MessageCompactor.toCompactMessage(messages, mapper);
+
+        assertEquals(2, result.size());
+        // The compact summary carries chat/tool content only; reasoning (including the opaque
+        // encrypted payload) is never carried into the compaction summary
+        assertFalse(result.toString().contains("rs_1"));
+        assertFalse(result.toString().contains("encrypted_content"));
+        assertFalse(result.toString().contains("Thinking about the request."));
+        assertEquals("Assistant message", result.get(0).get("content").asText());
+    }
 
     @Test
     void testKeepsChatAndSkipsToolsWhenFlagOn() {
