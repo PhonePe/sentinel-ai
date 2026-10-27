@@ -53,3 +53,4 @@ sentinel-ai-examples/.logs/
 !sentinel-ai-examples/src/main/resources/.env
 
 .mvn/jvm.config
+.sonar

@@ -17,6 +17,8 @@
 package com.phonepe.sentinelai.session;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 
@@ -24,6 +26,7 @@ import io.appform.signals.signals.ConsumingFireForgetSignal;
 
 import com.phonepe.sentinelai.core.agent.Agent;
 import com.phonepe.sentinelai.core.agent.AgentExtension;
+import com.phonepe.sentinelai.core.agent.AgentExtension.ExtensionPromptSchema;
 import com.phonepe.sentinelai.core.agent.AgentRunContext;
 import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.Fact;
@@ -61,10 +64,11 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static com.phonepe.sentinelai.session.MessageReadingUtils.readMessagesSinceId;
 import static com.phonepe.sentinelai.session.MessageReadingUtils.rearrangeMessages;
-
 
 /**
  * Manages session for an agent. Saves the message history and summarizes the session after each run.
@@ -77,6 +81,9 @@ import static com.phonepe.sentinelai.session.MessageReadingUtils.rearrangeMessag
 })
 public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements AgentExtension<R, T, A> {
 
+    private static final int SAVED_MESSAGE_IDS_CACHE_SIZE = 1_000;
+    private static final long SAVED_MESSAGE_IDS_EXPIRY_MINUTES = 30;
+
     private final ObjectMapper mapper;
     private final SessionStore sessionStore;
     private final AgentSessionExtensionSetup setup;
@@ -84,6 +91,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     private final List<MessageSelector> messageSelectors;
     private final AgentEventMessageExtractor extractor = new AgentEventMessageExtractor();
     private final ConsumingFireForgetSignal<SessionSummary> onSessionSummarized = new ConsumingFireForgetSignal<>();
+    private final Cache<String, Boolean> savedMessageIds = Caffeine.newBuilder()
+            .maximumSize(SAVED_MESSAGE_IDS_CACHE_SIZE)
+            .expireAfterWrite(SAVED_MESSAGE_IDS_EXPIRY_MINUTES, TimeUnit.MINUTES)
+            .build();
     private A agent;
 
     /**
@@ -282,6 +293,11 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         return this;
     }
 
+    @VisibleForTesting
+    Consumer<AgentEvent> eventHandlerForTest() {
+        return this::processEvent;
+    }
+
     /*
      * This method processes events and takes action as needed
      * Actions taken:
@@ -416,20 +432,25 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
         for (var modifier : historyModifiers) {
             newMessages = modifier.filter(newMessages);
         }
-        if (newMessages.isEmpty()) {
+        // filter out already saved messages in case of retry
+        final var unsavedMessages = newMessages.stream()
+                .filter(message -> savedMessageIds.getIfPresent(message.getMessageId()) == null)
+                .toList();
+        if (unsavedMessages.isEmpty()) {
             log.warn("No new messages to save after applying modifiers");
             return false;
         }
-        sessionStore.saveMessages(sessionId, runId, newMessages);
+        sessionStore.saveMessages(sessionId, runId, unsavedMessages);
+        unsavedMessages.forEach(message -> savedMessageIds.put(message.getMessageId(), Boolean.TRUE));
         if (log.isDebugEnabled()) {
             log.debug("Saved messages for session {}: {}",
                       sessionId,
-                      newMessages.stream()
+                      unsavedMessages.stream()
                               .map(AgentMessage::getMessageId)
                               .toList());
         }
         else {
-            log.info("Saved {} messages for session {}", newMessages.size(), sessionId);
+            log.info("Saved {} new messages for session {}", unsavedMessages.size(), sessionId);
         }
         return true;
     }

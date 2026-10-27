@@ -44,6 +44,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -162,19 +165,30 @@ public class EventUtils {
     public static <R, T, A extends Agent<R, T, A>> void raiseMessageSentEvent(ModelRunContext modelRunContext,
                                                                               List<AgentMessage> prevMessages,
                                                                               List<AgentMessage> currentAllMessages) {
-        final var oldMessagesIds = prevMessages.stream()
+        final var runId = modelRunContext.getRunId();
+        // The constructor of ModelRunContext never leaves the tracker null, but stay
+        // defensive: the fallback must be mutable, as raised messages are marked into it below.
+        final Set<String> raisedMessageIds = Objects.requireNonNullElseGet(modelRunContext.getRaisedMessageIds(),
+                                                                           ConcurrentHashMap::newKeySet);
+        final var oldMessageIds = prevMessages.stream()
                 .map(AgentMessage::getMessageId)
                 .collect(Collectors.toUnmodifiableSet());
-
+        // A retry re-enters the model loop with a prevMessages snapshot that lacks the
+        // current run's messages, so the prevMessages snapshot alone cannot tell a message
+        // of this run that was already raised from one that is genuinely new. The per-run
+        // raisedMessageIds tracker of the run context keeps that distinction across retries.
         final var newMessages = currentAllMessages.stream()
                 .filter(message -> ClassUtils.isAssignable(message.getClass(), AgentRequest.class))
-                .filter(message -> !oldMessagesIds.contains(message.getMessageId()))
+                .filter(message -> message.getRunId().equals(runId)
+                        ? !raisedMessageIds.contains(message.getMessageId())
+                        : !oldMessageIds.contains(message.getMessageId()))
                 .toList();
 
         if (log.isTraceEnabled()) {
-            log.trace("Prev message ids: {}. Curr message ids: {}",
-                      oldMessagesIds,
-                      currentAllMessages.stream().map(AgentMessage::getMessageId).toList());
+            log.trace("Prev message ids: {}. Curr message ids: {}. Already raised ids: {}",
+                      oldMessageIds,
+                      currentAllMessages.stream().map(AgentMessage::getMessageId).toList(),
+                      raisedMessageIds);
         }
         if (newMessages.isEmpty()) {
             log.debug("No new messages");
@@ -188,7 +202,9 @@ public class EventUtils {
                                                   modelRunContext.getUserId(),
                                                   List.copyOf(prevMessages),
                                                   List.copyOf(newMessages)));
-
+        // Mark raised only after the event was notified so that the tracker of this run
+        // stays consistent with the events that actually went out for the run.
+        newMessages.forEach(message -> raisedMessageIds.add(message.getMessageId()));
     }
 
     public static void raiseOutputEvent(ModelRunContext context,

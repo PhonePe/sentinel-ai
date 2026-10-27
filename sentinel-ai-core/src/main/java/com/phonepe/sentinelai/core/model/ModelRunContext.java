@@ -24,6 +24,9 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A context object passed to the model at runtime.
@@ -72,6 +75,14 @@ public class ModelRunContext {
     List<RequestTransformer> requestTransformers;
 
     /**
+     * Ids of the messages of this run that were raised already in a sent-message event. A
+     * retry of the run re-enters the model loop; this tracker keeps each message of the
+     * run raised exactly once. Never null.
+     */
+    @Builder.Default
+    Set<String> raisedMessageIds = ConcurrentHashMap.newKeySet();
+
+    /**
      * Creates a run context without extension request transformers.
      *
      * @param agentName       name of the agent that runs the model
@@ -101,7 +112,6 @@ public class ModelRunContext {
      * @param userId              user id of this run
      * @param agentSetup          setup of the agent
      * @param modelUsageStats     usage stats of this run
-     * @param processingMode      processing mode of this run
      * @param requestTransformers extension request transformers; null means none
      */
     public ModelRunContext(final String agentName,
@@ -112,6 +122,40 @@ public class ModelRunContext {
                            final ModelUsageStats modelUsageStats,
                            final ProcessingMode processingMode,
                            final List<RequestTransformer> requestTransformers) {
+        this(agentName,
+             runId,
+             sessionId,
+             userId,
+             agentSetup,
+             modelUsageStats,
+             processingMode,
+             requestTransformers,
+             ConcurrentHashMap.newKeySet());
+    }
+
+    /**
+     * Creates a run context.
+     *
+     * @param agentName           name of the agent that runs the model
+     * @param runId               id of this run
+     * @param sessionId           session id of this run
+     * @param userId              user id of this run
+     * @param agentSetup          setup of the agent
+     * @param modelUsageStats     usage stats of this run
+     * @param processingMode      processing mode of this run
+     * @param requestTransformers extension request transformers; null means none
+     * @param raisedMessageIds    tracker of the message ids raised in sent-message events;
+     *                            null means a new tracker
+     */
+    public ModelRunContext(final String agentName,
+                           final String runId,
+                           final String sessionId,
+                           final String userId,
+                           final AgentSetup agentSetup,
+                           final ModelUsageStats modelUsageStats,
+                           final ProcessingMode processingMode,
+                           final List<RequestTransformer> requestTransformers,
+                           final Set<String> raisedMessageIds) {
         this.agentName = agentName;
         this.runId = runId;
         this.sessionId = sessionId;
@@ -120,5 +164,7 @@ public class ModelRunContext {
         this.modelUsageStats = modelUsageStats;
         this.processingMode = processingMode;
         this.requestTransformers = requestTransformers == null ? List.of() : List.copyOf(requestTransformers);
+        this.raisedMessageIds = Objects.requireNonNullElseGet(raisedMessageIds,
+                                                              ConcurrentHashMap::newKeySet);
     }
 }

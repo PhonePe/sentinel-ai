@@ -36,6 +36,8 @@ import com.phonepe.sentinelai.core.agent.AgentSetup;
 import com.phonepe.sentinelai.core.agent.AutoCompactionSetup;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.events.MessageSentAgentEvent;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
 import com.phonepe.sentinelai.core.tools.Tool;
@@ -56,6 +58,7 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -444,6 +447,47 @@ class AgentSessionExtensionTest {
                 .sessionStore(new InMemorySessionStore());
         final var extension = customizer.apply(builder).build();
         assertion.accept(extension);
+    }
+
+    /**
+     * Verifies that a re-delivered message event (as happens when a retry re-enters the model
+     * loop) does not save the same message twice, and that a message whose save failed is
+     * retried because only successful saves are tracked.
+     */
+    @Test
+    void testDuplicateMessageEventIsNotSavedTwice() {
+        final var sessionStore = new InMemorySessionStore();
+        final var extension = AgentSessionExtension
+                .<UserInput, String, SimpleAgent>builder()
+                .sessionStore(sessionStore)
+                .mapper(JsonUtils.createMapper())
+                .historyModifiers(List.of())
+                .messageSelectors(List.of())
+                .build();
+        final var handler = extension.eventHandlerForTest();
+
+        final var msg = UserPrompt.text("s-dup", "run-dup", "hello", LocalDateTime.now());
+        final var event = MessageSentAgentEvent.builder()
+                .agentName("simple-agent")
+                .runId("run-dup")
+                .sessionId("s-dup")
+                .userId("u1")
+                .allMessages(List.of(msg))
+                .newMessages(List.of(msg))
+                .build();
+
+        // First delivery saves the message
+        handler.accept(event);
+        // Re-delivery of the same event (retry re-entry) must not save it again
+        handler.accept(event);
+
+        final var saved = sessionStore.readMessages("s-dup",
+                                                    Integer.MAX_VALUE,
+                                                    false,
+                                                    null,
+                                                    QueryDirection.OLDER)
+                .getItems();
+        assertEquals(1, saved.size(), "Duplicate delivery must not save the message twice");
     }
 
     /**

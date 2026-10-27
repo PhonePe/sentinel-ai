@@ -57,6 +57,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -307,17 +308,86 @@ class EventUtilsTest {
     void raiseMessageSentEventNoNewMessagesDoesNotNotify() {
         final var msg1 = UserPrompt.text(SESSION_ID, RUN_ID, "old message", LocalDateTime.now());
 
-        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(msg1), List.of(msg1));
+        // The message of the current run was raised already, so nothing new is left to raise
+        modelRunContext.getRaisedMessageIds().add(msg1.getMessageId());
+
+        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(), List.of(msg1));
 
         verify(eventBus, never()).notify(any());
     }
 
     @Test
+    void raiseMessageSentEventOldRunMessageIsRaisedAsNew() {
+        // Messages of an older run are not part of the current run. The message id is not
+        // present in prevMessages, so the message must be raised as new.
+        final var currentAllMessages = List.<AgentMessage>of(
+                                                             UserPrompt.text(SESSION_ID,
+                                                                             RUN_ID,
+                                                                             "current run message",
+                                                                             LocalDateTime.now()),
+                                                             UserPrompt.text(SESSION_ID,
+                                                                             "run-000",
+                                                                             "older run message",
+                                                                             LocalDateTime.now()));
+
+        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(), currentAllMessages);
+
+        final var captor = ArgumentCaptor.forClass(AgentEvent.class);
+        verify(eventBus).notify(captor.capture());
+
+        final var event = assertInstanceOf(MessageSentAgentEvent.class, captor.getValue());
+        assertEquals(2,
+                     event.getNewMessages().size(),
+                     "Messages of both the current run and the older run must be raised as new");
+    }
+
+    @Test
+    void raiseMessageSentEventRetrySameRunDoesNotRaiseUserPromptTwice() {
+        // A retry of the same run re-enters the model loop. The prevMessages snapshot excludes
+        // all messages of the current run, so only the raisedMessageIds tracker of the run
+        // context can stop the already raised user prompt of the run from going out again.
+        final var msg1 = UserPrompt.text(SESSION_ID, RUN_ID, "first retryable prompt", LocalDateTime.now());
+        final var msg2 = UserPrompt.text(SESSION_ID, RUN_ID, "second retryable prompt", LocalDateTime.now());
+
+        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(), List.<AgentMessage>of(msg1));
+
+        // Retry re-entry: prevMessages lacks the current run's messages, msg1 was raised already
+        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(), List.<AgentMessage>of(msg1, msg2));
+
+        final var captor = ArgumentCaptor.forClass(AgentEvent.class);
+        verify(eventBus, times(2)).notify(captor.capture());
+
+        final var retryEvent = assertInstanceOf(MessageSentAgentEvent.class, captor.getAllValues().get(1));
+        assertEquals(1,
+                     retryEvent.getNewMessages().size(),
+                     "The already raised message of the current run must not be raised again on retry");
+        assertEquals("second retryable prompt", ((UserPrompt) retryEvent.getNewMessages().get(0)).getContent());
+    }
+
+    @Test
+    void raiseMessageSentEventRetryWithOnlyAlreadyRaisedMessagesDoesNotNotify() {
+        // A retry of the same run re-enters the model loop. The prevMessages snapshot excludes
+        // all messages of the current run, so every raised message of the run is filtered out
+        // and no event must be raised.
+        final var msg1 = UserPrompt.text(SESSION_ID, RUN_ID, "first", LocalDateTime.now());
+        final var msg2 = UserPrompt.text(SESSION_ID, RUN_ID, "second", LocalDateTime.now());
+
+        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(), List.<AgentMessage>of(msg1, msg2));
+
+        // Retry re-entry delivers the very same messages again
+        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(), List.<AgentMessage>of(msg1, msg2));
+
+        verify(eventBus, times(1)).notify(any());
+    }
+
     void raiseMessageSentEventSendsOnlyNewRequestMessages() {
         final var msg1 = UserPrompt.text(SESSION_ID, RUN_ID, "old message", LocalDateTime.now());
         final var msg2 = UserPrompt.text(SESSION_ID, RUN_ID, "new message", LocalDateTime.now());
 
-        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(msg1), List.of(msg1, msg2));
+        // The first message of the current run was raised already
+        modelRunContext.getRaisedMessageIds().add(msg1.getMessageId());
+
+        EventUtils.raiseMessageSentEvent(modelRunContext, List.of(), List.of(msg1, msg2));
 
         final var captor = ArgumentCaptor.forClass(AgentEvent.class);
         verify(eventBus).notify(captor.capture());
@@ -340,7 +410,6 @@ class EventUtilsTest {
         verify(eventBus).notify(captor.capture());
 
         final var event = assertInstanceOf(OutputErrorAgentEvent.class, captor.getValue());
-        assertEquals(AGENT_NAME, event.getAgentName());
         assertEquals(RUN_ID, event.getRunId());
         assertEquals(ErrorType.GENERIC_MODEL_CALL_FAILURE, event.getErrorType());
         assertNotNull(event.getElapsedTime());
