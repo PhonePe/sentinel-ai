@@ -33,6 +33,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayOutputStream;
+import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -42,9 +43,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Disk based storage for messages.
@@ -55,13 +56,24 @@ import java.util.function.Consumer;
  * - We maintain a treemap based index for fast fetch
  * - stamped lock based locking to ensure
  * - We use the map key as the pointers in BiScrollable
- * - All messages from file are read in one shot at startup and served from the treemap
+ * - Messages are loaded lazily: an OLDER query with no pointer first loads only the tail of the file,
+ * and a full load happens only when a query needs messages outside the loaded tail
  * - Writes are appended to file and committed to the treemap for access
  */
 @Slf4j
 public class FileSystemMessageStorage {
 
     private static final String MESSAGES_FILE_NAME = "messages.jsonl";
+
+    private static final int TAIL_LOAD_CHUNK_SIZE = 64 * 1024;
+
+    private static final int MAX_TAIL_LOAD_LINES = 10_000;
+
+    private enum LoadState {
+        NOT_LOADED,
+        TAIL_LOADED,
+        FULLY_LOADED
+    }
 
     private record MessageMeta(
             String messageId,
@@ -72,7 +84,7 @@ public class FileSystemMessageStorage {
     private final TreeMap<MessageMeta, AgentMessage> messageCache;
 
     private final StampedLock lock = new StampedLock();
-    private final AtomicBoolean previousMessagesRead = new AtomicBoolean(false);
+    private LoadState loadState = LoadState.NOT_LOADED;
 
     private final String sessionDir;
     private final ObjectMapper objectMapper;
@@ -150,7 +162,7 @@ public class FileSystemMessageStorage {
         }
         var stamp = lock.readLock();
         try {
-            stamp = ensurePreviousMessagesLoadedUnsafe(stamp);
+            stamp = ensureMessagesLoadedUnsafe(stamp, queryDirection, actualPointer, skipSystemPrompt, count);
             final var messages = readFromLoadedMessagesUnsafe(queryDirection, actualPointer, skipSystemPrompt, count);
             final var firstMsg = messages.isEmpty() ? null : messages.get(0);
             final var lastMsg = messages.isEmpty() ? null : messages.get(messages.size() - 1);
@@ -194,6 +206,7 @@ public class FileSystemMessageStorage {
         try {
             if (Files.deleteIfExists(filePath)) {
                 messageCache.clear();
+                loadState = LoadState.NOT_LOADED;
                 return true;
             }
             return false;
@@ -228,6 +241,7 @@ public class FileSystemMessageStorage {
                                                             final MessageMeta actualPointer,
                                                             boolean skipSystemPrompt,
                                                             int count) {
+        final var visibilityFilter = visibilityFilter(skipSystemPrompt);
         return switch (queryDirection) {
             case NEWER -> {
                 final var subMap = actualPointer == null
@@ -235,8 +249,7 @@ public class FileSystemMessageStorage {
                         : messageCache.tailMap(actualPointer, false);
                 yield subMap.values()
                         .stream()
-                        .filter(msg -> !skipSystemPrompt
-                                || msg.getMessageType() != AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)
+                        .filter(visibilityFilter)
                         .limit(count)
                         .toList();
             }
@@ -247,8 +260,7 @@ public class FileSystemMessageStorage {
                 final var list = subMap.descendingMap()
                         .values()
                         .stream()
-                        .filter(msg -> !skipSystemPrompt
-                                || msg.getMessageType() != AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE)
+                        .filter(visibilityFilter)
                         .limit(count)
                         .toList();
                 yield list.stream()
@@ -260,45 +272,181 @@ public class FileSystemMessageStorage {
 
     }
 
-    private long ensurePreviousMessagesLoadedUnsafe(long originalStamp) {
+    private static Predicate<AgentMessage> visibilityFilter(boolean skipSystemPrompt) {
+        return msg -> !skipSystemPrompt
+                || msg.getMessageType() != AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE;
+    }
+
+    /**
+     * Makes sure enough messages are in the cache to answer the given query.
+     * Strategy:
+     * - FULLY_LOADED: nothing to do.
+     * - NOT_LOADED: an OLDER query with no pointer first loads only the tail of the file;
+     * any other query does a full load directly.
+     * - TAIL_LOADED: a query the tail cannot answer (NEWER direction, pointer below the tail,
+     * or too few visible messages) triggers a full load.
+     * After a full load the cache holds every message in the file.
+     */
+    private long ensureMessagesLoadedUnsafe(long originalStamp,
+                                            QueryDirection queryDirection,
+                                            MessageMeta actualPointer,
+                                            boolean skipSystemPrompt,
+                                            int count) {
         var stamp = originalStamp;
-        if (!previousMessagesRead.get()) {
-            // Upgrade to write lock to safely load previous messages from disk
-            long ws = lock.tryConvertToWriteLock(stamp);
-            if (ws != 0) {
-                stamp = ws;
+        if (LoadState.FULLY_LOADED == loadState) {
+            return stamp;
+        }
+        // Upgrade to write lock to safely load messages from disk
+        long ws = lock.tryConvertToWriteLock(stamp);
+        if (ws != 0) {
+            stamp = ws;
+        }
+        else {
+            // Other readers present — release read lock and acquire write lock
+            lock.unlockRead(stamp);
+            stamp = lock.writeLock();
+        }
+        // Double-checked: another thread may have changed the state while we were waiting
+        if (LoadState.NOT_LOADED == loadState) {
+            if (QueryDirection.OLDER == queryDirection && actualPointer == null) {
+                readTailFromFileUnsafe(skipSystemPrompt, count);
             }
             else {
-                // Other readers present — release read lock and acquire write lock
-                lock.unlockRead(stamp);
-                stamp = lock.writeLock();
+                fullLoadUnsafe();
             }
-            // Double-checked: another thread may have loaded while we were waiting
-            if (!previousMessagesRead.get()) {
-                readMessagesFromFile(sessionDir, objectMapper, msg -> {
-                    final var meta = new MessageMeta(msg.getMessageId(), msg.getTimestamp());
-                    messageCache.put(meta, msg);
-                });
-                previousMessagesRead.set(true);
-            }
-            // Downgrade back to read lock for the rest of the method
-            final var rs = lock.tryConvertToReadLock(stamp);
-            if (rs == 0) {
-                // Conversion failed (e.g. other threads waiting for write lock); release and re-acquire read lock
-                lock.unlockWrite(stamp);
-                stamp = lock.readLock();
-            }
-            else {
-                stamp = rs;
-            }
+        }
+        else if (LoadState.TAIL_LOADED == loadState
+                && !tailCanAnswerUnsafe(queryDirection, actualPointer, skipSystemPrompt, count)) {
+                    fullLoadUnsafe();
+                }
+        // Downgrade back to read lock for the rest of the method
+        final var rs = lock.tryConvertToReadLock(stamp);
+        if (rs == 0) {
+            // Conversion failed (e.g. other threads waiting for write lock); release and re-acquire read lock
+            lock.unlockWrite(stamp);
+            stamp = lock.readLock();
+        }
+        else {
+            stamp = rs;
         }
         return stamp;
     }
 
+    private boolean tailCanAnswerUnsafe(QueryDirection queryDirection,
+                                        MessageMeta actualPointer,
+                                        boolean skipSystemPrompt,
+                                        int count) {
+        if (QueryDirection.NEWER == queryDirection) {
+            // The tail is a suffix of the file; it can answer only queries anchored inside it
+            return actualPointer != null && messageCache.containsKey(actualPointer);
+        }
+        // The tail can answer an OLDER query only when the cache holds enough visible
+        // messages on the older side of the pointer
+        final var subMap = actualPointer == null
+                ? messageCache
+                : messageCache.headMap(actualPointer, false);
+        return subMap.values()
+                .stream()
+                .filter(visibilityFilter(skipSystemPrompt))
+                .count() >= count;
+    }
+
+    private void fullLoadUnsafe() {
+        messageCache.clear();
+        readMessagesFromFile(msg -> {
+            final var meta = new MessageMeta(msg.getMessageId(), msg.getTimestamp());
+            messageCache.put(meta, msg);
+        });
+        loadState = LoadState.FULLY_LOADED;
+    }
+
+    /**
+     * Reads the tail of the messages file backwards, in chunks, until the given number of visible
+     * messages is parsed or the line bound is hit. Sets state to TAIL_LOADED when the tail holds
+     * enough messages; sets FULLY_LOADED when the file start is reached. The caller falls back to
+     * a full load when the loaded tail is not sufficient.
+     */
+    private void readTailFromFileUnsafe(boolean skipSystemPrompt, int count) {
+        long fileEnd;
+        try {
+            fileEnd = Files.size(filePath);
+        }
+        catch (Exception e) {
+            log.error("Error reading message file size: {}", filePath.toAbsolutePath(), e);
+            loadState = LoadState.FULLY_LOADED;
+            return;
+        }
+        if (fileEnd == 0) {
+            loadState = LoadState.FULLY_LOADED;
+            return;
+        }
+        log.info("Loading message tail from file: {}", filePath.toAbsolutePath());
+        var visible = 0;
+        var rawLines = 0;
+        var pending = "";
+        var chunkEnd = fileEnd;
+        try (final var raf = new RandomAccessFile(filePath.toFile(), "r")) {
+            while (chunkEnd > 0) {
+                final var chunkStart = Math.max(0, chunkEnd - TAIL_LOAD_CHUNK_SIZE);
+                final var chunk = new byte[(int) (chunkEnd - chunkStart)];
+                raf.seek(chunkStart);
+                raf.readFully(chunk);
+                var chunkText = new String(chunk, StandardCharsets.UTF_8) + pending;
+                if (chunkStart > 0) {
+                    // Skip the last possibly partial UTF-8 character or line; the next chunk reads it fully
+                    final var firstNewline = chunkText.indexOf('\n');
+                    if (firstNewline < 0) {
+                        // The whole chunk is one partial line; keep it as pending
+                        pending = chunkText;
+                        chunkEnd = chunkStart;
+                        continue;
+                    }
+                    pending = chunkText.substring(0, firstNewline);
+                    chunkText = chunkText.substring(firstNewline + 1);
+                }
+                else {
+                    pending = "";
+                }
+                chunkEnd = chunkStart;
+                final var lines = chunkText.split("\n", -1);
+                for (var i = lines.length - 1; i >= 0; i--) {
+                    final var line = lines[i];
+                    rawLines++;
+                    if (line.isBlank()) {
+                        continue;
+                    }
+                    try {
+                        final var message = readFromJson(line, AgentMessage.class);
+                        final var meta = new MessageMeta(message.getMessageId(), message.getTimestamp());
+                        messageCache.put(meta, message);
+                        if (visibilityFilter(skipSystemPrompt).test(message)) {
+                            visible++;
+                        }
+                    }
+                    catch (Exception e) {
+                        log.warn("Skipping corrupted message line: {}", e.getMessage());
+                    }
+                    if (visible >= count) {
+                        loadState = LoadState.TAIL_LOADED;
+                        return;
+                    }
+                }
+                if (rawLines >= MAX_TAIL_LOAD_LINES) {
+                    // The line bound is hit; older messages stay on disk for now
+                    loadState = LoadState.TAIL_LOADED;
+                    return;
+                }
+            }
+        }
+        catch (Exception e) {
+            log.error("Error reading message tail from file: {}", filePath.toAbsolutePath(), e);
+        }
+        // File start reached: every message in the file is now in the cache
+        loadState = LoadState.FULLY_LOADED;
+    }
+
     @SneakyThrows
-    private void readMessagesFromFile(String sessionDir,
-                                      final ObjectMapper objectMapper,
-                                      Consumer<AgentMessage> messageConsumer) {
+    private void readMessagesFromFile(final Consumer<AgentMessage> messageConsumer) {
         if (!Files.exists(filePath, LinkOption.NOFOLLOW_LINKS)) {
             return;
         }

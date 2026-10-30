@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
+import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.responses.Text;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
@@ -39,6 +40,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FileSystemMessageStorageTest {
@@ -75,6 +77,51 @@ class FileSystemMessageStorageTest {
         assertEquals(2, response.getItems().size());
         assertEquals("msg1", ((Text) response.getItems().get(0)).getContent());
         assertEquals("msg2", ((Text) response.getItems().get(1)).getContent());
+    }
+
+    @Test
+    @SneakyThrows
+    void testAddMessagesInAllLoadStates() {
+        writeMessages(10);
+
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        final var newMessage = (AgentMessage) Text.builder().sessionId("test-session")
+                .content("msg11")
+                .timestamp(11_000L)
+                .stats(new ModelUsageStats())
+                .build();
+
+        // Add while NOT_LOADED
+        newStorage.addMessages(List.of(newMessage));
+
+        // Tail load; the new message must be part of the latest messages
+        var response = newStorage.readMessages(3, false, null, QueryDirection.OLDER);
+        assertEquals(3, response.getItems().size());
+        assertEquals("msg9", ((Text) response.getItems().get(0)).getContent());
+        assertEquals("msg11", ((Text) response.getItems().get(2)).getContent());
+
+        // Add while TAIL_LOADED
+        final var messageAfterTail = (AgentMessage) Text.builder().sessionId("test-session")
+                .content("msg12")
+                .timestamp(12_000L)
+                .stats(new ModelUsageStats())
+                .build();
+        newStorage.addMessages(List.of(messageAfterTail));
+        response = newStorage.readMessages(2, false, null, QueryDirection.OLDER);
+        assertEquals(2, response.getItems().size());
+        assertEquals("msg12", ((Text) response.getItems().get(1)).getContent());
+
+        // Trigger a full load, then add again
+        newStorage.readMessages(100, false, null, QueryDirection.NEWER);
+        final var messageAfterFull = (AgentMessage) Text.builder().sessionId("test-session")
+                .content("msg13")
+                .timestamp(13_000L)
+                .stats(new ModelUsageStats())
+                .build();
+        newStorage.addMessages(List.of(messageAfterFull));
+        response = newStorage.readMessages(1, false, null, QueryDirection.OLDER);
+        assertEquals(1, response.getItems().size());
+        assertEquals("msg13", ((Text) response.getItems().get(0)).getContent());
     }
 
     @Test
@@ -141,6 +188,26 @@ class FileSystemMessageStorageTest {
 
     @Test
     @SneakyThrows
+    void testCorruptedLinesInTail() {
+        writeMessages(10);
+
+        // Append corrupted lines after the valid messages
+        final var messagesFile = Path.of(sessionDir, "messages.jsonl");
+        Files.write(messagesFile,
+                    List.of("{invalid json}", "not json at all"),
+                    StandardCharsets.UTF_8,
+                    java.nio.file.StandardOpenOption.APPEND);
+
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        // The tail load must skip the corrupted lines and still serve the latest valid messages
+        final var response = newStorage.readMessages(3, false, null, QueryDirection.OLDER);
+        assertEquals(3, response.getItems().size());
+        assertEquals("msg8", ((Text) response.getItems().get(0)).getContent());
+        assertEquals("msg10", ((Text) response.getItems().get(2)).getContent());
+    }
+
+    @Test
+    @SneakyThrows
     void testEmptyLinesInJsonl() {
         final var sessionId = "test-session";
         final var runId = UUID.randomUUID().toString();
@@ -188,6 +255,36 @@ class FileSystemMessageStorageTest {
         assertTrue(response.getItems().isEmpty());
         assertTrue(response.getPointer().getOlder() == null || response.getPointer().getOlder().isEmpty());
         assertTrue(response.getPointer().getNewer() == null || response.getPointer().getNewer().isEmpty());
+    }
+
+    @Test
+    @SneakyThrows
+    void testNewerQueryAfterTailLoadTriggersFullLoad() {
+        writeMessages(10);
+
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        // Tail load first
+        newStorage.readMessages(3, false, null, QueryDirection.OLDER);
+        // A NEWER query from the start must trigger a full load
+        final var response = newStorage.readMessages(3, false, null, QueryDirection.NEWER);
+        assertEquals(3, response.getItems().size());
+        assertEquals("msg1", ((Text) response.getItems().get(0)).getContent());
+        assertEquals("msg3", ((Text) response.getItems().get(2)).getContent());
+    }
+
+    @Test
+    @SneakyThrows
+    void testOlderPointerBelowTailTriggersFullLoad() {
+        writeMessages(10);
+
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        // Tail load serves the last 3 messages and gives an older pointer
+        final var tailResponse = newStorage.readMessages(3, false, null, QueryDirection.OLDER);
+        // Reading below the tail must trigger a full load and still work
+        final var response = newStorage.readMessages(10, false, tailResponse.getPointer(), QueryDirection.OLDER);
+        assertEquals(7, response.getItems().size());
+        assertEquals("msg1", ((Text) response.getItems().get(0)).getContent());
+        assertEquals("msg7", ((Text) response.getItems().get(6)).getContent());
     }
 
     @Test
@@ -299,6 +396,19 @@ class FileSystemMessageStorageTest {
 
     @Test
     @SneakyThrows
+    void testPurgeAfterTailLoad() {
+        writeMessages(10);
+
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        newStorage.readMessages(3, false, null, QueryDirection.OLDER);
+        assertTrue(newStorage.purgeMessages("test-session"));
+
+        final var response = newStorage.readMessages(10, false, null, QueryDirection.OLDER);
+        assertTrue(response.getItems().isEmpty());
+    }
+
+    @Test
+    @SneakyThrows
     void testSkipSystemPrompt() {
         final var sessionId = "test-session";
         final var messages = List.of(
@@ -313,5 +423,72 @@ class FileSystemMessageStorageTest {
         final var response = messageStorage.readMessages(10, true, null, QueryDirection.NEWER);
         assertEquals(1, response.getItems().size());
         assertEquals("user", ((Text) response.getItems().get(0)).getContent());
+    }
+
+    @Test
+    @SneakyThrows
+    void testSkipSystemPromptInTailLoad() {
+        writeMessages(10);
+
+        // Append system prompt messages at the end of the file
+        messageStorage.addMessages(List.of(
+                                           com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt.builder()
+                                                   .sessionId("test-session").content("system").timestamp(20_000L)
+                                                   .build(),
+                                           com.phonepe.sentinelai.core.agentmessages.requests.SystemPrompt.builder()
+                                                   .sessionId("test-session").content("system2").timestamp(21_000L)
+                                                   .build()
+        ));
+
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        // The tail load must read past the two system prompt messages to serve three visible messages
+        final var response = newStorage.readMessages(3, true, null, QueryDirection.OLDER);
+        assertEquals(3, response.getItems().size());
+        assertEquals("msg8", ((Text) response.getItems().get(0)).getContent());
+        assertEquals("msg10", ((Text) response.getItems().get(2)).getContent());
+        // No system prompt message must be present in the result
+        response.getItems().forEach(msg -> assertNotSame(
+                                                         AgentMessageType.SYSTEM_PROMPT_REQUEST_MESSAGE,
+                                                         msg.getMessageType()));
+    }
+
+    @Test
+    @SneakyThrows
+    void testTailLoadServesLatestMessagesWithoutFullLoad() {
+        writeMessages(10);
+
+        // Fresh storage over an existing file; OLDER with no pointer must serve the latest messages from the tail
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        final var response = newStorage.readMessages(3, false, null, QueryDirection.OLDER);
+        assertEquals(3, response.getItems().size());
+        assertEquals("msg8", ((Text) response.getItems().get(0)).getContent());
+        assertEquals("msg9", ((Text) response.getItems().get(1)).getContent());
+        assertEquals("msg10", ((Text) response.getItems().get(2)).getContent());
+        assertNotNull(response.getPointer().getOlder());
+    }
+
+    @Test
+    @SneakyThrows
+    void testTailLoadWhenCountExceedsFileMessages() {
+        writeMessages(4);
+
+        final var newStorage = new FileSystemMessageStorage(sessionDir, objectMapper);
+        // The whole file is smaller than the requested count; all messages must be returned
+        final var response = newStorage.readMessages(10, false, null, QueryDirection.OLDER);
+        assertEquals(4, response.getItems().size());
+        assertEquals("msg1", ((Text) response.getItems().get(0)).getContent());
+        assertEquals("msg4", ((Text) response.getItems().get(3)).getContent());
+    }
+
+    private void writeMessages(int count) {
+        final var messages = IntStream.rangeClosed(1, count)
+                .mapToObj(i -> (AgentMessage) Text.builder()
+                        .sessionId("test-session")
+                        .content("msg" + i)
+                        .timestamp(i * 1000L)
+                        .stats(new ModelUsageStats())
+                        .build())
+                .toList();
+        messageStorage.addMessages(messages);
     }
 }
