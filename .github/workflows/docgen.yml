@@ -39,8 +39,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [ "$GITHUB_REF_NAME" = "master" ]; then
-            mike deploy --push --rebase latest
+            mike deploy --push latest
             mike set-default --push latest
           else
-            mike deploy --push --rebase v2
+            mike deploy --push v2
           fi
