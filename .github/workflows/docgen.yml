@@ -31,7 +31,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip==24.3.1 --only-binary :all:
           pip install zensical==0.0.46 --only-binary :all:
-          pip install git+https://github.com/squidfunk/mike.git@2d4ad799442f4592db8ad53b179bfb33db8c69ac
+          pip install git+https://github.com/squidfunk/mike.git@2d4ad799442f4592db8ad53b179bfb33db8c69ac --only-binary :all:
 
       - name: Deploy documentation
         working-directory: ./docs
