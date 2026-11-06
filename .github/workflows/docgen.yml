@@ -4,46 +4,43 @@ on:
   push:
     branches:
       - master
+      - v2
     paths:
       - 'docs/**'
       - '.github/workflows/docgen.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # mike needs the full history of the gh-pages branch
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install Zensical
+      - name: Install Zensical and mike
         run: |
           python -m pip install --upgrade pip==24.3.1 --only-binary :all:
           pip install zensical==0.0.46 --only-binary :all:
+          pip install git+https://github.com/squidfunk/mike.git@2d4ad799442f4592db8ad53b179bfb33db8c69ac
 
-      - name: Build documentation
+      - name: Deploy documentation
         working-directory: ./docs
         run: |
-          python -m zensical build --clean
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: docs/site
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
-        id: deployment
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ "$GITHUB_REF_NAME" = "master" ]; then
+            mike deploy --push --rebase latest
+            mike set-default --push latest
+          else
+            mike deploy --push --rebase v2
+          fi

@@ -3,7 +3,7 @@
 site_name        = "Sentinel AI Agent Framework"
 site_description = "A flexible and extensible framework for building AI agents with tool calling capabilities"
 site_author      = "PhonePe"
-site_url         = "https://phonepe.github.io/sentinel-ai"
+site_url         = "https://phonepe.github.io/sentinel-ai/"
 repo_name        = "PhonePe/sentinel-ai"
 repo_url         = "https://github.com/PhonePe/sentinel-ai"
 edit_uri         = "edit/master/docs/docs/"
@@ -106,6 +106,10 @@ repo_tree_base_url = "https://github.com/PhonePe/sentinel-ai/tree/master"
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
 link = "https://github.com/PhonePe/sentinel-ai"
+
+# ── Versioning (mike) ────────────────────────────────────────────────────────
+[project.extra.version]
+provider = "mike"
 
 # ── Markdown extensions ──────────────────────────────────────────────────────
 [project.markdown_extensions.abbr]
