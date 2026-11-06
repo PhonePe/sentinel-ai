@@ -11,9 +11,9 @@ The `sentinel-ai-examples` module ships a fully working **Text-to-SQL CLI agent*
 you query an e-commerce SQLite database in plain English.  All source files live under
 [`sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/`]({{ config.extra.repo_tree_base_url }}/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/).
 
-> NOTE: <br>
->   This agent is not production ready and is only used for demonstration purpose for understanding the capabilities
->   provided by sentinel-ai. As such, you may only use it as a reference to develop real-world agentic applications with sentinel-ai.
+!!!warning
+    This agent is not production ready and is only used for demonstration purposes to understand the capabilities
+    provided by Sentinel AI. Use it as a reference when developing real-world agentic applications with Sentinel AI.
 
 For example, when the user provides a prompt like below in the CLI, then they may see the results shown below
 ```
