@@ -1,0 +1,2325 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="End-to-end example — Text-to-SQL interactive CLI agent">
+      
+      
+        <meta name="author" content="PhonePe">
+      
+      
+        <link rel="canonical" href="https://phonepe.github.io/sentinel-ai/latest/examples/">
+      
+      
+        <link rel="prev" href="../errors/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.46">
+    
+    
+      
+        <title>Examples - Sentinel AI Agent Framework</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.19d3147f.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,500,500i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#example" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Sentinel AI Agent Framework" class="md-header__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sentinel AI Agent Framework
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Examples
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="cyan"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    PhonePe/sentinel-ai
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Sentinel AI Agent Framework" class="md-nav__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+
+    </a>
+    Sentinel AI Agent Framework
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    PhonePe/sentinel-ai
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Agents
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tools
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Tools
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Overview
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../using-mcp-servers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Using MCP Servers
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../calling-remote-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Calling Remote Services
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Extensions
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Extensions
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../messages-session/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Messages & Session
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-skills-extension/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Agent Skills
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Agent Registry
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Agent Memory
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Observability
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Observability
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Overview
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../opentelemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  OpenTelemetry
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Testing
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Evals
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Errors
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Example
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Example
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#text-to-sql-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Text-to-SQL Agent
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running the Example
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running the Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Prerequisites
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Build
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Configure
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Run
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sample-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sample Queries
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Architecture Overview
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-walkthrough" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Code Walkthrough
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Code Walkthrough">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-agent-texttosqlagent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. The Agent — <code>TextToSqlAgent</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-the-output-type-sqlqueryresult" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. The Output Type — <code>SqlQueryResult</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-local-tools-localtools" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Local Tools — <code>LocalTools</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-hybrid-schema-search-schemavectorstore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. Hybrid Schema Search — <code>SchemaVectorStore</code>
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Hybrid Schema Search — SchemaVectorStore">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How it works
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search_schema-output-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>search_schema</code> output format
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-remote-http-toolbox-sqlite-apiyml-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. Remote-HTTP Toolbox — <code>sqlite-api.yml</code> (default)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-the-embedded-rest-server-sqliterestserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        6. The Embedded REST Server — <code>SqliteRestServer</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-mcp-server-sqlitemcpserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        7. MCP Server — <code>SqliteMcpServer</code>
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. MCP Server — SqliteMcpServer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mcp-tools-exposed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        MCP tools exposed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transport-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Transport modes
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-database-initialisation-databaseinitializer" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        8. Database Initialisation — <code>DatabaseInitializer</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-configuration-cliconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        9. Configuration — <code>CliConfig</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-cli-orchestration-texttosqlcli" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        10. CLI Orchestration — <code>TextToSqlCLI</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11-interactive-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        11. Interactive Loop
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#text-to-sql-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Text-to-SQL Agent
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running the Example
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running the Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Prerequisites
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Build
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Configure
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Run
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sample-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sample Queries
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Architecture Overview
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-walkthrough" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Code Walkthrough
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Code Walkthrough">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-agent-texttosqlagent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. The Agent — <code>TextToSqlAgent</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-the-output-type-sqlqueryresult" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. The Output Type — <code>SqlQueryResult</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-local-tools-localtools" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Local Tools — <code>LocalTools</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-hybrid-schema-search-schemavectorstore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. Hybrid Schema Search — <code>SchemaVectorStore</code>
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Hybrid Schema Search — SchemaVectorStore">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How it works
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search_schema-output-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>search_schema</code> output format
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-remote-http-toolbox-sqlite-apiyml-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. Remote-HTTP Toolbox — <code>sqlite-api.yml</code> (default)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-the-embedded-rest-server-sqliterestserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        6. The Embedded REST Server — <code>SqliteRestServer</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-mcp-server-sqlitemcpserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        7. MCP Server — <code>SqliteMcpServer</code>
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. MCP Server — SqliteMcpServer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mcp-tools-exposed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        MCP tools exposed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transport-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Transport modes
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-database-initialisation-databaseinitializer" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        8. Database Initialisation — <code>DatabaseInitializer</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-configuration-cliconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        9. Configuration — <code>CliConfig</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-cli-orchestration-texttosqlcli" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        10. CLI Orchestration — <code>TextToSqlCLI</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11-interactive-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        11. Interactive Loop
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+    <a href="https://github.com/PhonePe/sentinel-ai/edit/master/docs/docs/examples.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/PhonePe/sentinel-ai/raw/master/docs/docs/examples.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
+    </a>
+  
+
+
+<h1 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h1>
+<h2 id="text-to-sql-agent">Text-to-SQL Agent<a class="headerlink" href="#text-to-sql-agent" title="Permanent link">&para;</a></h2>
+<p>The <code>sentinel-ai-examples</code> module ships a fully working <strong>Text-to-SQL CLI agent</strong> that lets
+you query an e-commerce SQLite database in plain English.  All source files live under
+<a href="https://github.com/PhonePe/sentinel-ai/tree/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/"><code>sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/</code></a>.</p>
+<blockquote>
+<p>NOTE: <br>
+  This agent is not production ready and is only used for demonstration purpose for understanding the capabilities
+  provided by sentinel-ai. As such, you may only use it as a reference to develop real-world agentic applications with sentinel-ai.</p>
+</blockquote>
+<p>For example, when the user provides a prompt like below in the CLI, then they may see the results shown below
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>&gt; List top 3 sellers by order volume
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>┌──────────────────────┬──────────────┐
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│ seller_name          │ total_orders │
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├──────────────────────┼──────────────┤
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│ TechGadgets India    │ 312          │
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│ FashionHub           │ 287          │
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│ HomeEssentials       │ 241          │
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>└──────────────────────┴──────────────┘
+</span></code></pre></div></p>
+<h2 id="running-the-example">Running the Example<a class="headerlink" href="#running-the-example" title="Permanent link">&para;</a></h2>
+<h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Java 17+</li>
+<li>Maven 3.8+</li>
+<li>An OpenAI-compatible API key</li>
+</ul>
+<h3 id="build">Build<a class="headerlink" href="#build" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">cd</span><span class="w"> </span>sentinel-ai-examples
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mvn<span class="w"> </span>package<span class="w"> </span>-DskipTests
+</span></code></pre></div>
+<h3 id="configure">Configure<a class="headerlink" href="#configure" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>.env
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>cp<span class="w"> </span>src/main/resources/.env/agent-config.yml.example<span class="w"> </span>.env/agent-config.yml
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># Edit .env/agent-config.yml and set openai.apiKey</span>
+</span></code></pre></div>
+<h3 id="run">Run<a class="headerlink" href="#run" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>java<span class="w"> </span>-jar<span class="w"> </span>target/sentinel-ai-examples-*-cli.jar
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># or use the helper script</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>./run.sh
+</span></code></pre></div>
+<p>Available CLI options:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code>, <code>-c</code></td>
+<td><code>.env/agent-config.yml</code></td>
+<td>Path to the YAML config file</td>
+</tr>
+<tr>
+<td><code>--skills-dir</code>, <code>-s</code></td>
+<td><em>(bundled)</em></td>
+<td>Override the skills directory</td>
+</tr>
+<tr>
+<td><code>--session-id</code></td>
+<td><em>(random UUID)</em></td>
+<td>Session ID for conversation history</td>
+</tr>
+<tr>
+<td><code>--toolbox-mode</code>, <code>-t</code></td>
+<td><code>HTTP</code></td>
+<td>Toolbox for SQL execution: <code>HTTP</code> (embedded REST server) or <code>MCP</code> (MCP subprocess)</td>
+</tr>
+<tr>
+<td><code>--mcp-server-mode</code></td>
+<td><code>STDIO</code></td>
+<td>MCP transport when <code>--toolbox-mode MCP</code>: <code>STDIO</code> or <code>SSE</code></td>
+</tr>
+<tr>
+<td><code>--mcp-port</code></td>
+<td><code>8766</code></td>
+<td>HTTP port for the MCP SSE subprocess (only used with <code>--mcp-server-mode SSE</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sample-queries">Sample Queries<a class="headerlink" href="#sample-queries" title="Permanent link">&para;</a></h3>
+<p>Once the banner appears, try any of the following:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>&gt; List top 3 sellers by order volume
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>&gt; Find the user with the most number of orders
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>&gt; Find out top cities by shoe sales
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>&gt; What are the top 5 best-selling products this month?
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>&gt; Show total revenue per product category
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>&gt; Which products are running low on inventory?
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>&gt; How many orders were placed in the last 30 days?
+</span></code></pre></div>
+<p>Type <code>exit</code> or <code>quit</code> (or press <code>Ctrl+D</code>) to stop.</p>
+<h2 id="architecture-overview">Architecture Overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h2>
+<p><img alt="Architecture Overview" src="../architecture-overview.svg" /></p>
+<p>The agent has <strong>three tool layers</strong> on top of the same SQLite database:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Class / File</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Local</td>
+<td><code>LocalTools.java</code></td>
+<td>In-process tools — hybrid schema search (Lucene), timestamp conversion, schema descriptions, ASCII table rendering</td>
+</tr>
+<tr>
+<td>Remote-HTTP</td>
+<td><code>sqlite-api.yml</code> + <code>SqliteRestServer.java</code></td>
+<td>HTTP calls to an embedded Dropwizard server exposing a REST CRUD API (default toolbox mode)</td>
+</tr>
+<tr>
+<td>MCP</td>
+<td><code>SqliteMcpServer.java</code> + <code>SqliteQueryEngine.java</code></td>
+<td>MCP server launched as a subprocess, accessed via stdio or SSE transport (enabled with <code>--toolbox-mode MCP</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The CLI also registers <code>AskUserTool</code>, which lets the model pause and ask the human operator
+for clarification when a prompt is ambiguous. This tool is orthogonal to the three
+database-access layers above.</p>
+<h2 id="code-walkthrough">Code Walkthrough<a class="headerlink" href="#code-walkthrough" title="Permanent link">&para;</a></h2>
+<h3 id="1-the-agent-texttosqlagent">1. The Agent — <code>TextToSqlAgent</code><a class="headerlink" href="#1-the-agent-texttosqlagent" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/agent/TextToSqlAgent.java"><code>agent/TextToSqlAgent.java</code></a></p>
+<p>Every Sentinel AI agent extends <code>Agent&lt;R, T, A&gt;</code>:</p>
+<ul>
+<li><strong><code>R</code></strong> — request type (plain <code>String</code> question from the user)</li>
+<li><strong><code>T</code></strong> — response type (<code>SqlQueryResult</code> record)</li>
+<li><strong><code>A</code></strong> — self-type for the fluent builder (<code>TextToSqlAgent</code>)</li>
+</ul>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">TextToSqlAgent</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Agent</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">SqlQueryResult</span><span class="p">,</span><span class="w"> </span><span class="n">TextToSqlAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">SYSTEM_PROMPT</span><span class="w"> </span><span class="o">=</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">            </span><span class="s">"""</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="s">            You are an expert SQL assistant for an e-commerce SQLite database.</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="s">            Translate natural-language questions into SQL queries, execute them, and return structured results.</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="s">            Follow the sql-execution skill protocol for every request.</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="s">            If unable to proceed without user input, ask the user for clarification before continuing.</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="s">            The user's timezone is '%s'. Use this timezone for all date formatting and timestamp conversions.</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="s">            """</span><span class="p">.</span><span class="na">formatted</span><span class="p">(</span><span class="n">TimeZone</span><span class="p">.</span><span class="na">getDefault</span><span class="p">().</span><span class="na">toZoneId</span><span class="p">().</span><span class="na">toString</span><span class="p">());</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">    </span><span class="nd">@Builder</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">TextToSqlAgent</span><span class="p">(</span><span class="nd">@NonNull</span><span class="w"> </span><span class="n">AgentSetup</span><span class="w"> </span><span class="n">setup</span><span class="p">,</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">                          </span><span class="nd">@Singular</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">AgentExtension</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">SqlQueryResult</span><span class="p">,</span><span class="w"> </span><span class="n">TextToSqlAgent</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">extensions</span><span class="p">,</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">                          </span><span class="nd">@NonNull</span><span class="w"> </span><span class="n">OutputValidator</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">SqlQueryResult</span><span class="o">&gt;</span><span class="w"> </span><span class="n">outputValidator</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">        </span><span class="kd">super</span><span class="p">(</span><span class="n">SqlQueryResult</span><span class="p">.</span><span class="na">class</span><span class="p">,</span><span class="w"> </span><span class="n">SYSTEM_PROMPT</span><span class="p">,</span><span class="w"> </span><span class="n">setup</span><span class="p">,</span><span class="w"> </span><span class="n">extensions</span><span class="p">,</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">              </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">(),</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ApproveAllToolRuns</span><span class="o">&lt;&gt;</span><span class="p">(),</span><span class="w"> </span><span class="n">outputValidator</span><span class="p">,</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">              </span><span class="k">new</span><span class="w"> </span><span class="n">DefaultErrorHandler</span><span class="o">&lt;&gt;</span><span class="p">(),</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">NeverTerminateEarlyStrategy</span><span class="p">());</span>
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
+</span><span id="__span-5-21"><a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="w">    </span><span class="nd">@Override</span>
+</span><span id="__span-5-22"><a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s">"text-to-sql-agent"</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+</span><span id="__span-5-23"><a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>The system prompt is intentionally minimal — it delegates the full step-by-step execution
+protocol (schema discovery, SQL generation, timestamp conversion, formatting) to the
+<code>sql-execution</code> skill loaded via <code>AgentSkillsExtension</code>.  This keeps the agent class
+decoupled from protocol details and makes the workflow easy to update without touching Java code.</p>
+<p>The CLI wiring for this example also registers <code>OpenTelemetryAgentExtension</code> using
+<code>GlobalOpenTelemetry.getTracer(...)</code>, so agent runs emit tracing spans automatically whenever
+the hosting process configures an OpenTelemetry SDK/exporter.</p>
+<h3 id="2-the-output-type-sqlqueryresult">2. The Output Type — <code>SqlQueryResult</code><a class="headerlink" href="#2-the-output-type-sqlqueryresult" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/model/SqlQueryResult.java"><code>tools/model/SqlQueryResult.java</code></a></p>
+<p>The agent's structured output is a plain Java record annotated for JSON Schema generation:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nd">@JsonClassDescription</span><span class="p">(</span><span class="s">"Result of executing a SQL query against a SQLite database."</span><span class="p">)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">record</span> <span class="nc">SqlQueryResult</span><span class="p">(</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"The SQL statement generated from the natural-language request"</span><span class="p">)</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">generatedSql</span><span class="p">,</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Rows returned. Each entry is a JSON string: "</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">                </span><span class="o">+</span><span class="w"> </span><span class="s">"{\"col1\": val1, \"col2\": val2, ...}"</span><span class="p">)</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="w"> </span><span class="n">results</span><span class="p">,</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Human-readable summary, caveats, or error description."</span><span class="p">)</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">explanation</span><span class="p">,</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Wall-clock time in milliseconds from submission to receipt."</span><span class="p">)</span>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="n">executionTimeMs</span>
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+</span></code></pre></div>
+<p>Sentinel AI uses the <code>@JsonClassDescription</code> / <code>@JsonPropertyDescription</code> annotations to
+derive the JSON Schema that is sent to the model as the output tool definition —
+no manual schema authoring required.</p>
+<h3 id="3-local-tools-localtools">3. Local Tools — <code>LocalTools</code><a class="headerlink" href="#3-local-tools-localtools" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/LocalTools.java"><code>tools/LocalTools.java</code></a></p>
+<p><code>LocalTools</code> implements <code>ToolBox</code> and exposes seven tools via <code>@Tool</code>-annotated methods.
+Each method's <code>name</code> attribute becomes the tool name the model sees:</p>
+<table>
+<thead>
+<tr>
+<th><code>@Tool</code> name</th>
+<th>Method</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>search_schema</code></td>
+<td><code>searchSchema(query, topK)</code></td>
+<td>Hybrid BM25 + semantic search over table/column descriptions — <strong>first call in every query</strong></td>
+</tr>
+<tr>
+<td><code>get_table_desc</code></td>
+<td><code>getTableDescription(tableDescRequest)</code></td>
+<td>Full description (columns, types, nullability, semantics) for a list of tables</td>
+</tr>
+<tr>
+<td><code>get_column_desc</code></td>
+<td><code>getColumnDescription(tableName, columnName)</code></td>
+<td>Description of a specific column</td>
+</tr>
+<tr>
+<td><code>get_table_row_counts</code></td>
+<td><code>getTableRowCounts()</code></td>
+<td>Row count per table</td>
+</tr>
+<tr>
+<td><code>get_current_dt</code></td>
+<td><code>getCurrentDateTime(timezone)</code></td>
+<td>Current epoch + human datetime in timezone</td>
+</tr>
+<tr>
+<td><code>convert_epoch_to_local_dt</code></td>
+<td><code>convertEpochToLocalDateTime(epoch, tz)</code></td>
+<td>Epoch seconds → <code>yyyy/MM/dd HH:mm:ss</code></td>
+</tr>
+<tr>
+<td><code>format_results_as_table</code></td>
+<td><code>formatResultsAsTable(result)</code></td>
+<td>Renders <code>SqlQueryResult</code> as an ASCII table</td>
+</tr>
+</tbody>
+</table>
+<p>The constructor now accepts a <code>dataDir</code> argument used to persist the Lucene vector store index:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nd">@Tool</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"search_schema"</span><span class="p">,</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">      </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Search the database schema using hybrid keyword and semantic search. "</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">            </span><span class="o">+</span><span class="w"> </span><span class="s">"Returns the most relevant tables and columns for your question. "</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">            </span><span class="o">+</span><span class="w"> </span><span class="s">"Use this to find which tables/columns to query before writing SQL."</span><span class="p">)</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">searchSchema</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">query</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">topK</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">SchemaSearchResult</span><span class="o">&gt;</span><span class="w"> </span><span class="n">results</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vectorStore</span><span class="p">.</span><span class="na">hybridSearch</span><span class="p">(</span><span class="n">query</span><span class="p">,</span><span class="w"> </span><span class="n">topK</span><span class="p">);</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">    </span><span class="c1">// formats results as a ranked list: index, type (TABLE/COLUMN), name, score, description</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">    </span><span class="p">...</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="p">}</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="nd">@Tool</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"convert_epoch_to_local_dt"</span><span class="p">,</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">      </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Convert a Unix epoch timestamp (seconds) to a formatted date-time string "</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">            </span><span class="o">+</span><span class="w"> </span><span class="s">"in the given IANA timezone."</span><span class="p">)</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">convertEpochToLocalDateTime</span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="n">epochSeconds</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">timezone</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">zdt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Instant</span><span class="p">.</span><span class="na">ofEpochSecond</span><span class="p">(</span><span class="n">epochSeconds</span><span class="p">).</span><span class="na">atZone</span><span class="p">(</span><span class="n">ZoneId</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="n">timezone</span><span class="p">));</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">zdt</span><span class="p">.</span><span class="na">format</span><span class="p">(</span><span class="n">DISPLAY_FORMAT</span><span class="p">);</span><span class="w"> </span><span class="c1">// yyyy/MM/dd HH:mm:ss</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>These tools are registered with the agent at runtime:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// in TextToSqlCLI.registerLocalTools()</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">dataDir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dbPath</span><span class="p">.</span><span class="na">getParent</span><span class="p">();</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">agent</span><span class="p">.</span><span class="na">registerTools</span><span class="p">(</span><span class="n">ToolUtils</span><span class="p">.</span><span class="na">readTools</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">LocalTools</span><span class="p">(</span><span class="n">dbPath</span><span class="p">.</span><span class="na">toString</span><span class="p">(),</span><span class="w"> </span><span class="n">dataDir</span><span class="p">)));</span>
+</span></code></pre></div>
+<h3 id="4-hybrid-schema-search-schemavectorstore">4. Hybrid Schema Search — <code>SchemaVectorStore</code><a class="headerlink" href="#4-hybrid-schema-search-schemavectorstore" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong> <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/vectorstore/SchemaVectorStore.java"><code>tools/vectorstore/SchemaVectorStore.java</code></a>, <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/vectorstore/HashTextEmbedder.java"><code>tools/vectorstore/HashTextEmbedder.java</code></a>, <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/vectorstore/VectorStoreInitializer.java"><code>tools/vectorstore/VectorStoreInitializer.java</code></a></p>
+<p>Instead of a monolithic <code>get_db_schema</code> call that dumps the entire schema on every query,
+the agent uses a <strong>hybrid search</strong> approach to retrieve only the tables and columns relevant
+to the current question.  This keeps context windows small and improves accuracy.</p>
+<h4 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h4>
+<p>The vector store is backed by <strong>Apache Lucene</strong> and combines two complementary retrieval signals:</p>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Algorithm</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Keyword</td>
+<td>BM25 full-text search</td>
+<td><code>content</code> (natural-language description of each table/column)</td>
+</tr>
+<tr>
+<td>Semantic</td>
+<td>KNN cosine-similarity</td>
+<td><code>vector</code> (128-dim feature-hash embedding)</td>
+</tr>
+</tbody>
+</table>
+<p>The embedding model (<code>HashTextEmbedder</code>) is a lightweight, deterministic feature hasher —
+no external embedding API is needed.  It captures word-level and character 3-gram patterns and
+produces L2-normalised vectors suitable for cosine similarity.</p>
+<p><strong>Hybrid scoring algorithm:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>1. Embed the query text → float[128] vector
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>2. Run BM25 search against the `content` field  → bm25Candidates
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>3. Run KNN search against the `vector` field    → knnCandidates
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>4. Union both candidate sets
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>5. Normalise each score set independently to [0, 1]
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>6. combinedScore = 0.5 × normBM25 + 0.5 × normKNN
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>7. Return top-K results sorted by combinedScore DESC
+</span></code></pre></div>
+<p>The Lucene index is written to <code>{dataDir}/lucene-schema-index/</code> the <strong>first time</strong> the CLI
+starts and re-opened read-only on subsequent runs.  Indexed documents come from
+<code>resources/db/schema_descriptions.json</code> which contains human-authored descriptions for every
+table and column.</p>
+<h4 id="search_schema-output-format"><code>search_schema</code> output format<a class="headerlink" href="#search_schema-output-format" title="Permanent link">&para;</a></h4>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>## Schema search results for: "order delivery timestamp"
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>1. [TABLE] orders (score: 0.921)
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>   Core transaction table recording every customer purchase...
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>2. [COLUMN] orders.delivered_at (score: 0.887)
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>   Unix epoch seconds when the order was delivered to the customer...
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>3. [COLUMN] orders.ordered_at (score: 0.754)
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>   Unix epoch seconds when the order was placed...
+</span></code></pre></div>
+<p>The <code>sql-execution</code> skill instructs the model to call <code>search_schema</code> first, extract the
+unique table names from the results, then call <code>get_table_desc</code> with those names to retrieve
+full column metadata before writing any SQL.</p>
+<h3 id="5-remote-http-toolbox-sqlite-apiyml-default">5. Remote-HTTP Toolbox — <code>sqlite-api.yml</code> (default)<a class="headerlink" href="#5-remote-http-toolbox-sqlite-apiyml-default" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/resources/http-tools/sqlite-api.yml"><code>resources/http-tools/sqlite-api.yml</code></a></p>
+<p>The HTTP toolbox is declared in YAML and backed by the embedded Dropwizard server.
+Each entry under <code>sqlite-api.tools</code> maps to an HTTP endpoint. At runtime, the toolbox
+name is set to <code>"sqlite-api"</code>, so the model sees tool names such as
+<code>sqlite-api_execute_query</code>, <code>sqlite-api_list_tables</code>, and <code>sqlite-api_get_table_schema</code>.</p>
+<p>The query tool posts to <code>/api/sqlite/query</code>, whose backing resource returns a
+<code>SqlQueryResult</code>-shaped JSON payload for read-only SQL. Write operations are handled by
+separate CRUD-style HTTP tools such as <code>insert_record</code> and <code>update_records</code> rather than by
+the generic query endpoint.</p>
+<p>Example YAML entry:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">sqlite-api</span><span class="p">:</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">tools</span><span class="p">:</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">execute_query</span><span class="w">           </span><span class="c1"># → model sees "sqlite-api_execute_query"</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">        </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">          </span><span class="no">Execute a raw SQL query against the SQLite e-commerce database.</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">          </span><span class="no">The backing REST endpoint permits read-only SQL only.</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">        </span><span class="nt">parameters</span><span class="p">:</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="w">          </span><span class="nt">sql</span><span class="p">:</span>
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="w">            </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The complete SQL statement to execute</span>
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="w">            </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">STRING</span>
+</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="w">      </span><span class="nt">definition</span><span class="p">:</span>
+</span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="w">        </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
+</span><span id="__span-11-14"><a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="w">        </span><span class="nt">path</span><span class="p">:</span>
+</span><span id="__span-11-15"><a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="w">          </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TEXT</span>
+</span><span id="__span-11-16"><a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a><span class="w">          </span><span class="nt">content</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/sqlite/query</span>
+</span><span id="__span-11-17"><a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="w">        </span><span class="nt">body</span><span class="p">:</span>
+</span><span id="__span-11-18"><a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="w">          </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TEXT_SUBSTITUTOR</span><span class="w">      </span><span class="c1"># Apache Commons ${variable} interpolation</span>
+</span><span id="__span-11-19"><a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="w">          </span><span class="nt">content</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+</span><span id="__span-11-20"><a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a><span class="w">            </span><span class="no">{"sql": "${sql}"}</span>
+</span><span id="__span-11-21"><a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a><span class="w">        </span><span class="nt">contentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">application/json</span>
+</span><span id="__span-11-22"><a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>
+</span><span id="__span-11-23"><a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-11-24"><a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a><span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">get_table_schema</span><span class="w">        </span><span class="c1"># → model sees "sqlite-api_get_table_schema"</span>
+</span><span id="__span-11-25"><a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a><span class="w">        </span><span class="nt">parameters</span><span class="p">:</span>
+</span><span id="__span-11-26"><a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a><span class="w">          </span><span class="nt">tableName</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">STRING</span><span class="p p-Indicator">}</span>
+</span><span id="__span-11-27"><a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a><span class="w">      </span><span class="nt">definition</span><span class="p">:</span>
+</span><span id="__span-11-28"><a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a><span class="w">        </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GET</span>
+</span><span id="__span-11-29"><a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a><span class="w">        </span><span class="nt">path</span><span class="p">:</span>
+</span><span id="__span-11-30"><a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a><span class="w">          </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TEXT_SUBSTITUTOR</span>
+</span><span id="__span-11-31"><a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a><span class="w">          </span><span class="nt">content</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/sqlite/schema/${tableName}</span>
+</span></code></pre></div>
+<p>The <code>HttpToolBox</code> is created with the toolbox name <code>"sqlite-api"</code>, so every tool
+name is prefixed — <code>execute_query</code> becomes <code>sqlite-api_execute_query</code> in the model's
+tool list. The base URL is injected at runtime once the embedded server has started:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1">// in TextToSqlCLI.registerHttpToolbox()</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">httpToolBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpToolBox</span><span class="p">(</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">        </span><span class="s">"sqlite-api"</span><span class="p">,</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">OkHttpClient</span><span class="p">.</span><span class="na">Builder</span><span class="p">().</span><span class="na">build</span><span class="p">(),</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">        </span><span class="n">toolSource</span><span class="p">,</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">        </span><span class="n">mapper</span><span class="p">,</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">        </span><span class="n">baseUrl</span><span class="p">);</span><span class="w">                       </span><span class="c1">// e.g. "http://localhost:54321"</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="n">agent</span><span class="p">.</span><span class="na">registerToolbox</span><span class="p">(</span><span class="n">httpToolBox</span><span class="p">);</span>
+</span></code></pre></div>
+<h3 id="6-the-embedded-rest-server-sqliterestserver">6. The Embedded REST Server — <code>SqliteRestServer</code><a class="headerlink" href="#6-the-embedded-rest-server-sqliterestserver" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong> <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/server/SqliteRestServer.java"><code>server/SqliteRestServer.java</code></a>, <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/server/SqliteRestResource.java"><code>server/SqliteRestResource.java</code></a></p>
+<p>The CLI starts a Dropwizard application in a background daemon thread on a
+dynamically chosen free port. This exposes the same SQLite database over HTTP so
+that the <code>HttpToolBox</code> tools can call it:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>POST /api/sqlite/query          — execute read-only SQL (SELECT / WITH / PRAGMA)
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>GET  /api/sqlite/tables         — list all tables
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>GET  /api/sqlite/schema/{table} — column definitions
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>GET  /api/sqlite/info           — database metadata
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>GET  /api/sqlite/records/{tbl}  — read rows (optional filters)
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>POST /api/sqlite/records/{tbl}  — insert a record
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>PUT  /api/sqlite/records/{tbl}  — update matching rows
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>DELETE /api/sqlite/records/{tbl} — delete matching rows
+</span></code></pre></div>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1">// in TextToSqlCLI.startRestServer()</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">port</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="n">SqliteRestServer</span><span class="p">.</span><span class="na">findFreePort</span><span class="p">();</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">url</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">SqliteRestServer</span><span class="p">.</span><span class="na">startEmbedded</span><span class="p">(</span><span class="n">dbPath</span><span class="p">.</span><span class="na">toString</span><span class="p">(),</span><span class="w"> </span><span class="n">port</span><span class="p">,</span><span class="w"> </span><span class="n">mapper</span><span class="p">);</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1">// url → "http://localhost:&lt;port&gt;"</span>
+</span></code></pre></div>
+<p><code>startEmbedded</code> launches the Dropwizard <code>run()</code> loop in a <code>CompletableFuture</code> and
+then polls the TCP port until it responds (up to 30 seconds), so by the time the
+method returns the server is ready to accept requests.</p>
+<h3 id="7-mcp-server-sqlitemcpserver">7. MCP Server — <code>SqliteMcpServer</code><a class="headerlink" href="#7-mcp-server-sqlitemcpserver" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/mcp/SqliteMcpServer.java"><code>mcp/SqliteMcpServer.java</code></a></p>
+<p><code>SqliteMcpServer</code> is an alternative to the embedded Dropwizard server.  It implements the
+<strong>Model Context Protocol (MCP)</strong> and exposes the same SQLite operations as MCP tools.
+The CLI launches it as a subprocess when <code>--toolbox-mode MCP</code> is specified.</p>
+<p>The MCP tool-handler logic itself now lives in
+<a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/mcp/SqliteQueryEngine.java"><code>mcp/SqliteQueryEngine.java</code></a>,
+which keeps the server class focused on transport wiring.</p>
+<h4 id="mcp-tools-exposed">MCP tools exposed<a class="headerlink" href="#mcp-tools-exposed" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>MCP tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>execute_query</code></td>
+<td>Execute a read-only SELECT statement with optional parameterised values</td>
+</tr>
+<tr>
+<td><code>list_tables</code></td>
+<td>List all user-defined tables in the database</td>
+</tr>
+<tr>
+<td><code>get_table_schema</code></td>
+<td>Column definitions (name, type, nullable, default) for a specific table</td>
+</tr>
+<tr>
+<td><code>get_database_info</code></td>
+<td>Database metadata (path, table count, approximate size)</td>
+</tr>
+</tbody>
+</table>
+<p>Write DML operations (INSERT, UPDATE, DELETE, DROP, ALTER, CREATE) are explicitly blocked.</p>
+<h4 id="transport-modes">Transport modes<a class="headerlink" href="#transport-modes" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th><code>--mcp-server-mode</code></th>
+<th>Transport</th>
+<th>How it works</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>STDIO</code> (default)</td>
+<td>stdin/stdout</td>
+<td>CLI spawns the subprocess and exchanges MCP messages via pipes. Logging is redirected to stderr so it does not interfere with the protocol.</td>
+</tr>
+<tr>
+<td><code>SSE</code></td>
+<td>HTTP Server-Sent Events</td>
+<td>Subprocess binds an embedded Jetty server on <code>--mcp-port</code> (default 8766). The CLI polls the port until it responds, then registers an <code>MCPSSEServerConfig</code> pointing at <code>http://localhost:&lt;port&gt;</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1">// Stdio MCP toolbox registration (in TextToSqlCLI)</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">mcpConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MCPStdioServerConfig</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">        </span><span class="p">.</span><span class="na">command</span><span class="p">(</span><span class="n">javaCmd</span><span class="p">)</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">        </span><span class="p">.</span><span class="na">args</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"-cp"</span><span class="p">,</span><span class="w"> </span><span class="n">classpath</span><span class="p">,</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">                      </span><span class="s">"...SqliteMcpServer"</span><span class="p">,</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">                      </span><span class="s">"--db-path"</span><span class="p">,</span><span class="w"> </span><span class="n">dbPath</span><span class="p">.</span><span class="na">toString</span><span class="p">()))</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">mcpToolBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MCPToolBox</span><span class="p">.</span><span class="na">buildFromConfig</span><span class="p">()</span>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="w">        </span><span class="p">.</span><span class="na">name</span><span class="p">(</span><span class="s">"sqlite-mcp"</span><span class="p">)</span>
+</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="w">        </span><span class="p">.</span><span class="na">mapper</span><span class="p">(</span><span class="n">mapper</span><span class="p">)</span>
+</span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="w">        </span><span class="p">.</span><span class="na">mcpServerConfig</span><span class="p">(</span><span class="n">mcpConfig</span><span class="p">)</span>
+</span><span id="__span-15-12"><a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span><span id="__span-15-13"><a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="n">agent</span><span class="p">.</span><span class="na">registerToolbox</span><span class="p">(</span><span class="n">mcpToolBox</span><span class="p">);</span>
+</span><span id="__span-15-14"><a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>
+</span><span id="__span-15-15"><a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="c1">// SSE MCP toolbox registration</span>
+</span><span id="__span-15-16"><a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">mcpConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MCPSSEServerConfig</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-15-17"><a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a><span class="w">        </span><span class="p">.</span><span class="na">url</span><span class="p">(</span><span class="s">"http://localhost:"</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">port</span><span class="p">)</span>
+</span><span id="__span-15-18"><a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span></code></pre></div>
+<p>The MCP toolbox exposes tools with the prefix <code>sqlite-mcp_</code> (e.g. <code>sqlite-mcp_execute_query</code>),
+and the <code>sql-execution</code> skill references <code>sqlite-api_execute_query</code> for the HTTP mode.  Both
+paths are handled transparently by the skill — the agent calls whichever variant is registered.</p>
+<h3 id="8-database-initialisation-databaseinitializer">8. Database Initialisation — <code>DatabaseInitializer</code><a class="headerlink" href="#8-database-initialisation-databaseinitializer" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/tools/DatabaseInitializer.java"><code>tools/DatabaseInitializer.java</code></a></p>
+<p>On first launch the database file does not exist. <code>DatabaseInitializer.ensureInitialised()</code>
+creates it, applies the bundled DDL, and seeds all five tables from CSV files:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>resources/db/schema.sql       — CREATE TABLE statements with inline column comments
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>resources/db/ecommerce-data/users.csv
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>resources/db/ecommerce-data/sellers.csv
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>resources/db/ecommerce-data/catalog.csv
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>resources/db/ecommerce-data/inventory.csv
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>resources/db/ecommerce-data/orders.csv
+</span></code></pre></div>
+<p>Subsequent runs detect that the file already contains tables and skip the step.</p>
+<h3 id="9-configuration-cliconfig">9. Configuration — <code>CliConfig</code><a class="headerlink" href="#9-configuration-cliconfig" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/cli/CliConfig.java"><code>cli/CliConfig.java</code></a></p>
+<p>All settings live in a YAML file (default: <code>.env/agent-config.yml</code>).
+The bundled example file is <code>sentinel-ai-examples/src/main/resources/.env/agent-config.yml.example</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nt">openai</span><span class="p">:</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span><span class="nt">apiKey</span><span class="p">:</span><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">sk-...</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w">   </span><span class="l l-Scalar l-Scalar-Plain">gpt-4o</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">  </span><span class="nt">bearerPrefix</span><span class="p">:</span><span class="w"> </span><span class="s">"Bearer</span><span class="nv"> </span><span class="s">"</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">  </span><span class="c1"># baseUrl: https://api.openai.com   # optional override for proxies / compatible endpoints</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="nt">database</span><span class="p">:</span>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="w">  </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./ecommerce.db</span><span class="w">                </span><span class="c1"># created automatically on first run</span>
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>
+</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="nt">agent</span><span class="p">:</span>
+</span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a><span class="w">  </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w">                    </span><span class="c1"># deterministic SQL generation</span>
+</span><span id="__span-17-12"><a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="w">  </span><span class="nt">maxTokens</span><span class="p">:</span><span class="w">   </span><span class="l l-Scalar l-Scalar-Plain">4096</span>
+</span><span id="__span-17-13"><a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a><span class="w">  </span><span class="nt">streaming</span><span class="p">:</span><span class="w">   </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                   </span><span class="c1"># stream tokens to stdout as they arrive</span>
+</span></code></pre></div>
+<h3 id="10-cli-orchestration-texttosqlcli">10. CLI Orchestration — <code>TextToSqlCLI</code><a class="headerlink" href="#10-cli-orchestration-texttosqlcli" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <a href="https://github.com/PhonePe/sentinel-ai/blob/master/sentinel-ai-examples/src/main/java/com/phonepe/sentinelai/examples/texttosql/cli/TextToSqlCLI.java"><code>cli/TextToSqlCLI.java</code></a></p>
+<p><code>TextToSqlCLI</code> implements <code>Callable&lt;Integer&gt;</code> (picocli) and is the entry point.
+The <code>call()</code> method is a pure orchestration sequence — each step is delegated to
+its own private method:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nd">@Override</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kd">public</span><span class="w"> </span><span class="n">Integer</span><span class="w"> </span><span class="nf">call</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">loadConfig</span><span class="p">(</span><span class="n">configPath</span><span class="p">);</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">    </span><span class="n">validateConfig</span><span class="p">(</span><span class="n">config</span><span class="p">);</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">effectiveSessionId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resolveSessionId</span><span class="p">(</span><span class="n">sessionId</span><span class="p">);</span>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">mapper</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonUtils</span><span class="p">.</span><span class="na">createMapper</span><span class="p">();</span>
+</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>
+</span><span id="__span-18-9"><a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">dbPath</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">initializeDatabase</span><span class="p">(</span><span class="n">config</span><span class="p">);</span><span class="c1">//(1)!</span>
+</span><span id="__span-18-10"><a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>
+</span><span id="__span-18-11"><a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">clientAdapter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">buildTrustedHttpClient</span><span class="p">(</span><span class="n">config</span><span class="p">);</span><span class="c1">//(2)!</span>
+</span><span id="__span-18-12"><a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">buildOpenAIModel</span><span class="p">(</span><span class="n">config</span><span class="p">,</span><span class="w"> </span><span class="n">clientAdapter</span><span class="p">,</span><span class="w"> </span><span class="n">mapper</span><span class="p">);</span><span class="c1">//(3)!</span>
+</span><span id="__span-18-13"><a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentSetup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">buildAgentSetup</span><span class="p">(</span><span class="n">config</span><span class="p">,</span><span class="w"> </span><span class="n">model</span><span class="p">,</span><span class="w"> </span><span class="n">mapper</span><span class="p">);</span><span class="c1">//(4)!</span>
+</span><span id="__span-18-14"><a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>
+</span><span id="__span-18-15"><a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">skillsExtension</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">buildSkillsExtension</span><span class="p">();</span><span class="c1">//(5)!</span>
+</span><span id="__span-18-16"><a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">buildAgent</span><span class="p">(</span><span class="n">agentSetup</span><span class="p">,</span><span class="w"> </span><span class="n">skillsExtension</span><span class="p">);</span><span class="c1">//(6)!</span>
+</span><span id="__span-18-17"><a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>
+</span><span id="__span-18-18"><a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a><span class="w">    </span><span class="n">registerLocalTools</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span><span class="w"> </span><span class="n">dbPath</span><span class="p">);</span><span class="c1">//(7)!</span>
+</span><span id="__span-18-19"><a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a><span class="w">    </span><span class="n">registerAskUserTool</span><span class="p">(</span><span class="n">agent</span><span class="p">);</span><span class="c1">//(8)!</span>
+</span><span id="__span-18-20"><a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a>
+</span><span id="__span-18-21"><a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">toolboxMode</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">ToolboxMode</span><span class="p">.</span><span class="na">MCP</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-18-22"><a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">mcpServerMode</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">McpServerMode</span><span class="p">.</span><span class="na">SSE</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-18-23"><a id="__codelineno-18-23" name="__codelineno-18-23" href="#__codelineno-18-23"></a><span class="w">            </span><span class="n">registerMcpToolboxSse</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span><span class="w"> </span><span class="n">dbPath</span><span class="p">,</span><span class="w"> </span><span class="n">mapper</span><span class="p">,</span><span class="w"> </span><span class="n">mcpPort</span><span class="p">);</span><span class="c1">// (9)!</span>
+</span><span id="__span-18-24"><a id="__codelineno-18-24" name="__codelineno-18-24" href="#__codelineno-18-24"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-18-25"><a id="__codelineno-18-25" name="__codelineno-18-25" href="#__codelineno-18-25"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-18-26"><a id="__codelineno-18-26" name="__codelineno-18-26" href="#__codelineno-18-26"></a><span class="w">            </span><span class="n">registerMcpToolbox</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span><span class="w"> </span><span class="n">dbPath</span><span class="p">,</span><span class="w"> </span><span class="n">mapper</span><span class="p">);</span><span class="c1">// (10)!</span>
+</span><span id="__span-18-27"><a id="__codelineno-18-27" name="__codelineno-18-27" href="#__codelineno-18-27"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-18-28"><a id="__codelineno-18-28" name="__codelineno-18-28" href="#__codelineno-18-28"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-18-29"><a id="__codelineno-18-29" name="__codelineno-18-29" href="#__codelineno-18-29"></a><span class="w">    </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-18-30"><a id="__codelineno-18-30" name="__codelineno-18-30" href="#__codelineno-18-30"></a><span class="w">        </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">baseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">startRestServer</span><span class="p">(</span><span class="n">dbPath</span><span class="p">,</span><span class="w"> </span><span class="n">mapper</span><span class="p">);</span>
+</span><span id="__span-18-31"><a id="__codelineno-18-31" name="__codelineno-18-31" href="#__codelineno-18-31"></a><span class="w">        </span><span class="n">registerHttpToolbox</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="n">mapper</span><span class="p">);</span><span class="c1">// (11)!</span>
+</span><span id="__span-18-32"><a id="__codelineno-18-32" name="__codelineno-18-32" href="#__codelineno-18-32"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-18-33"><a id="__codelineno-18-33" name="__codelineno-18-33" href="#__codelineno-18-33"></a>
+</span><span id="__span-18-34"><a id="__codelineno-18-34" name="__codelineno-18-34" href="#__codelineno-18-34"></a><span class="w">    </span><span class="n">ConsoleUtils</span><span class="p">.</span><span class="na">printBanner</span><span class="p">();</span>
+</span><span id="__span-18-35"><a id="__codelineno-18-35" name="__codelineno-18-35" href="#__codelineno-18-35"></a><span class="w">    </span><span class="n">ConsoleUtils</span><span class="p">.</span><span class="na">printExamples</span><span class="p">();</span>
+</span><span id="__span-18-36"><a id="__codelineno-18-36" name="__codelineno-18-36" href="#__codelineno-18-36"></a>
+</span><span id="__span-18-37"><a id="__codelineno-18-37" name="__codelineno-18-37" href="#__codelineno-18-37"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">runInteractiveLoop</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span><span class="w"> </span><span class="n">config</span><span class="p">,</span><span class="w"> </span><span class="n">effectiveSessionId</span><span class="p">,</span><span class="w"> </span><span class="n">mapper</span><span class="p">);</span><span class="c1">//(12)!</span>
+</span><span id="__span-18-38"><a id="__codelineno-18-38" name="__codelineno-18-38" href="#__codelineno-18-38"></a><span class="p">}</span>
+</span></code></pre></div>
+<ol>
+<li><strong><code>initializeDatabase</code></strong> — Creates + seeds the SQLite file if absent</li>
+<li><strong><code>buildTrustedHttpClient</code></strong> — Builds an <code>OkHttpClient</code> with an auth-injection interceptor for the configured provider</li>
+<li><strong><code>buildOpenAIModel</code></strong> — Creates a <code>SimpleOpenAIModel&lt;SqlQueryResult&gt;</code> wired to the configured endpoint</li>
+<li><strong><code>buildAgentSetup</code></strong> — Sets temperature, max tokens, and <code>TOOL_BASED</code> output mode</li>
+<li><strong><code>buildSkillsExtension</code></strong> — Extracts bundled <code>SKILL.md</code> to a temp dir (or uses <code>--skills-dir</code>) and builds <code>AgentSkillsExtension</code></li>
+<li><strong><code>buildAgent</code></strong> — Constructs <code>TextToSqlAgent</code> with the skills extension, OpenTelemetry extension, and a pass-through output validator</li>
+<li><strong><code>registerLocalTools</code></strong> — Initialises <code>LocalTools</code> (including the Lucene vector store) and registers all <code>@Tool</code> methods</li>
+<li><strong><code>registerAskUserTool</code></strong> — Registers the clarification toolbox so the model can ask follow-up questions interactively</li>
+<li><strong><code>registerMcpToolboxSse</code></strong> <em>(SSE mode)</em> — Launches <code>SqliteMcpServer</code> subprocess in SSE mode; waits for port to open; registers <code>MCPToolBox</code></li>
+<li><strong><code>registerMcpToolbox</code></strong> <em>(stdio mode)</em> — Launches <code>SqliteMcpServer</code> subprocess in stdio mode; registers <code>MCPToolBox</code></li>
+<li><strong><code>startRestServer</code> + <code>registerHttpToolbox</code></strong> <em>(default)</em> — Starts embedded Dropwizard server and registers <code>HttpToolBox</code></li>
+<li><strong><code>runInteractiveLoop</code></strong> — Enters the read-eval-print loop</li>
+</ol>
+<h3 id="11-interactive-loop">11. Interactive Loop<a class="headerlink" href="#11-interactive-loop" title="Permanent link">&para;</a></h3>
+<p>The REPL reads from <code>stdin</code> and dispatches each non-empty line to <code>handleQuery()</code>.
+Special commands are handled before the query is sent to the agent:</p>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>exit</code> / <code>quit</code></td>
+<td>Graceful shutdown</td>
+</tr>
+<tr>
+<td>EOF (<code>Ctrl+D</code>)</td>
+<td>Graceful shutdown</td>
+</tr>
+<tr>
+<td><code>/dumpMessages [filename]</code></td>
+<td>Serialise all agent messages from the last query to a JSON file under <code>.logs/</code></td>
+</tr>
+<tr>
+<td><em>(any other text)</em></td>
+<td>Forwarded to the agent as a natural-language question</td>
+</tr>
+</tbody>
+</table>
+<p>Because <code>AskUserTool</code> is also registered, a running query may pause and render an interactive
+clarification prompt when the model needs more information from the user.</p>
+<p><code>handleQuery</code> drives the agent in <strong>streaming</strong> or <strong>non-streaming</strong> mode
+depending on <code>config.getAgent().isStreaming()</code>:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentInput</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentInput</span><span class="p">.</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="n">builder</span><span class="p">()</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">        </span><span class="p">.</span><span class="na">request</span><span class="p">(</span><span class="n">question</span><span class="p">)</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">        </span><span class="p">.</span><span class="na">requestMetadata</span><span class="p">(</span><span class="n">AgentRequestMetadata</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">                </span><span class="p">.</span><span class="na">sessionId</span><span class="p">(</span><span class="n">effectiveSessionId</span><span class="p">)</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="w">                </span><span class="p">.</span><span class="na">userId</span><span class="p">(</span><span class="s">"cli-user"</span><span class="p">)</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">())</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="n">CompletableFuture</span><span class="o">&lt;</span><span class="n">AgentOutput</span><span class="o">&lt;</span><span class="n">SqlQueryResult</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">outputFuture</span><span class="p">;</span>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">config</span><span class="p">.</span><span class="na">getAgent</span><span class="p">().</span><span class="na">isStreaming</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="w">    </span><span class="n">ConsoleUtils</span><span class="p">.</span><span class="na">printToStdout</span><span class="p">(</span><span class="n">System</span><span class="p">.</span><span class="na">lineSeparator</span><span class="p">());</span>
+</span><span id="__span-19-12"><a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a><span class="w">    </span><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">streamHandler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StreamConsumer</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-19-13"><a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="w">        </span><span class="nd">@Override</span>
+</span><span id="__span-19-14"><a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a><span class="w">        </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">consumeReasoningAndContent</span><span class="p">(</span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">reasoning</span><span class="p">,</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">content</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-19-15"><a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">Strings</span><span class="p">.</span><span class="na">isNullOrEmpty</span><span class="p">(</span><span class="n">reasoning</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-19-16"><a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a><span class="w">                </span><span class="n">ConsoleUtils</span><span class="p">.</span><span class="na">printToStdout</span><span class="p">(</span><span class="n">reasoning</span><span class="p">);</span>
+</span><span id="__span-19-17"><a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a><span class="w">            </span><span class="p">}</span>
+</span><span id="__span-19-18"><a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">Strings</span><span class="p">.</span><span class="na">isNullOrEmpty</span><span class="p">(</span><span class="n">content</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-19-19"><a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a><span class="w">                </span><span class="n">ConsoleUtils</span><span class="p">.</span><span class="na">printToStdout</span><span class="p">(</span><span class="n">content</span><span class="p">);</span>
+</span><span id="__span-19-20"><a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a><span class="w">            </span><span class="p">}</span>
+</span><span id="__span-19-21"><a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-19-22"><a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a><span class="w">    </span><span class="p">};</span>
+</span><span id="__span-19-23"><a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a><span class="w">    </span><span class="n">outputFuture</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">agent</span><span class="p">.</span><span class="na">executeAsyncStreaming</span><span class="p">(</span><span class="n">agentInput</span><span class="p">,</span><span class="w"> </span><span class="n">streamHandler</span><span class="p">);</span>
+</span><span id="__span-19-24"><a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-19-25"><a id="__codelineno-19-25" name="__codelineno-19-25" href="#__codelineno-19-25"></a><span class="w">    </span><span class="n">outputFuture</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">agent</span><span class="p">.</span><span class="na">executeAsync</span><span class="p">(</span><span class="n">agentInput</span><span class="p">);</span>
+</span><span id="__span-19-26"><a id="__codelineno-19-26" name="__codelineno-19-26" href="#__codelineno-19-26"></a><span class="p">}</span>
+</span><span id="__span-19-27"><a id="__codelineno-19-27" name="__codelineno-19-27" href="#__codelineno-19-27"></a>
+</span><span id="__span-19-28"><a id="__codelineno-19-28" name="__codelineno-19-28" href="#__codelineno-19-28"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ConsoleUtils</span><span class="p">.</span><span class="na">awaitWithSpinner</span><span class="p">(</span><span class="n">outputFuture</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">);</span>
+</span><span id="__span-19-29"><a id="__codelineno-19-29" name="__codelineno-19-29" href="#__codelineno-19-29"></a><span class="n">lastAgentOutput</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">output</span><span class="p">;</span>
+</span><span id="__span-19-30"><a id="__codelineno-19-30" name="__codelineno-19-30" href="#__codelineno-19-30"></a><span class="n">ConsoleUtils</span><span class="p">.</span><span class="na">printStructuredResult</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="na">getData</span><span class="p">(),</span><span class="w"> </span><span class="n">wallClockMs</span><span class="p">);</span>
+</span><span id="__span-19-31"><a id="__codelineno-19-31" name="__codelineno-19-31" href="#__codelineno-19-31"></a><span class="n">ConsoleUtils</span><span class="p">.</span><span class="na">printUsageStats</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="na">getUsage</span><span class="p">());</span>
+</span></code></pre></div>
+<p>The session ID threads through every call so the model retains conversation
+history within a session. A new random UUID is generated if <code>--session-id</code> is
+not provided on the command line.</p>
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../errors/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Errors">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Errors
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025  PhonePe Private Limited
+    </div>
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/PhonePe/sentinel-ai" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["announce.dismiss","content.action.edit","content.action.view","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.path","navigation.sections","navigation.top","navigation.tracking","search.highlight","search.share","search.suggest","toc.follow"],"search":"../assets/javascripts/workers/search.b6b7e04f.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ee611ef6.min.js"></script>
+      
+    
+  </body>
+</html>

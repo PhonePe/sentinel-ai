@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="650" viewBox="0 0 780 650" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace">
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#444" />
+    </marker>
+  </defs>
+
+  <!-- ── TextToSqlCLI box ───────────────────────────────────────────── -->
+  <rect x="40" y="20" width="700" height="290" rx="6" ry="6"
+        fill="#e8e8e8" stroke="#444" stroke-width="1.5"/>
+
+  <!-- title -->
+  <text x="390" y="48" text-anchor="middle" font-size="15" font-weight="bold" fill="#222">TextToSqlCLI</text>
+  <line x1="40" y1="56" x2="740" y2="56" stroke="#888" stroke-width="1"/>
+
+  <!-- call() label -->
+  <text x="60" y="76" font-size="12.5" fill="#222">call()</text>
+
+  <!-- tree connector chars -->
+  <text x="72" y="98"  font-size="12" fill="#555">├─</text>
+  <text x="72" y="120" font-size="12" fill="#555">├─</text>
+  <text x="72" y="142" font-size="12" fill="#555">├─</text>
+  <text x="72" y="164" font-size="12" fill="#555">├─</text>
+  <text x="72" y="186" font-size="12" fill="#555">├─</text>
+  <text x="72" y="208" font-size="12" fill="#555">├─</text>
+  <text x="72" y="230" font-size="12" fill="#555">├─</text>
+  <text x="72" y="252" font-size="12" fill="#555">├─</text>
+  <text x="72" y="274" font-size="12" fill="#555">├─</text>
+  <text x="72" y="296" font-size="12" fill="#555">└─</text>
+
+  <!-- method names -->
+  <text x="97" y="98"  font-size="12.5" font-weight="600" fill="#222">loadConfig / validateConfig</text>
+  <text x="97" y="120" font-size="12.5" font-weight="600" fill="#222">initializeDatabase</text>
+  <text x="97" y="142" font-size="12.5" font-weight="600" fill="#222">buildTrustedHttpClient</text>
+  <text x="97" y="164" font-size="12.5" font-weight="600" fill="#222">buildOpenAIModel</text>
+  <text x="97" y="186" font-size="12.5" font-weight="600" fill="#222">buildAgentSetup</text>
+  <text x="97" y="208" font-size="12.5" font-weight="600" fill="#222">buildSkillsExtension</text>
+  <text x="97" y="230" font-size="12.5" font-weight="600" fill="#222">buildAgent</text>
+  <text x="97" y="252" font-size="12.5" font-weight="600" fill="#222">registerLocalTools</text>
+  <text x="97" y="274" font-size="12.5" font-weight="600" fill="#222">registerToolbox</text>
+  <text x="97" y="296" font-size="12.5" font-weight="600" fill="#222">runInteractiveLoop</text>
+
+  <!-- descriptions -->
+  <text x="350" y="98"  font-size="12" fill="#222">CliConfig from YAML</text>
+  <text x="350" y="120" font-size="12" fill="#222">SQLite file + seed data</text>
+  <text x="350" y="142" font-size="12" fill="#222">OkHttp + auth interceptor</text>
+  <text x="350" y="164" font-size="12" fill="#222">SimpleOpenAIModel</text>
+  <text x="350" y="186" font-size="12" fill="#222">ModelSettings + output mode</text>
+  <text x="350" y="208" font-size="12" fill="#222">AgentSkillsExtension / SKILL.md</text>
+  <text x="350" y="230" font-size="12" fill="#222">TextToSqlAgent</text>
+  <text x="350" y="252" font-size="12" fill="#222">LocalSqlTools + SchemaVectorStore</text>
+  <text x="350" y="274" font-size="12" fill="#222">HTTP or MCP, based on --toolbox-mode</text>
+  <text x="350" y="296" font-size="12" fill="#222">stdin prompt → agent → stdout</text>
+
+  <!-- ── Arrows CLI → tool boxes ────────────────────────────────────── -->
+  <line x1="130" y1="310" x2="130" y2="368" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="390" y1="310" x2="390" y2="368" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="640" y1="310" x2="640" y2="368" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ── LocalSqlTools ─────────────────────────────────────────────── -->
+  <rect x="40" y="370" width="180" height="80" rx="6" ry="6"
+        fill="#e8e8e8" stroke="#444" stroke-width="1.5"/>
+  <text x="130" y="396" text-anchor="middle" font-size="13" font-weight="bold" fill="#222">LocalSqlTools</text>
+  <text x="130" y="416" text-anchor="middle" font-size="11.5" fill="#222">JDBC / Java +</text>
+  <text x="130" y="432" text-anchor="middle" font-size="11.5" fill="#222">Lucene search</text>
+
+  <!-- ── SqliteRestServer ──────────────────────────────────────────── -->
+  <rect x="285" y="370" width="210" height="80" rx="6" ry="6"
+        fill="#e8e8e8" stroke="#444" stroke-width="1.5"/>
+  <text x="390" y="396" text-anchor="middle" font-size="13" font-weight="bold" fill="#222">SqliteRestServer</text>
+  <text x="390" y="416" text-anchor="middle" font-size="11.5" fill="#222">Dropwizard REST</text>
+  <text x="390" y="432" text-anchor="middle" font-size="11" fill="#222">[--toolbox-mode HTTP, default]</text>
+
+  <!-- ── SqliteMcpServer ───────────────────────────────────────────── -->
+  <rect x="555" y="370" width="180" height="80" rx="6" ry="6"
+        fill="#e8e8e8" stroke="#444" stroke-width="1.5"/>
+  <text x="645" y="396" text-anchor="middle" font-size="13" font-weight="bold" fill="#222">SqliteMcpServer</text>
+  <text x="645" y="416" text-anchor="middle" font-size="11.5" fill="#222">stdio or SSE</text>
+  <text x="645" y="432" text-anchor="middle" font-size="11" fill="#222">[--toolbox-mode MCP]</text>
+
+  <!-- ── Arrows tool boxes → DB ───────────────────────────────────── -->
+  <polyline points="130,450 130,520 390,520" fill="none" stroke="#444" stroke-width="1.5"/>
+  <line    x1="390" y1="450" x2="390" y2="520" stroke="#444" stroke-width="1.5"/>
+  <polyline points="645,450 645,520 390,520" fill="none" stroke="#444" stroke-width="1.5"/>
+  <line    x1="390" y1="520" x2="390" y2="548" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ── ecommerce.db (cylinder) ──────────────────────────────────── -->
+  <rect    x="300" y="555" width="180" height="50" fill="#e8e8e8" stroke="#444" stroke-width="1.5"/>
+  <ellipse cx="390" cy="555" rx="90" ry="14" fill="#e8e8e8" stroke="#444" stroke-width="1.5"/>
+  <ellipse cx="390" cy="605" rx="90" ry="14" fill="#e8e8e8" stroke="#444" stroke-width="1.5"/>
+
+  <text x="390" y="581" text-anchor="middle" font-size="13" font-weight="bold" fill="#222">ecommerce.db</text>
+  <text x="390" y="597" text-anchor="middle" font-size="11.5" fill="#222">SQLite file</text>
+
+</svg>

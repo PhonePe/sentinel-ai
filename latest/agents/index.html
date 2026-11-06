@@ -1,0 +1,3064 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Creating and using agents in Sentinel AI">
+      
+      
+        <meta name="author" content="PhonePe">
+      
+      
+        <link rel="canonical" href="https://phonepe.github.io/sentinel-ai/latest/agents/">
+      
+      
+        <link rel="prev" href="./..">
+      
+      
+        <link rel="next" href="../tools/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.46">
+    
+    
+      
+        <title>Agents - Sentinel AI Agent Framework</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.19d3147f.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,500,500i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agent-basics" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Sentinel AI Agent Framework" class="md-header__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sentinel AI Agent Framework
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Agents
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="cyan"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    PhonePe/sentinel-ai
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Sentinel AI Agent Framework" class="md-nav__button md-logo" aria-label="Sentinel AI Agent Framework" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+
+    </a>
+    Sentinel AI Agent Framework
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/PhonePe/sentinel-ai" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    PhonePe/sentinel-ai
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Agents
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Agents
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#request-and-response-type-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Request and Response Type parameters
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instantiating-a-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Instantiating a model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Agent Setup
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Available Settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model Settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-compaction-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Auto Compaction Setup
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auto Compaction Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-auto-compaction-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How Auto Compaction Works
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example Configuration
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-specific-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model Specific Options
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model Specific Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-counting-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Token Counting Configuration
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retry-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Retry Setup
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sample-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sample setup
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-an-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Creating an agent
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-agentinput-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>AgentInput</code> class
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-agentoutput-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>AgentOutput</code> class
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The AgentOutput class">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-usage-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model Usage Statistics
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model Usage Statistics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prompttokendetails-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>PromptTokenDetails</code> Class
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#responsetokendetails-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>ResponseTokenDetails</code> Class
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Using the agent
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#media-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Media Inputs
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#request-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Request Metadata
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Prompts
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prompts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        System Prompts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        User prompts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customizing-agent-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Customizing Agent Behaviour
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Customizing Agent Behaviour">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Constructor Parameters
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-basic-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example: Basic Customization
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-advanced-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example: Advanced Customization
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Advanced Features
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#output-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Output Validation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#message-pre-processors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Message Pre-processors
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Extensions
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tool-call-argument-preprocessing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tool Call Argument Preprocessing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tools
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Tools
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Overview
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../using-mcp-servers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Using MCP Servers
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../calling-remote-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Calling Remote Services
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Extensions
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Extensions
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../messages-session/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Messages & Session
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-skills-extension/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Agent Skills
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Agent Registry
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Agent Memory
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Observability
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Observability
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Overview
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../opentelemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  OpenTelemetry
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Testing
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Testing
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Evals
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Errors
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Example
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#request-and-response-type-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Request and Response Type parameters
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instantiating-a-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Instantiating a model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Agent Setup
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Available Settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model Settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-compaction-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Auto Compaction Setup
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auto Compaction Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-auto-compaction-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How Auto Compaction Works
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example Configuration
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-specific-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model Specific Options
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model Specific Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-counting-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Token Counting Configuration
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retry-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Retry Setup
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sample-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sample setup
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-an-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Creating an agent
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-agentinput-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>AgentInput</code> class
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-agentoutput-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>AgentOutput</code> class
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The AgentOutput class">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-usage-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model Usage Statistics
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model Usage Statistics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prompttokendetails-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>PromptTokenDetails</code> Class
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#responsetokendetails-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>ResponseTokenDetails</code> Class
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Using the agent
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#media-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Media Inputs
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#request-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Request Metadata
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Prompts
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prompts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        System Prompts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        User prompts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customizing-agent-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Customizing Agent Behaviour
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Customizing Agent Behaviour">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Constructor Parameters
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-basic-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example: Basic Customization
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-advanced-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example: Advanced Customization
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Advanced Features
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#output-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Output Validation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#message-pre-processors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Message Pre-processors
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Extensions
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tool-call-argument-preprocessing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tool Call Argument Preprocessing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+    <a href="https://github.com/PhonePe/sentinel-ai/edit/master/docs/docs/agents.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/PhonePe/sentinel-ai/raw/master/docs/docs/agents.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
+    </a>
+  
+
+
+<h1 id="agent-basics">Agent Basics<a class="headerlink" href="#agent-basics" title="Permanent link">&para;</a></h1>
+<p>The core abstraction of Sentinel AI is the <code>Agent</code> class. The <code>Agent</code> class is a generic class that takes three type
+parameters:</p>
+<ul>
+<li><code>R</code>: The type of the request object that the agent receives. This can be a string or any other complex Java type.</li>
+<li><code>T</code>: The type of the response object that the agent returns. This can also be a string or any other complex Java type.</li>
+<li><code>A</code>: The agent subtype. This is the class you are currently implementing.</li>
+</ul>
+<h2 id="request-and-response-type-parameters">Request and Response Type parameters<a class="headerlink" href="#request-and-response-type-parameters" title="Permanent link">&para;</a></h2>
+<p>Sentinel supports sending both text and objects as input and output. The type parameters <code>R</code> and <code>T</code> can be any Java
+type, including strings, lists, maps, or custom objects. The only requirement is that the types must be serializable to
+JSON.</p>
+<p>Sentinel will generate schema for the type parameters and pass is to the model to ensure requests are interpreted
+correctly and responses are generated properly.</p>
+<div class="admonition tip">
+<p class="admonition-title">Use <code>@JsonClassDescription</code> and <code>@JsonPropertyDescription</code> liberally</p>
+<p>Use the <code>@JsonClassDescription</code> and <code>@JsonPropertyDescription</code> annotations to provide copious amounts of
+documentation on the classes and their members wherever they are used, be it as request type, response type, tool
+parameters and so on. This is added to the generated schema. A lot of the accuracy of the agent will finally depend
+on the amount of information you provide to the model. The more information you provide, the better the model will
+be able to interpret the request properly and generate the correct and relevant response.</p>
+</div>
+<p>Sample request type would be like the following:</p>
+<div class="language-java highlight"><span class="filename">BookInfo.java</span><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nd">@JsonClassDescription</span><span class="p">(</span><span class="s">"Information about the book to be summarized"</span><span class="p">)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">record</span> <span class="nc">BookInfo</span><span class="p">(</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Unique ID for the book"</span><span class="p">)</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">isbn</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Title of the book"</span><span class="p">)</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">title</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Similarly, the response type can be a complex object as well. For example, if you are implementing a book summarizer, a
+sample response can be like the following:</p>
+<div class="language-java highlight"><span class="filename">BookSummary.java</span><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nd">@JsonClassDescription</span><span class="p">(</span><span class="s">"Summary of the book"</span><span class="p">)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kd">public</span><span class="w"> </span><span class="kd">record</span> <span class="nc">BookSummary</span><span class="p">(</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Unique ID for the book"</span><span class="p">)</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">isbn</span><span class="p">,</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Summary of the book"</span><span class="p">)</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">summary</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">        </span><span class="nd">@JsonPropertyDescription</span><span class="p">(</span><span class="s">"Topics discussed in the book"</span><span class="p">)</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="w"> </span><span class="n">topics</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">}</span>
+</span></code></pre></div>
+<h2 id="instantiating-a-model">Instantiating a model<a class="headerlink" href="#instantiating-a-model" title="Permanent link">&para;</a></h2>
+<p>The <code>Model</code> class is a generic abstraction for an LLM model used by an agent. A concrete subclass of the Model needs to
+be instantiated for usage in the agent.</p>
+<p>Currently, we support <em>only</em> OpenAI API compliant model endpoints. The corresponding implementation of <code>Model</code> for this
+is the <code>SimpleOpenAIModel</code> class. The class is available in the <code>sentinel-ai-models-simple-openai</code> module.</p>
+<p>The module needs to be added to the project dependencies as follows:</p>
+<div class="language-xml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">&lt;dependency&gt;</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="nt">&lt;groupId&gt;</span>com.phonepe.sentinel-ai<span class="nt">&lt;/groupId&gt;</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">&lt;artifactId&gt;</span>sentinel-ai-models-simple-openai<span class="nt">&lt;/artifactId&gt;</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nt">&lt;/dependency&gt;</span>
+</span></code></pre></div>
+<p>This will add the required dependencies to instantiate the model with the SimpleOpenAI client library. The library
+itself is very flexible, and you should read the documentation for the library to understand how to use it.
+The model can be instantiated as follows:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">SimpleOpenAIModel</span><span class="o">&lt;&gt;</span><span class="p">(</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">        </span><span class="s">"gpt-4o"</span><span class="p">,</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">        </span><span class="n">SimpleOpenAI</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">                </span><span class="p">.</span><span class="na">baseUrl</span><span class="p">(</span><span class="n">EnvLoader</span><span class="p">.</span><span class="na">readEnv</span><span class="p">(</span><span class="s">"OPENAI_ENDPOINT"</span><span class="p">))</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">                </span><span class="p">.</span><span class="na">apiKey</span><span class="p">(</span><span class="n">EnvLoader</span><span class="p">.</span><span class="na">readEnv</span><span class="p">(</span><span class="s">"OPENAI_API_KEY"</span><span class="p">))</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">                </span><span class="p">.</span><span class="na">objectMapper</span><span class="p">(</span><span class="n">objectMapper</span><span class="p">)</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">                </span><span class="p">.</span><span class="na">clientAdapter</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">OkHttpClientAdapter</span><span class="p">(</span><span class="n">httpClient</span><span class="p">))</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">(),</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">        </span><span class="n">objectMapper</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="p">);</span>
+</span></code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Type parameter for <code>SimpleOpenAIModel</code></p>
+<p>The <code>SimpleOpenAIModel</code> is a generic class. The type is inferred from the type of the model. Leave it as <code>&lt;&gt;</code>.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Endpoint and api key</p>
+<p>The <code>OPENAI_ENDPOINT</code> and <code>OPENAI_API_KEY</code> are environment variables that need to be set in the system. The
+<code>EnvLoader</code> class is a utility class that loads the environment variables. You can use any other method to load
+the environment variables as well.</p>
+</div>
+<h2 id="agent-setup">Agent Setup<a class="headerlink" href="#agent-setup" title="Permanent link">&para;</a></h2>
+<p>The <code>AgentSetup</code> class is a configuration class that is used to configure the agent. The class is available in the
+core library itself and can be used to set a variety of settings for the agent. The class provides a builder to allow to
+set only the required parameters and will default whatever it can if not provided.</p>
+<blockquote>
+<p><strong>AgentSetup</strong> object needs to be passed at startup. However, if all parameters are not known or some of them need to
+be
+dynamic, a setup object can be passed as parameter to the <code>execute*</code> methods as well.</p>
+</blockquote>
+<h3 id="available-settings">Available Settings<a class="headerlink" href="#available-settings" title="Permanent link">&para;</a></h3>
+<p>Here are all available settings for the <code>AgentSetup</code> class:</p>
+<table>
+<thead>
+<tr>
+<th><strong>Setting</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mapper</code></td>
+<td><code>ObjectMapper</code></td>
+<td>The object mapper to use for serialization/deserialization. If not provided, a default one will be created.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td><code>Model</code></td>
+<td>The LLM to be used for the agent. This can be provided at runtime. If not provided, an error will be thrown.</td>
+</tr>
+<tr>
+<td><code>modelSettings</code></td>
+<td><a href="#model-settings"><code>ModelSettings</code></a></td>
+<td>The settings for the model. This can be provided at runtime. If not provided, an error will be thrown.</td>
+</tr>
+<tr>
+<td><code>executorService</code></td>
+<td><code>ExecutorService</code></td>
+<td>The executor service to use for running the agent. If not provided, a default cached thread pool will be created.</td>
+</tr>
+<tr>
+<td><code>eventBus</code></td>
+<td><code>EventBus</code></td>
+<td>The event bus to be used for the agent. If not provided, a default event bus will be created.</td>
+</tr>
+<tr>
+<td><code>outputGenerationMode</code></td>
+<td><code>OutputGenerationMode</code></td>
+<td>Output generation mode to use for this model. Can be <code>TOOL_BASED</code> (default) or <code>STRUCTURED_OUTPUT</code>. Typically, other than OpenAI models, it is safer to leave it at the default <code>TOOL_BASED</code> mode.</td>
+</tr>
+<tr>
+<td><code>outputGenerationTool</code></td>
+<td><code>UnaryOperator&lt;String&gt;</code></td>
+<td>A function that the model can use to generate the JSON string output. If not provided (recommended), Sentinel AI will use it's built in tool if the <code>outputGenerationMode</code> is set to <code>TOOL_BASED</code></td>
+</tr>
+<tr>
+<td><code>retrySetup</code></td>
+<td><a href="#retry-setup"><code>RetrySetup</code></a></td>
+<td>Retry setup to use for model calls. If not provided, default setup will be added.</td>
+</tr>
+<tr>
+<td><code>autoCompactionSetup</code></td>
+<td><a href="#auto-compaction-setup"><code>AutoCompactionSetup</code></a></td>
+<td>Configuration for automatic message history compaction. If not provided, default setup will be used.</td>
+</tr>
+<tr>
+<td><code>maxToolResponsePercentage</code></td>
+<td><code>int</code></td>
+<td>Maximum tool response size as a percentage of the model's context window. Responses exceeding this limit are blocked and replaced with an error. Defaults to <code>10</code> (10 %). Set to <code>0</code> or negative to use the default. Values above <code>100</code> are used as-is (no clamping). See <a href="../tools/#large-response-blocking">Large Response Blocking</a>.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition danger">
+<p class="admonition-title">Required parameters</p>
+<ul>
+<li>The <code>model</code>, and <code>modelSettings</code> are required parameters. If not provided, an error will be thrown. However, it is
+  possible that model etc is not known during agent creation. In that case, the parameters can be provided as part of
+  the <code>execute*</code> methods. If neither is available, exception will be provided at runtime.</li>
+<li>All the other parameters are optional. If not provided, a default one will be created/provided.</li>
+</ul>
+</div>
+<h3 id="model-settings">Model Settings<a class="headerlink" href="#model-settings" title="Permanent link">&para;</a></h3>
+<p>A variety of settings can be set for the model. The <code>ModelSettings</code> class is a configuration class that is used to
+configure the model. The class is available in the core library itself and provides a builder.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Setting</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>maxTokens</code></td>
+<td><code>Integer</code></td>
+<td>Maximum number of tokens to generate.</td>
+</tr>
+<tr>
+<td><code>temperature</code></td>
+<td><code>Float</code></td>
+<td>Amount of randomness to inject in output. Lower values make the output more predictable.</td>
+</tr>
+<tr>
+<td><code>topP</code></td>
+<td><code>Float</code></td>
+<td>Probabilistic sum of tokens to consider for each subsequent token. Range: 0-1.</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>Duration</code></td>
+<td>Timeout for model calls.</td>
+</tr>
+<tr>
+<td><code>parallelToolCalls</code></td>
+<td><code>Boolean</code></td>
+<td>Whether to call tools in parallel or not.</td>
+</tr>
+<tr>
+<td><code>seed</code></td>
+<td><code>Integer</code></td>
+<td>Seed for random number generator to make output more predictable.</td>
+</tr>
+<tr>
+<td><code>presencePenalty</code></td>
+<td><code>Float</code></td>
+<td>Penalty for adding new tokens based on their presence in the output so far.</td>
+</tr>
+<tr>
+<td><code>frequencyPenalty</code></td>
+<td><code>Float</code></td>
+<td>Penalty for adding new tokens based on how many times they have appeared in the output so far.</td>
+</tr>
+<tr>
+<td><code>logitBias</code></td>
+<td><code>Map&lt;String, Integer&gt;</code></td>
+<td>Controls the likelihood of specific tokens being generated.</td>
+</tr>
+<tr>
+<td><code>disableTools</code></td>
+<td><code>Boolean</code></td>
+<td>Disables tool calls for this agent. When <code>true</code>, tools are not sent to the model and <code>STRUCTURED_OUTPUT</code> mode is used. Useful for models that do not support tool calling.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="auto-compaction-setup">Auto Compaction Setup<a class="headerlink" href="#auto-compaction-setup" title="Permanent link">&para;</a></h3>
+<p>The <code>AutoCompactionSetup</code> class configures automatic message history compaction during agent execution. When enabled, Sentinel AI automatically compresses conversation history that exceeds a configured token threshold, allowing agents to maintain longer conversations without hitting context window limits.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Setting</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Default</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prompts</code></td>
+<td><code>CompactionPrompts</code></td>
+<td>DEFAULT</td>
+<td>Custom prompts used for the compaction/summarization process.</td>
+</tr>
+<tr>
+<td><code>tokenBudget</code></td>
+<td><code>int</code></td>
+<td>1500</td>
+<td>Target token count for the compacted message history.</td>
+</tr>
+<tr>
+<td><code>compactionTriggerThresholdPercentage</code></td>
+<td><code>int</code></td>
+<td>60</td>
+<td>Percentage of context window usage that triggers automatic compaction. Set to 0 to compact every run.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td><code>Model</code></td>
+<td>null</td>
+<td>Optional separate model to use for compaction. If not provided, uses the agent's main model.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="how-auto-compaction-works">How Auto Compaction Works<a class="headerlink" href="#how-auto-compaction-works" title="Permanent link">&para;</a></h4>
+<p>Auto compaction runs as a pre-processor before sending messages to the LLM:</p>
+<ol>
+<li><strong>Token Estimation</strong>: Estimates token count of messages generated after the last compaction point.</li>
+<li><strong>Threshold Check</strong>: Compares estimated tokens against the model's context window size.</li>
+<li><strong>Trigger</strong>: If <code>(estimatedTokens / contextWindowSize) * 100 &gt; compactionTriggerThresholdPercentage</code>, triggers compaction.</li>
+<li><strong>Compaction</strong>: Invokes the <code>MessageCompactor</code> to summarize the history into a compact form.</li>
+<li><strong>Continuation</strong>: Appends a continuation prompt with the compacted summary, allowing the agent to proceed with context preserved.</li>
+</ol>
+<h4 id="example-configuration">Example Configuration<a class="headerlink" href="#example-configuration" title="Permanent link">&para;</a></h4>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">autoCompactionSetup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AutoCompactionSetup</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">        </span><span class="p">.</span><span class="na">tokenBudget</span><span class="p">(</span><span class="mi">2000</span><span class="p">)</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">        </span><span class="p">.</span><span class="na">compactionTriggerThresholdPercentage</span><span class="p">(</span><span class="mi">70</span><span class="p">)</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">        </span><span class="p">.</span><span class="na">prompts</span><span class="p">(</span><span class="n">CompactionPrompts</span><span class="p">.</span><span class="na">DEFAULT</span><span class="p">)</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentSetup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentSetup</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="p">.</span><span class="na">model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">        </span><span class="p">.</span><span class="na">modelSettings</span><span class="p">(</span><span class="n">modelSettings</span><span class="p">)</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">        </span><span class="p">.</span><span class="na">autoCompactionSetup</span><span class="p">(</span><span class="n">autoCompactionSetup</span><span class="p">)</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span></code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Token Budget Tuning</p>
+<p>The <code>tokenBudget</code> determines how much of the conversation history is preserved in the compacted form. A larger budget preserves more detail but consumes more tokens. A smaller budget is more aggressive but may lose nuance. Start with the default (1500) and adjust based on your use case.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Model Selection</p>
+<p>You can optionally specify a different (typically smaller and faster) model for compaction tasks by setting the <code>model</code> field. This can reduce costs and latency for the compaction operation. If not set, the agent's main model is used.</p>
+</div>
+<h3 id="model-specific-options">Model Specific Options<a class="headerlink" href="#model-specific-options" title="Permanent link">&para;</a></h3>
+<p>Some models support additional configuration options that are not part of the standard <code>ModelSettings</code>. For example, <code>SimpleOpenAIModel</code> supports <code>SimpleOpenAIModelOptions</code>.</p>
+<h4 id="token-counting-configuration">Token Counting Configuration<a class="headerlink" href="#token-counting-configuration" title="Permanent link">&para;</a></h4>
+<p>You can tune how Sentinel AI estimates token usage for OpenAI models by providing a <code>TokenCountingConfig</code>. This is useful for adjusting for specific prompt formats or model-specific overheads.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Setting</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Default</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>messageOverHead</code></td>
+<td><code>int</code></td>
+<td>3</td>
+<td>Overhead tokens per message.</td>
+</tr>
+<tr>
+<td><code>nameOverhead</code></td>
+<td><code>int</code></td>
+<td>1</td>
+<td>Overhead tokens if <code>name</code> is provided in message.</td>
+</tr>
+<tr>
+<td><code>assistantPrimingOverhead</code></td>
+<td><code>int</code></td>
+<td>3</td>
+<td>Tokens added at the end of the prompt to prime assistant.</td>
+</tr>
+<tr>
+<td><code>formattingOverhead</code></td>
+<td><code>int</code></td>
+<td>10</td>
+<td>Overhead for structured tool arguments.</td>
+</tr>
+<tr>
+<td><code>imageTokenCost</code></td>
+<td><code>int</code></td>
+<td>765</td>
+<td>Fixed token cost per image content part. Vision models do not tokenize the base64 payload as text, so each image part contributes this fixed cost instead.</td>
+</tr>
+</tbody>
+</table>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">tokenConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TokenCountingConfig</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">        </span><span class="p">.</span><span class="na">messageOverHead</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="w"> </span><span class="c1">// Overhead tokens per message</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">        </span><span class="p">.</span><span class="na">nameOverhead</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w">    </span><span class="c1">// Overhead tokens if 'name' is provided in message</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">        </span><span class="p">.</span><span class="na">assistantPrimingOverhead</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="w"> </span><span class="c1">// Tokens added at the end of the prompt to prime assistant</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">        </span><span class="p">.</span><span class="na">formattingOverhead</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="w"> </span><span class="c1">// Overhead for structured tool arguments</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">        </span><span class="p">.</span><span class="na">imageTokenCost</span><span class="p">(</span><span class="mi">765</span><span class="p">)</span><span class="w"> </span><span class="c1">// Fixed token cost per image content part</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">modelOptions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SimpleOpenAIModelOptions</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">        </span><span class="p">.</span><span class="na">tokenCountingConfig</span><span class="p">(</span><span class="n">tokenConfig</span><span class="p">)</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">        </span><span class="p">.</span><span class="na">toolChoice</span><span class="p">(</span><span class="n">SimpleOpenAIModelOptions</span><span class="p">.</span><span class="na">ToolChoice</span><span class="p">.</span><span class="na">AUTO</span><span class="p">)</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">SimpleOpenAIModel</span><span class="o">&lt;&gt;</span><span class="p">(</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">        </span><span class="s">"gpt-4o"</span><span class="p">,</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">        </span><span class="n">client</span><span class="p">,</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">        </span><span class="n">objectMapper</span><span class="p">,</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">        </span><span class="n">modelOptions</span><span class="w"> </span><span class="c1">// Pass options here</span>
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="p">);</span>
+</span></code></pre></div>
+<p>The <code>toolChoice</code> field on <code>SimpleOpenAIModelOptions</code> controls the <code>tool_choice</code> parameter sent to the model. Sentinel AI
+automatically resolves the effective OpenAI <code>tool_choice</code> value by combining <code>toolChoice</code> with the active
+<code>outputGenerationMode</code>. This is needed because <code>TOOL_BASED</code> mode previously forced <code>tool_choice</code> to <code>required</code>,
+and some models (e.g. Qwen, Kimi on vLLM) do not call tools reliably in this configuration. The <code>toolChoice</code> option
+now allows you to override this behavior and set it to <code>auto</code> for such models.</p>
+<p>The resolution rules are:</p>
+<table>
+<thead>
+<tr>
+<th><code>outputGenerationMode</code></th>
+<th><code>toolChoice</code></th>
+<th>Effective OpenAI <code>tool_choice</code></th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TOOL_BASED</code></td>
+<td><code>REQUIRED</code></td>
+<td><code>required</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>TOOL_BASED</code></td>
+<td><code>AUTO</code></td>
+<td><code>auto</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>TOOL_BASED</code></td>
+<td><code>DEFAULT</code></td>
+<td><code>required</code></td>
+<td>Default for tool-based mode — model must call a tool to produce output.</td>
+</tr>
+<tr>
+<td><code>STRUCTURED_OUTPUT</code></td>
+<td><code>REQUIRED</code></td>
+<td><code>required</code></td>
+<td>⚠️ Warning logged: may cause infinite tool-call loops in structured-output mode.</td>
+</tr>
+<tr>
+<td><code>STRUCTURED_OUTPUT</code></td>
+<td><code>AUTO</code></td>
+<td><code>auto</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>STRUCTURED_OUTPUT</code></td>
+<td><code>DEFAULT</code></td>
+<td><code>auto</code></td>
+<td>Default for structured-output mode — model chooses whether to call a tool.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">REQUIRED + STRUCTURED_OUTPUT</p>
+<p>Setting <code>toolChoice</code> to <code>REQUIRED</code> while <code>outputGenerationMode</code> is <code>STRUCTURED_OUTPUT</code> is allowed but will emit a
+warning at runtime. This combination can cause the model to enter an infinite tool-call loop. Prefer <code>AUTO</code> or
+<code>DEFAULT</code> when using <code>STRUCTURED_OUTPUT</code>.</p>
+</div>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Use AUTO tool choice for models that ignore REQUIRED (e.g. Qwen, Kimi on vLLM)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">modelOptions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SimpleOpenAIModelOptions</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">        </span><span class="p">.</span><span class="na">toolChoice</span><span class="p">(</span><span class="n">SimpleOpenAIModelOptions</span><span class="p">.</span><span class="na">ToolChoice</span><span class="p">.</span><span class="na">AUTO</span><span class="p">)</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">SimpleOpenAIModel</span><span class="o">&lt;&gt;</span><span class="p">(</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">        </span><span class="s">"qwen-plus"</span><span class="p">,</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">        </span><span class="n">client</span><span class="p">,</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">        </span><span class="n">objectMapper</span><span class="p">,</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">        </span><span class="n">modelOptions</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="p">);</span>
+</span></code></pre></div>
+<h3 id="retry-setup">Retry Setup<a class="headerlink" href="#retry-setup" title="Permanent link">&para;</a></h3>
+<p>The <code>RetrySetup</code> class is a configuration class that is used to configure the retry mechanism for model calls.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Setting</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>totalAttempts</code></td>
+<td><code>int</code></td>
+<td>Total number of attempts to make. This includes the successful attempts.</td>
+</tr>
+<tr>
+<td><code>delayAfterFailedAttempt</code></td>
+<td><code>Duration</code></td>
+<td>Delay after a failed attempt before retrying.</td>
+</tr>
+<tr>
+<td><code>retriableErrorTypes</code></td>
+<td><code>Set&lt;ErrorTypes&gt;</code></td>
+<td>Specific error types to retry on. If not provided, a pre-defined set of error types are retried. See <a href="../errors/">Error Handling</a> for details.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sample-setup">Sample setup<a class="headerlink" href="#sample-setup" title="Permanent link">&para;</a></h3>
+<p>Sample code for creating settings for an agent:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agentSetup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentSetup</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">        </span><span class="p">.</span><span class="na">model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">        </span><span class="p">.</span><span class="na">mapper</span><span class="p">(</span><span class="n">objectMapper</span><span class="p">)</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">        </span><span class="p">.</span><span class="na">modelSettings</span><span class="p">(</span><span class="n">ModelSettings</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">                               </span><span class="p">.</span><span class="na">temperature</span><span class="p">(</span><span class="mf">0.1f</span><span class="p">)</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">                               </span><span class="p">.</span><span class="na">timeout</span><span class="p">(</span><span class="n">Duration</span><span class="p">.</span><span class="na">ofSeconds</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">                               </span><span class="p">.</span><span class="na">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">                               </span><span class="p">.</span><span class="na">build</span><span class="p">())</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span></code></pre></div>
+<h2 id="creating-an-agent">Creating an agent<a class="headerlink" href="#creating-an-agent" title="Permanent link">&para;</a></h2>
+<p>To create an agent, you need to do the following:</p>
+<ul>
+<li>Implement the <code>Agent</code> interface with the appropriate request and response type parameters</li>
+<li>Provide a system prompt</li>
+<li>Pass a setup object to the agent</li>
+<li>There are other parameters we shall explore in subsequent sections</li>
+</ul>
+<p>Continuing with the example, we want to create an agent that can summarize books. Code for such an agent would look
+something like this:</p>
+<div class="language-java highlight"><span class="filename">BookSummarizingAgent.java</span><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">BookSummarizingAgent</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Agent</span><span class="o">&lt;</span><span class="n">BookInfo</span><span class="p">,</span><span class="w"> </span><span class="n">BookSummary</span><span class="p">,</span><span class="w"> </span><span class="n">BookSummarizingAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">BookSummarizingAgent</span><span class="p">(</span><span class="n">AgentSetup</span><span class="w"> </span><span class="n">setup</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">        </span><span class="kd">super</span><span class="p">(</span><span class="n">BookSummary</span><span class="p">.</span><span class="na">class</span><span class="p">,</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">              </span><span class="s">"You are an expert in summarizing books. You will be provided with the title and ISBN of a book."</span><span class="w"> </span><span class="o">+</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">                      </span><span class="s">" You need to summarize the book and provide the topics discussed in the book."</span><span class="p">,</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">              </span><span class="n">setup</span><span class="p">,</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">              </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(),</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">              </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">());</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span><span class="nd">@Override</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s">"book-summarizer"</span><span class="p">;</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="p">}</span>
+</span></code></pre></div>
+<h2 id="the-agentinput-class">The <code>AgentInput</code> class<a class="headerlink" href="#the-agentinput-class" title="Permanent link">&para;</a></h2>
+<p>Sentinel agent <code>execute*</code> requests can take multiple parameters along with the core request(user prompt). The
+<code>AgentInput</code> class wraps all parameters and provides a builder allowing users to easily send or skip additional
+parameters.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Property</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>request</code></td>
+<td><code>R</code></td>
+<td>Request object. This is a required parameter.</td>
+</tr>
+<tr>
+<td><code>media</code></td>
+<td><code>List&lt;MediaInput&gt;</code></td>
+<td>Media (images, audio) to attach to the request. Sent to the LLM as content parts in a user message. Defaults to an empty list.</td>
+</tr>
+<tr>
+<td><code>facts</code></td>
+<td><code>List&lt;FactList&gt;</code></td>
+<td>List of facts to be passed to the agent.</td>
+</tr>
+<tr>
+<td><code>requestMetadata</code></td>
+<td><code>AgentRequestMetadata</code></td>
+<td>Metadata for the request.</td>
+</tr>
+<tr>
+<td><code>oldMessages</code></td>
+<td><code>List&lt;AgentMessage&gt;</code></td>
+<td>List of old messages to be sent to the LLM for this run. If set to <code>null</code>, messages are generated and consumed by the agent in this session.</td>
+</tr>
+<tr>
+<td><code>agentSetup</code></td>
+<td><code>AgentSetup</code></td>
+<td>Setup for the agent. Overrides runtime setup. If set to <code>null</code>, the setup provided during agent creation is used. Fields provided at runtime take precedence.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-agentoutput-class">The <code>AgentOutput</code> class<a class="headerlink" href="#the-agentoutput-class" title="Permanent link">&para;</a></h2>
+<p>The return type for all <code>execute*</code> methods is <code>AgentOutput</code> which is a generic class typed with the
+response type <code>T</code>. The class contains the following fields:</p>
+<table>
+<thead>
+<tr>
+<th><strong>Member</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data</code></td>
+<td><code>T</code></td>
+<td>The output of the agent, typed to the required response type. Null in case of errors.</td>
+</tr>
+<tr>
+<td><code>newMessages</code></td>
+<td><code>List&lt;AgentMessage&gt;</code></td>
+<td>New messages generated by the agent. Empty in case of errors.</td>
+</tr>
+<tr>
+<td><code>allMessages</code></td>
+<td><code>List&lt;AgentMessage&gt;</code></td>
+<td>All messages generated by the agent, including the new messages.</td>
+</tr>
+<tr>
+<td><code>usage</code></td>
+<td><code>ModelUsageStats</code></td>
+<td>Usage statistics for the model.</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>SentinelError</code></td>
+<td>Error in case of failure or a success object otherwise.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="model-usage-statistics">Model Usage Statistics<a class="headerlink" href="#model-usage-statistics" title="Permanent link">&para;</a></h3>
+<p>The <code>ModelUsageStats</code> class tracks usage statistics for a model, including token usage and request details.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Member</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>requestsForRun</code></td>
+<td><code>int</code></td>
+<td>Number of requests made for this run.</td>
+</tr>
+<tr>
+<td><code>toolCallsForRun</code></td>
+<td><code>int</code></td>
+<td>Number of tool calls made for this run.</td>
+</tr>
+<tr>
+<td><code>requestTokens</code></td>
+<td><code>int</code></td>
+<td>Number of request/prompt tokens used in this run. Equivalent to the "prompt_tokens" parameter in OpenAI usage.</td>
+</tr>
+<tr>
+<td><code>responseTokens</code></td>
+<td><code>int</code></td>
+<td>Number of completion/response tokens used in this run. Equivalent to the "completion_tokens" parameter in OpenAI usage.</td>
+</tr>
+<tr>
+<td><code>totalTokens</code></td>
+<td><code>int</code></td>
+<td>Total tokens used in the whole run. Should generally equal <code>requestTokens + responseTokens</code>.</td>
+</tr>
+<tr>
+<td><code>requestTokenDetails</code></td>
+<td><code>PromptTokenDetails</code></td>
+<td>Token usage details for prompts.</td>
+</tr>
+<tr>
+<td><code>responseTokenDetails</code></td>
+<td><code>ResponseTokenDetails</code></td>
+<td>Token usage details for responses.</td>
+</tr>
+<tr>
+<td><code>details</code></td>
+<td><code>Map&lt;String, Integer&gt;</code></td>
+<td>Additional details about token usage.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="prompttokendetails-class"><code>PromptTokenDetails</code> Class<a class="headerlink" href="#prompttokendetails-class" title="Permanent link">&para;</a></h4>
+<p>The <code>PromptTokenDetails</code> class provides detailed information about tokens used in prompts.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Member</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cachedTokens</code></td>
+<td><code>int</code></td>
+<td>Number of cached tokens present in the prompt.</td>
+</tr>
+<tr>
+<td><code>audioTokens</code></td>
+<td><code>int</code></td>
+<td>Number of audio input tokens present in the prompt.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="responsetokendetails-class"><code>ResponseTokenDetails</code> Class<a class="headerlink" href="#responsetokendetails-class" title="Permanent link">&para;</a></h4>
+<p>The <code>ResponseTokenDetails</code> class provides detailed information about tokens used in responses.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Member</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reasoningTokens</code></td>
+<td><code>int</code></td>
+<td>Number of tokens generated by the model for reasoning.</td>
+</tr>
+<tr>
+<td><code>acceptedPredictionTokens</code></td>
+<td><code>int</code></td>
+<td>Number of tokens in the prediction that appeared in the completion when using predicted outputs.</td>
+</tr>
+<tr>
+<td><code>rejectedPredictionTokens</code></td>
+<td><code>int</code></td>
+<td>Number of tokens in the prediction that did not appear in the completion when using predicted outputs.</td>
+</tr>
+<tr>
+<td><code>audioTokens</code></td>
+<td><code>int</code></td>
+<td>Number of audio input tokens generated by the model.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="using-the-agent">Using the agent<a class="headerlink" href="#using-the-agent" title="Permanent link">&para;</a></h2>
+<p>The agent can be invoked by calling any of the provided <code>execute*</code> methods.</p>
+<ul>
+<li><code>executeAsync()</code> method and it's overloads can be used to (you guessed it) invoke the LLM asynchronously. It returns a
+  <code>CompletableFuture</code> object which can be used to get the result when it is available.</li>
+<li><code>execute()</code> method and it's overloads can be used to invoke the LLM synchronously. It returns the result directly.</li>
+</ul>
+<p>In either case, the agent will be invoked with the provided request object and the response object will be returned
+along with errors and usage information.</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">agent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">BookSummarizingAgent</span><span class="p">(</span><span class="n">agentSetup</span><span class="p">);</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">agent</span><span class="p">.</span><span class="na">execute</span><span class="p">(</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">        </span><span class="n">AgentInput</span><span class="p">.</span><span class="o">&lt;</span><span class="n">BookInfo</span><span class="o">&gt;</span><span class="n">builder</span><span class="p">()</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">                </span><span class="p">.</span><span class="na">request</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">BookInfo</span><span class="p">(</span><span class="s">"978-0393096729"</span><span class="p">,</span><span class="w"> </span><span class="s">"War and Peace"</span><span class="p">))</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">());</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="n">objectMapper</span><span class="p">.</span><span class="na">writerWithDefaultPrettyPrinter</span><span class="p">()</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">                               </span><span class="p">.</span><span class="na">writeValueAsString</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="na">getData</span><span class="p">()));</span>
+</span></code></pre></div>
+<p>Output from the above would be something like:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>{
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>  "isbn" : "978-0393096729",
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>  "summary" : "\"War and Peace\" is a historical novel by Leo Tolstoy that intertwines the lives of several families during the Napoleonic Wars in the early 19th century. The narrative explores themes of love, fate, and the impact of war on society. It follows characters such as Pierre Bezukhov, Prince Andrei Bolkonsky, and Natasha Rostova as they navigate personal struggles and the broader historical events that shape their lives. The novel delves into the philosophical questions of history and the nature of power, ultimately portraying the complexity of human experience amidst the chaos of war.",
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  "topics" : [ "Historical fiction", "Napoleonic Wars", "Russian society", "Philosophy of history", "Love and relationships", "Fate and free will", "Family dynamics", "War and its consequences" ]
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>}
+</span></code></pre></div>
+<h2 id="media-inputs">Media Inputs<a class="headerlink" href="#media-inputs" title="Permanent link">&para;</a></h2>
+<p>The <code>AgentInput.media</code> property accepts a list of <code>MediaInput</code> objects. Each entry is sent to the LLM as a separate
+user message content part after the serialized request. Supported media types depend on the model implementation. The
+<code>SimpleOpenAIModel</code> supports images (base64 data or URL) and audio.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Factory method</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MediaInput.imageUrl(url, detail)</code></td>
+<td>Image referenced by a public URL. <code>detail</code> is <code>AUTO</code>, <code>LOW</code> or <code>HIGH</code>.</td>
+</tr>
+<tr>
+<td><code>MediaInput.imageContent(dataUrl, detail)</code></td>
+<td>Base64 image data, for example <code>data:image/png;base64,...</code>.</td>
+</tr>
+<tr>
+<td><code>MediaInput.audio(base64Data, audioFormat)</code></td>
+<td>Audio as base64 data. <code>audioFormat</code> is <code>WAV</code> or <code>MP3</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kd">final</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">agent</span><span class="p">.</span><span class="na">execute</span><span class="p">(</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">        </span><span class="n">AgentInput</span><span class="p">.</span><span class="o">&lt;</span><span class="n">BookInfo</span><span class="o">&gt;</span><span class="n">builder</span><span class="p">()</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">                </span><span class="p">.</span><span class="na">request</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">BookInfo</span><span class="p">(</span><span class="s">"978-0393096729"</span><span class="p">,</span><span class="w"> </span><span class="s">"War and Peace"</span><span class="p">))</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">                </span><span class="p">.</span><span class="na">media</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">                        </span><span class="n">MediaInput</span><span class="p">.</span><span class="na">imageUrl</span><span class="p">(</span><span class="s">"https://example.com/cover.png"</span><span class="p">,</span><span class="w"> </span><span class="n">ImageDetail</span><span class="p">.</span><span class="na">LOW</span><span class="p">),</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">                        </span><span class="n">MediaInput</span><span class="p">.</span><span class="na">audio</span><span class="p">(</span><span class="n">audioBase64</span><span class="p">,</span><span class="w"> </span><span class="n">AudioFormat</span><span class="p">.</span><span class="na">MP3</span><span class="p">)))</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">());</span>
+</span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Media messages are not included in automatic message compaction. Only text user prompts are compacted.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Image <code>data</code> URLs are validated. The value must match the format <code>data:image/{png|jpeg|jpg};base64,&lt;base64 data&gt;</code>.
+Not all models support all media types. Check your model documentation before use.</p>
+</div>
+<h2 id="request-metadata">Request Metadata<a class="headerlink" href="#request-metadata" title="Permanent link">&para;</a></h2>
+<p>Sometimes it is important to maintain context of the conversation. For example, if you are building a chat agent, you
+may want to keep track of the session or the user the conversation is happening with. SentinelAI provides the
+<code>AgentRequestMetadata</code> class for this purpose. The metadata class also provides the option to send back the
+<code>ModelUsageStats</code> object from previous calls. This can be used to keep track of the usage of the model and the agent
+across calls. If provided, the agent will merge the usage from current execution to the provided usage stats object.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The request metadata passed to execute calls is serialized and sent to the LLM.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th><strong>Property</strong></th>
+<th><strong>Type</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sessionId</code></td>
+<td><code>String</code></td>
+<td>Session ID for the current conversation. This is passed to LLM as a separate system context message.</td>
+</tr>
+<tr>
+<td><code>userId</code></td>
+<td><code>String</code></td>
+<td>A User ID for the user the agent is having the current conversation with. This is passed to LLM as a separate system context message.</td>
+</tr>
+<tr>
+<td><code>customParams</code></td>
+<td><code>Map&lt;String, Object&gt;</code></td>
+<td>Any other custom parameters that need to be passed to the agent or the tools being invoked by the agent. This is passed to LLM as a separate system context message.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Request metadata is optional and passing <code>null</code> for this param is acceptable.</p>
+</div>
+<h2 id="prompts">Prompts<a class="headerlink" href="#prompts" title="Permanent link">&para;</a></h2>
+<p>Sentinel AI has some special handling to improve LLM performance for agentic use cases both for system and user prompts.</p>
+<h3 id="system-prompts">System Prompts<a class="headerlink" href="#system-prompts" title="Permanent link">&para;</a></h3>
+<p>SentinelAI converts the system prompt in an XML format for easy parsing by the LLM. The string or object passed as the
+system prompt to the agent is passed in a tag called <code>&lt;role&gt;</code>. Other information such as tools and additional tasks
+from the registered extensions are added to the prompt as well.</p>
+<p>Request metadata (session ID, user ID, custom params) and dynamic facts/knowledge are sent as separate system
+messages positioned after the system prompt but before the user prompt. This separation improves LLM provider
+prompt cache hit rates, since the system prompt remains stable across requests while per-session data (which
+changes between conversations) is isolated into its own messages.</p>
+<div class="admonition danger">
+<p class="admonition-title">Serializability requirements</p>
+<p>The system prompt needs to be serializable to XML. If not, an error will be thrown.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Structured prompts</p>
+<p>We recommend passing the system prompt as a structured object. This will help the LLM understand the context better
+and speed up processing as well. Check the <code>SystemPrompt</code> class for tips on how to use different jackson annotations
+to make system prompts serialize correctly.</p>
+</div>
+<div class="language-xml highlight"><span class="filename">Sample system prompt generated by SentinelAI</span><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="cp">&lt;?xml version='1.1' encoding='UTF-8'?&gt;</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="nt">&lt;SystemPrompt&gt;</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">    </span><span class="nt">&lt;coreInstructions&gt;</span>Your<span class="w"> </span>main<span class="w"> </span>job<span class="w"> </span>is<span class="w"> </span>to<span class="w"> </span>answer<span class="w"> </span>the<span class="w"> </span>user<span class="w"> </span>query<span class="w"> </span>as<span class="w"> </span>provided<span class="w"> </span>in<span class="w"> </span>user<span class="w"> </span>prompt<span class="w"> </span>in<span class="w"> </span>the<span class="w"> </span>`user_input`<span class="w"> </span>tag.
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">        </span>Perform<span class="w"> </span>the<span class="w"> </span>provided<span class="w"> </span>secondary<span class="w"> </span>tasks<span class="w"> </span>as<span class="w"> </span>well<span class="w"> </span>and<span class="w"> </span>populate<span class="w"> </span>the<span class="w"> </span>output<span class="w"> </span>in<span class="w"> </span>designated<span class="w"> </span>output<span class="w"> </span>field<span class="w"> </span>for<span class="w"> </span>the<span class="w"> </span>task.
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">        </span>Use<span class="w"> </span>the<span class="w"> </span>provided<span class="w"> </span>knowledge<span class="w"> </span>and<span class="w"> </span>facts<span class="w"> </span>to<span class="w"> </span>enrich<span class="w"> </span>your<span class="w"> </span>responses<span class="w"> </span>and<span class="w"> </span>avoid<span class="w"> </span>unnecessary<span class="w"> </span>tool<span class="w"> </span>calls.
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">    </span><span class="nt">&lt;/coreInstructions&gt;</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">    </span><span class="nt">&lt;primaryTask&gt;</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">        </span><span class="nt">&lt;role&gt;</span>greet<span class="w"> </span>the<span class="w"> </span>user<span class="nt">&lt;/role&gt;</span><span class="w"> </span><span class="cm">&lt;!--(1)!--&gt;</span>
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">        </span><span class="nt">&lt;tools&gt;</span><span class="w"> </span><span class="cm">&lt;!--(2)!--&gt;</span>
+</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="w">            </span><span class="nt">&lt;tool&gt;</span>
+</span><span id="__span-12-11"><a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="w">                </span><span class="nt">&lt;name&gt;</span>simple_agent_get_name<span class="nt">&lt;/name&gt;</span>
+</span><span id="__span-12-12"><a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="w">                </span><span class="nt">&lt;description&gt;</span>Get<span class="w"> </span>name<span class="w"> </span>of<span class="w"> </span>user<span class="nt">&lt;/description&gt;</span>
+</span><span id="__span-12-13"><a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="w">            </span><span class="nt">&lt;/tool&gt;</span>
+</span><span id="__span-12-14"><a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="w">            </span><span class="nt">&lt;tool&gt;</span>
+</span><span id="__span-12-15"><a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a><span class="w">                </span><span class="nt">&lt;name&gt;</span>simple_agent_get_salutation<span class="nt">&lt;/name&gt;</span>
+</span><span id="__span-12-16"><a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a><span class="w">                </span><span class="nt">&lt;description&gt;</span>Get<span class="w"> </span>salutation<span class="w"> </span>for<span class="w"> </span>user<span class="nt">&lt;/description&gt;</span>
+</span><span id="__span-12-17"><a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a><span class="w">            </span><span class="nt">&lt;/tool&gt;</span>
+</span><span id="__span-12-18"><a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="w">            </span><span class="nt">&lt;tool&gt;</span>
+</span><span id="__span-12-19"><a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="w">                </span><span class="nt">&lt;name&gt;</span>test_tool_box_get_location_for_user<span class="nt">&lt;/name&gt;</span>
+</span><span id="__span-12-20"><a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="w">                </span><span class="nt">&lt;description&gt;</span>Get<span class="w"> </span>location<span class="w"> </span>for<span class="w"> </span>user<span class="nt">&lt;/description&gt;</span>
+</span><span id="__span-12-21"><a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a><span class="w">            </span><span class="nt">&lt;/tool&gt;</span>
+</span><span id="__span-12-22"><a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a><span class="w">            </span><span class="nt">&lt;tool&gt;</span>
+</span><span id="__span-12-23"><a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a><span class="w">                </span><span class="nt">&lt;name&gt;</span>test_tool_box_get_weather_today<span class="nt">&lt;/name&gt;</span>
+</span><span id="__span-12-24"><a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a><span class="w">                </span><span class="nt">&lt;description&gt;</span>Get<span class="w"> </span>weather<span class="w"> </span>today<span class="nt">&lt;/description&gt;</span>
+</span><span id="__span-12-25"><a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a><span class="w">            </span><span class="nt">&lt;/tool&gt;</span>
+</span><span id="__span-12-26"><a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a><span class="w">        </span><span class="nt">&lt;/tools&gt;</span>
+</span><span id="__span-12-27"><a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a><span class="w">    </span><span class="nt">&lt;/primaryTask&gt;</span>
+</span><span id="__span-12-28"><a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a><span class="w">    </span><span class="nt">&lt;secondaryTasks&gt;</span><span class="w"> </span><span class="cm">&lt;!--(3)!--&gt;</span>
+</span><span id="__span-12-29"><a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a><span class="w">        </span><span class="nt">&lt;secondaryTask&gt;</span>
+</span><span id="__span-12-30"><a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a><span class="w">            </span><span class="nt">&lt;instructions&gt;</span>
+</span><span id="__span-12-31"><a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a><span class="w">                </span><span class="nt">&lt;tasks&gt;</span>
+</span><span id="__span-12-32"><a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a><span class="w">                    </span><span class="nt">&lt;task&gt;</span>
+</span><span id="__span-12-33"><a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a><span class="w">                        </span><span class="nt">&lt;objective&gt;</span>EXTRACT<span class="w"> </span>MEMORY<span class="w"> </span>FROM<span class="w"> </span>MESSAGES<span class="w"> </span>AND<span class="w"> </span>POPULATE<span class="w"> </span>`memoryOutput`<span class="w"> </span>FIELD<span class="nt">&lt;/objective&gt;</span>
+</span><span id="__span-12-34"><a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a><span class="w">                        </span><span class="nt">&lt;outputField&gt;</span>memoryOutput<span class="nt">&lt;/outputField&gt;</span>
+</span><span id="__span-12-35"><a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a><span class="w">                        </span><span class="nt">&lt;instructions&gt;</span>How<span class="w"> </span>to<span class="w"> </span>extract<span class="w"> </span>different<span class="w"> </span>memory<span class="w"> </span>types:
+</span><span id="__span-12-36"><a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a><span class="w">                            </span>-<span class="w"> </span>SEMANTIC:<span class="w"> </span>Extract<span class="w"> </span>fact<span class="w"> </span>about<span class="w"> </span>the<span class="w"> </span>session<span class="w"> </span>or<span class="w"> </span>user<span class="w"> </span>or<span class="w"> </span>any<span class="w"> </span>other<span class="w"> </span>subject
+</span><span id="__span-12-37"><a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a><span class="w">                            </span>-<span class="w"> </span>EPISODIC:<span class="w"> </span>Extract<span class="w"> </span>a<span class="w"> </span>specific<span class="w"> </span>event<span class="w"> </span>or<span class="w"> </span>episode<span class="w"> </span>from<span class="w"> </span>the<span class="w"> </span>conversation
+</span><span id="__span-12-38"><a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a><span class="w">                            </span>-<span class="w"> </span>PROCEDURAL:<span class="w"> </span>Extract<span class="w"> </span>a<span class="w"> </span>procedure<span class="w"> </span>as<span class="w"> </span>a<span class="w"> </span>list<span class="w"> </span>of<span class="w"> </span>steps<span class="w"> </span>or<span class="w"> </span>a<span class="w"> </span>sequence<span class="w"> </span>of<span class="w"> </span>actions<span class="w"> </span>that<span class="w"> </span>you<span class="w"> </span>can
+</span><span id="__span-12-39"><a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a><span class="w">                            </span>use<span class="w"> </span>later
+</span><span id="__span-12-40"><a id="__codelineno-12-40" name="__codelineno-12-40" href="#__codelineno-12-40"></a><span class="w">                        </span><span class="nt">&lt;/instructions&gt;</span>
+</span><span id="__span-12-41"><a id="__codelineno-12-41" name="__codelineno-12-41" href="#__codelineno-12-41"></a><span class="w">                        </span><span class="nt">&lt;additionalInstructions&gt;</span>IMPORTANT<span class="w"> </span>INSTRUCTION<span class="w"> </span>FOR<span class="w"> </span>MEMORY<span class="w"> </span>EXTRACTION:
+</span><span id="__span-12-42"><a id="__codelineno-12-42" name="__codelineno-12-42" href="#__codelineno-12-42"></a><span class="w">                            </span>-<span class="w"> </span>Do<span class="w"> </span>not<span class="w"> </span>include<span class="w"> </span>non-reusable<span class="w"> </span>information<span class="w"> </span>as<span class="w"> </span>memories.
+</span><span id="__span-12-43"><a id="__codelineno-12-43" name="__codelineno-12-43" href="#__codelineno-12-43"></a><span class="w">                            </span>-<span class="w"> </span>Extract<span class="w"> </span>as<span class="w"> </span>many<span class="w"> </span>useful<span class="w"> </span>memories<span class="w"> </span>as<span class="w"> </span>possible
+</span><span id="__span-12-44"><a id="__codelineno-12-44" name="__codelineno-12-44" href="#__codelineno-12-44"></a><span class="w">                        </span><span class="nt">&lt;/additionalInstructions&gt;</span>
+</span><span id="__span-12-45"><a id="__codelineno-12-45" name="__codelineno-12-45" href="#__codelineno-12-45"></a><span class="w">                        </span><span class="nt">&lt;tools&gt;</span>
+</span><span id="__span-12-46"><a id="__codelineno-12-46" name="__codelineno-12-46" href="#__codelineno-12-46"></a><span class="w">                            </span><span class="nt">&lt;tool&gt;</span>
+</span><span id="__span-12-47"><a id="__codelineno-12-47" name="__codelineno-12-47" href="#__codelineno-12-47"></a><span class="w">                                </span><span class="nt">&lt;name&gt;</span>agent_memory_extension_find_procedural_memory<span class="nt">&lt;/name&gt;</span>
+</span><span id="__span-12-48"><a id="__codelineno-12-48" name="__codelineno-12-48" href="#__codelineno-12-48"></a><span class="w">                                </span><span class="nt">&lt;description&gt;</span>Find<span class="w"> </span>procedural<span class="w"> </span>memory<span class="w"> </span>about<span class="w"> </span>any<span class="w"> </span>topic<span class="w"> </span>from<span class="w"> </span>the<span class="w"> </span>store<span class="nt">&lt;/description&gt;</span>
+</span><span id="__span-12-49"><a id="__codelineno-12-49" name="__codelineno-12-49" href="#__codelineno-12-49"></a><span class="w">                            </span><span class="nt">&lt;/tool&gt;</span>
+</span><span id="__span-12-50"><a id="__codelineno-12-50" name="__codelineno-12-50" href="#__codelineno-12-50"></a><span class="w">                        </span><span class="nt">&lt;/tools&gt;</span>
+</span><span id="__span-12-51"><a id="__codelineno-12-51" name="__codelineno-12-51" href="#__codelineno-12-51"></a><span class="w">                    </span><span class="nt">&lt;/task&gt;</span>
+</span><span id="__span-12-52"><a id="__codelineno-12-52" name="__codelineno-12-52" href="#__codelineno-12-52"></a><span class="w">                </span><span class="nt">&lt;/tasks&gt;</span>
+</span><span id="__span-12-53"><a id="__codelineno-12-53" name="__codelineno-12-53" href="#__codelineno-12-53"></a><span class="w">            </span><span class="nt">&lt;/instructions&gt;</span>
+</span><span id="__span-12-54"><a id="__codelineno-12-54" name="__codelineno-12-54" href="#__codelineno-12-54"></a><span class="w">        </span><span class="nt">&lt;/secondaryTask&gt;</span>
+</span><span id="__span-12-55"><a id="__codelineno-12-55" name="__codelineno-12-55" href="#__codelineno-12-55"></a><span class="w">    </span><span class="nt">&lt;/secondaryTasks&gt;</span>
+</span><span id="__span-12-56"><a id="__codelineno-12-56" name="__codelineno-12-56" href="#__codelineno-12-56"></a><span class="nt">&lt;/SystemPrompt&gt;</span>
+</span></code></pre></div>
+<div class="language-xml highlight"><span class="filename">Additional data context message (separate system message)</span><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="cp">&lt;?xml version='1.1' encoding='UTF-8'?&gt;</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nt">&lt;additional_data&gt;</span><span class="w"> </span><span class="cm">&lt;!--(4)!--&gt;</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span><span class="nt">&lt;sessionId&gt;</span>s1<span class="nt">&lt;/sessionId&gt;</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">    </span><span class="nt">&lt;userId&gt;</span>ss<span class="nt">&lt;/userId&gt;</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="nt">&lt;/additional_data&gt;</span>
+</span></code></pre></div>
+<div class="language-xml highlight"><span class="filename">Knowledge/facts context message (separate system message)</span><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>Use<span class="w"> </span>the<span class="w"> </span>following<span class="w"> </span>knowledge<span class="w"> </span>and<span class="w"> </span>facts<span class="w"> </span>to<span class="w"> </span>enrich<span class="w"> </span>your<span class="w"> </span>responses.
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="nt">&lt;knowledge&gt;</span><span class="w"> </span><span class="cm">&lt;!--(5)!--&gt;</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">    </span><span class="nt">&lt;facts&gt;</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">        </span><span class="nt">&lt;description&gt;</span>Memories<span class="w"> </span>about<span class="w"> </span>current<span class="w"> </span>session<span class="nt">&lt;/description&gt;</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="w">        </span><span class="nt">&lt;fact&gt;</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="w">            </span><span class="nt">&lt;name&gt;</span>UserName<span class="nt">&lt;/name&gt;</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="w">            </span><span class="nt">&lt;content&gt;</span>The<span class="w"> </span>user's<span class="w"> </span>name<span class="w"> </span>is<span class="w"> </span>Santanu.<span class="nt">&lt;/content&gt;</span>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="w">        </span><span class="nt">&lt;/fact&gt;</span>
+</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="w">        </span><span class="nt">&lt;fact&gt;</span>
+</span><span id="__span-14-10"><a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="w">            </span><span class="nt">&lt;name&gt;</span>UserLocation<span class="nt">&lt;/name&gt;</span>
+</span><span id="__span-14-11"><a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="w">            </span><span class="nt">&lt;content&gt;</span>The<span class="w"> </span>user<span class="w"> </span>is<span class="w"> </span>located<span class="w"> </span>in<span class="w"> </span>Bangalore.<span class="nt">&lt;/content&gt;</span>
+</span><span id="__span-14-12"><a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="w">        </span><span class="nt">&lt;/fact&gt;</span>
+</span><span id="__span-14-13"><a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="w">        </span><span class="nt">&lt;fact&gt;</span>
+</span><span id="__span-14-14"><a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="w">            </span><span class="nt">&lt;name&gt;</span>WeatherToday<span class="nt">&lt;/name&gt;</span>
+</span><span id="__span-14-15"><a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a><span class="w">            </span><span class="nt">&lt;content&gt;</span>The<span class="w"> </span>weather<span class="w"> </span>in<span class="w"> </span>Bangalore<span class="w"> </span>today<span class="w"> </span>is<span class="w"> </span>sunny.<span class="nt">&lt;/content&gt;</span>
+</span><span id="__span-14-16"><a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a><span class="w">        </span><span class="nt">&lt;/fact&gt;</span>
+</span><span id="__span-14-17"><a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a><span class="w">    </span><span class="nt">&lt;/facts&gt;</span>
+</span><span id="__span-14-18"><a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a><span class="nt">&lt;/knowledge&gt;</span>
+</span></code></pre></div>
+<ol>
+<li>System prompt provided to the <code>Agent</code> class constructor.</li>
+<li>Tools registered with and discovered by the agent (sorted by tool ID for cache stability).</li>
+<li>Secondary tasks provided by extensions.</li>
+<li>Request metadata passed to the agent — sent as a separate system message after the system prompt.</li>
+<li>Facts provided by extensions and client — sent as a separate system message after the system prompt.</li>
+</ol>
+<h3 id="user-prompts">User prompts<a class="headerlink" href="#user-prompts" title="Permanent link">&para;</a></h3>
+<p>The mandatory <code>request</code> property passed in the <code>AgentInput&lt;R&gt;</code> parameter to the <code>execute*</code> methods is converted to a
+structured XML object and wrapped in <code>&lt;user_input&gt;</code> tag.</p>
+<p>For example, for the book summarizer agent, the provided <code>BookInfo</code> object is sent to the LLM as follows:
+<div class="language-xml highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nt">&lt;user_input&gt;</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span><span class="nt">&lt;isbn&gt;</span>978-0393096729<span class="nt">&lt;/isbn&gt;</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span><span class="nt">&lt;title&gt;</span>War<span class="w"> </span>and<span class="w"> </span>Peace<span class="nt">&lt;/title&gt;</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="nt">&lt;/user_input&gt;</span>
+</span></code></pre></div></p>
+<p>Each user turn additionally carries an absolute UTC send-time, captured once when the message is created and
+rendered by the model adapter as a dedicated <code>&lt;sentAt&gt;</code> element prefixed before the user content:</p>
+<div class="language-xml highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nt">&lt;sentAt&gt;</span>2026-07-25T10:00:00Z<span class="nt">&lt;/sentAt&gt;</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nt">&lt;user_input&gt;</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span><span class="nt">&lt;isbn&gt;</span>978-0393096729<span class="nt">&lt;/isbn&gt;</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span><span class="nt">&lt;title&gt;</span>War<span class="w"> </span>and<span class="w"> </span>Peace<span class="nt">&lt;/title&gt;</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="nt">&lt;/user_input&gt;</span>
+</span></code></pre></div>
+<p>Original input request for the above would be something like:
+<div class="language-java highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">agent</span><span class="p">.</span><span class="na">execute</span><span class="p">(</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">      </span><span class="n">AgentInput</span><span class="p">.</span><span class="o">&lt;</span><span class="n">BookInfo</span><span class="o">&gt;</span><span class="n">builder</span><span class="p">()</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">              </span><span class="p">.</span><span class="na">request</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">BookInfo</span><span class="p">(</span><span class="s">"978-0393096729"</span><span class="p">,</span><span class="w"> </span><span class="s">"War and Peace"</span><span class="p">))</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">              </span><span class="p">.</span><span class="na">build</span><span class="p">());</span>
+</span></code></pre></div></p>
+<p>Media inputs provided via <code>AgentInput.media</code> (see <a href="#media-inputs">Media Inputs</a>) are appended after the user prompt as
+separate content parts in the same turn. They are not part of the XML request object.</p>
+<h2 id="customizing-agent-behaviour">Customizing Agent Behaviour<a class="headerlink" href="#customizing-agent-behaviour" title="Permanent link">&para;</a></h2>
+<p>The <code>Agent</code> class constructor allows you to customize agent behaviour extensively by passing additional parameters. This
+enables you to control how your agent handles tools, extensions, validation, and error handling.</p>
+<h3 id="constructor-parameters">Constructor Parameters<a class="headerlink" href="#constructor-parameters" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Mandatory</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>outputType</td>
+<td>Class&lt;T&gt;</td>
+<td>Yes</td>
+<td>The class of the agent's output type.</td>
+</tr>
+<tr>
+<td>systemPrompt</td>
+<td>String</td>
+<td>Yes</td>
+<td>The system prompt string for the agent.</td>
+</tr>
+<tr>
+<td>setup</td>
+<td>AgentSetup</td>
+<td>Yes</td>
+<td>The setup/configuration for the agent (model, mapper, retry, etc).</td>
+</tr>
+<tr>
+<td>extensions</td>
+<td>List&lt;AgentExtension&lt;R, T, A&gt;&gt;</td>
+<td>No</td>
+<td>List of extensions to add custom logic, facts, or output schemas.</td>
+</tr>
+<tr>
+<td>knownTools</td>
+<td>Map&lt;String, ExecutableTool&gt;</td>
+<td>No</td>
+<td>Map of tool id to tool implementation for registering custom tools.</td>
+</tr>
+<tr>
+<td>toolRunApprovalSeeker</td>
+<td>ToolRunApprovalSeeker&lt;R, T, A&gt;</td>
+<td>No</td>
+<td>(Advanced) Custom approval logic for tool runs.</td>
+</tr>
+<tr>
+<td>outputValidator</td>
+<td>OutputValidator&lt;R, T&gt;</td>
+<td>No</td>
+<td>(Advanced) Custom output validation logic.</td>
+</tr>
+<tr>
+<td>errorHandler</td>
+<td>ErrorResponseHandler&lt;R&gt;</td>
+<td>No</td>
+<td>(Advanced) Custom error handling logic.</td>
+</tr>
+</tbody>
+</table>
+<p>For most use cases, you can use the simpler constructor with just <code>outputType</code>, <code>systemPrompt</code>, <code>setup</code>, <code>extensions</code>, and <code>knownTools</code>. For advanced customization, use the full constructor and pass your own implementations for <code>toolRunApprovalSeeker</code>, <code>outputValidator</code>, or <code>errorHandler</code>.</p>
+<h3 id="example-basic-customization">Example: Basic Customization<a class="headerlink" href="#example-basic-customization" title="Permanent link">&para;</a></h3>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">BookSummarizingAgent</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Agent</span><span class="o">&lt;</span><span class="n">BookInfo</span><span class="p">,</span><span class="w"> </span><span class="n">BookSummary</span><span class="p">,</span><span class="w"> </span><span class="n">BookSummarizingAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">BookSummarizingAgent</span><span class="p">(</span><span class="n">AgentSetup</span><span class="w"> </span><span class="n">setup</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">        </span><span class="kd">super</span><span class="p">(</span><span class="n">BookSummary</span><span class="p">.</span><span class="na">class</span><span class="p">,</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">              </span><span class="s">"""</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="s">               You are an expert in summarizing books. You will be provided with the title and ISBN of a book.</span>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="s">               You need to summarize the book and provide the topics discussed in the book.</span>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="s">               """</span><span class="p">,</span>
+</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="w">              </span><span class="n">setup</span><span class="p">,</span>
+</span><span id="__span-18-9"><a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="w">              </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(),</span>
+</span><span id="__span-18-10"><a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a><span class="w">              </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">());</span>
+</span><span id="__span-18-11"><a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-18-12"><a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>
+</span><span id="__span-18-13"><a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a><span class="w">    </span><span class="nd">@Override</span>
+</span><span id="__span-18-14"><a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-18-15"><a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s">"book-summarizer"</span><span class="p">;</span>
+</span><span id="__span-18-16"><a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-18-17"><a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a><span class="p">}</span>
+</span></code></pre></div>
+<h3 id="example-advanced-customization">Example: Advanced Customization<a class="headerlink" href="#example-advanced-customization" title="Permanent link">&para;</a></h3>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">CustomAgent</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Agent</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="p">,</span><span class="w"> </span><span class="n">MyResponse</span><span class="p">,</span><span class="w"> </span><span class="n">CustomAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">CustomAgent</span><span class="p">(</span><span class="n">AgentSetup</span><span class="w"> </span><span class="n">setup</span><span class="p">,</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">                       </span><span class="n">ToolRunApprovalSeeker</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="p">,</span><span class="w"> </span><span class="n">MyResponse</span><span class="p">,</span><span class="w"> </span><span class="n">CustomAgent</span><span class="o">&gt;</span><span class="w"> </span><span class="n">approvalSeeker</span><span class="p">,</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">                       </span><span class="n">OutputValidator</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="p">,</span><span class="w"> </span><span class="n">MyResponse</span><span class="o">&gt;</span><span class="w"> </span><span class="n">validator</span><span class="p">,</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="w">                       </span><span class="n">ErrorResponseHandler</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="o">&gt;</span><span class="w"> </span><span class="n">errorHandler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="w">        </span><span class="kd">super</span><span class="p">(</span><span class="n">MyResponse</span><span class="p">.</span><span class="na">class</span><span class="p">,</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="w">              </span><span class="s">"Custom system prompt"</span><span class="p">,</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="w">              </span><span class="n">setup</span><span class="p">,</span>
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="w">              </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MyExtension</span><span class="p">()),</span>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="w">              </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">"myTool"</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MyTool</span><span class="p">()),</span>
+</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="w">              </span><span class="n">approvalSeeker</span><span class="p">,</span>
+</span><span id="__span-19-12"><a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a><span class="w">              </span><span class="n">validator</span><span class="p">,</span>
+</span><span id="__span-19-13"><a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="w">              </span><span class="n">errorHandler</span><span class="p">);</span>
+</span><span id="__span-19-14"><a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-19-15"><a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a><span class="w">    </span><span class="nd">@Override</span>
+</span><span id="__span-19-16"><a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-19-17"><a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s">"custom-agent"</span><span class="p">;</span>
+</span><span id="__span-19-18"><a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-19-19"><a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Use advanced options if you need to:</p>
+<ul>
+<li>approve or reject tool runs dynamically</li>
+<li>add custom validation logic for model outputs</li>
+<li>handle errors in a custom way</li>
+</ul>
+<h2 id="advanced-features">Advanced Features<a class="headerlink" href="#advanced-features" title="Permanent link">&para;</a></h2>
+<h3 id="output-validation">Output Validation<a class="headerlink" href="#output-validation" title="Permanent link">&para;</a></h3>
+<p>The <code>OutputValidator</code> interface allows you to add custom validation logic for the model's generated response. If validation fails, Sentinel AI can automatically prompt the model to fix the errors.</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">MyValidator</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">OutputValidator</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="p">,</span><span class="w"> </span><span class="n">MyResponse</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">    </span><span class="nd">@Override</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">OutputValidationResults</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="n">AgentRunContext</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="o">&gt;</span><span class="w"> </span><span class="n">context</span><span class="p">,</span><span class="w"> </span><span class="n">MyResponse</span><span class="w"> </span><span class="n">output</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="na">getSomeField</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">OutputValidationResults</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="w">                </span><span class="p">.</span><span class="na">failure</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">ValidationFailure</span><span class="p">(</span><span class="s">"someField must be non-negative"</span><span class="p">))</span>
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="w">                </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-20-9"><a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">OutputValidationResults</span><span class="p">.</span><span class="na">success</span><span class="p">();</span>
+</span><span id="__span-20-10"><a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-20-11"><a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Register it in the <code>Agent</code> constructor:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kd">super</span><span class="p">(</span><span class="n">MyResponse</span><span class="p">.</span><span class="na">class</span><span class="p">,</span><span class="w"> </span><span class="n">systemPrompt</span><span class="p">,</span><span class="w"> </span><span class="n">setup</span><span class="p">,</span><span class="w"> </span><span class="n">extensions</span><span class="p">,</span><span class="w"> </span><span class="n">tools</span><span class="p">,</span><span class="w"> </span><span class="n">approvalSeeker</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MyValidator</span><span class="p">(),</span><span class="w"> </span><span class="n">errorHandler</span><span class="p">);</span>
+</span></code></pre></div>
+<h3 id="message-pre-processors">Message Pre-processors<a class="headerlink" href="#message-pre-processors" title="Permanent link">&para;</a></h3>
+<p><code>AgentMessagesPreProcessor</code> allows you to inspect or modify the list of messages just before they are sent to the LLM. This is useful for custom compaction, PII masking, or logging.</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">agent</span><span class="p">.</span><span class="na">registerAgentMessagesPreProcessor</span><span class="p">((</span><span class="n">ctx</span><span class="p">,</span><span class="w"> </span><span class="n">allMessages</span><span class="p">,</span><span class="w"> </span><span class="n">newMessages</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">    </span><span class="c1">// Modify messages if needed</span>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">AgentMessagesPreProcessResult</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="w">        </span><span class="p">.</span><span class="na">messages</span><span class="p">(</span><span class="n">allMessages</span><span class="p">)</span><span class="w"> </span><span class="c1">// Return the (modified) list</span>
+</span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="w">        </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+</span><span id="__span-22-6"><a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="p">});</span>
+</span></code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Built-in Auto Compaction</p>
+<p>Sentinel AI includes a built-in <code>AutoCompactionProcessor</code> that automatically compacts message history when configured via <code>AutoCompactionSetup</code> in <code>AgentSetup</code>. This eliminates the need for manual compaction in most cases.</p>
+</div>
+<h2 id="extensions">Extensions<a class="headerlink" href="#extensions" title="Permanent link">&para;</a></h2>
+<p>Extensions are a way to add additional functionality to your agent. They are exposed as modules and can be used to
+extend the functionality of the agent. Agents can be configured to use extensions by adding while creating the agent.
+The extensions are loaded in the order they are added.</p>
+<p>Extensions can be used to:</p>
+<ul>
+<li>Add facts to the knowledge passed to the agent as a separate system context message</li>
+<li>Add custom tools to the agent</li>
+<li>Get agent to perform additional tasks</li>
+<li>Generate extra information from the agent</li>
+</ul>
+<p>To create an extension derive and implement the <code>AgentExtension</code> interface.</p>
+<h3 id="tool-call-argument-preprocessing">Tool Call Argument Preprocessing<a class="headerlink" href="#tool-call-argument-preprocessing" title="Permanent link">&para;</a></h3>
+<p>Extensions can preprocess tool call arguments before the tool runs. Override <code>modifyToolCallArguments</code> in your
+extension to inspect or modify the arguments. All registered extensions are applied in order. To fail the tool call
+(for example, on invalid input), throw an exception from this method. The tool call then fails with
+<code>ErrorType.TOOL_CALL_PREPROCESSING_FAILURE</code> and the error message is returned to the model.</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="nd">@Override</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="kd">public</span><span class="w"> </span><span class="n">JsonNode</span><span class="w"> </span><span class="nf">modifyToolCallArguments</span><span class="p">(</span><span class="n">AgentRunContext</span><span class="o">&lt;</span><span class="n">MyRequest</span><span class="o">&gt;</span><span class="w"> </span><span class="n">context</span><span class="p">,</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="w">                                        </span><span class="n">MyAgent</span><span class="w"> </span><span class="n">agent</span><span class="p">,</span>
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="w">                                        </span><span class="n">ToolCall</span><span class="w"> </span><span class="n">toolCall</span><span class="p">,</span>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="w">                                        </span><span class="n">JsonNode</span><span class="w"> </span><span class="n">inputArguments</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-23-6"><a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="s">"my_tool"</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">toolCall</span><span class="p">.</span><span class="na">getToolName</span><span class="p">()))</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-23-7"><a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="w">        </span><span class="c1">// Add or modify arguments</span>
+</span><span id="__span-23-8"><a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="w">        </span><span class="p">((</span><span class="n">ObjectNode</span><span class="p">)</span><span class="w"> </span><span class="n">inputArguments</span><span class="p">).</span><span class="na">put</span><span class="p">(</span><span class="s">"region"</span><span class="p">,</span><span class="w"> </span><span class="s">"in"</span><span class="p">);</span>
+</span><span id="__span-23-9"><a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-23-10"><a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">inputArguments</span><span class="p">;</span>
+</span><span id="__span-23-11"><a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a><span class="p">}</span>
+</span></code></pre></div>
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="./.." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Home
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../tools/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Overview
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025  PhonePe Private Limited
+    </div>
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/PhonePe/sentinel-ai" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["announce.dismiss","content.action.edit","content.action.view","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.path","navigation.sections","navigation.top","navigation.tracking","search.highlight","search.share","search.suggest","toc.follow"],"search":"../assets/javascripts/workers/search.b6b7e04f.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ee611ef6.min.js"></script>
+      
+    
+  </body>
+</html>
