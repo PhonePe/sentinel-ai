@@ -54,6 +54,11 @@ public class AgentRequestMetadata {
     private Map<String, Object> customParams;
 
     /**
+     * Request-scoped parameters available to context-aware tools. These are not serialized or sent to the LLM.
+     */
+    private Map<String, Object> internalParams;
+
+    /**
      * Global usage stats object that can be used to track usage of the model across execute calls.
      */
     private ModelUsageStats usageStats;
