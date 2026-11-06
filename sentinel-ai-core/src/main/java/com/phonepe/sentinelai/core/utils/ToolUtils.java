@@ -17,6 +17,9 @@
 package com.phonepe.sentinelai.core.utils;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
@@ -39,6 +42,7 @@ import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +66,8 @@ public class ToolUtils {
             final var paramName = param.getName();
             final var paramType = param.getType();
             final var paramNode = paramNodes.get(paramName);
-            return objectMapper.convertValue(paramNode, paramType);
+            return objectMapper.convertValue(coerceTextualNode(paramNode, paramType, objectMapper),
+                                             paramType);
         }).toList();
     }
 
@@ -77,7 +82,6 @@ public class ToolUtils {
                   error);
     }
 
-
     public static ToolCallResponse processUnhandledException(String sessionId,
                                                              String runId,
                                                              ToolCall toolCall,
@@ -88,6 +92,7 @@ public class ToolUtils {
         }
         return processUnhandledException(sessionId, runId, toolCall, errorMessage);
     }
+
 
     public static ToolCallResponse processUnhandledException(String sessionId,
                                                              String runId,
@@ -167,6 +172,33 @@ public class ToolUtils {
                        new ToolMethodInfo(params,
                                           method,
                                           method.getReturnType()));
+    }
+
+    /**
+     * Models sometimes send a JSON array as a JSON-encoded string. When the target type is a
+     * collection or an array and the node is textual, parse the text and use it when it is a
+     * valid JSON array. Otherwise return the node as-is and keep the existing behavior.
+     */
+    private static JsonNode coerceTextualNode(JsonNode paramNode,
+                                              JavaType paramType,
+                                              ObjectMapper objectMapper) {
+        if (paramNode == null
+                || !paramNode.isTextual()
+                || !(Collection.class.isAssignableFrom(paramType.getRawClass())
+                        || paramType.getRawClass().isArray())) {
+            return paramNode;
+        }
+        try {
+            final var parsed = objectMapper.readTree(paramNode.asText());
+            if (parsed != null && parsed.isArray()) {
+                log.debug("Coerced string-encoded array for parameter of type {}", paramType);
+                return parsed;
+            }
+        }
+        catch (JsonProcessingException e) {
+            log.debug("Failed to parse string-encoded array value. Falling back to raw node.", e);
+        }
+        return paramNode;
     }
 
     private static InternalTool createCallableToolFromLocalMethod(Object instance,

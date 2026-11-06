@@ -16,21 +16,100 @@
 
 package com.phonepe.sentinelai.core.utils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.TypeFactory;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.phonepe.sentinelai.core.agentmessages.requests.ToolCallResponse;
 import com.phonepe.sentinelai.core.agentmessages.responses.ToolCall;
 import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.tools.ToolMethodInfo;
+import com.phonepe.sentinelai.core.tools.ToolParameter;
+
+import lombok.Value;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ToolUtilsTest {
 
     private static final String SESSION_ID = "session-1";
     private static final String RUN_ID = "run-1";
+
+    @SuppressWarnings("unused")
+    static class TestTools {
+        public void listTool(List<String> items) {
+        }
+
+        public void stringTool(String value) {
+        }
+    }
+
+    @Value
+    private static class ConvertCase {
+        String name;
+        String methodName;
+        Class<?> parameterType;
+        String json;
+        Object expected;
+    }
+
+    @Value
+    private static class FallBackCase {
+        String name;
+        String json;
+    }
+
+    private static Stream<ConvertCase> convertCases() {
+        return Stream.of(
+                         new ConvertCase("string-encoded array is coerced to a list for a collection param",
+                                         "listTool",
+                                         List.class,
+                                         "{\"items\": \"[\\\"first\\\", \\\"second\\\"]\"}",
+                                         List.of("first", "second")),
+                         new ConvertCase("plain array is passed through for a collection param",
+                                         "listTool",
+                                         List.class,
+                                         "{\"items\": [\"first\", \"second\"]}",
+                                         List.of("first", "second")),
+                         new ConvertCase("string param is not coerced even when it holds a JSON array",
+                                         "stringTool",
+                                         String.class,
+                                         "{\"value\": \"[\\\"not coerced\\\"]\"}",
+                                         "[\"not coerced\"]"));
+    }
+
+    private static Stream<FallBackCase> fallBackCases() {
+        return Stream.of(
+                         new FallBackCase("text is valid JSON but not an array",
+                                          "{\"items\": \"{\\\"key\\\": \\\"value\\\"}\"}"),
+                         new FallBackCase("text is not valid JSON",
+                                          "{\"items\": \"not json at all\"}"));
+    }
+
+    private static ToolMethodInfo methodInfoFor(String methodName, Class<?>... parameterTypes)
+            throws NoSuchMethodException {
+        final var method = TestTools.class.getDeclaredMethod(methodName, parameterTypes);
+        final var parameters = new ArrayList<ToolParameter>();
+        for (var i = 0; i < method.getParameters().length; i++) {
+            final var parameter = method.getParameters()[i];
+            parameters.add(new ToolParameter(parameter.getName(),
+                                             "",
+                                             TypeFactory.defaultInstance()
+                                                     .constructType(method.getGenericParameterTypes()[i])));
+        }
+        return new ToolMethodInfo(parameters, method, method.getReturnType());
+    }
 
     private static ToolCall toolCall(String toolCallId, String toolName) {
         return ToolCall.builder()
@@ -40,6 +119,29 @@ class ToolUtilsTest {
                 .toolName(toolName)
                 .arguments("{}")
                 .build();
+    }
+
+    @ParameterizedTest(name = "[{index}] {0}")
+    @MethodSource("convertCases")
+    void convertParams(ConvertCase testCase) throws Exception {
+        final var mapper = new ObjectMapper();
+        final var methodInfo = methodInfoFor(testCase.getMethodName(), testCase.getParameterType());
+
+        final var params = ToolUtils.convertToRealParams(methodInfo, testCase.getJson(), mapper);
+
+        assertEquals(1, params.size());
+        assertEquals(testCase.getExpected(), params.get(0));
+    }
+
+    @ParameterizedTest(name = "[{index}] falls back to the raw node when the {0}")
+    @MethodSource("fallBackCases")
+    void fallsBackToRawNode(FallBackCase testCase) throws Exception {
+        final var mapper = new ObjectMapper();
+        final var methodInfo = methodInfoFor("listTool", List.class);
+
+        // The raw textual node is kept and the pre-existing conversion failure surfaces.
+        assertThrows(IllegalArgumentException.class,
+                     () -> ToolUtils.convertToRealParams(methodInfo, testCase.getJson(), mapper));
     }
 
     @Test
