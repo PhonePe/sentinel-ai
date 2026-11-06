@@ -118,7 +118,8 @@
         <wiremock.version>3.3.1</wiremock.version>
         <maven.deploy.skip>false</maven.deploy.skip>
         <commons-validator.version>1.4.1</commons-validator.version>
-        <guava.version>32.1.3-jre</guava.version>
+        <guava.version>33.8.0-jre</guava.version>
+        <jsr305.version>3.0.2</jsr305.version>
         <okhttp.version>4.12.0</okhttp.version>
         <sonar.organization>phonepe</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -162,6 +163,11 @@
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.code.findbugs</groupId>
+                <artifactId>jsr305</artifactId>
+                <version>${jsr305.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-validator</groupId>
