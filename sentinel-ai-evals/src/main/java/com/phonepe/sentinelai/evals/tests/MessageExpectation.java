@@ -26,5 +26,9 @@ package com.phonepe.sentinelai.evals.tests;
  * @param <R> result/output type
  * @param <T> input/request type
  */
-public abstract class MessageExpectation<R, T> implements Expectation<R, T> {
+public abstract class MessageExpectation<R, T> extends Expectation<R, T> {
+
+    protected MessageExpectation(String id) {
+        super(id);
+    }
 }

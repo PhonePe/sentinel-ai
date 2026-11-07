@@ -22,10 +22,14 @@ import com.phonepe.sentinelai.evals.EvalStatus;
 import com.phonepe.sentinelai.evals.ExpectationReport;
 import com.phonepe.sentinelai.evals.tests.EvalExpectationContext;
 import com.phonepe.sentinelai.evals.tests.ExpectationExecutor;
+import com.phonepe.sentinelai.evals.tests.expectations.Operator;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExecutorFactory;
 import com.phonepe.sentinelai.evals.tests.metrics.MetricExpectation;
 
+import lombok.val;
+
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -89,27 +93,32 @@ public class MetricExpectationExecutor<R, T> implements ExpectationExecutor<R, T
             score = metricExecutor.calculate(result, context);
         }
         catch (Exception e) {
-            return ExpectationReport.skipped(metricExecutor.metricName(),
-                                             "Metric evaluation skipped due to exception: " + e.getMessage());
+            return ExpectationReport.builder()
+                    .expectation(expectation.getId())
+                    .status(EvalStatus.SKIPPED)
+                    .details("Metric evaluation skipped due to exception: " + e.getMessage())
+                    .build();
         }
         if (expectation.getThreshold() == null) {
-            return ExpectationReport.metric(metricExecutor.metricName(),
-                                            score,
-                                            "Metric evaluated without threshold enforcement");
+            return ExpectationReport.builder()
+                    .expectation(expectation.getId())
+                    .status(EvalStatus.PASSED)
+                    .details("Metric evaluated without threshold enforcement (score: " + String.format("%.2f", score)
+                            + ")")
+                    .score(Optional.of(score))
+                    .build();
         }
-        return ExpectationReport.scored(metricExecutor.metricName(),
-                                        score,
-                                        expectation.getThreshold(),
-                                        "Metric evaluation with threshold comparison");
-    }
-
-    /**
-     * Returns the textual representation of the underlying expectation.
-     *
-     * @return expectation description
-     */
-    @Override
-    public String toString() {
-        return expectation.toString();
+        val operator = expectation.getOperator() != null ? expectation.getOperator() : Operator.GTE;
+        boolean passed = operator.compare(score, expectation.getThreshold());
+        final var details = "Metric evaluation with threshold comparison"
+                + " (score: " + String.format("%.2f", score)
+                + ", threshold: " + String.format("%.2f", expectation.getThreshold()) + ")";
+        return ExpectationReport.builder()
+                .expectation(expectation.getId())
+                .status(passed ? EvalStatus.PASSED : EvalStatus.FAILED)
+                .details(details)
+                .score(Optional.of(score))
+                .threshold(Optional.of(expectation.getThreshold()))
+                .build();
     }
 }

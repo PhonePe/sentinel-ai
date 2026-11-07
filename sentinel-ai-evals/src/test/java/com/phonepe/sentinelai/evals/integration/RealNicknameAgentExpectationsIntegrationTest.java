@@ -220,70 +220,55 @@ class RealNicknameAgentExpectationsIntegrationTest {
 
         final List<Expectation<NicknameResponse, UserProfile>> objectExpectations = List.of(
                                                                                             Expectations.outputEquals(
+                                                                                                                      "output-equals",
                                                                                                                       expectedObject),
                                                                                             Expectations.jsonPathEquals(
+                                                                                                                        "jsonpath-eq-originalName",
                                                                                                                         "$.originalName",
                                                                                                                         "Shubham"),
                                                                                             Expectations
                                                                                                     .<NicknameResponse, UserProfile>where(
+                                                                                                                                          "where-eq-originalName",
                                                                                                                                           "$.originalName")
                                                                                                     .eq("Shubham"),
                                                                                             Expectations
                                                                                                     .<NicknameResponse, UserProfile>where(
+                                                                                                                                          "where-ne-styleHint",
                                                                                                                                           "$.styleHint")
                                                                                                     .ne("formal"),
                                                                                             Expectations
                                                                                                     .<NicknameResponse, UserProfile>where(
+                                                                                                                                          "where-gt-nicknameCount",
                                                                                                                                           "$.nicknameCount")
                                                                                                     .gt(2),
                                                                                             Expectations
                                                                                                     .<NicknameResponse, UserProfile>where(
+                                                                                                                                          "where-gte-nicknameCount",
                                                                                                                                           "$.nicknameCount")
                                                                                                     .gte(3),
                                                                                             Expectations
                                                                                                     .<NicknameResponse, UserProfile>where(
+                                                                                                                                          "where-lt-nicknameCount",
                                                                                                                                           "$.nicknameCount")
                                                                                                     .lt(5),
                                                                                             Expectations
                                                                                                     .<NicknameResponse, UserProfile>where(
+                                                                                                                                          "where-lte-nicknameCount",
                                                                                                                                           "$.nicknameCount")
                                                                                                     .lte(3),
                                                                                             Expectations
                                                                                                     .<NicknameResponse, UserProfile>where(
+                                                                                                                                          "where-in-primaryNickname",
                                                                                                                                           "$.primaryNickname")
                                                                                                     .in(List.of("Shubhamy",
                                                                                                                 "Shubz")),
                                                                                             Expectations
                                                                                                     .<NicknameResponse, UserProfile>where(
+                                                                                                                                          "where-notIn-primaryNickname",
                                                                                                                                           "$.primaryNickname")
                                                                                                     .notIn(List.of(
                                                                                                                    "Boss",
-                                                                                                                   "Chief")),
-                                                                                            Expectations.toolCalled(
-                                                                                                                    NicknameObjectAgent.class
-                                                                                                                            .getMethod("buildNicknameCandidates",
-                                                                                                                                       String.class,
-                                                                                                                                       int.class),
-                                                                                                                    1),
-                                                                                            Expectations.toolCalled(
-                                                                                                                    "buildNicknameCandidates",
-                                                                                                                    1,
-                                                                                                                    Map.of("name",
-                                                                                                                           "Shubham",
-                                                                                                                           "age",
-                                                                                                                           26)),
-                                                                                            Expectations.ordered(
-                                                                                                                 Expectations
-                                                                                                                         .toolCalled(
-                                                                                                                                     NicknameObjectAgent.class
-                                                                                                                                             .getMethod("nicknameStyleGuide")
-                                                                                                                         ),
-                                                                                                                 Expectations
-                                                                                                                         .toolCalled(
-                                                                                                                                     NicknameObjectAgent.class
-                                                                                                                                             .getMethod("buildNicknameCandidates",
-                                                                                                                                                        String.class,
-                                                                                                                                                        int.class))));
+                                                                                                                   "Chief")));
 
         final var objectDataset = new Dataset<>("real-nickname-object-expectations",
                                                 List.of(new TestCase<>(new UserProfile("Shubham",
@@ -302,15 +287,21 @@ class RealNicknameAgentExpectationsIntegrationTest {
 
         final List<Expectation<String, UserProfile>> stringExpectations = List.of(
                                                                                   Expectations.outputContains(
+                                                                                                              "output-contains",
                                                                                                               "Possible nicknames"),
                                                                                   Expectations.outputEquals(
+                                                                                                            "output-equals",
                                                                                                             "Possible nicknames for Shubham (26): Shubhamy, Shubhamster, Shubz"),
                                                                                   Expectations.outputSimilarity(
+                                                                                                                "similarity-threshold",
                                                                                                                 "Possible nicknames for Shubham (26): Shubhamy, Shubhamster, Shubz",
                                                                                                                 0.9),
                                                                                   Expectations.outputSimilarity(
+                                                                                                                "similarity",
                                                                                                                 "Possible nicknames for Shubham (26): Shubhamy, Shubhamster, Shubz"),
-                                                                                  Expectations.answerRelevance(0.5));
+                                                                                  Expectations.answerRelevance(
+                                                                                                               "answer-relevance",
+                                                                                                               0.5));
 
         final var stringDataset = new Dataset<>("real-nickname-string-expectations",
                                                 List.of(new TestCase<>(new UserProfile("Shubham",

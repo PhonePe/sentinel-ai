@@ -16,6 +16,7 @@
 
 package com.phonepe.sentinelai.evals.tests;
 
+import com.phonepe.sentinelai.evals.EvalStatus;
 import com.phonepe.sentinelai.evals.ExpectationReport;
 
 /**
@@ -48,9 +49,10 @@ public interface ExpectationExecutor<R, T> {
      */
     default ExpectationReport evaluateWithReport(R result, EvalExpectationContext<T> context) {
         final boolean passes = evaluate(result, context);
-        return ExpectationReport.passFail(
-                                          toString(),
-                                          passes,
-                                          passes ? "Expectation passed" : "Expectation failed");
+        return ExpectationReport.builder()
+                .expectation(toString())
+                .status(passes ? EvalStatus.PASSED : EvalStatus.FAILED)
+                .details(passes ? "Expectation passed" : "Expectation failed")
+                .build();
     }
 }

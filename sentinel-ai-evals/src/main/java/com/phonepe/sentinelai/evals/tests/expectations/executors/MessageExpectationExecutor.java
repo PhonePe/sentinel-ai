@@ -66,14 +66,4 @@ public abstract class MessageExpectationExecutor<E extends MessageExpectation<R,
      * @return {@code true} if this message matches
      */
     public abstract boolean matches(AgentMessage message);
-
-    /**
-     * Returns the textual representation of the underlying expectation.
-     *
-     * @return expectation description
-     */
-    @Override
-    public String toString() {
-        return expectation.toString();
-    }
 }
