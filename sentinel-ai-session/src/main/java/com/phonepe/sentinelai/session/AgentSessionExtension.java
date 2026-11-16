@@ -37,9 +37,11 @@ import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessageType;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
 import com.phonepe.sentinelai.core.compaction.CompactionPrompts;
+import com.phonepe.sentinelai.core.compaction.ExtractedSummary;
 import com.phonepe.sentinelai.core.compaction.MessageCompactor;
 import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.events.AgentEvent;
+import com.phonepe.sentinelai.core.events.CompactionCompletedEvent;
 import com.phonepe.sentinelai.core.events.EventType;
 import com.phonepe.sentinelai.core.events.OutputErrorAgentEvent;
 import com.phonepe.sentinelai.core.model.ModelUsageStats;
@@ -90,6 +92,10 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
     private final List<MessagePersistencePreFilter> historyModifiers;
     private final List<MessageSelector> messageSelectors;
     private final AgentEventMessageExtractor extractor = new AgentEventMessageExtractor();
+    private final Cache<String, ExtractedSummary> pendingCompactionSummaries = Caffeine.newBuilder()
+            .maximumSize(SAVED_MESSAGE_IDS_CACHE_SIZE)
+            .expireAfterWrite(SAVED_MESSAGE_IDS_EXPIRY_MINUTES, TimeUnit.MINUTES)
+            .build();
     private final ConsumingFireForgetSignal<SessionSummary> onSessionSummarized = new ConsumingFireForgetSignal<>();
     private final Cache<String, Boolean> savedMessageIds = Caffeine.newBuilder()
             .maximumSize(SAVED_MESSAGE_IDS_CACHE_SIZE)
@@ -318,6 +324,13 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                 log.debug("Skipping messages for compaction itself");
                 return;
             }
+            if (event instanceof CompactionCompletedEvent compactionCompleted
+                    && compactionCompleted.getErrorType().equals(ErrorType.SUCCESS)
+                    && null != compactionCompleted.getExtractedSummary()) {
+                log.debug("Compaction completed for session {} with a fresh summary, caching it",
+                          sessionId);
+                pendingCompactionSummaries.put(sessionId, compactionCompleted.getExtractedSummary());
+            }
             log.debug("Event {} ({})", event.getEventId(), event.getType());
             final var runId = event.getRunId();
             final var extractedData = event.accept(extractor).orElse(null);
@@ -383,13 +396,28 @@ public class AgentSessionExtension<R, T, A extends Agent<R, T, A>> implements Ag
                                   lastSummarizedMessageId,
                                   sessionId);
 
+                        // Prefer the summary produced by this compaction run over the stale
+                        // stored summary so the session knowledge stays current
+                        final var freshSummary = pendingCompactionSummaries
+                                .asMap()
+                                .remove(sessionId);
+                        final var title = null != freshSummary ? freshSummary.getTitle() : summary.getTitle();
+                        final var summaryText = null != freshSummary
+                                ? freshSummary.getSummary()
+                                : summary.getSummary();
+                        final var keywords = null != freshSummary
+                                ? freshSummary.getKeywords()
+                                : summary.getKeywords();
+                        final var raw = null != freshSummary
+                                ? mapper.writeValueAsString(freshSummary.getRawData())
+                                : summary.getRaw();
                         final var updated = sessionStore.saveSession(SessionSummary
                                 .builder()
                                 .sessionId(sessionId)
-                                .title(summary.getTitle())
-                                .summary(summary.getSummary())
-                                .keywords(summary.getKeywords())
-                                .raw(summary.getRaw())
+                                .title(title)
+                                .summary(summaryText)
+                                .keywords(keywords)
+                                .raw(raw)
                                 .lastSummarizedMessageId(lastSummarizedMessageId)
                                 .updatedAt(AgentUtils.epochMicro())
                                 .build());

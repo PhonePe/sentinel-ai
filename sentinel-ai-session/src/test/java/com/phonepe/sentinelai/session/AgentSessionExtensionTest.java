@@ -37,6 +37,9 @@ import com.phonepe.sentinelai.core.agent.AutoCompactionSetup;
 import com.phonepe.sentinelai.core.agent.ProcessingMode;
 import com.phonepe.sentinelai.core.agentmessages.AgentMessage;
 import com.phonepe.sentinelai.core.agentmessages.requests.UserPrompt;
+import com.phonepe.sentinelai.core.compaction.ExtractedSummary;
+import com.phonepe.sentinelai.core.errors.ErrorType;
+import com.phonepe.sentinelai.core.events.CompactionCompletedEvent;
 import com.phonepe.sentinelai.core.events.MessageSentAgentEvent;
 import com.phonepe.sentinelai.core.model.ModelSettings;
 import com.phonepe.sentinelai.core.tools.ExecutableTool;
@@ -699,6 +702,77 @@ class AgentSessionExtensionTest {
         final var messagesOnResume = agentSessionExtension.messages(resumeContext, agent, new UserInput("resume"));
         assertTrue(messagesOnResume.isEmpty(),
                    "After force compaction all stored messages are behind the boundary; messages() should return empty");
+    }
+
+    /**
+     * Verifies that when a compaction completes, the fresh summary produced by that compaction
+     * replaces the stored (possibly stale or poisoned) summary content when the compacted
+     * continuation prompt is persisted. Previously the stored summary content was copied
+     * verbatim forever and only lastSummarizedMessageId was updated.
+     */
+    @Test
+    void testFreshCompactionSummaryReplacesStaleSummaryContent() {
+        final var sessionStore = new InMemorySessionStore();
+        final var extension = AgentSessionExtension
+                .<UserInput, String, SimpleAgent>builder()
+                .sessionStore(sessionStore)
+                .mapper(JsonUtils.createMapper())
+                .historyModifiers(List.of())
+                .messageSelectors(List.of())
+                .build();
+        final var handler = extension.eventHandlerForTest();
+
+        // Seed a stale stored summary (e.g. poisoned by a bad first summarization)
+        sessionStore.saveSessionImpl(SessionSummary.builder()
+                .sessionId("s-fresh")
+                .title("Stale Title")
+                .summary("Stale summary")
+                .keywords(List.of("stale"))
+                .raw("{\"title\":\"Stale Title\"}")
+                .lastSummarizedMessageId(null)
+                .updatedAt(System.currentTimeMillis())
+                .build());
+
+        // Deliver the CompactionCompletedEvent carrying the fresh summary
+        handler.accept(CompactionCompletedEvent.builder()
+                .agentName("simple-agent")
+                .runId("run-fresh")
+                .sessionId("s-fresh")
+                .userId("u1")
+                .errorType(ErrorType.SUCCESS)
+                .extractedSummary(ExtractedSummary.builder()
+                        .title("Fresh Title")
+                        .summary("Fresh summary")
+                        .keywords(List.of("fresh"))
+                        .rawData(JsonUtils.createMapper()
+                                .createObjectNode()
+                                .put("title", "Fresh Title")
+                                .put("summary", "Fresh summary"))
+                        .build())
+                .build());
+
+        // Deliver the compacted continuation prompt like the message bus would
+        final var continuationPrompt = UserPrompt.compactedText("s-fresh",
+                                                                "run-fresh",
+                                                                "{\"user_input\":\"Fresh Title\"}",
+                                                                LocalDateTime.now());
+        handler.accept(MessageSentAgentEvent.builder()
+                .agentName("simple-agent")
+                .runId("run-fresh")
+                .sessionId("s-fresh")
+                .userId("u1")
+                .allMessages(List.of(continuationPrompt))
+                .newMessages(List.of(continuationPrompt))
+                .build());
+
+        final var updated = sessionStore.session("s-fresh").orElseThrow();
+        assertEquals("Fresh Title", updated.getTitle(), "Fresh compaction output must replace stale title");
+        assertEquals("Fresh summary", updated.getSummary(), "Fresh compaction output must replace stale summary");
+        assertTrue(updated.getKeywords().contains("fresh"), "Fresh keywords must replace stale keywords");
+        assertTrue(updated.getRaw().contains("Fresh Title"), "Fresh raw data must replace stale raw data");
+        assertEquals(continuationPrompt.getMessageId(),
+                     updated.getLastSummarizedMessageId(),
+                     "lastSummarizedMessageId must point at the compacted continuation prompt");
     }
 
     @Test
