@@ -485,6 +485,64 @@ class ChatCompletionsProtocolTest {
     }
 
     @Test
+    void streamFrameWithContentAndReasoningKeepsBothDeltas() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var events = protocol.decodeStreamEvent(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                      sseEvent("""
+                                                              {"choices": [{"index": 0, "delta": {"reasoning_content": "Why", "content": "Answer"}, "finish_reason": null}]}
+                                                              """));
+
+        assertEquals(2, events.size());
+        assertEquals(WireStreamEvent.ContentDelta.class, events.get(0).getClass());
+        assertEquals("Answer", ((WireStreamEvent.ContentDelta) events.get(0)).getContent());
+        assertEquals(WireStreamEvent.ReasoningDelta.class, events.get(1).getClass());
+        assertEquals("Why", ((WireStreamEvent.ReasoningDelta) events.get(1)).getContent());
+    }
+
+    @Test
+    void streamReasoningContentDeltaEmitsReasoningDeltaEvent() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var events = protocol.decodeStreamEvent(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                      sseEvent("""
+                                                              {"choices": [{"index": 0, "delta": {"reasoning_content": "Thinking step by step."}, "finish_reason": null}]}
+                                                              """));
+
+        assertEquals(1, events.size());
+        assertEquals(WireStreamEvent.ReasoningDelta.class, events.get(0).getClass());
+        assertEquals("Thinking step by step.", ((WireStreamEvent.ReasoningDelta) events.get(0)).getContent());
+    }
+
+    @Test
+    void streamReasoningObjectDeltaEmitsReasoningDeltaEvent() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var events = protocol.decodeStreamEvent(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                      sseEvent("""
+                                                              {"choices": [{"index": 0, "delta": {"reasoning": {"text": "Deliberating."}}, "finish_reason": null}]}
+                                                              """));
+
+        assertEquals(1, events.size());
+        assertEquals(WireStreamEvent.ReasoningDelta.class, events.get(0).getClass());
+        assertEquals("Deliberating.", ((WireStreamEvent.ReasoningDelta) events.get(0)).getContent());
+    }
+
+    @Test
+    void streamThinkingDeltaEmitsReasoningDeltaEvent() {
+        final var protocol = new ChatCompletionsProtocol();
+
+        final var events = protocol.decodeStreamEvent(context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null),
+                                                      sseEvent("""
+                                                              {"choices": [{"index": 0, "delta": {"thinking": "Analysing the request."}, "finish_reason": null}]}
+                                                              """));
+
+        assertEquals(1, events.size());
+        assertEquals(WireStreamEvent.ReasoningDelta.class, events.get(0).getClass());
+        assertEquals("Analysing the request.", ((WireStreamEvent.ReasoningDelta) events.get(0)).getContent());
+    }
+
+    @Test
     void streamingRequestCarriesStreamFlag() {
         final var protocol = new ChatCompletionsProtocol();
         final var ctx = context(OutputGenerationMode.STRUCTURED_OUTPUT, null, null).toBuilder()
