@@ -136,6 +136,7 @@ Format:
       "type": "sse", //(8)!
       "url": "http://localhost:3001", //(9)!
       "timeout": 5000, //(10)!
+      "operationTimeout": 20000, //(11)!
       "knownTools": ["getUserLocation", "getUserName"]
     }
   }
@@ -156,6 +157,8 @@ Format:
 8. For remote servers with Server-Sent Events (SSE) support, the `type` is `sse`.
 9. The `url` field is the URL of the remote MCP server. This is mandatory for `sse` type servers.
 10. Timeout in milliseconds for the connection to the remote MCP server. This is optional and defaults to 5000ms.
+11. Timeout in milliseconds for each MCP request to the server (for example a tool call). Applies to all server
+    types, including `stdio`. This is optional and defaults to 20000ms.
 
 !!!tip "Ensuring efficiency"
     When using multiple MCP servers, it is recommended to expose only the tools that are relevant to the agent's
