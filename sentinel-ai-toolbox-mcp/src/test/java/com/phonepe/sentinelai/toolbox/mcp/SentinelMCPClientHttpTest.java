@@ -21,14 +21,17 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
 import com.phonepe.sentinelai.toolbox.mcp.config.MCPConfiguration;
+import com.phonepe.sentinelai.toolbox.mcp.config.MCPHttpServerConfig;
 
 import lombok.SneakyThrows;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -69,5 +72,26 @@ class SentinelMCPClientHttpTest {
         assertEquals(1, composingMCPToolBox.tools().size());
         composingMCPToolBox.exposeAllTools("test_mcp");
         assertTrue(composingMCPToolBox.tools().size() > 1);
+    }
+
+    @Test
+    void testOperationTimeout() {
+        final var config = MCPHttpServerConfig.builder()
+                .url("http://localhost:%d".formatted(container.getMappedPort(3001)))
+                .operationTimeout(2_000)
+                .build();
+        try (final var client = new SentinelMCPClient("test_mcp",
+                                                      config,
+                                                      JsonUtils.createMapper(),
+                                                      Set.of())) {
+            client.tools();
+            assertEquals(ErrorType.SUCCESS,
+                         client.runTool(null, "test_mcp_echo", "{\"message\":\"hi\"}").error());
+            assertEquals(ErrorType.GENERIC_MODEL_CALL_FAILURE,
+                         client.runTool(null,
+                                        "test_mcp_long_running_operation",
+                                        "{\"duration\":5,\"steps\":1}")
+                                 .error());
+        }
     }
 }

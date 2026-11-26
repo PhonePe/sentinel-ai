@@ -23,11 +23,8 @@ import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 
 import org.junit.jupiter.api.Test;
 
-import com.phonepe.sentinelai.core.errors.ErrorType;
 import com.phonepe.sentinelai.core.utils.JsonUtils;
-import com.phonepe.sentinelai.toolbox.mcp.config.MCPStdioServerConfig;
 
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -75,27 +72,5 @@ class SentinelMCPClientTest {
 
         mcpToolBox.exposeAllTools();
         assertEquals(allToolsSize, mcpToolBox.tools().size());
-    }
-
-    @Test
-    void testOperationTimeout() {
-        final var config = MCPStdioServerConfig.builder()
-                .command("npx")
-                .args(List.of("-y", "@modelcontextprotocol/server-everything@2025.12.18"))
-                .operationTimeout(1_000)
-                .build();
-        try (final var client = new SentinelMCPClient("test_mcp",
-                                                      config,
-                                                      JsonUtils.createMapper(),
-                                                      Set.of())) {
-            client.tools();
-            assertEquals(ErrorType.SUCCESS,
-                         client.runTool(null, "test_mcp_echo", "{\"message\":\"hi\"}").error());
-            assertEquals(ErrorType.GENERIC_MODEL_CALL_FAILURE,
-                         client.runTool(null,
-                                        "test_mcp_long_running_operation",
-                                        "{\"duration\":3,\"steps\":1}")
-                                 .error());
-        }
     }
 }
