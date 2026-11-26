@@ -41,10 +41,11 @@ public class MCPStdioServerConfig extends MCPServerConfig {
     @Builder
     @Jacksonized
     public MCPStdioServerConfig(Set<String> exposedTools,
+                                Integer operationTimeout,
                                 @NonNull String command,
                                 List<String> args,
                                 Map<String, String> env) {
-        super(MCPServerType.STDIO, exposedTools);
+        super(MCPServerType.STDIO, exposedTools, operationTimeout);
         this.command = command;
         this.args = args;
         this.env = env;

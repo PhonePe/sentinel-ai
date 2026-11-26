@@ -83,6 +83,7 @@ import static java.util.stream.Collectors.toMap;
 @Slf4j
 public class SentinelMCPClient implements AutoCloseable {
     private static final int DEFAULT_TIMEOUT = 5_000;
+    private static final int DEFAULT_OPERATION_TIMEOUT = 20_000;
     private static final String SAMPLING_OUTPUT_KEY = "mcpSamplingOutput";
 
     @Getter
@@ -409,6 +410,8 @@ public class SentinelMCPClient implements AutoCloseable {
         });
 
         final var client = McpClient.sync(transport)
+                .requestTimeout(Duration.ofMillis(requireNonNullElse(serverConfig.getOperationTimeout(),
+                                                                     DEFAULT_OPERATION_TIMEOUT)))
                 .clientInfo(new McpSchema.Implementation("sentinel-ai-toolbox-mcp",
                                                          "X.X.X"))
                 .sampling(this::handleSamplingRequest)

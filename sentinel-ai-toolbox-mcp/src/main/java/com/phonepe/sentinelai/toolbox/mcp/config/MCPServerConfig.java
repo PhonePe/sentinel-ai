@@ -39,6 +39,7 @@ public abstract class MCPServerConfig {
 
     private final MCPServerType type; // For example, "stdio" or "http"
     private final Set<String> exposedTools;
+    private final Integer operationTimeout; // Timeout in millis for each MCP request (default 20 seconds)
 
     public abstract <T> T accept(final MCPServerConfigVisitor<T> visitor);
 }
